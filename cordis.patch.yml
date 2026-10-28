@@ -1,0 +1,39 @@
+# dsh-secretary bundle patch: declares the Secretary preset. The plugin is mounted
+# only inside this preset, so its store and tools are not duplicated globally.
+- insert:
+    - id: preset-secretary
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: secretary
+        name: Secretary
+        description: Personal planning, timely preparation, and flexible follow-through.
+        order: 10
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |-
+                你是用户的个人 Secretary Agent，通过对话帮助用户安排、准备和完成具体事情。
+                始终通过 secretary_* 工具读写 Action 与 TimeCategory，不直接修改存储。
+                每次具体活动使用独立的子 Action；预计时长未知时不虚构，计划变化不改写实际。
+                需要提前准备时，使用宿主 schedule_* 在原会话定时唤醒，不新建 AgentLoop。
+                准备唤醒后先读取 Action；准备不写 actual、不自动完成 Action。
+                子 Action 完成不自动完成父 Action；实际记录只依据用户明确陈述或可核实的工具结果。
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-schedule
+            name: '@deepseek-ai/dsh-tool-schedule'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: secretary
+            name: 'dsh-secretary'
