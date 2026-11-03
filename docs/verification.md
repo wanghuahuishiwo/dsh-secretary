@@ -65,11 +65,11 @@ git diff --check
 
 另外用 desktop profile 配置的完整副本、同一份真实数据库的隔离副本启动完整 Secretary bundle，Time 产品壳可打开，说明 bundle、当前数据文件和生产 client 的组合可运行。该诊断不修改真实数据库。
 
-真实 desktop profile 已补齐 `dsh-secretary-tag` 直接依赖并移除 Statistics 链接；重组后插件管理接口明确返回 `restart-required / package-moved`，因此**当前 Electron 必须重启后再以新会话验收**，不能把副本结果写成当前 GUI 已通过。真实数据库中另有旧 UUID GTD Inbox 记录不符合新 schema；按“不做旧数据迁移、#6 暂停”的决定未擅自修改，这与 Time + Tag 验收分开记录。
+真实 desktop profile 已补齐 `dsh-secretary-tag` 直接依赖并移除 Statistics 链接。完成 DSH 重启后，插件管理已确认 `secretary-time-block` 与 `secretary-panel` 均为 `active`，新 schema 的 Actual／Plan／Template／Deep 表已初始化；当前等待用户完成“出现 → 消除 → 撤销恢复”等人工冒烟验收，不能把 active 状态直接写成人工验收通过。真实数据库中另有旧 UUID GTD Inbox 记录不符合新 schema；按“不做旧数据迁移、#6 暂停”的决定未擅自修改，这与 Time + Tag 验收分开记录。
 
 ## 5. 明确未覆盖项与剩余风险
 
-- **当前 Electron 的新会话验收仍待一次 DSH 重启**，原因是插件管理接口明确报告 `package-moved`；不会以完整副本启动结果替代当前 GUI 结论。远程 Issue 未修改交付状态。
+- DSH 重启已使 Time／Panel 恢复 `active`；**当前仍待用户完成真实 GUI 的人工交互验收**，不以插件状态或完整副本启动结果替代人工结论。远程 Issue 未修改交付状态。
 - #6 的 GTD Review／Repeat／OmniFocus UI、全产品 #8、Goal、统计、预算、对账均未交付；现有 GTD UI 不是终稿。
 - 只验收桌面 HTML5 标签层级拖拽，未宣称触摸拖拽。
 - 通用添加／消除／编辑 Undo 仍只保存当前会话；模板 undo 才持久化。

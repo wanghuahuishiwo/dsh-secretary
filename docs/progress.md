@@ -6,7 +6,7 @@
 
 - **本轮只验收 Time + Tag。** 集中修复在 `acceptance/time-tag` 实施，证据只来自真实临时 SQLite、隔离 `dsh web` 与 Chromium。
 - **#6 暂停**：GTD Review、Repeat、完整 OmniFocus 交互和 UI 终稿不在本轮；当前 GTD UI 只是已实现基础切片的载体。
-- **全产品 #8 暂停**：跨模块总验收和远程交付收口不在本轮。Time + Tag 的完整 desktop 副本已启动成功；真实 Electron 因 `package-moved` 需一次 DSH 重启后再新开会话验收。
+- **全产品 #8 暂停**：跨模块总验收和远程交付收口不在本轮。Time + Tag 的完整 desktop 副本已启动成功；DSH 重启后 Time／Panel 已恢复 `active`，等待用户完成真实 GUI 冒烟验收。
 - Goal、统计、预算、对账不实现；独立 Statistics 包及旧 timeBlocks 代码已删除。
 
 ## Time（#2、#3、#4、#7）
