@@ -1,12 +1,13 @@
 # 一期产品基线进展
 
-> 快照：2026-11-03 15:30（Asia/Shanghai）。本页只记进展与备注；设计与规格不在这里：[产品架构](product-architecture.md)、[数据模型](data-model.md)、[规格](specs/2026-11-03-secretary-product-foundation.md)。工单入口：[Issue #1](https://github.com/wanghuahuishiwo/dsh-secretary/issues/1)（子工单 #2–#8）。
+> 快照：2026-11-03 15:36（Asia/Shanghai）。本页只记总进度、各模块剩余与备注；设计与规格见 [产品架构](product-architecture.md)、[数据模型](data-model.md)、[规格](specs/2026-11-03-secretary-product-foundation.md)。工单入口：[Issue #1](https://github.com/wanghuahuishiwo/dsh-secretary/issues/1)（子工单 #2–#8）。
 
-## 结果
+## 总进度
 
-一期结束时：GTD／Time／Tag 按规格可用，Agent 用同一批原子工具操作事实，安装进 DSH 后完整重开能恢复全部数据。
+**约 62%**（口径：规格 13 条验收场景折算 —— 完成 5 条、部分 6 条、未开始 2 条；完成计 1、部分计 0.5、未开始计 0）。
 
-## 状态
+- 子工单：#2、#3 已合入集成分支，#4 进行中，其余 4 个未开始。
+- 模块：Tag 完成；Time 的计划完成、实录基本完成、深度时间进行中；GTD 未开始；交付未开始。
 
 | 模块 | 状态 | 还差 |
 |---|---|---|
@@ -44,8 +45,8 @@
   - [ ] 共用交互增强落地后同步复用并验收
   - [ ] 明暗主题证据
 - 深度时间（#4）
-  - [ ] 提交 `ticket/4-deep-time` 改动并验证（备注：域层与 `deep.*` 工具、tracer 已在 worktree，未提交、未验证）
-  - [ ] 7×24 周网格界面接入面板（备注：integration 中仍是占位页）
+  - [ ] 提交 `ticket/4-deep-time` 改动并验证（备注：域层、`deep.*` 工具与 tracer 已在 worktree，未提交、未验证）
+  - [ ] 7×24 周网格界面接入面板（备注：集成分支中仍是占位页）
   - [ ] 浏览器验收：档位读写、拖刷、重开恢复
 - 计划与实录共用（#3、#7）
   - [x] 日期导航：前后箭头、日期输入、今天
@@ -83,12 +84,9 @@
 - [ ] 文档收口：根 README、`verification.md`、ADR 等旧模型描述
 - [ ] 推送远程并收敛 Issue 状态（备注：远端仓库当前为空）
 
-## 本期不做
+## 备注
 
-Goal 模型与界面（导航保留入口）；统计、预算、时间对账；深度时间日期例外模板；Agent 调用策略与授权矩阵；旧模型数据迁移。
-
-## 基线备注
-
-- 集成分支 `integration/secretary-product-foundation` @ `612172a`（merge #3）；2026-11-03 15:29 复跑 `pnpm build && pnpm test` 通过：tracer 24/24、真实浏览器 1/1。
+- 基线：集成分支 `integration/secretary-product-foundation` @ `612172a`；2026-11-03 15:29 复跑 `pnpm build && pnpm test` 通过（tracer 24/24、真实浏览器 1/1）。
 - Time 由并行会话按切片推进：#3 已提交并合入；#4 在 `../dsh-secretary-ticket-4` worktree 实施中，未提交。本记录只跟状态，不重复安排。
 - 远端仓库为空，Issue 全部 open；远程交付为零。
+- 本期不做：Goal 模型与界面（导航保留入口）、统计、预算、时间对账、深度时间例外模板、Agent 调用策略、旧数据迁移。
