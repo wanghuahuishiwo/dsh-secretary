@@ -1,6 +1,6 @@
 # 一期产品基线进展
 
-> 快照：2026-11-03 15:00（Asia/Shanghai）。本页只记进展与备注；设计与规格不在这里：[产品架构](product-architecture.md)、[数据模型](data-model.md)、[规格](specs/2026-11-03-secretary-product-foundation.md)。工单入口：[Issue #1](https://github.com/wanghuahuishiwo/dsh-secretary/issues/1)（子工单 #2–#8）。
+> 快照：2026-11-03 15:47（Asia/Shanghai）。本页只记进展与备注；设计与规格不在这里：[产品架构](product-architecture.md)、[数据模型](data-model.md)、[规格](specs/2026-11-03-secretary-product-foundation.md)。工单入口：[Issue #1](https://github.com/wanghuahuishiwo/dsh-secretary/issues/1)（子工单 #2–#8）。
 
 ## 结果
 
@@ -13,7 +13,7 @@
 | GTD | 未开始（有旧底座） | 契约改造、标签继承、界面、结构／Review／Repeat |
 | Time／时间计划（含模板） | 进行中（worktree 未提交） | 提交验证、界面收尾、浏览器验收 |
 | Time／时间实录 | 基本完成 | 共用交互增强、主题证据 |
-| Time／深度时间 | 未开始 | 全部 |
+| Time／深度时间 | 本地完成（待集成） | 日期例外属二期 |
 | Time／计划与实录共用 | 部分 | 月历、拖刷、撤销、粒度 |
 | Tag | 完成 | 仅剩画布联动断言 |
 | Goal | 本期不做 | — |
@@ -44,9 +44,9 @@
   - [ ] 共用交互增强落地后同步复用并验收
   - [ ] 明暗主题证据
 - 深度时间（#4）
-  - [ ] 7×24 周模板与原子能力（high／medium／low／未设置，未设置 ≠ low）
-  - [ ] 周网格画笔：点按、拖刷、同档起手清除
-  - [ ] 完整重开恢复基础周模板
+  - [x] 7×24 周模板与原子能力（high／medium／low／未设置，未设置 ≠ low；备注：公共 tools + 临时 SQLite 覆盖）
+  - [x] 周网格画笔：点按、拖刷、同档起手清除（备注：真实 dsh web + Chromium 覆盖）
+  - [x] 完整重开恢复基础周模板（备注：工具与浏览器两层均覆盖）
 - 计划与实录共用（#3、#7）
   - [x] 日期导航：前后箭头、日期输入、今天
   - [ ] 月历跨月选择与高亮（备注：面板已有未提交改动）
@@ -88,4 +88,5 @@ Goal 模型与界面（导航保留入口）；统计、预算、时间对账；
 
 - 集成分支 `integration/secretary-product-foundation` @ `8c02bc5`；2026-11-03 14:38 实测 `pnpm build && pnpm test` 通过（tracer 15/15、真实浏览器 1/1）。
 - #3 的改动在 `../dsh-secretary-ticket-3` worktree，未提交、未验证；15:00 快照时仍在变化（计划／月历／模板／粒度已进入面板，测试与包 README 也在改）。
+- #4 在 `ticket/4-deep-time` 完成本地实现；15:47 实测 `pnpm build && pnpm test` 通过（公共 tools + 临时 SQLite 32/32、真实 Chromium 2/2），尚未合入 integration。
 - 远端仓库为空，Issue 全部 open；远程交付为零。

@@ -56,6 +56,10 @@ async function command(ctx: PanelContext, raw: unknown): Promise<unknown> {
       case 'actual.delete': return { block: await ctx.time.deleteActual(input.id) }
       case 'actual.start': return { block: await ctx.time.startActual(input) }
       case 'actual.stop': return { block: await ctx.time.stopActual(input.id, input.endAt) }
+      case 'deep.setCell': return { week: await ctx.time.setDeepCell(input) }
+      case 'deep.clearCell': return { week: await ctx.time.clearDeepCell(input) }
+      case 'deep.setRange': return { week: await ctx.time.setDeepRange(input) }
+      case 'deep.clearRange': return { week: await ctx.time.clearDeepRange(input) }
       default: throw new Error(`secretary: unsupported panel time operation ${JSON.stringify(input.op)}`)
     }
   }
@@ -76,14 +80,15 @@ export function apply(context: Context): void {
         const url = new URL(request.url)
         const date = url.searchParams.get('date') ?? undefined
         const timeZone = url.searchParams.get('timeZone') ?? undefined
-        const [tags, blocks, plans, templates, templateUndo] = await Promise.all([
+        const [tags, blocks, plans, templates, templateUndo, deepWeek] = await Promise.all([
           ctx.tags.listTags(),
           ctx.time.listActual({ date, timeZone }),
           ctx.time.listPlan({ date, timeZone }),
           ctx.time.listPlanTemplate(),
           date === undefined ? false : ctx.time.canUndoPlanTemplate({ targetDate: date, timeZone: timeZone ?? 'Asia/Shanghai' }),
+          ctx.time.getDeepWeek(),
         ])
-        return json({ tags, blocks, plans, templates, templateUndo })
+        return json({ tags, blocks, plans, templates, templateUndo, deepWeek })
       } catch (error) {
         return json({ error: errorMessage(error) }, 400)
       }

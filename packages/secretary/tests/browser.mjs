@@ -269,3 +269,149 @@ test('real Chromium client covers Plan/Template/date navigation and restores all
   await page.getByText('浏览器真实实录', { exact: true }).waitFor()
   assert.deepEqual(pageErrors, [])
 })
+
+test('real Chromium deep-time grid supports high-only use, fixed-operation pointer gestures, reload, and full restart', { timeout: 360_000 }, async (t) => {
+  const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-deep-browser-'))
+  const overlay = join(home, 'overlay.yml')
+  await writeFile(overlay, [
+    '- id: ui-settings-general',
+    '  config:',
+    "    welcomeNoticeVersion: '2026-09-28.1'",
+    '- id: ui-settings-account',
+    '  config:',
+    '    version: 1',
+    '    step: done',
+    '    usage: detailed',
+    '    developerTools: true',
+    '    purpose: null',
+    '    process: standard',
+    '    completion: api-key',
+    '- insert:',
+    "    - id: secretary-browser-sqlite",
+    `      name: 'file://${join(ROOT, 'packages/secretary/node_modules/@deepseek-ai/dsh-storage-sqlite/lib/index.js')}'`,
+    '      config:',
+    `        path: ${join(home, 'secretary.sqlite')}`,
+    '        journalMode: delete',
+    "    - id: secretary-browser-storage",
+    `      name: 'file://${join(ROOT, 'packages/storage/lib/index.js')}'`,
+    "    - id: secretary-browser-tag",
+    `      name: 'file://${join(ROOT, 'packages/tag/lib/index.js')}'`,
+    "    - id: secretary-browser-time",
+    `      name: 'file://${join(ROOT, 'packages/time-block/lib/index.js')}'`,
+    "    - id: secretary-browser-panel",
+    `      name: 'file://${join(ROOT, 'packages/panel/lib/index.js')}'`,
+    '',
+  ].join('\n'))
+
+  const browser = await chromium.launch({ headless: true })
+  const dshVersion = execFileSync('dsh', ['--version'], { encoding: 'utf8' }).trim()
+  execFileSync('dsh', [
+    'plugin', '--profile', 'web', 'allow-version', '@deepseek-ai/dsh-storage-sqlite@0.2.1-rc.3',
+    '--dsh-version', dshVersion, '--accept-risk',
+  ], { env: { ...process.env, DSH_HOME: home }, stdio: 'pipe' })
+  let server
+  const pageErrors = []
+  t.after(async () => {
+    if (server) await server.stop()
+    await browser.close()
+    await rm(home, { recursive: true, force: true })
+  })
+
+  server = await boot(home, overlay)
+  let context = await browser.newContext({ viewport: { width: 1280, height: 900 } })
+  let page = await context.newPage()
+  page.on('pageerror', error => pageErrors.push(error))
+  const openDeep = async () => {
+    await openPanel(page, server.url)
+    await page.getByRole('tab', { name: '深度时间', exact: true }).click()
+    await page.getByRole('region', { name: '深度时间周模板', exact: true }).waitFor().catch(async error => {
+      console.error('Deep panel text:', (await page.locator('body').innerText()).slice(0, 4000))
+      console.error('Deep panel page errors:', pageErrors)
+      console.error('Deep panel DSH output:', server.output())
+      throw error
+    })
+  }
+  const cell = (weekday, hour) => page.locator(`[data-deep-cell][data-weekday="${weekday}"][data-hour="${hour}"]`)
+  const level = async (weekday, hour, expected) => {
+    await page.waitForFunction(({ weekday, hour, expected }) => document.querySelector(`[data-deep-cell][data-weekday="${weekday}"][data-hour="${hour}"]`)?.getAttribute('data-level') === expected, { weekday, hour, expected })
+  }
+  const clickCell = async (weekday, hour) => {
+    const saved = page.waitForResponse(response => response.url().includes('/api/secretary.state') && response.request().method() === 'GET')
+    await cell(weekday, hour).click()
+    await saved
+  }
+  const dragCells = async (weekday, startHour, endHour) => {
+    const start = await cell(weekday, startHour).boundingBox()
+    assert.ok(start)
+    await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2)
+    await page.mouse.down()
+    for (let hour = startHour + 1; hour <= endHour; hour += 1) {
+      const box = await cell(weekday, hour).boundingBox()
+      assert.ok(box)
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 4 })
+    }
+    const saved = page.waitForResponse(response => response.url().includes('/api/secretary.state') && response.request().method() === 'GET')
+    await page.mouse.up()
+    await saved
+  }
+
+  await openDeep()
+  assert.equal(await page.locator('[data-deep-cell]').count(), 168)
+  assert.equal(await page.locator('[data-deep-cell][data-level="unset"]').count(), 168)
+  await page.getByRole('button', { name: 'high', exact: true }).click()
+  await clickCell(1, 9)
+  await level(1, 9, 'high')
+  assert.equal(await page.locator('[data-deep-cell][data-level="high"]').count(), 1)
+  assert.equal(await page.locator('[data-deep-cell][data-level="medium"]').count(), 0)
+  assert.equal(await page.locator('[data-deep-cell][data-level="low"]').count(), 0)
+
+  await openDeep()
+  await level(1, 9, 'high')
+  assert.equal(await page.locator('[data-deep-cell][data-level="unset"]').count(), 167)
+  await server.stop()
+  server = await boot(home, overlay)
+  await context.close()
+  context = await browser.newContext({ viewport: { width: 1280, height: 900 } })
+  page = await context.newPage()
+  page.on('pageerror', error => pageErrors.push(error))
+  await openDeep()
+  await level(1, 9, 'high')
+  assert.equal(await page.locator('[data-deep-cell][data-level="high"]').count(), 1)
+
+  await page.getByRole('button', { name: 'medium', exact: true }).click()
+  await clickCell(2, 9)
+  await page.getByRole('button', { name: 'low', exact: true }).click()
+  await clickCell(2, 10)
+  await clickCell(3, 10)
+  await page.getByRole('button', { name: 'medium', exact: true }).click()
+  await clickCell(3, 11)
+  await page.getByRole('button', { name: 'high', exact: true }).click()
+  await dragCells(3, 9, 11)
+  for (const hour of [9, 10, 11]) await level(3, hour, 'high')
+
+  await page.getByRole('button', { name: 'medium', exact: true }).click()
+  await clickCell(3, 10)
+  await page.getByRole('button', { name: 'low', exact: true }).click()
+  await clickCell(3, 11)
+  await page.getByRole('button', { name: 'high', exact: true }).click()
+  await dragCells(3, 9, 11)
+  for (const hour of [9, 10, 11]) await level(3, hour, 'unset')
+  await level(1, 9, 'high')
+  await level(2, 9, 'medium')
+  await level(2, 10, 'low')
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), '390px deep-time page has horizontal overflow')
+  const colors = await page.evaluate(() => ({
+    unset: getComputedStyle(document.querySelector('[data-deep-cell][data-weekday="2"][data-hour="11"]')).backgroundColor,
+    low: getComputedStyle(document.querySelector('[data-deep-cell][data-weekday="2"][data-hour="10"]')).backgroundColor,
+  }))
+  assert.notEqual(colors.unset, colors.low, 'unset must not reuse the low fill')
+
+  await openDeep()
+  await level(1, 9, 'high')
+  await level(2, 9, 'medium')
+  await level(2, 10, 'low')
+  for (const hour of [9, 10, 11]) await level(3, hour, 'unset')
+  assert.deepEqual(pageErrors, [])
+})

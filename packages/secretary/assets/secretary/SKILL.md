@@ -39,6 +39,11 @@ Schedule 消息不是完成回执。醒来后必须完成一段有价值的工�
 3. apply 后模板与日期计划互不同步，也不生成或修改 ActualBlock。需要撤销时使用公开 `template.undo`，它读取 SQLite 中持久化的 apply 前后事实；刷新或重启不依赖对话内临时状态。若用户 apply 后又改了当日计划，不强行 undo 覆盖后续编辑，先协商。
 4. 计划修改、模板 apply/undo 都不完成 Action，也不伪造实际投入。
 
+## 深度时间
+
+1. `secretary_time` 的 `deep.getWeek` 读取持续复用的 base 周模板；`deep.setCell / clearCell / setRange / clearRange` 分别设置或清除单格与闭区间矩形。档位只有 `high / medium / low / unset`，set 不接受 `unset`，清除才恢复未设置；未设置不等于 `low`，可以只使用 `high`。
+2. 深度时间与 ActualBlock 独立，不从实录或 focus 自动派生，也不因实录变化自动改写。当前没有日期例外模板。
+
 ## 标签、实际与完成
 
 1. `secretary_tag` 统一维护 `time` / `context` 标签树。同名不同 kind 是不同对象，需要消歧时使用数字 ID；不要跨 kind 建立父子关系或删除仍被引用的标签。
@@ -46,6 +51,6 @@ Schedule 消息不是完成回执。醒来后必须完成一段有价值的工�
 3. 用户描述当时能专注到什么程度时，同时写 `focus`：`deep`（能推需要连续专注的难事）、`shallow`（碎片、输入型、可被打断）。只有这两个值；用户没说清就不填，不从任务性质倒推。
 4. ActualBlock 只通过 `timeTagId` 关联时间标签。GTD 对象只能在备注中提及，不把 Action ID 写成结构化关联，也不伪造计划区间。
 5. Completed 是 Action 的状态事实，ActualBlock 是时间事实。用户明确表示完成后才调用 `action.complete`；开始／停止实录不完成 Action，完成 Action 也不伪造实录。
-6. 实录允许任意重叠，以多块表达并行活动；不要为了消除重叠而改写真实事实。当前切片不提供统计或深度时间工具。
+6. 实录允许任意重叠，以多块表达并行活动；不要为了消除重叠而改写真实事实。当前切片不提供统计。
 
-完成标准：Tag、Plan、Template、Actual 与 Completed 各自准确，用户不必理解内部模块即可得到连续、可修正的秘书跟进。
+完成标准：Tag、Plan、Template、Actual、DeepTime 与 Completed 各自准确，用户不必理解内部模块即可得到连续、可修正的秘书跟进。

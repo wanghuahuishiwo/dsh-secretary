@@ -613,7 +613,132 @@ test('Tag, Actual, and GTD facts reopen from the same SQLite file after a full s
   assert.equal(nextActual.block.id, 3)
 })
 
-test('Time tool exposes only the new Plan/Template/Actual model and rejects invalid intervals without overwriting facts', async (t) => {
+test('deep.getWeek returns a reusable base week with 168 independently unset cells', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { week } = await execute(harness, 'secretary_time', { op: 'deep.getWeek' })
+  assert.equal(week.scope, 'base')
+  assert.equal(week.cells.length, 168)
+  assert.deepEqual(week.cells[0], { weekday: 1, hour: 0, level: 'unset' })
+  assert.deepEqual(week.cells[167], { weekday: 7, hour: 23, level: 'unset' })
+  assert.ok(week.cells.every(cell => cell.level === 'unset'))
+  assert.deepEqual(JSON.parse(JSON.stringify(week)), week)
+})
+
+test('deep.setCell writes one high cell and restores the base scope after a full SQLite restart', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'dsh-secretary-deep-cell-'))
+  const databasePath = join(directory, 'secretary.sqlite')
+  t.after(async () => { await rm(directory, { recursive: true, force: true }) })
+  const first = await sqliteHarness(t, databasePath)
+  const { week } = await execute(first, 'secretary_time', {
+    op: 'deep.setCell', weekday: 2, hour: 9, level: 'high',
+  })
+  assert.deepEqual(week.cells.find(cell => cell.weekday === 2 && cell.hour === 9), { weekday: 2, hour: 9, level: 'high' })
+  assert.equal(week.cells.filter(cell => cell.level !== 'unset').length, 1)
+  await first.close()
+
+  const reopened = await sqliteHarness(t, databasePath)
+  const restored = await execute(reopened, 'secretary_time', { op: 'deep.getWeek' })
+  assert.equal(restored.week.scope, 'base')
+  assert.deepEqual(restored.week.cells.find(cell => cell.weekday === 2 && cell.hour === 9), { weekday: 2, hour: 9, level: 'high' })
+  assert.equal(restored.week.cells.filter(cell => cell.level !== 'unset').length, 1)
+})
+
+test('deep.clearCell returns only the selected cell to unset without turning it into low', async (t) => {
+  const harness = await sqliteHarness(t)
+  await execute(harness, 'secretary_time', { op: 'deep.setCell', weekday: 1, hour: 8, level: 'low' })
+  await execute(harness, 'secretary_time', { op: 'deep.setCell', weekday: 1, hour: 9, level: 'high' })
+  const { week } = await execute(harness, 'secretary_time', { op: 'deep.clearCell', weekday: 1, hour: 8 })
+  assert.deepEqual(week.cells.find(cell => cell.weekday === 1 && cell.hour === 8), { weekday: 1, hour: 8, level: 'unset' })
+  assert.deepEqual(week.cells.find(cell => cell.weekday === 1 && cell.hour === 9), { weekday: 1, hour: 9, level: 'high' })
+  assert.notEqual(week.cells.find(cell => cell.weekday === 1 && cell.hour === 8).level, 'low')
+})
+
+test('deep.setRange writes an inclusive weekday-by-hour rectangle in one base-template update', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { week } = await execute(harness, 'secretary_time', {
+    op: 'deep.setRange', startWeekday: 1, startHour: 9, endWeekday: 2, endHour: 10, level: 'medium',
+  })
+  const changed = week.cells.filter(cell => cell.level !== 'unset')
+  assert.deepEqual(changed, [
+    { weekday: 1, hour: 9, level: 'medium' },
+    { weekday: 1, hour: 10, level: 'medium' },
+    { weekday: 2, hour: 9, level: 'medium' },
+    { weekday: 2, hour: 10, level: 'medium' },
+  ])
+  assert.deepEqual((await execute(harness, 'secretary_time', { op: 'deep.getWeek' })).week, week)
+})
+
+test('deep.clearRange clears an inclusive rectangle while preserving cells outside it', async (t) => {
+  const harness = await sqliteHarness(t)
+  await execute(harness, 'secretary_time', {
+    op: 'deep.setRange', startWeekday: 3, startHour: 13, endWeekday: 4, endHour: 15, level: 'low',
+  })
+  const { week } = await execute(harness, 'secretary_time', {
+    op: 'deep.clearRange', startWeekday: 3, startHour: 14, endWeekday: 4, endHour: 14,
+  })
+  assert.deepEqual(week.cells.filter(cell => cell.level === 'low').map(cell => [cell.weekday, cell.hour]), [
+    [3, 13], [3, 15], [4, 13], [4, 15],
+  ])
+  assert.equal(week.cells.find(cell => cell.weekday === 3 && cell.hour === 14).level, 'unset')
+  assert.equal(week.cells.find(cell => cell.weekday === 4 && cell.hour === 14).level, 'unset')
+})
+
+test('deep public tools reject invalid levels, coordinates, and reversed ranges without overwriting the week', async (t) => {
+  const harness = await sqliteHarness(t)
+  await execute(harness, 'secretary_time', { op: 'deep.setCell', weekday: 1, hour: 9, level: 'high' })
+  const invalid = [
+    { op: 'deep.setCell', weekday: 0, hour: 9, level: 'high' },
+    { op: 'deep.setCell', weekday: 8, hour: 9, level: 'high' },
+    { op: 'deep.setCell', weekday: 1.5, hour: 9, level: 'high' },
+    { op: 'deep.setCell', weekday: 1, hour: -1, level: 'high' },
+    { op: 'deep.setCell', weekday: 1, hour: 24, level: 'high' },
+    { op: 'deep.setCell', weekday: 1, hour: 9.5, level: 'high' },
+    { op: 'deep.setCell', weekday: 1, hour: 9, level: 'unset' },
+    { op: 'deep.setCell', weekday: 1, hour: 9, level: 'flow' },
+    { op: 'deep.clearCell', weekday: 7.1, hour: 9 },
+    { op: 'deep.clearCell', weekday: 7, hour: 23.1 },
+    { op: 'deep.setRange', startWeekday: 2, startHour: 9, endWeekday: 1, endHour: 10, level: 'low' },
+    { op: 'deep.setRange', startWeekday: 1, startHour: 11, endWeekday: 2, endHour: 10, level: 'low' },
+    { op: 'deep.clearRange', startWeekday: 1, startHour: 9, endWeekday: 8, endHour: 10 },
+    { op: 'deep.clearRange', startWeekday: 1, startHour: 9, endWeekday: 2, endHour: 24 },
+  ]
+  for (const args of invalid) {
+    await assert.rejects(execute(harness, 'secretary_time', args), /weekday|hour|deep level|deep range/)
+  }
+  const { week } = await execute(harness, 'secretary_time', { op: 'deep.getWeek' })
+  assert.deepEqual(week.cells.filter(cell => cell.level !== 'unset'), [{ weekday: 1, hour: 9, level: 'high' }])
+  const tool = harness.tools.get('secretary_time')
+  assert.deepEqual(tool.parameters.properties.level.enum, ['high', 'medium', 'low'])
+  assert.equal(tool.parameters.properties.weekday.minimum, 1)
+  assert.equal(tool.parameters.properties.weekday.maximum, 7)
+  assert.equal(tool.parameters.properties.hour.minimum, 0)
+  assert.equal(tool.parameters.properties.hour.maximum, 23)
+})
+
+test('deep base template and Actual facts never derive from or rewrite each other', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
+  const { block: actual } = await execute(harness, 'secretary_time', {
+    op: 'actual.create', timeTagId: tag.id, startAt: '2026-11-02T09:00:00+08:00',
+    endAt: '2026-11-02T11:00:00+08:00', actualSource: 'user_reported', focus: 'deep', note: '实录保持原样',
+  })
+  assert.ok((await execute(harness, 'secretary_time', { op: 'deep.getWeek' })).week.cells.every(cell => cell.level === 'unset'))
+  await execute(harness, 'secretary_time', {
+    op: 'deep.setRange', startWeekday: 1, startHour: 9, endWeekday: 1, endHour: 10, level: 'high',
+  })
+  assert.deepEqual((await execute(harness, 'secretary_time', { op: 'actual.get', id: actual.id })).block, actual)
+  const { block: later } = await execute(harness, 'secretary_time', {
+    op: 'actual.create', timeTagId: tag.id, startAt: '2026-11-03T14:00:00+08:00',
+    endAt: '2026-11-03T15:00:00+08:00', actualSource: 'agent_observed', focus: 'shallow',
+  })
+  const { week } = await execute(harness, 'secretary_time', { op: 'deep.getWeek' })
+  assert.deepEqual(week.cells.filter(cell => cell.level !== 'unset'), [
+    { weekday: 1, hour: 9, level: 'high' }, { weekday: 1, hour: 10, level: 'high' },
+  ])
+  assert.equal((await execute(harness, 'secretary_time', { op: 'actual.get', id: later.id })).block.focus, 'shallow')
+})
+
+test('Time tool exposes only the new Plan/Template/Actual/DeepTime model and rejects invalid intervals without overwriting facts', async (t) => {
   const harness = await sqliteHarness(t)
   const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
   const { block } = await execute(harness, 'secretary_time', {
@@ -639,6 +764,7 @@ test('Time tool exposes only the new Plan/Template/Actual model and rejects inva
   for (const op of [
     'plan.list', 'plan.get', 'plan.create', 'plan.update', 'plan.delete',
     'template.list', 'template.create', 'template.update', 'template.delete', 'template.apply', 'template.undo',
+    'deep.getWeek', 'deep.setCell', 'deep.clearCell', 'deep.setRange', 'deep.clearRange',
   ]) assert.ok(tool.parameters.properties.op.enum.includes(op), `missing public operation ${op}`)
   assert.equal(tool.parameters.properties.id.type, 'integer')
   assert.equal(tool.parameters.properties.timeTagId.type, 'integer')
@@ -665,6 +791,32 @@ test('Actual date and range queries include overnight intervals and reject inval
     execute(harness, 'secretary_time', { op: 'actual.list', date: '2026-02-31', timeZone: 'Asia/Shanghai' }),
     /invalid date/,
   )
+})
+
+test('panel Host routes expose the deep base week and mutations through the same TimeService', async (t) => {
+  const harness = await sqliteHarness(t)
+  const stateRoute = harness.routes.get('/api/secretary.state')
+  const commandRoute = harness.routes.get('/api/secretary.command')
+  const state = async () => {
+    const response = await stateRoute.fetch(new Request('http://test.local/api/secretary.state?date=2026-11-02&timeZone=Asia%2FShanghai'))
+    assert.equal(response.status, 200)
+    return response.json()
+  }
+  const command = body => commandRoute.fetch(new Request('http://test.local/api/secretary.command', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+  }))
+  assert.equal((await state()).deepWeek.scope, 'base')
+  const set = await command({
+    domain: 'time', op: 'deep.setRange', startWeekday: 1, startHour: 9, endWeekday: 2, endHour: 10, level: 'medium',
+  })
+  assert.equal(set.status, 200)
+  const fromTool = await execute(harness, 'secretary_time', { op: 'deep.getWeek' })
+  assert.equal(fromTool.week.cells.filter(cell => cell.level === 'medium').length, 4)
+  const cleared = await command({ domain: 'time', op: 'deep.clearCell', weekday: 2, hour: 10 })
+  assert.equal(cleared.status, 200)
+  const after = await state()
+  assert.equal(after.deepWeek.cells.find(cell => cell.weekday === 2 && cell.hour === 10).level, 'unset')
+  assert.equal(after.deepWeek.cells.filter(cell => cell.level === 'medium').length, 3)
 })
 
 test('panel Host routes and public tools share the same Tag and Time Services', async (t) => {
