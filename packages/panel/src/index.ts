@@ -31,6 +31,47 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+interface Warning { domain: 'gtd'; message: string }
+
+/**
+ * Read one domain without letting its failure take down the whole panel state.
+ * Time and Tag are the panel's own facts and stay strict; GTD is optional context.
+ */
+async function settle<T>(read: () => Promise<T>, fallback: T): Promise<{ value: T; warning?: string }> {
+  try {
+    return { value: await read() }
+  } catch (error) {
+    return { value: fallback, warning: errorMessage(error) }
+  }
+}
+
+async function readState(ctx: PanelContext, date: string, timeZone: string, forecastDate: string): Promise<Response> {
+  const [tags, blocks, plans, templates, templateUndo, deepWeek] = await Promise.all([
+    ctx.tags.listTags(),
+    ctx.time.listActual({ date, timeZone }),
+    ctx.time.listPlan({ date, timeZone }),
+    ctx.time.listPlanTemplate(),
+    ctx.time.canUndoPlanTemplate({ targetDate: date, timeZone }),
+    ctx.time.getDeepWeek(),
+  ])
+  const [inbox, projects, actions, nextActions, forecast] = await Promise.all([
+    settle(() => ctx.gtd.listInbox(), []),
+    settle(() => ctx.gtd.listProjects(), []),
+    settle(() => ctx.gtd.listActions(), []),
+    settle(() => ctx.gtd.listNextActions(), []),
+    settle(() => ctx.gtd.listForecast({ date: forecastDate, timeZone }), []),
+  ])
+  const gtd = [inbox, projects, actions, nextActions, forecast]
+  const warnings: Warning[] = []
+  const message = gtd.map(result => result.warning).find((value): value is string => value !== undefined)
+  if (message !== undefined) warnings.push({ domain: 'gtd', message })
+  return json({
+    tags, blocks, plans, templates, templateUndo, deepWeek,
+    inbox: inbox.value, projects: projects.value, actions: actions.value,
+    nextActions: nextActions.value, forecast: forecast.value, warnings,
+  })
+}
+
 async function command(ctx: PanelContext, raw: unknown): Promise<unknown> {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new Error('secretary: panel command must be an object')
   const input = raw as Record<string, any>
@@ -100,20 +141,7 @@ export function apply(context: Context): void {
         const timeZone = url.searchParams.get('timeZone') ?? undefined
         const forecastDate = url.searchParams.get('forecastDate') ?? date
         if (date === undefined || timeZone === undefined) throw new Error('secretary: panel state requires date and timeZone')
-        const [tags, blocks, plans, templates, templateUndo, deepWeek, inbox, projects, actions, nextActions, forecast] = await Promise.all([
-          ctx.tags.listTags(),
-          ctx.time.listActual({ date, timeZone }),
-          ctx.time.listPlan({ date, timeZone }),
-          ctx.time.listPlanTemplate(),
-          ctx.time.canUndoPlanTemplate({ targetDate: date, timeZone }),
-          ctx.time.getDeepWeek(),
-          ctx.gtd.listInbox(),
-          ctx.gtd.listProjects(),
-          ctx.gtd.listActions(),
-          ctx.gtd.listNextActions(),
-          ctx.gtd.listForecast({ date: forecastDate, timeZone }),
-        ])
-        return json({ tags, blocks, plans, templates, templateUndo, deepWeek, inbox, projects, actions, nextActions, forecast })
+        return await readState(ctx, date, timeZone, forecastDate)
       } catch (error) {
         return json({ error: errorMessage(error) }, 400)
       }

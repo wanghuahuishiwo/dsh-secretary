@@ -2,6 +2,11 @@ import type { Tag } from 'dsh-secretary-tag/contract'
 import type { ActionView, InboxItem, Project } from 'dsh-secretary-gtd/contract'
 import type { ActualBlock, DeepWeek, PlanBlock, PlanTemplateBlock } from 'dsh-secretary-time-block/contract'
 
+export interface PanelWarning {
+  readonly domain: string
+  readonly message: string
+}
+
 export interface PanelState {
   readonly tags: Tag[]
   readonly blocks: ActualBlock[]
@@ -14,6 +19,7 @@ export interface PanelState {
   readonly actions: ActionView[]
   readonly nextActions: ActionView[]
   readonly forecast: ActionView[]
+  readonly warnings?: PanelWarning[]
 }
 
 export type PanelCommand = Record<string, unknown> & {

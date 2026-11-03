@@ -1,21 +1,55 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Tag, TagKind } from 'dsh-secretary-tag/contract'
 import type { ActionView, InboxItem, Project } from 'dsh-secretary-gtd/contract'
 import type {
-  ActualBlock, ActualSource, DeepCell, DeepCellLevel, DeepLevel, DeepWeek, FocusLevel, PlanBlock, PlanTemplateBlock,
+  ActualBlock, ActualSource, DeepCell, DeepLevel, DeepWeek, FocusLevel, PlanBlock, PlanTemplateBlock,
 } from 'dsh-secretary-time-block/contract'
-import { fetchState, sendCommand, type PanelCommand } from './api.ts'
+import { fetchState, sendCommand, type PanelCommand, type PanelWarning } from './api.ts'
 import { GtdWorkspace } from './GtdWorkspace.tsx'
+import { Icon, IconSprite } from './Icons.tsx'
+import { panelStyles } from './panelStyles.ts'
 
 const DEFAULT_COLOR = '#477bc7'
+const TAG_PALETTE = ['#477bc7', '#4c91b8', '#4b8b6a', '#4c9688', '#b17c32', '#b96f45', '#876cae', '#aa667e', '#6f7b86', '#8a715c']
 const TAG_DRAG_MIME = 'application/x-secretary-tag-id'
 const SOURCES: ActualSource[] = ['user_reported', 'agent_observed', 'imported']
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+const MONTH_DAYS = ['一', '二', '三', '四', '五', '六', '日']
 
 type TimeView = 'plan' | 'actual' | 'deep'
 type ProductView = 'time' | 'tags' | 'gtd' | 'goal'
+type CanvasKind = 'actual' | 'plan' | 'template'
 type EditableBlock = ActualBlock | PlanBlock
 type UndoCommand = PanelCommand & { readonly restoreOf?: number }
+
+/** One drawable row on the canvas: a dated Actual/Plan block or a weekday PlanTemplate block. */
+interface CanvasItem {
+  readonly key: string
+  readonly kind: CanvasKind
+  readonly id: number
+  readonly startMinute: number
+  readonly endMinute: number
+  readonly timeTagId: number
+  readonly note?: string
+  readonly startLabel: string
+  readonly endLabel: string
+  readonly running: boolean
+  readonly block: EditableBlock | PlanTemplateBlock
+}
+
+interface DeepGesture {
+  readonly brush: DeepLevel
+  readonly operation: 'set' | 'clear'
+  readonly cells: Map<string, { weekday: number; hour: number }>
+}
+
+interface EraseGesture {
+  readonly timeTagId: number
+  readonly candidates: Map<string, CanvasItem>
+  selected: Map<string, CanvasItem>
+}
+
+interface Placement { readonly left: number; readonly top: number }
 
 function localDate(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -32,9 +66,23 @@ function shiftMonth(month: string, amount: number): string {
   return localDate(new Date(year, monthNumber - 1 + amount, 1, 12)).slice(0, 7)
 }
 
+function weekdayOf(date: string): number {
+  return (new Date(`${date}T12:00:00`).getDay() + 6) % 7 + 1
+}
+
 function dateLabel(date: string): string {
   const value = new Date(`${date}T12:00:00`)
   return `${value.getFullYear()} 年 ${value.getMonth() + 1} 月 ${value.getDate()} 日 · ${WEEKDAYS[(value.getDay() + 6) % 7]}`
+}
+
+function clock(minute: number): string {
+  const value = ((minute % 1440) + 1440) % 1440
+  return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`
+}
+
+function parseClock(value: string): number {
+  const [hour, minute] = value.split(':').map(Number)
+  return (Number.isFinite(hour) ? hour : 0) * 60 + (Number.isFinite(minute) ? minute : 0)
 }
 
 function atMinute(date: string, minute: number): string {
@@ -76,16 +124,30 @@ function emptyDeepWeek(): DeepWeek {
   }
 }
 
-interface DeepGesture {
-  readonly brush: DeepLevel
-  readonly operation: 'set' | 'clear'
-  readonly cells: Map<string, { weekday: number; hour: number }>
+/** Anchor a floating panel next to its trigger, clamped inside the viewport like the prototype. */
+function place(anchor: DOMRect | undefined, height = 420): Placement {
+  if (typeof window === 'undefined') return { left: 8, top: 8 }
+  const width = 326
+  const margin = 8
+  let left = anchor ? anchor.right + margin : window.innerWidth - width - 16
+  if (left + width > window.innerWidth - margin) left = anchor ? anchor.left - width - margin : margin
+  left = Math.max(margin, Math.min(left, window.innerWidth - width - margin))
+  const top = Math.max(margin, Math.min(anchor ? anchor.top : 80, window.innerHeight - height))
+  return { left, top }
 }
 
-interface EraseGesture {
-  readonly timeTagId: number
-  readonly candidates: Map<number, EditableBlock>
-  readonly selected: Map<number, EditableBlock>
+function laneOf(items: CanvasItem[]): Map<string, number> {
+  const ends: number[] = []
+  const lanes = new Map<string, number>()
+  items.slice()
+    .sort((left, right) => left.startMinute - right.startMinute || left.endMinute - right.endMinute || left.id - right.id)
+    .forEach(item => {
+      let lane = ends.findIndex(end => end <= item.startMinute)
+      if (lane < 0) lane = ends.length
+      ends[lane] = item.endMinute
+      lanes.set(item.key, lane)
+    })
+  return lanes
 }
 
 export function ActualPanel() {
@@ -94,7 +156,7 @@ export function ActualPanel() {
   const [timeView, setTimeView] = useState<TimeView>('actual')
   const [date, setDate] = useState(localDate)
   const [forecastDate, setForecastDate] = useState(localDate)
-  const [calendarOpen, setCalendarOpen] = useState(false)
+  const [calendar, setCalendar] = useState<Placement>()
   const [calendarMonth, setCalendarMonth] = useState(localDate().slice(0, 7))
   const [granularity, setGranularity] = useState(10)
   const [templateMode, setTemplateMode] = useState(false)
@@ -110,31 +172,37 @@ export function ActualPanel() {
   const [actions, setActions] = useState<ActionView[]>([])
   const [nextActions, setNextActions] = useState<ActionView[]>([])
   const [forecast, setForecast] = useState<ActionView[]>([])
+  const [warnings, setWarnings] = useState<PanelWarning[]>([])
+  const [dismissedWarning, setDismissedWarning] = useState('')
   const [deepBrush, setDeepBrush] = useState<DeepLevel>('high')
   const [selectedTagId, setSelectedTagId] = useState<number>()
   const [eraseMode, setEraseMode] = useState(false)
+  const [tagSearch, setTagSearch] = useState('')
   const [managerKind, setManagerKind] = useState<TagKind>('time')
-  const [tagName, setTagName] = useState('')
-  const [tagParentId, setTagParentId] = useState('')
-  const [tagColor, setTagColor] = useState(DEFAULT_COLOR)
-  const [editingTagId, setEditingTagId] = useState<number>()
-  const [editing, setEditing] = useState<EditableBlock>()
-  const [undoStack, setUndoStack] = useState<{ label: '添加' | '消除' | '编辑'; commands: UndoCommand[] }[]>([])
+  const [tagDraft, setTagDraft] = useState<{ parentId: number | null }>()
+  const [draftName, setDraftName] = useState('')
+  const [renameId, setRenameId] = useState<number>()
+  const [renameValue, setRenameValue] = useState('')
+  const [dropTarget, setDropTarget] = useState<number | 'root' | null>()
+  const [editing, setEditing] = useState<{ kind: CanvasKind; id: number }>()
+  const [editorPlacement, setEditorPlacement] = useState<Placement>()
   const [editNote, setEditNote] = useState('')
-  const [editTagId, setEditTagId] = useState('')
+  const [editTagId, setEditTagId] = useState<number>()
   const [editStart, setEditStart] = useState('')
   const [editEnd, setEditEnd] = useState('')
   const [editSource, setEditSource] = useState<ActualSource>('user_reported')
   const [editFocus, setEditFocus] = useState<FocusLevel | ''>('')
-  const [editingTemplateId, setEditingTemplateId] = useState<number>()
-  const [templateStart, setTemplateStart] = useState('09:00')
-  const [templateEnd, setTemplateEnd] = useState('10:00')
-  const [templateNote, setTemplateNote] = useState('')
+  const [showDetails, setShowDetails] = useState(false)
+  const [undoStack, setUndoStack] = useState<{ label: '添加' | '消除' | '编辑'; commands: UndoCommand[] }[]>([])
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [tick, setTick] = useState(0)
   const request = useRef(0)
   const deepGesture = useRef<DeepGesture | null>(null)
   const eraseGesture = useRef<EraseGesture | null>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
+  const editorRef = useRef<HTMLDivElement>(null)
+  const scrolled = useRef(false)
 
   const refresh = async () => {
     const id = ++request.current
@@ -152,6 +220,7 @@ export function ActualPanel() {
       setActions(state.actions)
       setNextActions(state.nextActions)
       setForecast(state.forecast)
+      setWarnings(state.warnings ?? [])
       setError('')
     } catch (cause) {
       if (id === request.current) setError(cause instanceof Error ? cause.message : String(cause))
@@ -164,6 +233,48 @@ export function ActualPanel() {
     if (selectedTagId !== undefined && tags.some(tag => tag.id === selectedTagId && tag.kind === 'time')) return
     setSelectedTagId(timeTags[0]?.tag.id)
   }, [tags, timeTags, selectedTagId])
+
+  const running = blocks.filter(block => block.endAt === undefined)
+  useEffect(() => {
+    if (running.length === 0) return
+    const timer = window.setInterval(() => setTick(value => value + 1), 30_000)
+    return () => window.clearInterval(timer)
+  }, [running.length])
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setCalendar(undefined); setEditing(undefined) }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z' && !(event.target instanceof HTMLInputElement) && !(event.target instanceof HTMLTextAreaElement)) {
+        event.preventDefault()
+        void undoLast()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  })
+
+  useEffect(() => {
+    if (scrolled.current) return
+    const scroller = document.querySelector('.secretary-time-panel .canvas-scroll')
+    if (!scroller) return
+    scrolled.current = true
+    scroller.scrollTop = 48 * 6
+  }, [product, timeView])
+
+  // Keep the floating editor inside the viewport once its real height is known.
+  useEffect(() => {
+    if (editing === undefined) return
+    const element = editorRef.current
+    if (!element) return
+    const rect = element.getBoundingClientRect()
+    const top = Math.max(8, Math.min(rect.top, window.innerHeight - rect.height - 8))
+    if (Math.abs(top - rect.top) < 1) return
+    setEditorPlacement(current => current === undefined ? current : { ...current, top })
+  }, [editing, showDetails])
+
+  const tagById = (id: number) => tags.find(tag => tag.id === id)
+  const tagColor = (id: number) => tagById(id)?.color ?? DEFAULT_COLOR
+  const tagName = (id: number) => tagById(id)?.name ?? String(id)
 
   const runBatch = async (
     commands: UndoCommand[],
@@ -196,24 +307,73 @@ export function ActualPanel() {
     return results?.[0]
   }
 
-  const paintDeepCell = (gesture: DeepGesture, weekday: number, hour: number) => {
-    const key = `${weekday}-${hour}`
+  /* ---------- canvas items ---------- */
+
+  const dayStart = useMemo(() => new Date(`${date}T00:00:00`).getTime(), [date])
+  const minuteOf = (instant: string) => Math.round((Date.parse(instant) - dayStart) / 60_000)
+  const clamp = (value: number) => Math.max(0, Math.min(1440, value))
+
+  const items: CanvasItem[] = useMemo(() => {
+    if (templateMode && timeView === 'plan') {
+      return templates
+        .filter(block => block.weekday === weekday)
+        .map(block => {
+          const startMinute = parseClock(block.startTime)
+          const endMinute = parseClock(block.endTime)
+          return {
+            key: `template-${block.id}`, kind: 'template' as const, id: block.id,
+            startMinute: clamp(startMinute), endMinute: clamp(endMinute),
+            timeTagId: block.timeTagId, note: block.note,
+            startLabel: block.startTime, endLabel: block.endTime, running: false, block,
+          }
+        })
+        .filter(item => item.endMinute > item.startMinute)
+        .sort((left, right) => left.startMinute - right.startMinute)
+    }
+    const source = timeView === 'plan' ? plans : blocks
+    return source
+      .map(block => {
+        const endAt = (block as ActualBlock).endAt
+        const rawEnd = endAt === undefined ? minuteOf(new Date().toISOString()) : minuteOf(endAt)
+        const kind = 'actualSource' in block ? 'actual' as const : 'plan' as const
+        return {
+          key: `${kind}-${block.id}`, kind, id: block.id,
+          startMinute: clamp(minuteOf(block.startAt)), endMinute: clamp(rawEnd),
+          timeTagId: block.timeTagId, note: block.note,
+          startLabel: timeLabel(block.startAt, timeZone),
+          endLabel: endAt === undefined ? timeLabel(new Date().toISOString(), timeZone) : timeLabel(endAt, timeZone),
+          running: endAt === undefined, block,
+        }
+      })
+      .filter(item => item.endMinute > item.startMinute)
+      .sort((left, right) => left.startMinute - right.startMinute)
+  }, [blocks, plans, templates, templateMode, timeView, weekday, date, timeZone, tick])
+
+  const lanes = useMemo(() => laneOf(items), [items])
+  const editingItem = editing === undefined
+    ? undefined
+    : items.find(item => item.kind === editing.kind && item.id === editing.id)
+
+  /* ---------- deep time ---------- */
+
+  const paintDeepCell = (gesture: DeepGesture, weekdayValue: number, hour: number) => {
+    const key = `${weekdayValue}-${hour}`
     if (gesture.cells.has(key)) return
-    gesture.cells.set(key, { weekday, hour })
-    const level: DeepCellLevel = gesture.operation === 'set' ? gesture.brush : 'unset'
+    gesture.cells.set(key, { weekday: weekdayValue, hour })
+    const level = gesture.operation === 'set' ? gesture.brush : 'unset'
     setDeepWeek(current => ({
       ...current,
-      cells: current.cells.map(cell => cell.weekday === weekday && cell.hour === hour ? { ...cell, level } : cell),
+      cells: current.cells.map(cell => cell.weekday === weekdayValue && cell.hour === hour ? { ...cell, level } : cell),
     }))
   }
 
   const commitDeepGesture = async (gesture: DeepGesture) => {
     setBusy(true)
     try {
-      for (const { weekday, hour } of gesture.cells.values()) {
+      for (const { weekday: day, hour } of gesture.cells.values()) {
         await sendCommand({
           domain: 'time', op: gesture.operation === 'set' ? 'deep.setCell' : 'deep.clearCell',
-          weekday, hour, ...(gesture.operation === 'set' ? { level: gesture.brush } : {}),
+          weekday: day, hour, ...(gesture.operation === 'set' ? { level: gesture.brush } : {}),
         })
       }
       await refresh()
@@ -229,11 +389,7 @@ export function ActualPanel() {
   const startDeepGesture = (event: React.PointerEvent<HTMLButtonElement>, cell: DeepCell) => {
     if (event.button !== 0 || busy) return
     event.preventDefault()
-    const gesture: DeepGesture = {
-      brush: deepBrush,
-      operation: cell.level === deepBrush ? 'clear' : 'set',
-      cells: new Map(),
-    }
+    const gesture: DeepGesture = { brush: deepBrush, operation: cell.level === deepBrush ? 'clear' : 'set', cells: new Map() }
     deepGesture.current = gesture
     paintDeepCell(gesture, cell.weekday, cell.hour)
     const finish = () => {
@@ -257,35 +413,32 @@ export function ActualPanel() {
 
   const clickDeepCellWithKeyboard = (event: React.MouseEvent<HTMLButtonElement>, cell: DeepCell) => {
     if (event.detail !== 0 || busy) return
-    const gesture: DeepGesture = {
-      brush: deepBrush, operation: cell.level === deepBrush ? 'clear' : 'set', cells: new Map(),
-    }
+    const gesture: DeepGesture = { brush: deepBrush, operation: cell.level === deepBrush ? 'clear' : 'set', cells: new Map() }
     paintDeepCell(gesture, cell.weekday, cell.hour)
     void commitDeepGesture(gesture)
   }
 
-  const tagById = (id: number) => tags.find(tag => tag.id === id)
-  const openEditor = (block: EditableBlock) => {
-    setEditing(block)
-    setEditNote(block.note ?? '')
-    setEditTagId(String(block.timeTagId))
-    setEditStart(block.startAt)
-    setEditEnd(block.endAt ?? '')
-    if ('actualSource' in block) {
-      setEditSource(block.actualSource)
-      setEditFocus(block.focus ?? '')
-    }
-  }
+  /* ---------- write paths ---------- */
 
   const createAt = async (minute: number) => {
     if (selectedTagId === undefined) { setError('请先在右侧选择时间标签'); return }
-    const input = {
-      timeTagId: selectedTagId,
-      startAt: atMinute(date, minute), endAt: atMinute(date, minute + granularity),
+    if (templateMode && timeView === 'plan') {
+      const result = await run({
+        domain: 'time', op: 'template.create', weekday,
+        startTime: clock(minute), endTime: clock(minute + granularity), timeTagId: selectedTagId, note: '',
+      })
+      if (result?.block) {
+        setUndoStack(current => [...current, {
+          label: '添加',
+          commands: [{ domain: 'time', op: 'template.delete', id: result.block.id }],
+        }].slice(-40))
+      }
+      return
     }
-    let result
-    if (timeView === 'plan') result = await run({ domain: 'time', op: 'plan.create', date, timeZone, ...input })
-    else result = await run({ domain: 'time', op: 'actual.create', actualSource: 'user_reported', ...input })
+    const input = { timeTagId: selectedTagId, startAt: atMinute(date, minute), endAt: atMinute(date, minute + granularity) }
+    const result = timeView === 'plan'
+      ? await run({ domain: 'time', op: 'plan.create', date, timeZone, ...input })
+      : await run({ domain: 'time', op: 'actual.create', actualSource: 'user_reported', ...input })
     if (result?.block) {
       const id = result.block.id
       setUndoStack(current => [...current, {
@@ -295,65 +448,69 @@ export function ActualPanel() {
     }
   }
 
-  const restoreCommand = (block: EditableBlock): UndoCommand => 'actualSource' in block
-    ? {
-      domain: 'time', op: 'actual.create', restoreOf: block.id, timeTagId: block.timeTagId, note: block.note,
-      startAt: block.startAt, endAt: block.endAt, actualSource: block.actualSource, focus: block.focus,
+  const restoreCommand = (item: CanvasItem): UndoCommand => {
+    if (item.kind === 'template') {
+      const block = item.block as PlanTemplateBlock
+      return {
+        domain: 'time', op: 'template.create', restoreOf: block.id, weekday: block.weekday,
+        startTime: block.startTime, endTime: block.endTime, timeTagId: block.timeTagId, note: block.note,
+      }
     }
-    : {
-      domain: 'time', op: 'plan.create', restoreOf: block.id, date: dateAtInstant(block.startAt, timeZone), timeZone, timeTagId: block.timeTagId, note: block.note,
-      startAt: block.startAt, endAt: block.endAt,
+    const block = item.block as EditableBlock
+    if (item.kind === 'actual') {
+      const actual = block as ActualBlock
+      return {
+        domain: 'time', op: 'actual.create', restoreOf: actual.id, timeTagId: actual.timeTagId, note: actual.note,
+        startAt: actual.startAt, endAt: actual.endAt, actualSource: actual.actualSource, focus: actual.focus,
+      }
     }
+    return {
+      domain: 'time', op: 'plan.create', restoreOf: block.id, date: dateAtInstant(block.startAt, timeZone), timeZone,
+      timeTagId: block.timeTagId, note: block.note, startAt: block.startAt, endAt: block.endAt,
+    }
+  }
 
-  const removeBlocks = async (blocks: EditableBlock[]) => {
-    if (blocks.length === 0) return
-    const results = await runBatch(blocks.map<PanelCommand>(block => ({
-      domain: 'time', op: 'actualSource' in block ? 'actual.delete' : 'plan.delete', id: block.id,
-    })))
+  const deleteCommand = (item: CanvasItem): PanelCommand => ({
+    domain: 'time',
+    op: item.kind === 'actual' ? 'actual.delete' : item.kind === 'plan' ? 'plan.delete' : 'template.delete',
+    id: item.id,
+  })
+
+  const removeItems = async (targets: CanvasItem[]) => {
+    if (targets.length === 0) return
+    const results = await runBatch(targets.map(deleteCommand))
     if (results && results.length > 0) {
       setUndoStack(current => [...current, {
-        label: '消除', commands: blocks.slice(0, results.length).map(restoreCommand),
+        label: '消除', commands: targets.slice(0, results.length).map(restoreCommand),
       }].slice(-40))
     }
   }
 
-  const removeBlock = async (block: EditableBlock) => removeBlocks([block])
-
-  const activateCell = (minute: number, covering: EditableBlock[], clicked?: EditableBlock) => {
+  const activateCell = (minute: number, covering: CanvasItem[], clicked?: CanvasItem) => {
     if (eraseMode) return
-    const selectedBlock = clicked?.timeTagId === selectedTagId
+    const target = clicked && clicked.timeTagId === selectedTagId
       ? clicked
       : covering.find(item => item.timeTagId === selectedTagId)
-    if (selectedBlock) void removeBlock(selectedBlock)
+    if (target) void removeItems([target])
     else void createAt(minute)
   }
-
-  const updateCommand = (block: EditableBlock): PanelCommand => 'actualSource' in block
-    ? {
-      domain: 'time', op: 'actual.update', id: block.id, timeTagId: block.timeTagId, note: block.note ?? null,
-      startAt: block.startAt, endAt: block.endAt ?? null, actualSource: block.actualSource, focus: block.focus ?? null,
-    }
-    : {
-      domain: 'time', op: 'plan.update', id: block.id, timeTagId: block.timeTagId, note: block.note ?? null,
-      startAt: block.startAt, endAt: block.endAt,
-    }
 
   const undoLast = async () => {
     const entry = undoStack[undoStack.length - 1]
     if (!entry || busy) return
     let completed = 0
-    const recreatedIds = new Map<number, number>()
+    const recreated = new Map<number, number>()
     await runBatch(entry.commands, (command, output) => {
       completed += 1
       const newId = output?.block?.id
-      if (command.restoreOf !== undefined && Number.isSafeInteger(newId)) recreatedIds.set(command.restoreOf, newId)
+      if (command.restoreOf !== undefined && Number.isSafeInteger(newId)) recreated.set(command.restoreOf, newId)
     })
     setUndoStack(current => {
       const remapped = current.map(item => ({
         ...item,
         commands: item.commands.map(command => {
-          const id = typeof command.id === 'number' ? recreatedIds.get(command.id) : undefined
-          const restoreOf = command.restoreOf === undefined ? undefined : recreatedIds.get(command.restoreOf)
+          const id = typeof command.id === 'number' ? recreated.get(command.id) : undefined
+          const restoreOf = command.restoreOf === undefined ? undefined : recreated.get(command.restoreOf)
           return id === undefined && restoreOf === undefined ? command : {
             ...command,
             ...(id === undefined ? {} : { id }),
@@ -370,110 +527,136 @@ export function ActualPanel() {
     })
   }
 
-  const editTag = (tag: Tag) => {
-    setEditingTagId(tag.id)
-    setTagName(tag.name)
-    setTagParentId(tag.parentId === undefined ? '' : String(tag.parentId))
-    setTagColor(tag.color ?? DEFAULT_COLOR)
+  const startRunning = () => {
+    if (selectedTagId === undefined) { setError('请先在右侧选择时间标签'); return }
+    void run({ domain: 'time', op: 'actual.start', timeTagId: selectedTagId, actualSource: 'user_reported' })
   }
+  const stopRunning = (block: ActualBlock) => void run({ domain: 'time', op: 'actual.stop', id: block.id })
+
+  /* ---------- editor ---------- */
+
+  const openEditor = (item: CanvasItem, anchor?: HTMLElement) => {
+    setEditing({ kind: item.kind, id: item.id })
+    setEditorPlacement(place(anchor?.getBoundingClientRect()))
+    setEditNote(item.note ?? '')
+    setEditTagId(item.timeTagId)
+    setShowDetails(false)
+    if (item.kind === 'template') {
+      const block = item.block as PlanTemplateBlock
+      setEditStart(block.startTime)
+      setEditEnd(block.endTime)
+    } else {
+      const block = item.block as EditableBlock
+      setEditStart(block.startAt)
+      setEditEnd(block.endAt ?? '')
+      if (item.kind === 'actual') {
+        const actual = block as ActualBlock
+        setEditSource(actual.actualSource)
+        setEditFocus(actual.focus ?? '')
+      }
+    }
+  }
+
+  const itemValues = (item: CanvasItem) => {
+    if (item.kind === 'template') {
+      const block = item.block as PlanTemplateBlock
+      return {
+        timeTagId: block.timeTagId, note: block.note ?? '', start: block.startTime, end: block.endTime,
+        actualSource: 'user_reported' as ActualSource, focus: '' as FocusLevel | '',
+      }
+    }
+    const block = item.block as EditableBlock
+    const actual = item.kind === 'actual' ? block as ActualBlock : undefined
+    return {
+      timeTagId: block.timeTagId, note: block.note ?? '', start: block.startAt, end: block.endAt ?? '',
+      actualSource: actual?.actualSource ?? ('user_reported' as ActualSource),
+      focus: (actual?.focus ?? '') as FocusLevel | '',
+    }
+  }
+
+  type EditorValues = ReturnType<typeof itemValues>
+
+  const blockCommand = (item: CanvasItem, values: EditorValues): PanelCommand => {
+    if (item.kind === 'template') {
+      const block = item.block as PlanTemplateBlock
+      return {
+        domain: 'time', op: 'template.update', id: block.id, weekday: block.weekday,
+        startTime: values.start, endTime: values.end, timeTagId: values.timeTagId, note: values.note,
+      }
+    }
+    if (item.kind === 'actual') {
+      return {
+        domain: 'time', op: 'actual.update', id: item.id, timeTagId: values.timeTagId, note: values.note,
+        startAt: values.start, endAt: values.end === '' ? null : values.end,
+        actualSource: values.actualSource, focus: values.focus === '' ? null : values.focus,
+      }
+    }
+    return {
+      domain: 'time', op: 'plan.update', id: item.id, timeTagId: values.timeTagId, note: values.note,
+      startAt: values.start, endAt: values.end,
+    }
+  }
+
+  const applyEditor = async (item: CanvasItem, patch: Partial<EditorValues>) => {
+    const current = itemValues(item)
+    const next = { ...current, ...patch }
+    if ((Object.keys(next) as (keyof EditorValues)[]).every(key => next[key] === current[key])) return { block: item.block }
+    const result = await run(blockCommand(item, next))
+    if (result) setUndoStack(stack => [...stack, { label: '编辑', commands: [blockCommand(item, current)] }].slice(-40))
+    return result
+  }
+
+  const commitEditor = async (item: CanvasItem) => {
+    const saved = await applyEditor(item, {
+      timeTagId: editTagId ?? item.timeTagId, note: editNote, start: editStart, end: editEnd,
+      actualSource: editSource, focus: editFocus,
+    })
+    if (saved) setEditing(undefined)
+  }
+
+  /* ---------- tags ---------- */
 
   const allowTagDrop = (event: React.DragEvent<HTMLElement>) => {
     event.preventDefault()
     event.dataTransfer.dropEffect = 'move'
   }
+
   const dropTag = async (event: React.DragEvent<HTMLElement>, parentId: number | null) => {
     event.preventDefault()
+    setDropTarget(null)
     const id = Number(event.dataTransfer.getData(TAG_DRAG_MIME) || event.dataTransfer.getData('text/plain'))
     if (!Number.isSafeInteger(id) || id <= 0 || id === parentId || busy) return
     await run({ domain: 'tag', op: 'move', id, parentId })
   }
 
-  const submitTag = async () => {
-    const input = {
-      name: tagName, color: tagColor,
-      parentId: tagParentId === '' ? undefined : Number(tagParentId),
-    }
-    if (editingTagId === undefined) {
-      await run({ domain: 'tag', op: 'create', kind: managerKind, ...input })
-    } else {
-      await run({ domain: 'tag', op: 'update', id: editingTagId, name: tagName, color: tagColor })
-      if ((tagById(editingTagId)?.parentId === undefined ? '' : String(tagById(editingTagId)?.parentId)) !== tagParentId) {
-        await run({ domain: 'tag', op: 'move', id: editingTagId, parentId: tagParentId === '' ? null : Number(tagParentId) })
-      }
-    }
-    setEditingTagId(undefined)
-    setTagName('')
-    setTagParentId('')
+  const saveDraft = async () => {
+    const name = draftName.trim()
+    if (!name) return
+    const parentId = tagDraft?.parentId ?? undefined
+    const parent = parentId === undefined ? undefined : tagById(parentId)
+    const color = parent?.color ?? TAG_PALETTE[(tags.length + 1) % TAG_PALETTE.length]
+    await run({ domain: 'tag', op: 'create', kind: managerKind, name, color, parentId })
+    setTagDraft(undefined)
+    setDraftName('')
   }
 
-  const openCalendar = () => {
-    setCalendarMonth(date.slice(0, 7))
-    setCalendarOpen(true)
-  }
-  const chooseDate = (value: string) => {
-    setDate(value)
-    setCalendarOpen(false)
-    setTemplateMode(false)
-  }
-  const goToday = () => {
-    const today = localDate()
-    setDate(today)
-    setCalendarMonth(today.slice(0, 7))
-    setCalendarOpen(false)
-    setTemplateMode(false)
+  const saveRename = async () => {
+    if (renameId === undefined) return
+    const name = renameValue.trim()
+    if (name) await run({ domain: 'tag', op: 'update', id: renameId, name })
+    setRenameId(undefined)
+    setRenameValue('')
   }
 
-  const currentBlocks: EditableBlock[] = timeView === 'plan' ? plans : blocks
-  const currentKind = timeView === 'plan' ? '计划' : '实录'
-
-  const startEraseGesture = (event: React.PointerEvent<HTMLButtonElement>, block: EditableBlock) => {
-    if (!eraseMode || event.shiftKey || event.button !== 0 || busy) return
-    event.preventDefault()
-    const gesture: EraseGesture = {
-      timeTagId: block.timeTagId,
-      candidates: new Map(currentBlocks.map(item => [item.id, item] as const)),
-      selected: new Map([[block.id, block]]),
-    }
-    eraseGesture.current = gesture
-    const finish = () => {
-      window.removeEventListener('pointerup', finish)
-      window.removeEventListener('pointercancel', finish)
-      if (eraseGesture.current !== gesture) return
-      eraseGesture.current = null
-      void removeBlocks([...gesture.selected.values()])
-    }
-    window.addEventListener('pointerup', finish)
-    window.addEventListener('pointercancel', finish)
+  const cycleColor = (tag: Tag) => {
+    const current = tag.color ?? DEFAULT_COLOR
+    const index = TAG_PALETTE.indexOf(current)
+    const color = TAG_PALETTE[(index + 1) % TAG_PALETTE.length]
+    void run({ domain: 'tag', op: 'update', id: tag.id, color })
   }
 
-  const moveEraseGesture = (event: React.PointerEvent<HTMLDivElement>) => {
-    const gesture = eraseGesture.current
-    if (!gesture || event.buttons === 0) return
-    const element = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-time-fragment]')
-    if (!element || !event.currentTarget.contains(element)) return
-    const block = gesture.candidates.get(Number(element.dataset.blockId))
-    if (block?.timeTagId === gesture.timeTagId) gesture.selected.set(block.id, block)
-  }
+  /* ---------- template / navigation ---------- */
 
-  const visibleTemplates = templates.filter(block => block.weekday === weekday)
-  const editTemplate = (block: PlanTemplateBlock) => {
-    setEditingTemplateId(block.id)
-    setTemplateStart(block.startTime)
-    setTemplateEnd(block.endTime)
-    setTemplateNote(block.note ?? '')
-    setSelectedTagId(block.timeTagId)
-  }
-  const submitTemplate = async () => {
-    if (selectedTagId === undefined) { setError('请先选择时间标签'); return }
-    const input = { weekday, startTime: templateStart, endTime: templateEnd, timeTagId: selectedTagId, note: templateNote }
-    const ok = editingTemplateId === undefined
-      ? await run({ domain: 'time', op: 'template.create', ...input })
-      : await run({ domain: 'time', op: 'template.update', id: editingTemplateId, ...input })
-    if (ok) {
-      setEditingTemplateId(undefined)
-      setTemplateNote('')
-    }
-  }
   const applyTemplate = async () => {
     const ok = await run({ domain: 'time', op: 'template.apply', weekday, targetDate: date, timeZone })
     if (ok) {
@@ -482,426 +665,511 @@ export function ActualPanel() {
     }
   }
 
+  const openCalendar = (anchor?: HTMLElement) => {
+    setCalendarMonth(date.slice(0, 7))
+    setCalendar(place(anchor?.getBoundingClientRect(), 380))
+  }
+
+  const chooseDate = (value: string) => {
+    setDate(value)
+    setCalendar(undefined)
+    setTemplateMode(false)
+  }
+
+  const goToday = () => {
+    const today = localDate()
+    setDate(today)
+    setCalendarMonth(today.slice(0, 7))
+    setCalendar(undefined)
+    setTemplateMode(false)
+  }
+
   const calendarDays = () => {
     const [year, month] = calendarMonth.split('-').map(Number)
     const firstOffset = (new Date(year, month - 1, 1, 12).getDay() + 6) % 7
     const total = new Date(year, month, 0, 12).getDate()
-    return { firstOffset, days: Array.from({ length: total }, (_, index) => {
-      const day = index + 1
-      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    }) }
+    return {
+      firstOffset,
+      days: Array.from({ length: total }, (_, index) => `${year}-${String(month).padStart(2, '0')}-${String(index + 1).padStart(2, '0')}`),
+    }
   }
-  const calendar = calendarDays()
+  const calendarGrid = calendarDays()
 
-  const tagShelf = <aside className="tag-shelf" aria-label="时间标签架">
-    <div className="shelf-title"><span>时间标签</span><button type="button" onClick={() => { setManagerKind('time'); setProduct('tags') }}>管理标签</button></div>
-    {timeTags.map(({ tag, depth }) => (
-      <button
-        type="button" key={tag.id} className={selectedTagId === tag.id ? 'selected' : ''}
-        style={{ '--depth': depth } as React.CSSProperties}
-        onClick={() => { setSelectedTagId(tag.id); setEraseMode(false) }}
-        onDoubleClick={() => { if (selectedTagId === tag.id) setEraseMode(true) }}
-      ><span className="tag-dot" style={{ background: tag.color ?? DEFAULT_COLOR }} />{tag.name}</button>
-    ))}
+  /* ---------- erase gesture ---------- */
+
+  const startEraseGesture = (event: React.PointerEvent<HTMLButtonElement>, item: CanvasItem) => {
+    if (!eraseMode || event.shiftKey || event.button !== 0 || busy) return
+    event.preventDefault()
+    const gesture: EraseGesture = {
+      timeTagId: item.timeTagId,
+      candidates: new Map(items.map(entry => [entry.key, entry] as const)),
+      selected: new Map([[item.key, item]]),
+    }
+    eraseGesture.current = gesture
+    const finish = () => {
+      window.removeEventListener('pointerup', finish)
+      window.removeEventListener('pointercancel', finish)
+      if (eraseGesture.current !== gesture) return
+      eraseGesture.current = null
+      void removeItems([...gesture.selected.values()])
+    }
+    window.addEventListener('pointerup', finish)
+    window.addEventListener('pointercancel', finish)
+  }
+
+  const moveEraseGesture = (event: React.PointerEvent<HTMLElement>) => {
+    const gesture = eraseGesture.current
+    if (!gesture || event.buttons === 0) return
+    const element = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-record-key]')
+    if (!element || !event.currentTarget.contains(element)) return
+    const item = gesture.candidates.get(element.dataset.recordKey ?? '')
+    if (item?.timeTagId === gesture.timeTagId) gesture.selected.set(item.key, item)
+  }
+
+  /* ---------- derived render data ---------- */
+
+  const visibleTagIds = useMemo(() => {
+    const normalized = tagSearch.trim().toLowerCase()
+    if (!normalized) return new Set(tags.filter(tag => tag.kind === 'time').map(tag => tag.id))
+    const ids = new Set<number>()
+    for (const tag of tags) {
+      if (tag.kind !== 'time' || !tag.name.toLowerCase().includes(normalized)) continue
+      let current: Tag | undefined = tag
+      while (current) {
+        ids.add(current.id)
+        const parentId: number | undefined = current.parentId
+        current = parentId === undefined ? undefined : tags.find(entry => entry.id === parentId)
+      }
+    }
+    return ids
+  }, [tags, tagSearch])
+
+  const brushName = selectedTagId === undefined ? '未选择' : tagName(selectedTagId)
+  const selectionText = editingItem !== undefined
+    ? `${tagName(editingItem.timeTagId)} · ${editingItem.startLabel}–${editingItem.endLabel}`
+    : eraseMode
+      ? '消除状态：点击任意记录消除'
+      : `当前画笔：${brushName}`
+
+  const renderTagTree = (kind: TagKind, query: string, activeId: number | undefined, onPick: (tag: Tag) => void) => {
+    const normalized = query.trim().toLowerCase()
+    const allowed = new Set<number>()
+    if (normalized) {
+      for (const tag of tags) {
+        if (tag.kind !== kind || !tag.name.toLowerCase().includes(normalized)) continue
+        let current: Tag | undefined = tag
+        while (current) {
+          allowed.add(current.id)
+          const parentId: number | undefined = current.parentId
+          current = parentId === undefined ? undefined : tags.find(entry => entry.id === parentId)
+        }
+      }
+    }
+    const build = (parentId: number | undefined, depth: number): React.ReactNode[] => tags
+      .filter(tag => tag.kind === kind && tag.parentId === parentId && (normalized === '' || allowed.has(tag.id)))
+      .flatMap(tag => {
+        const hasChildren = tags.some(child => child.kind === kind && child.parentId === tag.id)
+        const isActive = activeId === tag.id
+        return [
+          <button
+            type="button" key={tag.id}
+            className={`tag-choice${isActive ? ' is-brush' : ''}${kind === 'time' && eraseMode && isActive ? ' is-erase' : ''}`}
+            aria-pressed={isActive} data-tag-id={tag.id}
+            style={{ '--depth': depth, '--tag-color': tag.color ?? DEFAULT_COLOR } as React.CSSProperties}
+            onClick={() => onPick(tag)}
+            onDoubleClick={() => { if (activeId === tag.id && kind === 'time') setEraseMode(true) }}
+          >
+            <span className="tag-dot" />
+            <span className="tag-choice-name">{tag.name}</span>
+            {hasChildren && <span className="tag-parent-mark" aria-hidden="true">父级可选</span>}
+          </button>,
+          ...build(tag.id, depth + 1),
+        ]
+      })
+    const nodes = build(undefined, 0)
+    return nodes.length === 0 ? <div className="empty-note">没有匹配的{kind === 'time' ? '时间' : '情境'}标签</div> : nodes
+  }
+
+  /* ---------- render pieces ---------- */
+
+  const slotsPerHour = 60 / granularity
+
+  const canvasRows = Array.from({ length: 24 }, (_, hour) => {
+    const hourStart = hour * 60
+    return <div className="hour-row" key={hour}>
+      <div className="hour-label">{String(hour).padStart(2, '0')}:00</div>
+      <div className="hour-track" onPointerMove={moveEraseGesture}>
+        <div className="slot-grid" style={{ gridTemplateColumns: `repeat(${slotsPerHour}, minmax(0, 1fr))` }}>
+          {Array.from({ length: slotsPerHour }, (_, index) => {
+            const minute = hourStart + index * granularity
+            const covering = items.filter(item => item.startMinute < minute + granularity && item.endMinute > minute)
+            return <button
+              type="button" className="slot" key={minute} disabled={busy}
+              aria-label={`${date} ${clock(minute)} 时间格`}
+              onClick={() => activateCell(minute, covering)}
+            />
+          })}
+        </div>
+        <div className="record-layer">
+          {Array.from({ length: slotsPerHour }, (_, index) => {
+            const slotStart = hourStart + index * granularity
+            const overlapping = items
+              .filter(item => item.startMinute < slotStart + granularity && item.endMinute > slotStart)
+              .sort((left, right) => (lanes.get(left.key) ?? 0) - (lanes.get(right.key) ?? 0) || left.startMinute - right.startMinute)
+            const count = Math.max(1, overlapping.length)
+            return overlapping.map((item, lane) => {
+              const firstCell = item.startMinute >= slotStart && item.startMinute < slotStart + granularity
+              const selected = editing !== undefined && editing.kind === item.kind && editing.id === item.id
+              const kindLabel = item.kind === 'actual' ? '实录' : item.kind === 'plan' ? '计划' : '模板'
+              return <button
+                type="button" key={`${item.key}-${slotStart}`}
+                className={`record-fragment time-fragment ${item.kind}-fragment${firstCell ? '' : ' is-continuation'}${count > 1 ? ' is-compact' : ''}${count > 2 ? ' is-micro' : ''}${selected ? ' is-selected' : ''}${item.running ? ' is-running' : ''}`}
+                style={{
+                  '--record-color': tagColor(item.timeTagId),
+                  left: `${((slotStart - hourStart) / 60) * 100}%`,
+                  width: `${(granularity / 60) * 100}%`,
+                  top: `${(lane / count) * 100}%`,
+                  height: `${100 / count}%`,
+                } as React.CSSProperties}
+                data-record-key={item.key} data-record-kind={item.kind} data-block-id={item.id} data-slot={clock(slotStart)}
+                data-tag-id={item.timeTagId} data-start={item.startMinute} data-end={item.endMinute}
+                data-parallel-count={count} data-lane={lane}
+                title={`${item.note || tagName(item.timeTagId)} · ${item.startLabel}–${item.endLabel}`}
+                aria-label={`${kindLabel} ${tagName(item.timeTagId)} ${item.startLabel}`}
+                onPointerDown={event => startEraseGesture(event, item)}
+                onClick={event => {
+                  event.stopPropagation()
+                  if (event.shiftKey) { openEditor(item, event.currentTarget); return }
+                  if (eraseMode) { if (event.detail === 0) void removeItems([item]); return }
+                  activateCell(slotStart, overlapping, item)
+                }}
+              >
+                <span className="record-name">{item.note || tagName(item.timeTagId)}</span>
+                <span className="record-time">{item.startLabel}–{item.endLabel}</span>
+              </button>
+            })
+          })}
+        </div>
+      </div>
+    </div>
+  })
+
+  const shelf = <aside className="tag-shelf" aria-label="时间标签架">
+    <div className="shelf-head">
+      <div className="shelf-title-row">
+        <span className="shelf-title">时间标签</span>
+        <button className="quiet-button" type="button" onClick={() => { setManagerKind('time'); setProduct('tags') }}>管理</button>
+      </div>
+      <input
+        className="search-input" type="search" ref={searchRef} value={tagSearch}
+        placeholder="搜索时间标签" aria-label="搜索时间标签"
+        onChange={event => setTagSearch(event.target.value)}
+      />
+    </div>
+    <div className="shelf-body">{renderTagTree('time', tagSearch, selectedTagId, tag => { setSelectedTagId(tag.id); setEraseMode(false) })}</div>
+    <div className={`shelf-foot${eraseMode ? ' is-erase' : ''}`}>{selectionText}</div>
   </aside>
 
-  return (
-    <div className="secretary-time-panel">
-      <style>{styles}</style>
-      <header className="product-header">
-        <strong>小秘书</strong>
-        <nav aria-label="一级模块">
-          {(['gtd', 'time', 'tags', 'goal'] as ProductView[]).map(item => <button
-            type="button" key={item} aria-current={product === item ? 'page' : undefined}
-            onClick={() => {
-              if (item === 'tags' && (product === 'time' || product === 'gtd')) setManagerKind(product === 'gtd' ? 'context' : 'time')
-              setProduct(item)
-              setCalendarOpen(false)
-            }}
-          >{item === 'gtd' ? 'GTD' : item === 'time' ? 'Time' : item === 'tags' ? 'Tags' : 'Goal'}</button>)}
-        </nav>
-      </header>
-      {error && <div role="alert" className="time-error">{error}</div>}
-
-      {product === 'gtd' && <GtdWorkspace
-        tags={tags} inbox={inbox} projects={projects} actions={actions} nextActions={nextActions} forecast={forecast}
-        forecastDate={forecastDate} onForecastDateChange={setForecastDate} busy={busy} run={run}
-      />}
-      {product === 'goal' && <section className="module-placeholder">Goal 是保留的一级模块，本期不实现。</section>}
-      {product === 'tags' ? (
-        <section className="tag-manager" aria-label="统一标签管理">
-          <div className="manager-header"><strong>标签管理</strong><button type="button" onClick={() => { setProduct('time'); setTimeView('actual'); setEditingTagId(undefined); setTagName('') }}>返回实录</button></div>
-          <div className="kind-switch" role="group" aria-label="标签类型切换">
-            <button type="button" aria-pressed={managerKind === 'time'} onClick={() => { setManagerKind('time'); setTagParentId(''); setEditingTagId(undefined) }}>时间标签</button>
-            <button type="button" aria-pressed={managerKind === 'context'} onClick={() => { setManagerKind('context'); setTagParentId(''); setEditingTagId(undefined) }}>情境标签</button>
-          </div>
-          <div className="tag-form">
-            <label>标签名称<input value={tagName} onChange={event => setTagName(event.target.value)} /></label>
-            <label>标签类型<input aria-label="标签类型" readOnly value={managerKind} /></label>
-            <label>父标签<select value={tagParentId} onChange={event => setTagParentId(event.target.value)}>
-              <option value="">（根标签）</option>
-              {flatten(tags, managerKind).filter(({ tag }) => tag.id !== editingTagId).map(({ tag, depth }) => (
-                <option key={tag.id} value={tag.id}>{'　'.repeat(depth)}{tag.name}</option>
-              ))}
-            </select></label>
-            <label>标签颜色<input type="color" value={tagColor} onChange={event => setTagColor(event.target.value)} /></label>
-            <button type="button" disabled={busy || !tagName.trim()} onClick={() => void submitTag()}>{editingTagId === undefined ? '新建标签' : '保存标签'}</button>
-          </div>
-          <div className="tag-root-drop" role="region" aria-label="根标签放置区" onDragOver={allowTagDrop} onDrop={event => void dropTag(event, null)}>
-            桌面拖拽到此处移为根标签
-          </div>
-          <div className="tag-list">
-            {flatten(tags, managerKind).map(({ tag, depth }) => (
-              <div
-                className="managed-tag" key={tag.id} style={{ '--depth': depth } as React.CSSProperties}
-                draggable={!busy} data-tag-id={tag.id} data-parent-id={tag.parentId ?? ''}
-                onDragStart={event => {
-                  event.dataTransfer.effectAllowed = 'move'
-                  event.dataTransfer.setData(TAG_DRAG_MIME, String(tag.id))
-                  event.dataTransfer.setData('text/plain', String(tag.id))
-                }}
-                onDragOver={allowTagDrop} onDrop={event => void dropTag(event, tag.id)}
-              >
-                <span className="tag-dot" style={{ background: tag.color ?? DEFAULT_COLOR }} />
-                <span>{tag.name}</span><small>tag:{tag.id}</small>
-                <button type="button" onClick={() => editTag(tag)}>编辑 {tag.name}</button>
-                <button type="button" disabled={busy} onClick={() => void run({ domain: 'tag', op: 'delete', id: tag.id })}>删除 {tag.name}</button>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : product === 'time' && <>
-        <div className="time-toolbar">
-          <div className="segmented" role="tablist" aria-label="Time 子模块">
-            {(['plan', 'actual', 'deep'] as TimeView[]).map(view => <button
-              type="button" role="tab" key={view} aria-selected={timeView === view}
-              onClick={() => { setTimeView(view); setTemplateMode(false); setCalendarOpen(false) }}
-            >{view === 'plan' ? '计划' : view === 'actual' ? '实录' : '深度时间'}</button>)}
-          </div>
-          {timeView !== 'deep' && <div className="segmented" aria-label="时间格粒度">
-            {[10, 15, 30].map(value => <button type="button" key={value} aria-pressed={granularity === value} onClick={() => setGranularity(value)}>{value} 分钟</button>)}
-          </div>}
-        </div>
-        {timeView === 'deep' ? <section className="deep-module" aria-label="深度时间周模板" aria-busy={busy}>
-          <div className="deep-head">
-            <div><div className="deep-title">深度时间</div><div className="deep-subtitle">7×24 基础周模板 · 每周重复 · 未设置不等于 low</div></div>
-            <div className="segmented deep-brush" role="group" aria-label="当前深度时间画笔">
-              {(['high', 'medium', 'low'] as DeepLevel[]).map(level => <button
-                type="button" key={level} data-level={level} aria-pressed={deepBrush === level}
-                onClick={() => setDeepBrush(level)}
-              ><span className="deep-brush-dot" />{level}</button>)}
-            </div>
-          </div>
-          <div className="deep-grid-scroll">
-            <div className="deep-grid" onPointerMove={moveDeepGesture}>
-              <span className="deep-corner" aria-hidden="true" />
-              {WEEKDAYS.map(day => <span className="deep-day" key={day}>{day}</span>)}
-              {Array.from({ length: 24 }, (_, hour) => <Fragment key={hour}>
-                <span className="deep-hour">{String(hour).padStart(2, '0')}:00</span>
-                {WEEKDAYS.map((_, index) => {
-                  const weekday = index + 1
-                  const cell = deepWeek.cells[(weekday - 1) * 24 + hour] ?? { weekday, hour, level: 'unset' as const }
-                  const levelLabel = cell.level === 'unset' ? '未设置' : cell.level
-                  return <button
-                    type="button" className="deep-cell" data-deep-cell="" data-weekday={weekday} data-hour={hour}
-                    data-level={cell.level} aria-label={`${WEEKDAYS[index]} ${String(hour).padStart(2, '0')}:00 ${levelLabel}`}
-                    disabled={busy} onPointerDown={event => startDeepGesture(event, cell)}
-                    onClick={event => clickDeepCellWithKeyboard(event, cell)} key={weekday}
-                  />
-                })}
-              </Fragment>)}
-            </div>
-          </div>
-          <div className="deep-legend" aria-label="深度时间图例">
-            {(['high', 'medium', 'low', 'unset'] as DeepCellLevel[]).map(level => <span key={level}>
-              <i className="deep-swatch" data-level={level} />{level === 'unset' ? '未设置' : level}
-            </span>)}
-          </div>
-          <p className="deep-hint">点按或连续拖刷 · 同档起手清除，其他情况写入当前画笔 · 一次操作不逐格切换</p>
-        </section> : <>
-          <div className="date-strip">
-            <button type="button" aria-label="前一天" onClick={() => { setDate(shiftDate(date, -1)); setTemplateMode(false) }}>‹</button>
-            <button type="button" className="date-label" aria-label="打开日历选择日期" onClick={openCalendar}>{dateLabel(date)}</button>
-            <button type="button" aria-label="后一天" onClick={() => { setDate(shiftDate(date, 1)); setTemplateMode(false) }}>›</button>
-            <button type="button" onClick={goToday}>今天</button>
-            <span className="date-spacer" />
-            {timeView === 'plan' && !templateMode && <button type="button" onClick={() => { setWeekday((new Date(`${date}T12:00:00`).getDay() + 6) % 7 + 1); setTemplateMode(true) }}>计划模板</button>}
-            {timeView === 'plan' && templateUndo && !templateMode && <button type="button" disabled={busy} onClick={() => void run({ domain: 'time', op: 'template.undo', targetDate: date, timeZone })}>撤销模板应用</button>}
-          </div>
-          {templateMode && timeView === 'plan' ? <div className="actual-layout">
-            <main className="template-main">
-              <div className="template-heading"><strong>计划模板</strong><button type="button" onClick={applyTemplate} disabled={busy}>应用到 {date}</button><button type="button" onClick={() => setTemplateMode(false)}>返回日期计划</button></div>
-              <div className="week-strip" role="group" aria-label="模板星期">
-                {WEEKDAYS.map((label, index) => <button type="button" key={label} aria-pressed={weekday === index + 1} onClick={() => { setWeekday(index + 1); setEditingTemplateId(undefined) }}>{label}</button>)}
-              </div>
-              <div className="template-form">
-                <label>模板开始时间<input type="time" value={templateStart} onChange={event => setTemplateStart(event.target.value)} /></label>
-                <label>模板结束时间<input type="time" value={templateEnd} onChange={event => setTemplateEnd(event.target.value)} /></label>
-                <label>模板备注<input value={templateNote} onChange={event => setTemplateNote(event.target.value)} /></label>
-                <button type="button" disabled={busy} onClick={() => void submitTemplate()}>{editingTemplateId === undefined ? '新增模板' : '保存模板'}</button>
-              </div>
-              <div className="template-list">
-                {visibleTemplates.map(block => <div className="template-row" key={block.id}>
-                  <strong>{block.startTime}–{block.endTime}</strong><span>{tagById(block.timeTagId)?.name ?? block.timeTagId}</span><span>{block.note}</span>
-                  <button type="button" onClick={() => editTemplate(block)}>编辑模板</button>
-                  <button type="button" disabled={busy} onClick={() => void run({ domain: 'time', op: 'template.delete', id: block.id })}>删除模板</button>
-                </div>)}
-                {visibleTemplates.length === 0 && <p className="empty-note">当前星期还没有模板，可在上方新增。</p>}
-              </div>
-            </main>
-            {tagShelf}
-          </div> : <div className="actual-layout">
-            <main className="actual-main">
-              <div className="actual-status">
-                <span>{eraseMode ? '消除态：点击记录删除' : `点击格子记录 ${granularity} 分钟 · Shift 点击编辑`}</span>
-                {undoStack.length > 0 && <button type="button" disabled={busy} onClick={() => void undoLast()}>撤销{undoStack[undoStack.length - 1].label}</button>}
-                {timeView === 'actual' && <button type="button" disabled={busy || selectedTagId === undefined} onClick={() => void run({
-                  domain: 'time', op: 'actual.start', timeTagId: selectedTagId, actualSource: 'user_reported',
-                })}>开始实录</button>}
-              </div>
-              {timeView === 'actual' && blocks.some(block => block.endAt === undefined) && <div className="running-list">
-                {blocks.filter(block => block.endAt === undefined).map(block => (
-                  <span key={block.id}>正在记录 {tagById(block.timeTagId)?.name ?? block.timeTagId}
-                    <button type="button" onClick={() => void run({ domain: 'time', op: 'actual.stop', id: block.id })}>停止 {tagById(block.timeTagId)?.name ?? block.id}</button>
-                  </span>
-                ))}
-              </div>}
-              <div className="day-canvas" aria-label={`${currentKind}画布`} onPointerMove={moveEraseGesture}>
-                {Array.from({ length: 24 }, (_, hour) => (
-                  <div className="hour-row" key={hour}>
-                    <span className="hour-label">{String(hour).padStart(2, '0')}:00</span>
-                    <div className="hour-slots" style={{ gridTemplateColumns: `repeat(${60 / granularity}, minmax(0, 1fr))` }}>
-                      {Array.from({ length: 60 / granularity }, (_, slotIndex) => {
-                        const minute = hour * 60 + slotIndex * granularity
-                        const start = Date.parse(atMinute(date, minute))
-                        const end = Date.parse(atMinute(date, minute + granularity))
-                        const covering = currentBlocks.filter(block => {
-                          const blockEnd = 'actualSource' in block && block.endAt === undefined ? Date.now() : Date.parse(block.endAt as string)
-                          return Date.parse(block.startAt) < end && blockEnd > start
-                        })
-                        const label = `${String(hour).padStart(2, '0')}:${String(slotIndex * granularity).padStart(2, '0')}`
-                        return <div className="time-slot" data-slot={label} key={slotIndex}>
-                          <button type="button" className="slot-hit" aria-label={`${date} ${label} 时间格`} onClick={() => activateCell(minute, covering)} />
-                          <div className="fragment-layer">
-                            {covering.map(block => {
-                              const tag = tagById(block.timeTagId)
-                              const first = Date.parse(block.startAt) >= start && Date.parse(block.startAt) < end
-                              return <button
-                                type="button" key={block.id} className={`${timeView === 'actual' ? 'actual-fragment' : 'plan-fragment'} time-fragment`} data-block-id={block.id} data-time-fragment=""
-                                aria-label={`${currentKind} ${tag?.name ?? block.timeTagId} ${timeLabel(block.startAt, timeZone)}`}
-                                style={{ background: tag?.color ?? DEFAULT_COLOR }}
-                                onPointerDown={event => startEraseGesture(event, block)}
-                                onClick={event => {
-                                  event.stopPropagation()
-                                  if (event.shiftKey) { openEditor(block); return }
-                                  if (eraseMode) {
-                                    if (event.detail === 0) void removeBlock(block)
-                                    return
-                                  }
-                                  activateCell(minute, covering, block)
-                                }}
-                              >{first && <span>{block.note ?? tag?.name ?? block.timeTagId}</span>}</button>
-                            })}
-                          </div>
-                        </div>
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </main>
-            {tagShelf}
-          </div>}
-        </>}
-      </>}
-
-      {calendarOpen && <div className="calendar-popover" role="dialog" aria-label="选择日期">
-        <div className="calendar-head"><button type="button" aria-label="上一月" onClick={() => setCalendarMonth(shiftMonth(calendarMonth, -1))}>‹</button><strong>{Number(calendarMonth.slice(0, 4))} 年 {Number(calendarMonth.slice(5, 7))} 月</strong><button type="button" aria-label="下一月" onClick={() => setCalendarMonth(shiftMonth(calendarMonth, 1))}>›</button></div>
-        <div className="calendar-grid weekdays">{WEEKDAYS.map(day => <span key={day}>{day.slice(1)}</span>)}</div>
-        <div className="calendar-grid">
-          {Array.from({ length: calendar.firstOffset }, (_, index) => <span key={`blank-${index}`} />)}
-          {calendar.days.map(value => <button type="button" className={`calendar-day${value === localDate() ? ' is-today' : ''}`} aria-label={value} aria-current={value === date ? 'date' : undefined} key={value} onClick={() => chooseDate(value)}>{Number(value.slice(8, 10))}</button>)}
-        </div>
-        <button type="button" className="calendar-today" onClick={goToday}>回到今天</button>
-      </div>}
-
-      {editing && <div className="editor-backdrop" role="dialog" aria-label={`编辑${'actualSource' in editing ? '实录' : '计划'}`}>
-        <label>{'actualSource' in editing ? '实录标签' : '计划标签'}<select value={editTagId} onChange={event => setEditTagId(event.target.value)}>
-          {timeTags.map(({ tag }) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
-        </select></label>
-        <label>{'actualSource' in editing ? '实录备注' : '计划备注'}<textarea value={editNote} onChange={event => setEditNote(event.target.value)} /></label>
-        <label>开始时刻<input value={editStart} onChange={event => setEditStart(event.target.value)} /></label>
-        <label>结束时刻<input value={editEnd} placeholder={'actualSource' in editing ? '留空表示正在记录' : ''} onChange={event => setEditEnd(event.target.value)} /></label>
-        {'actualSource' in editing && <>
-          <label>实际来源<select value={editSource} onChange={event => setEditSource(event.target.value as ActualSource)}>
-            {SOURCES.map(source => <option key={source} value={source}>{source}</option>)}
-          </select></label>
-          <label>专注档位<select value={editFocus} onChange={event => setEditFocus(event.target.value as FocusLevel | '')}>
-            <option value="">未标注</option><option value="deep">deep</option><option value="shallow">shallow</option>
-          </select></label>
-        </>}
-        <div className="editor-actions">
-          <button type="button" onClick={() => setEditing(undefined)}>取消</button>
-          <button type="button" onClick={() => { void removeBlock(editing); setEditing(undefined) }}>{'actualSource' in editing ? '删除实录' : '删除计划'}</button>
-          <button type="button" disabled={busy} onClick={async () => {
-            const input = { timeTagId: Number(editTagId), note: editNote, startAt: editStart, endAt: editEnd }
-            const result = 'actualSource' in editing ? await run({
-              domain: 'time', op: 'actual.update', id: editing.id, ...input,
-              endAt: editEnd === '' ? null : editEnd, actualSource: editSource, focus: editFocus === '' ? null : editFocus,
-            }) : await run({ domain: 'time', op: 'plan.update', id: editing.id, ...input })
-            if (result) {
-              setUndoStack(current => [...current, { label: '编辑', commands: [updateCommand(editing)] }].slice(-40))
-              setEditing(undefined)
-            }
-          }}>{'actualSource' in editing ? '保存实录' : '保存计划'}</button>
-        </div>
-      </div>}
+  const dateStrip = <div className="date-strip">
+    <div className="date-nav">
+      <button className="icon-button" type="button" aria-label="前一天" onClick={() => { setDate(shiftDate(date, -1)); setTemplateMode(false) }}><Icon name="chevron-left" /></button>
+      <button className="date-label" type="button" aria-label="打开日历选择日期" onClick={event => openCalendar(event.currentTarget)}>{dateLabel(date)}</button>
+      <button className="icon-button" type="button" aria-label="后一天" onClick={() => { setDate(shiftDate(date, 1)); setTemplateMode(false) }}><Icon name="chevron-right" /></button>
+      <button className="quiet-button" type="button" onClick={goToday}>今天</button>
     </div>
-  )
-}
+    {timeView === 'plan' && <button className="quiet-button" type="button" onClick={() => { setWeekday(weekdayOf(date)); setTemplateMode(true) }}>计划模板</button>}
+    <span className="strip-tail">
+      {timeView === 'plan' && templateUndo && <button type="button" className="quiet-button" disabled={busy} onClick={() => void run({ domain: 'time', op: 'template.undo', targetDate: date, timeZone })}>撤销模板应用</button>}
+    </span>
+  </div>
 
-const styles = `
-.secretary-time-panel { position: relative; height: 100%; min-width: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--dsw-alias-bg-base, #f5f5f7); color: var(--dsw-alias-label-primary, #1d1d1f); font-family: var(--dsw-font-family, sans-serif); }
-.secretary-time-panel button, .secretary-time-panel input, .secretary-time-panel select, .secretary-time-panel textarea { font: inherit; }
-.product-header { flex: none; min-height: 45px; padding: calc(var(--dsh-frame-top-clearance, 0px) + 6px) 12px 6px; display: flex; align-items: center; gap: 18px; border-bottom: 1px solid var(--dsw-alias-border-l3, #ddd); background: var(--dsw-alias-bg-layer-1, #fff); }
-.product-header nav, .time-toolbar, .date-strip, .manager-header, .template-heading { display: flex; align-items: center; gap: 6px; }
-.product-header button, .time-toolbar button, .date-strip button, .manager-header button, .template-heading button, .actual-status button, .tag-form button, .editor-actions button, .running-list button, .template-form button, .template-row button, .shelf-title button { border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 6px; background: var(--dsw-alias-bg-layer-1, #fff); color: inherit; padding: 5px 8px; cursor: pointer; }
-.product-header button[aria-current="page"], .segmented button[aria-selected="true"], .segmented button[aria-pressed="true"], .week-strip button[aria-pressed="true"] { background: var(--dsw-alias-interactive-bg-hover-accent, #e8efff); color: var(--dsw-alias-label-primary, #1d1d1f); }
-.time-error { flex: none; padding: 8px 12px; color: var(--dsw-alias-state-error-primary, #bd443d); }
-.time-toolbar { flex: none; min-height: 43px; justify-content: space-between; padding: 6px 12px; border-bottom: 1px solid var(--dsw-alias-border-l2, #eee); background: var(--dsw-alias-bg-layer-1, #fff); }
-.segmented { display: inline-flex; gap: 3px; padding: 2px; border-radius: 7px; background: var(--dsw-alias-bg-module-platform, #eee); }
-.date-strip { flex: none; min-height: 43px; padding: 5px 12px; border-bottom: 1px solid var(--dsw-alias-border-l2, #eee); background: var(--dsw-alias-bg-layer-1, #fff); }
-.date-strip .date-label { font-weight: 650; }
-.date-spacer { flex: 1; }
-.module-placeholder { flex: 1; display: grid; place-items: center; padding: 24px; color: var(--dsw-alias-label-secondary, #777); text-align: center; }
-.actual-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 240px; }
-.actual-main, .template-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
-.actual-status { flex: none; min-height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 12px; color: var(--dsw-alias-label-secondary, #777); font-size: 11px; }
-.running-list { padding: 5px 12px; font-size: 11px; }
-.day-canvas { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
-.hour-row { box-sizing: border-box; height: 48px; display: grid; grid-template-columns: 50px minmax(0, 1fr); border-bottom: 1px solid var(--dsw-alias-border-l2, #eee); }
-.hour-label { padding: 6px 7px 0 0; text-align: right; color: var(--dsw-alias-label-secondary, #777); font: 10px ui-monospace, monospace; }
-.hour-slots { min-width: 0; display: grid; }
-.time-slot { min-width: 0; position: relative; border-left: 1px solid var(--dsw-alias-border-l2, #eee); }
-.slot-hit { position: absolute; inset: 0; width: 100%; border: 0; background: transparent; padding: 0; }
-.slot-hit:hover { background: var(--dsw-alias-interactive-bg-hover-accent, #e8efff); }
-.fragment-layer { position: absolute; inset: 2px 1px; display: flex; gap: 1px; pointer-events: none; }
-.time-fragment { flex: 1; min-width: 0; pointer-events: auto; overflow: hidden; border: 0; border-radius: 4px; color: var(--dsw-static-neutral-00, #fff); padding: 3px; font-size: 9px; text-align: left; }
-.time-fragment span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.tag-shelf { min-height: 0; overflow-y: auto; padding: 10px 7px; border-left: 1px solid var(--dsw-alias-border-l3, #ddd); background: var(--dsw-alias-bg-layer-1, #fff); }
-.shelf-title { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 0 6px 8px; font-size: 12px; font-weight: 650; }
-.shelf-title button { font-size: 10px; padding: 3px 5px; }
-.tag-shelf > button { width: 100%; min-height: 30px; display: flex; align-items: center; gap: 7px; padding: 4px 6px 4px calc(6px + var(--depth, 0) * 14px); border: 1px solid transparent; border-radius: 6px; background: transparent; color: inherit; text-align: left; }
-.tag-shelf > button.selected { border-color: var(--dsw-alias-label-primary, #1d1d1f); background: var(--dsw-alias-interactive-bg-hover-accent, #e8efff); color: var(--dsw-alias-label-primary, #1d1d1f); }
-.tag-dot { width: 9px; height: 9px; flex: none; border-radius: 3px; }
-.tag-manager { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; }
-.manager-header { justify-content: space-between; margin-bottom: 12px; }
-.kind-switch { display: flex; gap: 5px; margin-bottom: 12px; }
-.kind-switch button { padding: 6px 10px; border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 6px; background: transparent; color: inherit; }
-.kind-switch button[aria-pressed="true"] { background: var(--dsw-alias-interactive-bg-hover-accent, #e8efff); }
-.tag-form { display: grid; grid-template-columns: minmax(120px, 2fr) minmax(80px, 1fr) minmax(120px, 2fr) 60px auto; align-items: end; gap: 8px; }
-.tag-form label, .editor-backdrop label, .template-form label { display: flex; flex-direction: column; gap: 4px; color: var(--dsw-alias-label-secondary, #777); font-size: 11px; }
-.editor-backdrop label { color: var(--dsw-alias-label-primary, #1d1d1f); }
-.tag-form input, .tag-form select, .editor-backdrop input, .editor-backdrop select, .editor-backdrop textarea, .template-form input { width: 100%; min-width: 0; border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 6px; background: var(--dsw-alias-bg-layer-1, #fff); color: inherit; padding: 6px; }
-.tag-form input[type="color"] { height: 31px; padding: 2px; }
-.tag-root-drop { margin: 0 0 8px; padding: 8px; border: 1px dashed var(--dsw-alias-border-l3, #ddd); border-radius: 6px; color: var(--dsw-alias-label-secondary, #777); font-size: 11px; text-align: center; }
-.managed-tag { min-height: 38px; display: flex; align-items: center; gap: 8px; margin-left: calc(var(--depth, 0) * 18px); border-bottom: 1px solid var(--dsw-alias-border-l2, #eee); }
-.managed-tag[draggable="true"] { cursor: grab; }
-.managed-tag small { color: var(--dsw-alias-label-secondary, #777); }
-.managed-tag button { margin-left: auto; border: 0; background: transparent; color: inherit; }
-.managed-tag button + button { margin-left: 0; }
-.template-main { overflow-y: auto; padding: 12px; }
-.template-heading { flex-wrap: wrap; margin-bottom: 12px; }
-.template-heading strong { margin-right: auto; }
-.week-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-bottom: 12px; }
-.week-strip button { min-width: 0; border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 6px; background: transparent; color: inherit; padding: 6px 3px; }
-.template-form { display: grid; grid-template-columns: 1fr 1fr minmax(140px, 2fr) auto; align-items: end; gap: 8px; margin-bottom: 12px; }
-.template-list { border-top: 1px solid var(--dsw-alias-border-l2, #eee); }
-.template-row { min-height: 42px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--dsw-alias-border-l2, #eee); }
-.template-row span { color: var(--dsw-alias-label-secondary, #777); }
-.empty-note { color: var(--dsw-alias-label-secondary, #777); font-size: 12px; }
-.calendar-popover { position: absolute; z-index: 90; top: 98px; left: 50%; transform: translateX(-50%); width: min(340px, calc(100% - 20px)); max-height: calc(100% - 110px); overflow-y: auto; padding: 9px; border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 12px; background: var(--dsw-alias-bg-overlay, #fff); box-shadow: 0 12px 36px #0004; }
-.calendar-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
-.calendar-head button, .calendar-today { border: 0; border-radius: 6px; background: transparent; color: inherit; padding: 5px 9px; }
-.calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
-.calendar-grid.weekdays { margin-bottom: 3px; color: var(--dsw-alias-label-primary, #1d1d1f); font-size: 10px; text-align: center; }
-.calendar-day { min-height: 34px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: inherit; }
-.calendar-day.is-today { border-color: var(--dsw-alias-link, #3972d8); color: var(--dsw-alias-link, #3972d8); }
-.calendar-day[aria-current="date"] { border-color: var(--dsw-alias-label-primary, #1d1d1f); background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-label-primary, #1d1d1f); }
-.calendar-today { display: block; margin: 8px auto 0; }
-.editor-backdrop { position: fixed; z-index: 100; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 24px)); max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; padding: 14px; border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 12px; background: var(--dsw-alias-bg-overlay, #fff); box-shadow: 0 12px 36px #0004; }
-.editor-actions { display: flex; justify-content: flex-end; gap: 7px; }
-.deep-module { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 12px 16px 32px; }
-.deep-head { max-width: 780px; margin: 0 auto 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
-.deep-title { font-size: 13px; font-weight: 650; }
-.deep-subtitle, .deep-hint { color: var(--dsw-alias-label-secondary, #777); font-size: 10px; }
-.deep-subtitle { margin-top: 2px; }
-.deep-brush button { display: inline-flex; align-items: center; gap: 5px; }
-.deep-brush-dot { width: 8px; height: 8px; border-radius: 2px; background: currentColor; }
-.deep-brush button[data-level="high"] .deep-brush-dot { color: var(--dsw-static-green-500, #317b68); }
-.deep-brush button[data-level="medium"] .deep-brush-dot { color: var(--dsw-static-amber-500, #ad7927); }
-.deep-brush button[data-level="low"] .deep-brush-dot { color: var(--dsw-static-deepseek-400, #806a96); }
-.deep-grid-scroll { width: 100%; max-width: 780px; min-width: 0; margin: 0 auto; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
-.deep-grid { min-width: 350px; display: grid; grid-template-columns: 42px repeat(7, minmax(0, 1fr)); gap: 2px; user-select: none; }
-.deep-day { padding-bottom: 7px; text-align: center; color: var(--dsw-alias-label-secondary, #777); font-size: 10px; font-weight: 600; }
-.deep-hour { height: 22px; display: flex; align-items: center; justify-content: flex-end; padding-right: 7px; color: var(--dsw-alias-label-secondary, #777); font: 9px ui-monospace, monospace; }
-.deep-cell { height: 22px; min-width: 0; border: 1px solid var(--dsw-alias-border-l2, #eee); border-radius: 4px; background: var(--dsw-alias-bg-layer-1, #fff); padding: 0; touch-action: pan-y; }
-.deep-cell:hover { border-color: var(--dsw-alias-link, #3972d8); }
-.deep-cell[data-level="high"], .deep-swatch[data-level="high"] { background: var(--dsw-static-green-500, #317b68); border-color: var(--dsw-static-green-500, #317b68); }
-.deep-cell[data-level="medium"], .deep-swatch[data-level="medium"] { background: var(--dsw-static-amber-500, #ad7927); border-color: var(--dsw-static-amber-500, #ad7927); }
-.deep-cell[data-level="low"], .deep-swatch[data-level="low"] { background: var(--dsw-static-deepseek-400, #806a96); border-color: var(--dsw-static-deepseek-400, #806a96); }
-.deep-legend { max-width: 780px; margin: 12px auto 0; display: flex; flex-wrap: wrap; gap: 12px; color: var(--dsw-alias-label-secondary, #777); font-size: 10px; }
-.deep-legend > span { display: inline-flex; align-items: center; gap: 5px; }
-.deep-swatch { width: 11px; height: 11px; border: 1px solid var(--dsw-alias-border-l2, #eee); border-radius: 3px; background: var(--dsw-alias-bg-layer-1, #fff); }
-.deep-hint { max-width: 780px; margin: 9px auto 0; }
-.gtd-workspace { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; }
-.gtd-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 7px 12px; border-bottom: 1px solid var(--dsw-alias-border-l2, #eee); background: var(--dsw-alias-bg-layer-1, #fff); }
-.gtd-tabs button, .gtd-section button { border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 6px; background: var(--dsw-alias-bg-layer-1, #fff); color: inherit; padding: 5px 8px; cursor: pointer; }
-.gtd-tabs button[aria-selected="true"] { background: var(--dsw-alias-interactive-bg-hover-accent, #e8efff); color: var(--dsw-alias-link, #3972d8); }
-.gtd-section { max-width: 980px; margin: 0 auto; padding: 14px; }
-.gtd-section-title { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-.gtd-section-title > span, .gtd-forecast-note { color: var(--dsw-alias-label-secondary, #777); font-size: 11px; }
-.gtd-section-title > div { display: flex; flex-wrap: wrap; gap: 5px; }
-.gtd-capture-form, .gtd-clarify-form { display: flex; flex-direction: column; align-items: stretch; gap: 9px; margin-bottom: 14px; }
-.gtd-section label, .gtd-field-label { display: flex; flex-direction: column; gap: 4px; color: var(--dsw-alias-label-secondary, #777); font-size: 11px; }
-.gtd-section input:not([type="checkbox"]), .gtd-section select, .gtd-section textarea { width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 6px; background: var(--dsw-alias-bg-layer-1, #fff); color: inherit; padding: 6px; }
-.gtd-capture-form button, .gtd-clarify-form > button { align-self: flex-start; }
-.gtd-list, .gtd-project > div { display: flex; flex-direction: column; gap: 7px; }
-.gtd-inbox-row, .gtd-action-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 9px; border: 1px solid var(--dsw-alias-border-l2, #eee); border-radius: 7px; background: var(--dsw-alias-bg-layer-1, #fff); }
-.gtd-inbox-row > div { flex: 1; min-width: 180px; }
-.gtd-inbox-row p { margin: 4px 0; white-space: pre-wrap; }
-.gtd-inbox-row small, .gtd-action-meta, .gtd-project header span { display: block; color: var(--dsw-alias-label-secondary, #777); font-size: 10px; }
-.gtd-clarify-form fieldset { min-width: 0; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--dsw-alias-border-l2, #eee); border-radius: 7px; }
-.gtd-tag-choices { display: flex; flex-wrap: wrap; gap: 5px 10px; }
-.gtd-tag-choices label { flex-direction: row; align-items: center; min-width: 0; }
-.gtd-date-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.gtd-project { margin-bottom: 12px; }
-.gtd-project > header { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 8px 0; }
-.gtd-project > header > div { flex: 1; min-width: 180px; }
-.gtd-project > header p { margin: 4px 0; font-size: 11px; }
-.gtd-action-main { flex: 1; min-width: 200px; }
-.gtd-action-main strong, .gtd-action-meta { margin-bottom: 3px; }
-.gtd-row-actions { display: flex; flex-wrap: wrap; gap: 5px; }
-.gtd-section-title label { flex-direction: row; align-items: center; }
-@media (max-width: 640px) {
-  .product-header { flex-wrap: wrap; gap: 6px 10px; padding-inline: 7px; }
-  .product-header nav { width: 100%; justify-content: space-between; }
-  .time-toolbar, .date-strip { flex-wrap: wrap; padding-inline: 7px; }
-  .date-spacer { display: none; }
-  .actual-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 190px; }
-  .tag-shelf { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; border-left: 0; border-top: 1px solid var(--dsw-alias-border-l3, #ddd); }
-  .shelf-title { grid-column: 1 / -1; }
-  .hour-row { grid-template-columns: 42px minmax(0, 1fr); }
-  .actual-status { padding-inline: 7px; }
-  .tag-form, .template-form { grid-template-columns: 1fr 1fr; }
-  .calendar-popover { top: 132px; max-height: calc(100% - 142px); }
-  .deep-module { padding: 9px 8px 32px; }
-  .deep-head { align-items: flex-start; }
-  .deep-grid { grid-template-columns: 34px repeat(7, minmax(0, 1fr)); }
-  .deep-cell, .deep-hour { height: 20px; }
-  .gtd-tabs { padding-inline: 7px; }
-  .gtd-section { padding: 10px 7px; }
-  .gtd-date-grid { grid-template-columns: minmax(0, 1fr); }
-  .gtd-action-main { min-width: 150px; }
+  const templateStrip = <div className="date-strip">
+    <div className="week-strip" role="group" aria-label="模板星期">
+      {WEEKDAYS.map((label, index) => <button
+        type="button" className="week-day" key={label}
+        aria-current={weekday === index + 1 ? 'date' : 'false'}
+        onClick={() => setWeekday(index + 1)}
+      >{label}</button>)}
+    </div>
+    <div className="template-actions">
+      <span className="repeat-note">计划模板</span>
+      <button type="button" className="primary-button" disabled={busy} onClick={() => void applyTemplate()}>应用到 {date}</button>
+      <button type="button" className="quiet-button" onClick={() => setTemplateMode(false)}>返回日期</button>
+    </div>
+  </div>
+
+  const canvasLayout = <div className="canvas-layout">
+    <section className="canvas-panel" aria-label="时间画布">
+      <div className="canvas-status">
+        <button type="button" className="brush-current" aria-label="选择当前时间画笔" onClick={() => searchRef.current?.focus()}>
+          {eraseMode ? '消除状态：点击记录消除' : `当前画笔：${brushName}`}
+        </button>
+        <span className="canvas-hint">双击已选标签进入消除 · Shift 点击编辑</span>
+        {timeView === 'actual' && running.length > 0
+          ? <button type="button" className="quiet-button record-toggle" disabled={busy} onClick={() => stopRunning(running[0])}>
+            <Icon name="stop" />停止 {tagName(running[0].timeTagId)}
+          </button>
+          : timeView === 'actual'
+            ? <button type="button" className="quiet-button record-toggle" disabled={busy || selectedTagId === undefined} onClick={startRunning}>
+              <Icon name="play" />开始实录
+            </button>
+            : null}
+      </div>
+      <div className="canvas-scroll"><div className="day-grid">{canvasRows}</div></div>
+    </section>
+    {shelf}
+  </div>
+
+  const energyModule = <section className="energy-module" aria-label="深度时间周模板">
+    <div className="energy-head">
+      <div>
+        <div className="energy-title">深度时间</div>
+        <div className="energy-subtitle">7×24 基础周模板 · 每周重复 · 未设置不等于 low</div>
+      </div>
+      <div className="segmented brush-picker" role="group" aria-label="当前深度时间画笔">
+        {(['high', 'medium', 'low'] as DeepLevel[]).map(level => <button
+          type="button" className="brush-button" key={level} data-level={level} aria-pressed={deepBrush === level}
+          onClick={() => setDeepBrush(level)}
+        ><span className="brush-dot" />{level}</button>)}
+      </div>
+    </div>
+    <div className="energy-grid" onPointerMove={moveDeepGesture}>
+      <span aria-hidden="true" />
+      {WEEKDAYS.map(day => <div className="energy-day" key={day}>{day}</div>)}
+      {Array.from({ length: 24 }, (_, hour) => [
+        <div className="energy-hour" key={`hour-${hour}`}>{String(hour).padStart(2, '0')}</div>,
+        ...WEEKDAYS.map((day, index) => {
+          const weekdayValue = index + 1
+          const cell = deepWeek.cells[(weekdayValue - 1) * 24 + hour] ?? { weekday: weekdayValue, hour, level: 'unset' as const }
+          const levelLabel = cell.level === 'unset' ? '未设置' : cell.level
+          return <button
+            type="button" className="energy-cell" key={`${day}-${hour}`}
+            data-deep-cell="" data-weekday={weekdayValue} data-hour={hour} data-level={cell.level}
+            aria-label={`${day} ${String(hour).padStart(2, '0')}:00 ${levelLabel}`} disabled={busy}
+            onPointerDown={event => startDeepGesture(event, cell)}
+            onClick={event => clickDeepCellWithKeyboard(event, cell)}
+          />
+        }),
+      ])}
+    </div>
+    <div className="energy-legend" aria-label="深度时间图例">
+      {(['high', 'medium', 'low'] as DeepLevel[]).map(level => <span className="legend-item" key={level}><span className={`legend-swatch ${level}`} />{level}</span>)}
+      <span className="legend-item"><span className="legend-swatch" />未设置</span>
+    </div>
+    <p className="energy-hint">点按或连续拖刷 · 同档起手清除，其他情况写入当前画笔 · 一次拖刷只执行一种操作</p>
+  </section>
+
+  const timeModule = <section className="time-module">
+    <div className="time-toolbar">
+      <div className="segmented" role="tablist" aria-label="Time 子模块">
+        {(['plan', 'actual', 'deep'] as TimeView[]).map(view => <button
+          type="button" role="tab" key={view} aria-selected={timeView === view}
+          onClick={() => { setTimeView(view); setTemplateMode(false); setCalendar(undefined); setEditing(undefined) }}
+        >{view === 'plan' ? '计划' : view === 'actual' ? '实录' : '深度时间'}</button>)}
+      </div>
+      {timeView === 'deep'
+        ? <span className="repeat-note">每周重复 · 自动沿用</span>
+        : <div className="granularity">
+          <span>时间格</span>
+          <div className="segmented" aria-label="时间格粒度">
+            {[10, 15, 30].map(value => <button
+              type="button" key={value} aria-pressed={granularity === value}
+              onClick={() => setGranularity(value)}
+            >{value} 分钟</button>)}
+          </div>
+        </div>}
+    </div>
+    {timeView === 'deep' ? energyModule : <>
+      {templateMode && timeView === 'plan' ? templateStrip : dateStrip}
+      {canvasLayout}
+    </>}
+  </section>
+
+  const managedTree = (parentId: number | undefined, depth: number): React.ReactNode[] => tags
+    .filter(tag => tag.kind === managerKind && tag.parentId === parentId)
+    .flatMap(tag => {
+      const editingName = renameId === tag.id
+      return [
+        <div
+          className={`manage-row${dropTarget === tag.id ? ' is-drop-target' : ''}`}
+          key={tag.id} draggable={!busy} data-tag-id={tag.id} data-parent-id={tag.parentId ?? ''}
+          style={{ '--depth': depth, '--tag-color': tag.color ?? DEFAULT_COLOR } as React.CSSProperties}
+          onDragStart={event => {
+            event.dataTransfer.effectAllowed = 'move'
+            event.dataTransfer.setData(TAG_DRAG_MIME, String(tag.id))
+            event.dataTransfer.setData('text/plain', String(tag.id))
+          }}
+          onDragOver={event => { allowTagDrop(event); setDropTarget(tag.id) }}
+          onDragLeave={() => setDropTarget(current => current === tag.id ? null : current)}
+          onDrop={event => void dropTag(event, tag.id)}
+        >
+          <span className="drag-handle" title="拖拽调整层级"><Icon name="drag" /></span>
+          <button type="button" className="manage-color" aria-label={`更换 ${tag.name} 的颜色`} title="更换颜色" onClick={() => cycleColor(tag)} />
+          {editingName
+            ? <>
+              <input
+                className="field-input manage-edit" aria-label={`重命名 ${tag.name}`} value={renameValue} autoFocus
+                onChange={event => setRenameValue(event.target.value)}
+                onKeyDown={event => { if (event.key === 'Enter') void saveRename() }}
+              />
+              <button type="button" className="quiet-button" onClick={() => void saveRename()}>保存</button>
+            </>
+            : <>
+              <span className="manage-name">{tag.name}</span>
+              <span className="manage-id">tag:{tag.id}</span>
+            </>}
+          <div className="manage-actions">
+            <button type="button" className="icon-button" aria-label={`新增子标签 ${tag.name}`} title="新增子标签" onClick={() => { setTagDraft({ parentId: tag.id }); setDraftName('') }}><Icon name="plus" /></button>
+            {editingName ? null : <button type="button" className="icon-button" aria-label={`重命名 ${tag.name}`} title="重命名" onClick={() => { setRenameId(tag.id); setRenameValue(tag.name) }}><Icon name="pencil" /></button>}
+            <button type="button" className="icon-button" aria-label={`删除 ${tag.name}`} title="删除" disabled={busy} onClick={() => void run({ domain: 'tag', op: 'delete', id: tag.id })}><Icon name="trash" /></button>
+          </div>
+        </div>,
+        ...managedTree(tag.id, depth + 1),
+      ]
+    })
+
+  const tagManager = <section className="tag-manager" aria-label="统一标签管理">
+    <div className="tag-manager-toolbar">
+      <div className="segmented" role="group" aria-label="标签类型">
+        <button type="button" aria-label="时间标签" aria-selected={managerKind === 'time'} onClick={() => { setManagerKind('time'); setTagDraft(undefined); setRenameId(undefined) }}>时间</button>
+        <button type="button" aria-label="情境标签" aria-selected={managerKind === 'context'} onClick={() => { setManagerKind('context'); setTagDraft(undefined); setRenameId(undefined) }}>情境</button>
+      </div>
+      <button type="button" className="primary-button" onClick={() => { setTagDraft({ parentId: null }); setDraftName('') }}><Icon name="plus" />新增根标签</button>
+    </div>
+    <div className="tag-manager-body"><div className="tag-manager-inner">
+      <div className="manager-hint">同一套字段与管理交互 · 拖拽到标签上设为子级，拖到下方区域设为根级 · 防止循环</div>
+      {tagDraft !== undefined && <div className="draft-box">
+        <span className="draft-label">{tagDraft.parentId === null ? '新增根标签' : `在「${tagName(tagDraft.parentId)}」下新增`}</span>
+        <input
+          className="field-input" aria-label="标签名称" placeholder="标签名称" autoFocus value={draftName}
+          onChange={event => setDraftName(event.target.value)}
+          onKeyDown={event => { if (event.key === 'Enter') void saveDraft() }}
+        />
+        <button type="button" className="primary-button" disabled={busy || !draftName.trim()} onClick={() => void saveDraft()}>添加</button>
+        <button type="button" className="quiet-button" onClick={() => { setTagDraft(undefined); setDraftName('') }}>取消</button>
+      </div>}
+      <div>{managedTree(undefined, 0)}</div>
+      <div
+        className={`root-drop${dropTarget === 'root' ? ' is-drop-target' : ''}`}
+        role="region" aria-label="根标签放置区"
+        onDragOver={event => { allowTagDrop(event); setDropTarget('root') }}
+        onDragLeave={() => setDropTarget(current => current === 'root' ? null : current)}
+        onDrop={event => void dropTag(event, null)}
+      >拖到这里设为根标签</div>
+    </div></div>
+  </section>
+
+  const calendarPanel = calendar === undefined ? null : <div className="floating" role="dialog" aria-label="选择日期" style={calendar}>
+    <div className="calendar-head">
+      <button type="button" className="icon-button" aria-label="上一月" onClick={() => setCalendarMonth(shiftMonth(calendarMonth, -1))}><Icon name="chevron-left" /></button>
+      <strong>{Number(calendarMonth.slice(0, 4))} 年 {Number(calendarMonth.slice(5, 7))} 月</strong>
+      <button type="button" className="icon-button" aria-label="下一月" onClick={() => setCalendarMonth(shiftMonth(calendarMonth, 1))}><Icon name="chevron-right" /></button>
+    </div>
+    <div className="calendar-weekdays">{MONTH_DAYS.map(day => <span key={day}>{day}</span>)}</div>
+    <div className="calendar-grid">
+      {Array.from({ length: calendarGrid.firstOffset }, (_, index) => <span key={`blank-${index}`} />)}
+      {calendarGrid.days.map(value => <button
+        type="button" key={value}
+        className={`calendar-day${value === localDate() ? ' is-today' : ''}`}
+        aria-label={value} aria-current={value === date ? 'date' : 'false'}
+        onClick={() => chooseDate(value)}
+      >{Number(value.slice(8, 10))}</button>)}
+    </div>
+    <div className="calendar-footer"><button type="button" className="quiet-button" onClick={goToday}>回到今天</button></div>
+  </div>
+
+  const editorKindLabel = editingItem === undefined ? '' : editingItem.kind === 'actual' ? '实录' : editingItem.kind === 'plan' ? '计划' : '模板'
+  const editorPanel = editingItem === undefined ? null : <div className="floating" role="dialog" aria-label={`编辑${editorKindLabel}`} style={editorPlacement} ref={editorRef}>
+    <div className="floating-head">
+      <div>
+        <div className="floating-title">{tagName(editingItem.timeTagId)}</div>
+        <div className="floating-subtitle">{editingItem.startLabel}–{editingItem.endLabel} · 保存后生效</div>
+      </div>
+      <button type="button" className="icon-button" aria-label="关闭" onClick={() => setEditing(undefined)}><Icon name="x" /></button>
+    </div>
+    <div className="floating-body">
+      <div className="floating-section">
+        <span className="field-label">时间标签</span>
+        <div className="editor-tags">{renderTagTree('time', '', editTagId, tag => setEditTagId(tag.id))}</div>
+      </div>
+      <div className="floating-section">
+        <label className="field-label" htmlFor="recordNote">备注，可提及 GTD</label>
+        <textarea
+          className="field-textarea" id="recordNote" aria-label="备注" value={editNote}
+          onChange={event => setEditNote(event.target.value)}
+        />
+      </div>
+      <div className="editor-details">
+        <button type="button" className="details-toggle" aria-expanded={showDetails} onClick={() => setShowDetails(value => !value)}>时间与来源</button>
+        {showDetails && <div className="editor-fields">
+          <label>开始时刻<input aria-label="开始时刻" value={editStart} onChange={event => setEditStart(event.target.value)} /></label>
+          <label>结束时刻<input aria-label="结束时刻" placeholder={editingItem.kind === 'actual' ? '留空表示正在记录' : ''} value={editEnd} onChange={event => setEditEnd(event.target.value)} /></label>
+          {editingItem.kind === 'actual' && <>
+            <label>实际来源<select aria-label="实际来源" value={editSource} onChange={event => setEditSource(event.target.value as ActualSource)}>
+              {SOURCES.map(source => <option key={source} value={source}>{source}</option>)}
+            </select></label>
+            <label>专注档位<select aria-label="专注档位" value={editFocus} onChange={event => setEditFocus(event.target.value as FocusLevel | '')}>
+              <option value="">未标注</option><option value="deep">deep</option><option value="shallow">shallow</option>
+            </select></label>
+          </>}
+        </div>}
+      </div>
+      <div className="floating-actions">
+        <button type="button" className="danger-button" disabled={busy} onClick={() => { void removeItems([editingItem]); setEditing(undefined) }}><Icon name="trash" />删除{editorKindLabel}</button>
+        <span className="editor-actions-tail">
+          <button type="button" className="primary-button" onClick={() => void commitEditor(editingItem)}>{`保存${editorKindLabel}`}</button>
+          <button type="button" className="quiet-button" onClick={() => void commitEditor(editingItem)}>完成</button>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  const warning = warnings.find(item => item.message !== dismissedWarning)
+  const banner = error !== ''
+    ? { tone: 'is-error', message: error, dismiss: () => setError('') }
+    : warning === undefined ? undefined : { tone: '', message: warning.message, dismiss: () => setDismissedWarning(warning.message) }
+
+  return <div className="secretary-time-panel">
+    <IconSprite />
+    <style>{panelStyles}</style>
+    <header className="topbar">
+      <div className="brand">
+        <span className="brand-mark"><Icon name="grid" /></span>
+        <span className="brand-name">小秘书</span>
+      </div>
+      <nav className="module-nav" aria-label="一级模块">
+        {(['gtd', 'time', 'tags', 'goal'] as ProductView[]).map(item => <button
+          type="button" className="nav-button" key={item}
+          aria-current={product === item && item !== 'gtd' && item !== 'goal' ? 'page' : undefined}
+          onClick={() => {
+            if (item === 'tags' && (product === 'time' || product === 'gtd')) setManagerKind(product === 'gtd' ? 'context' : 'time')
+            setProduct(item)
+            setCalendar(undefined)
+            setEditing(undefined)
+          }}
+        >{item === 'gtd' ? 'GTD' : item === 'time' ? 'Time' : item === 'tags' ? 'Tags' : <>Goal <span className="phase-badge">二期</span></>}</button>)}
+      </nav>
+      <div className="top-actions">
+        <button
+          type="button" className="icon-button" aria-label="撤销" title="撤销 Cmd/Ctrl+Z"
+          disabled={undoStack.length === 0 || busy} onClick={() => void undoLast()}
+        ><Icon name="undo" /></button>
+      </div>
+    </header>
+    {banner !== undefined && <div className={`warning-strip ${banner.tone}`} role="alert">
+      <span>{banner.message}</span>
+      <button type="button" onClick={banner.dismiss}>知道了</button>
+    </div>}
+
+    {product === 'gtd' && <GtdWorkspace
+      tags={tags} inbox={inbox} projects={projects} actions={actions} nextActions={nextActions} forecast={forecast}
+      forecastDate={forecastDate} onForecastDateChange={setForecastDate} busy={busy} run={run}
+    />}
+    {product === 'goal' && <div className="placeholder">Goal 是保留的一级模块，本期不实现。</div>}
+    {product === 'tags' && tagManager}
+    {product === 'time' && timeModule}
+
+    {calendarPanel}
+    {editorPanel}
+  </div>
 }
-`

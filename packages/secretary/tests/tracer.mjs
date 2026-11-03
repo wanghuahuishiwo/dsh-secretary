@@ -1116,6 +1116,39 @@ test('panel Host routes expose the deep base week and mutations through the same
   assert.equal(after.deepWeek.cells.filter(cell => cell.level === 'medium').length, 3)
 })
 
+test('panel state keeps Time and Tag available when GTD storage holds an unreadable legacy record', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
+  const message = "domain 'secretary_gtd': stored record '5ff171ac-1193-4225-a4db-d55be3880eec' in table 'inbox' does not match its schema"
+  for (const method of ['listInbox', 'listProjects', 'listActions', 'listNextActions', 'listForecast']) {
+    harness.ctx.gtd[method] = async () => { throw new Error(message) }
+  }
+  const stateRoute = harness.routes.get('/api/secretary.state')
+  const response = await stateRoute.fetch(new Request('http://test.local/api/secretary.state?date=2026-11-02&timeZone=Asia%2FShanghai'))
+  assert.equal(response.status, 200, 'a broken GTD record must not take the whole panel down')
+  const state = await response.json()
+  assert.deepEqual(state.tags.map(item => item.id), [tag.id])
+  assert.equal(Array.isArray(state.blocks), true)
+  assert.equal(Array.isArray(state.deepWeek.cells), true)
+  assert.deepEqual(state.inbox, [])
+  assert.deepEqual(state.projects, [])
+  assert.deepEqual(state.actions, [])
+  assert.deepEqual(state.forecast, [])
+  assert.deepEqual(state.warnings.map(item => item.domain), ['gtd'])
+  assert.equal(state.warnings[0].message, message)
+
+  const written = await harness.routes.get('/api/secretary.command').fetch(new Request('http://test.local/api/secretary.command', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      domain: 'time', op: 'actual.create', timeTagId: tag.id,
+      startAt: '2026-11-02T09:00:00+08:00', endAt: '2026-11-02T10:00:00+08:00', actualSource: 'user_reported',
+    }),
+  }))
+  assert.equal(written.status, 200, 'Time writes must still work while GTD is unreadable')
+  const after = await stateRoute.fetch(new Request('http://test.local/api/secretary.state?date=2026-11-02&timeZone=Asia%2FShanghai'))
+  assert.equal((await after.json()).blocks.length, 1)
+})
+
 test('panel Host routes and public tools share the same Tag and Time Services', async (t) => {
   const harness = await sqliteHarness(t)
   const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })

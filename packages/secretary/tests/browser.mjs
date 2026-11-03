@@ -143,12 +143,24 @@ async function writeBrowserOverlay(home) {
   return overlay
 }
 
+async function openTagManager(page) {
+  await page.getByRole('button', { name: '管理', exact: true }).click()
+  await page.getByRole('region', { name: '统一标签管理' }).waitFor()
+}
+
+async function closeTagManager(page) {
+  await page.getByRole('button', { name: 'Time', exact: true }).click()
+  await page.getByLabel('时间标签架').waitFor()
+}
+
 async function createTag(page, name, parent) {
-  await page.getByRole('button', { name: '管理标签', exact: true }).click()
+  await openTagManager(page)
+  if (parent) await page.getByRole('button', { name: `新增子标签 ${parent}`, exact: true }).click()
+  else await page.getByRole('button', { name: '新增根标签', exact: true }).click()
   await page.getByLabel('标签名称').fill(name)
-  if (parent) await page.getByLabel('父标签').selectOption({ label: parent })
-  await page.getByRole('button', { name: '新建标签', exact: true }).click()
-  await page.getByRole('button', { name: '返回实录', exact: true }).click()
+  await page.getByRole('button', { name: '添加', exact: true }).click()
+  await page.locator('.manage-row').filter({ hasText: name }).waitFor()
+  await closeTagManager(page)
   await page.getByRole('button', { name, exact: true }).waitFor()
 }
 
@@ -223,36 +235,36 @@ test('real Chromium client covers Plan/Template/date navigation and restores all
   await createTag(page, '专注工作', '工作')
   await createTag(page, '听播客', '工作')
   await chooseDate(page, '2026-11-02')
-  await page.getByRole('button', { name: '专注工作', exact: true }).click()
+  await page.getByLabel('时间标签架').getByRole('button', { name: '专注工作', exact: true }).click()
   const slot = page.getByRole('button', { name: '2026-11-02 09:00 时间格', exact: true })
   await slot.click()
   const first = page.getByRole('button', { name: /实录 专注工作 09:00/ })
   await first.waitFor()
-  await page.getByRole('button', { name: '撤销添加', exact: true }).click()
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
   await first.waitFor({ state: 'detached' })
   await slot.click()
   await first.waitFor()
-  await page.getByRole('button', { name: '听播客', exact: true }).click()
+  await page.getByLabel('时间标签架').getByRole('button', { name: '听播客', exact: true }).click()
   await first.click()
-  await page.locator('[data-slot="09:00"] .actual-fragment').nth(1).waitFor()
-  assert.equal(await page.locator('[data-slot="09:00"] .actual-fragment').count(), 2)
-  await page.getByRole('button', { name: '专注工作', exact: true }).click()
+  await page.locator('.time-fragment[data-slot="09:00"]').nth(1).waitFor()
+  assert.equal(await page.locator('.time-fragment[data-slot="09:00"]').count(), 2)
+  await page.getByLabel('时间标签架').getByRole('button', { name: '专注工作', exact: true }).click()
   await first.click()
   await first.waitFor({ state: 'detached' })
-  assert.equal(await page.locator('[data-slot="09:00"] .actual-fragment').count(), 1)
+  assert.equal(await page.locator('.time-fragment[data-slot="09:00"]').count(), 1)
   assert.equal(await page.getByRole('dialog', { name: '编辑实录', exact: true }).count(), 0)
-  await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
   await first.waitFor()
-  assert.equal(await page.locator('[data-slot="09:00"] .actual-fragment').count(), 2)
+  assert.equal(await page.locator('.time-fragment[data-slot="09:00"]').count(), 2)
 
   await first.click({ modifiers: ['Shift'] })
-  await page.getByLabel('实录备注').fill('浏览器真实实录')
+  await page.getByLabel('备注', { exact: true }).fill('浏览器真实实录')
   await page.getByRole('button', { name: '保存实录', exact: true }).click()
   await page.getByText('浏览器真实实录', { exact: true }).waitFor()
-  await page.getByRole('button', { name: '撤销编辑', exact: true }).click()
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
   await page.getByText('浏览器真实实录', { exact: true }).waitFor({ state: 'detached' })
   await first.click({ modifiers: ['Shift'] })
-  await page.getByLabel('实录备注').fill('浏览器真实实录')
+  await page.getByLabel('备注', { exact: true }).fill('浏览器真实实录')
   await page.getByRole('button', { name: '保存实录', exact: true }).click()
   await page.getByText('浏览器真实实录', { exact: true }).waitFor()
 
@@ -269,13 +281,13 @@ test('real Chromium client covers Plan/Template/date navigation and restores all
   await openPanel(page, server.url).catch(error => { console.error('DSH output:', server.output()); throw error })
   await chooseDate(page, '2026-11-02')
   await page.getByText('浏览器真实实录', { exact: true }).waitFor()
-  assert.equal(await page.locator('[data-slot="09:00"] .actual-fragment').count(), 2)
+  assert.equal(await page.locator('.time-fragment[data-slot="09:00"]').count(), 2)
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), '390px layout has horizontal overflow')
 
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.getByRole('tab', { name: '计划', exact: true }).click()
   await chooseDate(page, '2026-11-02')
-  await page.getByRole('button', { name: '专注工作', exact: true }).click()
+  await page.getByLabel('时间标签架').getByRole('button', { name: '专注工作', exact: true }).click()
   await page.getByRole('button', { name: '2026-11-02 09:00 时间格', exact: true }).click()
   const originalPlan = page.getByRole('button', { name: /计划 专注工作 09:00/ })
   await originalPlan.waitFor()
@@ -287,11 +299,9 @@ test('real Chromium client covers Plan/Template/date navigation and restores all
   await originalPlan.waitFor()
 
   await page.getByRole('button', { name: '计划模板', exact: true }).click()
-  await page.getByRole('button', { name: '周一', exact: true }).click()
-  await page.getByLabel('模板开始时间').fill('10:00')
-  await page.getByLabel('模板结束时间').fill('11:00')
-  await page.getByLabel('模板备注').fill('浏览器模板计划')
-  await page.getByRole('button', { name: '新增模板', exact: true }).click()
+  await page.getByRole('group', { name: '模板星期', exact: true }).getByRole('button', { name: '周一', exact: true }).click()
+  await page.getByRole('button', { name: '2026-11-02 10:00 时间格', exact: true }).click()
+  await page.getByRole('button', { name: '模板 专注工作 10:00', exact: true }).waitFor()
   await page.getByRole('button', { name: '应用到 2026-11-02', exact: true }).click()
   const appliedPlan = page.getByRole('button', { name: /计划 专注工作 10:00/ }).first()
   await appliedPlan.waitFor()
@@ -299,7 +309,7 @@ test('real Chromium client covers Plan/Template/date navigation and restores all
 
   await page.getByRole('tab', { name: '实录', exact: true }).click()
   await page.getByText('浏览器真实实录', { exact: true }).waitFor()
-  assert.equal(await page.locator('[data-slot="09:00"] .actual-fragment').count(), 2)
+  assert.equal(await page.locator('.time-fragment[data-slot="09:00"]').count(), 2)
 
   await openPanel(page, server.url)
   await page.getByRole('tab', { name: '计划', exact: true }).click()
@@ -402,18 +412,18 @@ test('real Chromium Plan and Actual erase gestures keep the starting Tag fixed a
   for (const view of ['actual', 'plan']) {
     const kind = view === 'actual' ? '实录' : '计划'
     if (view === 'plan') await page.getByRole('tab', { name: '计划', exact: true }).click()
-    const fragment = (slot, tag) => page.locator(`[data-slot="${slot}"] .time-fragment[aria-label="${kind} ${tag} ${slot}"]`)
+    const fragment = (slot, tag) => page.locator(`.time-fragment[data-slot="${slot}"][aria-label="${kind} ${tag} ${slot}"]`)
     const add = async (slot, tag) => {
       await page.getByRole('button', { name: tag, exact: true }).click()
-      const existing = page.locator(`[data-slot="${slot}"] .time-fragment`).first()
+      const existing = page.locator(`.time-fragment[data-slot="${slot}"]`).first()
       if (await existing.count() > 0) await existing.click()
       else await page.getByRole('button', { name: `2026-11-02 ${slot} 时间格`, exact: true }).click()
       await fragment(slot, tag).waitFor()
     }
 
     for (const tag of ['甲', '乙', '丙', '丁']) await add('08:00', tag)
-    await page.getByRole('button', { name: '丁', exact: true }).dblclick()
-    await page.getByText('消除态：点击记录删除', { exact: true }).waitFor()
+    await page.getByLabel('时间标签架').getByRole('button', { name: '丁', exact: true }).dblclick()
+    await page.getByText('消除状态：点击记录消除', { exact: true }).waitFor()
     const accidentalCommands = []
     const collectCommand = request => {
       if (request.url().includes('/api/secretary.command')) accidentalCommands.push(request)
@@ -422,26 +432,26 @@ test('real Chromium Plan and Actual erase gestures keep the starting Tag fixed a
     await page.getByRole('button', { name: '2026-11-02 12:00 时间格', exact: true }).click({ position: { x: 1, y: 1 } })
     page.off('request', collectCommand)
     assert.equal(accidentalCommands.length, 0, 'erase-mode empty-cell click must not add a record')
-    assert.equal(await page.locator('[data-slot="12:00"] .time-fragment').count(), 0)
+    assert.equal(await page.locator('.time-fragment[data-slot="12:00"]').count(), 0)
     await fragment('08:00', '甲').click({ modifiers: ['Shift'] })
     await page.getByRole('dialog', { name: `编辑${kind}`, exact: true }).waitFor()
-    await page.getByRole('button', { name: '取消', exact: true }).click()
+    await page.getByRole('button', { name: '关闭', exact: true }).click()
     await fragment('08:00', '甲').click()
     await fragment('08:00', '甲').waitFor({ state: 'detached' })
     assert.equal(await fragment('08:00', '乙').count(), 1)
     assert.equal(await fragment('08:00', '丙').count(), 1)
     assert.equal(await fragment('08:00', '丁').count(), 1)
-    await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+    await page.getByRole('button', { name: '撤销', exact: true }).click()
     await fragment('08:00', '甲').waitFor()
-    await page.getByRole('button', { name: '甲', exact: true }).click()
-    assert.equal(await page.getByText('消除态：点击记录删除', { exact: true }).count(), 0)
+    await page.getByLabel('时间标签架').getByRole('button', { name: '甲', exact: true }).click()
+    assert.equal(await page.getByText('消除状态：点击记录消除', { exact: true }).count(), 0)
 
     await add('08:10', '乙')
     await add('08:10', '甲')
     await add('08:20', '乙')
     await add('08:20', '甲')
-    await page.getByRole('button', { name: '乙', exact: true }).dblclick()
-    await page.getByText('消除态：点击记录删除', { exact: true }).waitFor()
+    await page.getByLabel('时间标签架').getByRole('button', { name: '乙', exact: true }).dblclick()
+    await page.getByText('消除状态：点击记录消除', { exact: true }).waitFor()
     const boxes = []
     for (const slot of ['08:00', '08:10', '08:20']) {
       const box = await fragment(slot, '乙').boundingBox()
@@ -460,10 +470,10 @@ test('real Chromium Plan and Actual erase gestures keep the starting Tag fixed a
     assert.equal(await fragment('08:00', '丁').count(), 1)
     assert.equal(await fragment('08:10', '甲').count(), 1)
     assert.equal(await fragment('08:20', '甲').count(), 1)
-    await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+    await page.getByRole('button', { name: '撤销', exact: true }).click()
     for (const slot of ['08:00', '08:10', '08:20']) await fragment(slot, '乙').waitFor()
-    await page.getByRole('button', { name: '丙', exact: true }).click()
-    assert.equal(await page.getByText('消除态：点击记录删除', { exact: true }).count(), 0)
+    await page.getByLabel('时间标签架').getByRole('button', { name: '丙', exact: true }).click()
+    assert.equal(await page.getByText('消除状态：点击记录消除', { exact: true }).count(), 0)
   }
   assert.deepEqual(pageErrors, [])
 })
@@ -523,58 +533,55 @@ test('real Chromium Plan and Actual keep parallel layout, cross-hour titles, edi
   for (const view of ['actual', 'plan']) {
     const kind = view === 'actual' ? '实录' : '计划'
     if (view === 'plan') await page.getByRole('tab', { name: '计划', exact: true }).click()
-    const fragment = (slot, tag, labelTime = slot) => page.locator(`[data-slot="${slot}"] .time-fragment[aria-label="${kind} ${tag} ${labelTime}"]`)
+    const fragment = (slot, tag, labelTime = slot) => page.locator(`.time-fragment[data-slot="${slot}"][aria-label="${kind} ${tag} ${labelTime}"]`)
     const add = async (slot, tag) => {
       await page.getByRole('button', { name: tag, exact: true }).click()
-      const existing = page.locator(`[data-slot="${slot}"] .time-fragment`).first()
+      const existing = page.locator(`.time-fragment[data-slot="${slot}"]`).first()
       if (await existing.count() > 0) await existing.click()
       else await page.getByRole('button', { name: `2026-11-02 ${slot} 时间格`, exact: true }).click()
       await fragment(slot, tag).waitFor()
     }
-    const widths = async () => page.locator('[data-slot="09:00"] .time-fragment').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().width))
+    const widths = async () => page.locator('.time-fragment[data-slot="09:00"]').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().width))
     const assertHourGeometry = async () => {
       assert.equal(await page.locator('.hour-row').count(), 24)
       assert.ok(await page.locator('.hour-row').evaluateAll(rows => rows.every(row => row.getBoundingClientRect().height === 48)))
     }
 
     await add('09:00', '甲')
-    await page.getByRole('button', { name: '撤销添加', exact: true }).click()
+    await page.getByRole('button', { name: '撤销', exact: true }).click()
     await fragment('09:00', '甲').waitFor({ state: 'detached' })
     await add('09:00', '甲')
     for (const tag of ['乙', '丙', '丁']) await add('09:00', tag)
-    assert.equal(await page.locator('[data-slot="09:00"] .time-fragment').count(), 4)
+    assert.equal(await page.locator('.time-fragment[data-slot="09:00"]').count(), 4)
     const quarters = await widths()
     assert.equal(quarters.length, 4)
     assert.ok(Math.max(...quarters) - Math.min(...quarters) <= 1, `four parallel widths differ: ${quarters}`)
     await assertHourGeometry()
-    const visual = await page.locator('[data-slot="09:00"]').evaluate(slot => ({
-      gap: getComputedStyle(slot.querySelector('.fragment-layer')).gap,
-      fragments: [...slot.querySelectorAll('.time-fragment')].map(element => ({
-        color: getComputedStyle(element).backgroundColor,
-        radius: getComputedStyle(element).borderRadius,
-      })),
-    }))
-    assert.equal(visual.gap, '1px')
-    assert.ok(visual.fragments.every(item => item.color === 'rgb(71, 123, 199)' && item.radius === '4px'))
+    const visual = await page.locator('.time-fragment[data-slot="09:00"]').evaluateAll(elements => elements.map(element => ({
+      color: getComputedStyle(element).backgroundColor,
+      radius: getComputedStyle(element).borderRadius,
+    })))
+    assert.ok(visual.every(item => item.radius === '4px'), 'every parallel fragment keeps the prototype radius')
+    assert.equal(new Set(visual.map(item => item.color)).size, 4, 'each parallel Tag keeps its own colour')
 
-    await page.getByRole('button', { name: '甲', exact: true }).click()
-    await page.getByRole('button', { name: '2026-11-02 09:00 时间格', exact: true }).click({ position: { x: 1, y: 1 } })
+    await page.getByLabel('时间标签架').getByRole('button', { name: '甲', exact: true }).click()
+    await fragment('09:00', '甲').click()
     await fragment('09:00', '甲').waitFor({ state: 'detached' })
-    assert.equal(await page.locator('[data-slot="09:00"] .time-fragment').count(), 3)
-    await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+    assert.equal(await page.locator('.time-fragment[data-slot="09:00"]').count(), 3)
+    await page.getByRole('button', { name: '撤销', exact: true }).click()
     await fragment('09:00', '甲').waitFor()
 
-    await page.getByRole('button', { name: '甲', exact: true }).click()
+    await page.getByLabel('时间标签架').getByRole('button', { name: '甲', exact: true }).click()
     await fragment('09:00', '乙').click()
     await fragment('09:00', '甲').waitFor({ state: 'detached' })
-    assert.equal(await page.locator('[data-slot="09:00"] .time-fragment').count(), 3)
+    assert.equal(await page.locator('.time-fragment[data-slot="09:00"]').count(), 3)
     assert.equal(await fragment('09:00', '乙').count(), 1)
     assert.equal(await fragment('09:00', '丙').count(), 1)
     assert.equal(await fragment('09:00', '丁').count(), 1)
-    await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+    await page.getByRole('button', { name: '撤销', exact: true }).click()
     await fragment('09:00', '甲').waitFor()
 
-    await page.getByRole('button', { name: '丁', exact: true }).click()
+    await page.getByLabel('时间标签架').getByRole('button', { name: '丁', exact: true }).click()
     await fragment('09:00', '丁').click()
     await fragment('09:00', '丁').waitFor({ state: 'detached' })
     assert.equal(await page.getByRole('dialog', { name: `编辑${kind}`, exact: true }).count(), 0)
@@ -585,27 +592,28 @@ test('real Chromium Plan and Actual keep parallel layout, cross-hour titles, edi
     assert.equal(await fragment('09:00', '乙').count(), 1)
     assert.equal(await fragment('09:00', '丙').count(), 1)
     await assertHourGeometry()
-    await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+    await page.getByRole('button', { name: '撤销', exact: true }).click()
     await fragment('09:00', '丁').waitFor()
     assert.equal((await widths()).length, 4)
 
     await fragment('09:00', '甲').click({ modifiers: ['Shift'] })
     await page.getByRole('dialog', { name: `编辑${kind}`, exact: true }).waitFor()
-    await page.getByLabel(`${kind}标签`).selectOption({ label: '丁' })
-    await page.getByLabel(`${kind}备注`).fill(`${kind}修改`)
+    await page.getByRole('dialog', { name: `编辑${kind}`, exact: true }).getByRole('button', { name: '丁', exact: true }).click()
+    await page.getByLabel('备注', { exact: true }).fill(`${kind}修改`)
     await page.getByRole('button', { name: `保存${kind}`, exact: true }).click()
     await page.getByText(`${kind}修改`, { exact: true }).waitFor()
     await fragment('09:00', '甲').waitFor({ state: 'detached' })
-    await page.getByRole('button', { name: '撤销编辑', exact: true }).click()
+    await page.getByRole('button', { name: '撤销', exact: true }).click()
     await fragment('09:00', '甲').waitFor()
     await page.getByText(`${kind}修改`, { exact: true }).waitFor({ state: 'detached' })
     assert.equal(await fragment('09:00', '丁').count(), 1)
 
     await add('10:50', '跨时')
     await fragment('10:50', '跨时').click({ modifiers: ['Shift'] })
+    if (await page.getByLabel('开始时刻').count() === 0) await page.getByRole('button', { name: '时间与来源', exact: true }).click()
     await page.getByLabel('开始时刻').fill('2026-11-02T10:50:00+08:00')
     await page.getByLabel('结束时刻').fill('2026-11-02T11:20:00+08:00')
-    await page.getByLabel(`${kind}备注`).fill(`${kind}跨小时标题`)
+    await page.getByLabel('备注', { exact: true }).fill(`${kind}跨小时标题`)
     await page.getByRole('button', { name: `保存${kind}`, exact: true }).click()
     await fragment('11:10', '跨时', '10:50').waitFor()
     const covered = await Promise.all(['10:50', '11:00', '11:10'].map(async slot => {
@@ -613,7 +621,7 @@ test('real Chromium Plan and Actual keep parallel layout, cross-hour titles, edi
       return { id: await target.getAttribute('data-block-id'), text: await target.innerText() }
     }))
     assert.equal(new Set(covered.map(item => item.id)).size, 1)
-    assert.deepEqual(covered.map(item => item.text), [`${kind}跨小时标题`, '', ''])
+    assert.deepEqual(covered.map(item => item.text), [`${kind}跨小时标题\n10:50–11:20`, '', ''], 'only the first slot of a cross-hour block carries its label')
     await assertHourGeometry()
 
     const facts = async () => page.evaluate(async ({ view }) => {
@@ -624,7 +632,7 @@ test('real Chromium Plan and Actual keep parallel layout, cross-hour titles, edi
     const before = await facts()
     for (const [minutes, slots] of [[15, 4], [30, 2], [10, 6]]) {
       await page.getByRole('button', { name: `${minutes} 分钟`, exact: true }).click()
-      assert.equal(await page.locator('.hour-row').nth(9).locator('.time-slot').count(), slots)
+      assert.equal(await page.locator('.hour-row').nth(9).locator('.slot').count(), slots)
       await assertHourGeometry()
       assert.deepEqual(await facts(), before, `${kind} ${minutes}-minute display rewrote persisted facts`)
     }
@@ -825,11 +833,12 @@ test('real Chromium GTD flow uses the product shell and survives a full isolated
   collectPageErrors(page, pageErrors, true)
   await openPanel(page, server.url)
   await createTag(page, '工作')
-  await page.getByRole('button', { name: '管理标签', exact: true }).click()
+  await openTagManager(page)
   await page.getByRole('button', { name: '情境标签', exact: true }).click()
+  await page.getByRole('button', { name: '新增根标签', exact: true }).click()
   await page.getByLabel('标签名称').fill('电脑')
-  await page.getByRole('button', { name: '新建标签', exact: true }).click()
-  await page.getByRole('button', { name: '返回实录', exact: true }).click()
+  await page.getByRole('button', { name: '添加', exact: true }).click()
+  await closeTagManager(page)
 
   await page.getByRole('button', { name: 'GTD', exact: true }).click()
   await page.getByRole('region', { name: 'GTD 工作区' }).waitFor()
@@ -907,7 +916,7 @@ test('real Chromium batch erase keeps an error and Undo for the deleted prefix w
   await chooseDate(page, '2026-11-02')
   for (const slot of ['10:00', '10:10']) {
     await page.getByRole('button', { name: `2026-11-02 ${slot} 时间格`, exact: true }).click()
-    await page.locator(`[data-slot="${slot}"] .actual-fragment`).waitFor()
+    await page.locator(`.actual-fragment[data-slot="${slot}"]`).waitFor()
   }
 
   let deleteCount = 0
@@ -921,9 +930,9 @@ test('real Chromium batch erase keeps an error and Undo for the deleted prefix w
     }
     return route.continue()
   })
-  await page.getByRole('button', { name: '工作', exact: true }).dblclick()
-  const first = page.locator('[data-slot="10:00"] .actual-fragment')
-  const second = page.locator('[data-slot="10:10"] .actual-fragment')
+  await page.getByLabel('时间标签架').getByRole('button', { name: '工作', exact: true }).dblclick()
+  const first = page.locator('.time-fragment[data-slot="10:00"]')
+  const second = page.locator('.time-fragment[data-slot="10:10"]')
   const boxes = [await first.boundingBox(), await second.boundingBox()]
   assert.ok(boxes[0] && boxes[1])
   await page.mouse.move(boxes[0].x + boxes[0].width / 2, boxes[0].y + boxes[0].height / 2)
@@ -935,11 +944,16 @@ test('real Chromium batch erase keeps an error and Undo for the deleted prefix w
   await second.waitFor()
   assert.equal(deleteCount, 2)
 
-  await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
   await first.waitFor()
   await second.waitFor()
   assert.equal(await page.locator('.actual-fragment').count(), 2)
-  assert.equal(await page.getByRole('button', { name: '撤销消除', exact: true }).count(), 0)
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
+  await second.waitFor({ state: 'detached' })
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
+  await first.waitFor({ state: 'detached' })
+  assert.equal(await page.locator('.actual-fragment').count(), 0)
+  assert.equal(await page.getByRole('button', { name: '撤销', exact: true }).isDisabled(), true, 'Undo must be unavailable once the stack is empty')
   assert.deepEqual(pageErrors, [])
 })
 
@@ -975,23 +989,23 @@ test('real Chromium Plan Undo derives the original date for overnight blocks and
   await openPanel(page, server.url)
   await page.getByRole('tab', { name: '计划', exact: true }).click()
   await chooseDate(page, '2026-11-03')
-  const overnight = page.locator('[data-slot="00:00"] .plan-fragment[aria-label="计划 夜间工作 23:30"]')
+  const overnight = page.locator('.plan-fragment[data-slot="00:00"][aria-label="计划 夜间工作 23:30"]')
   await overnight.waitFor()
   await overnight.click()
   await overnight.waitFor({ state: 'detached' })
-  await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
   await overnight.waitFor()
   const recreatedId = Number(await overnight.getAttribute('data-block-id'))
   assert.notEqual(recreatedId, originalId)
   await chooseDate(page, '2026-11-02')
-  const originalDay = page.locator('[data-slot="23:30"] .plan-fragment')
+  const originalDay = page.locator('.plan-fragment[data-slot="23:30"]')
   await originalDay.waitFor()
   assert.equal(Number(await originalDay.getAttribute('data-block-id')), recreatedId)
 
   await originalDay.click()
   await originalDay.waitFor({ state: 'detached' })
   await chooseDate(page, '2026-11-04')
-  await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
   await chooseDate(page, '2026-11-02')
   await originalDay.waitFor()
   assert.notEqual(Number(await originalDay.getAttribute('data-block-id')), recreatedId)
@@ -1017,17 +1031,17 @@ test('real Chromium Undo failure preserves remaining commands and remaps older s
   await openPanel(page, server.url)
   await createTag(page, '工作')
   await chooseDate(page, '2026-11-02')
-  const fragment = slot => page.locator(`[data-slot="${slot}"] .actual-fragment`)
+  const fragment = slot => page.locator(`.actual-fragment[data-slot="${slot}"]`)
   for (const slot of ['10:00', '10:10', '10:20']) {
     await page.getByRole('button', { name: `2026-11-02 ${slot} 时间格`, exact: true }).click()
     await fragment(slot).waitFor()
   }
   await fragment('10:00').click({ modifiers: ['Shift'] })
-  await page.getByLabel('实录备注').fill('失败前编辑')
+  await page.getByLabel('备注', { exact: true }).fill('失败前编辑')
   await page.getByRole('button', { name: '保存实录', exact: true }).click()
   await page.getByText('失败前编辑', { exact: true }).waitFor()
 
-  await page.getByRole('button', { name: '工作', exact: true }).dblclick()
+  await page.getByLabel('时间标签架').getByRole('button', { name: '工作', exact: true }).dblclick()
   const boxes = []
   for (const slot of ['10:00', '10:10', '10:20']) {
     const box = await fragment(slot).boundingBox()
@@ -1050,21 +1064,21 @@ test('real Chromium Undo failure preserves remaining commands and remaps older s
     }
     return route.continue()
   })
-  await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
   await page.getByRole('alert').filter({ hasText: 'injected undo retry failure' }).waitFor()
   await fragment('10:00').waitFor()
   assert.equal(await fragment('10:10').count(), 0)
   assert.equal(await fragment('10:20').count(), 0)
-  assert.equal(await page.getByRole('button', { name: '撤销消除', exact: true }).count(), 1, 'failed Undo entry must remain on the stack')
+  assert.equal(await page.getByRole('button', { name: '撤销', exact: true }).count(), 1, 'failed Undo entry must remain on the stack')
 
-  await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
   for (const slot of ['10:00', '10:10', '10:20']) await fragment(slot).waitFor()
   assert.equal(restoreCount, 4, 'retry must execute only the two remaining restore commands')
-  await page.getByRole('button', { name: '工作', exact: true }).click()
-  await page.getByRole('button', { name: '撤销编辑', exact: true }).click()
+  await page.getByLabel('时间标签架').getByRole('button', { name: '工作', exact: true }).click()
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
   await page.getByText('失败前编辑', { exact: true }).waitFor({ state: 'detached' })
   for (const slot of ['10:20', '10:10', '10:00']) {
-    await page.getByRole('button', { name: '撤销添加', exact: true }).click()
+    await page.getByRole('button', { name: '撤销', exact: true }).click()
     await fragment(slot).waitFor({ state: 'detached' })
   }
   assert.equal(await page.locator('.actual-fragment').count(), 0)
@@ -1127,28 +1141,28 @@ test('real Chromium undo remaps recreated IDs through edits and whole erase drag
   for (const view of ['actual', 'plan']) {
     const kind = view === 'actual' ? '实录' : '计划'
     if (view === 'plan') await page.getByRole('tab', { name: '计划', exact: true }).click()
-    const fragment = slot => page.locator(`[data-slot="${slot}"] .time-fragment[aria-label="${kind} 工作 ${slot}"]`)
-    await page.getByRole('button', { name: '工作', exact: true }).click()
+    const fragment = slot => page.locator(`.time-fragment[data-slot="${slot}"][aria-label="${kind} 工作 ${slot}"]`)
+    await page.getByLabel('时间标签架').getByRole('button', { name: '工作', exact: true }).click()
     await page.getByRole('button', { name: '2026-11-02 09:00 时间格', exact: true }).click()
     await fragment('09:00').waitFor()
     const originalId = Number(await fragment('09:00').getAttribute('data-block-id'))
     await fragment('09:00').click({ modifiers: ['Shift'] })
-    await page.getByLabel(`${kind}备注`).fill(`${kind}编辑后`)
+    await page.getByLabel('备注', { exact: true }).fill(`${kind}编辑后`)
     await page.getByRole('button', { name: `保存${kind}`, exact: true }).click()
     await page.getByText(`${kind}编辑后`, { exact: true }).waitFor()
 
-    await page.getByRole('button', { name: '工作', exact: true }).dblclick()
+    await page.getByLabel('时间标签架').getByRole('button', { name: '工作', exact: true }).dblclick()
     await fragment('09:00').click()
     await fragment('09:00').waitFor({ state: 'detached' })
-    await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+    await page.getByRole('button', { name: '撤销', exact: true }).click()
     await fragment('09:00').waitFor()
     const recreatedId = Number(await fragment('09:00').getAttribute('data-block-id'))
     assert.notEqual(recreatedId, originalId, `${kind} restore should allocate a new ID`)
-    await page.getByRole('button', { name: '工作', exact: true }).click()
-    await page.getByRole('button', { name: '撤销编辑', exact: true }).click()
+    await page.getByLabel('时间标签架').getByRole('button', { name: '工作', exact: true }).click()
+    await page.getByRole('button', { name: '撤销', exact: true }).click()
     await page.getByText(`${kind}编辑后`, { exact: true }).waitFor({ state: 'detached' })
     assert.equal(Number(await fragment('09:00').getAttribute('data-block-id')), recreatedId)
-    await page.getByRole('button', { name: '撤销添加', exact: true }).click()
+    await page.getByRole('button', { name: '撤销', exact: true }).click()
     await fragment('09:00').waitFor({ state: 'detached' })
 
     for (const slot of ['10:00', '10:10', '10:20']) {
@@ -1157,7 +1171,7 @@ test('real Chromium undo remaps recreated IDs through edits and whole erase drag
     }
     const beforeEraseIds = await Promise.all(['10:00', '10:10', '10:20'].map(async slot =>
       Number(await fragment(slot).getAttribute('data-block-id'))))
-    await page.getByRole('button', { name: '工作', exact: true }).dblclick()
+    await page.getByLabel('时间标签架').getByRole('button', { name: '工作', exact: true }).dblclick()
     const boxes = []
     for (const slot of ['10:00', '10:10', '10:20']) {
       const box = await fragment(slot).boundingBox()
@@ -1169,15 +1183,15 @@ test('real Chromium undo remaps recreated IDs through edits and whole erase drag
     for (const box of boxes.slice(1)) await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 6 })
     await page.mouse.up()
     for (const slot of ['10:00', '10:10', '10:20']) await fragment(slot).waitFor({ state: 'detached' })
-    await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+    await page.getByRole('button', { name: '撤销', exact: true }).click()
     for (const slot of ['10:00', '10:10', '10:20']) await fragment(slot).waitFor()
     const restoredIds = await Promise.all(['10:00', '10:10', '10:20'].map(async slot =>
       Number(await fragment(slot).getAttribute('data-block-id'))))
     assert.equal(new Set(restoredIds).size, 3)
     assert.ok(restoredIds.every(id => !beforeEraseIds.includes(id)), `${kind} drag restore must allocate new IDs`)
-    await page.getByRole('button', { name: '工作', exact: true }).click()
+    await page.getByLabel('时间标签架').getByRole('button', { name: '工作', exact: true }).click()
     for (const slot of ['10:20', '10:10', '10:00']) {
-      await page.getByRole('button', { name: '撤销添加', exact: true }).click()
+      await page.getByRole('button', { name: '撤销', exact: true }).click()
       await fragment(slot).waitFor({ state: 'detached' })
     }
   }
@@ -1234,17 +1248,18 @@ test('real Chromium Tag entry kinds and desktop HTML5 hierarchy drops persist fo
   collectPageErrors(page, pageErrors)
   await openPanel(page, server.url)
 
-  const kind = page.getByLabel('标签类型', { exact: true })
   const addManagedTag = async name => {
+    await page.getByRole('button', { name: '新增根标签', exact: true }).click()
     await page.getByLabel('标签名称').fill(name)
-    await page.getByRole('button', { name: '新建标签', exact: true }).click()
-    await page.locator('.managed-tag').filter({ hasText: name }).waitFor()
+    await page.getByRole('button', { name: '添加', exact: true }).click()
+    await page.locator('.manage-row').filter({ hasText: name }).waitFor()
   }
-  const row = name => page.locator('.managed-tag').filter({ hasText: name })
+  const row = name => page.locator('.manage-row').filter({ hasText: name })
   const storedTags = async () => page.evaluate(async () => {
     const response = await fetch('/api/secretary.state?date=2026-11-02&timeZone=Asia%2FShanghai')
     return (await response.json()).tags
   })
+  const managerKind = async name => page.getByRole('button', { name, exact: true }).getAttribute('aria-selected')
   const drop = async (child, parent) => {
     const before = await storedTags()
     const childId = before.find(tag => tag.name === child).id
@@ -1255,37 +1270,40 @@ test('real Chromium Tag entry kinds and desktop HTML5 hierarchy drops persist fo
     else await row(child).dragTo(row(parent))
     assert.equal((await response).status(), 200)
     await page.waitForFunction(({ childId, parentId }) => {
-      const target = document.querySelector(`.managed-tag[data-tag-id="${childId}"]`)
+      const target = document.querySelector(`.manage-row[data-tag-id="${childId}"]`)
       return target?.getAttribute('data-parent-id') === (parentId === null ? '' : String(parentId))
     }, { childId, parentId })
     const after = await storedTags()
     assert.equal(after.find(tag => tag.id === childId).parentId, parentId ?? undefined)
   }
+  const goTime = async () => {
+    await page.getByRole('button', { name: 'Time', exact: true }).click()
+    await page.getByLabel('时间标签架').waitFor()
+  }
 
-  await page.getByRole('button', { name: '管理标签', exact: true }).click()
-  assert.equal(await kind.inputValue(), 'time')
+  await openTagManager(page)
+  assert.equal(await managerKind('时间标签'), 'true')
   await page.getByRole('button', { name: '情境标签', exact: true }).click()
-  await page.getByRole('button', { name: '返回实录', exact: true }).click()
+  await goTime()
   await page.getByRole('button', { name: 'GTD', exact: true }).click()
   await page.getByRole('button', { name: 'Tags', exact: true }).click()
-  assert.equal(await kind.inputValue(), 'context')
-  await page.getByRole('button', { name: '返回实录', exact: true }).click()
+  assert.equal(await managerKind('情境标签'), 'true')
+  await goTime()
   await page.getByRole('button', { name: 'Tags', exact: true }).click()
-  assert.equal(await kind.inputValue(), 'time', 'Time must not retain the previous context manager kind')
+  assert.equal(await managerKind('时间标签'), 'true', 'Time must not retain the previous context manager kind')
 
   await addManagedTag('工作')
   await addManagedTag('专注')
   await drop('专注', '工作')
-  await page.getByRole('button', { name: '返回实录', exact: true }).click()
-  assert.equal(await page.locator('.tag-shelf > button').filter({ hasText: '专注' }).evaluate(element => element.style.getPropertyValue('--depth')), '1')
-  await page.getByRole('button', { name: '管理标签', exact: true }).click()
+  await goTime()
+  assert.equal(await page.locator('.tag-shelf .tag-choice').filter({ hasText: '专注' }).first().evaluate(element => element.style.getPropertyValue('--depth')), '1')
+  await openTagManager(page)
   await drop('专注', null)
-  await page.getByRole('button', { name: '返回实录', exact: true }).click()
-  assert.equal(await page.locator('.tag-shelf > button').filter({ hasText: '专注' }).evaluate(element => element.style.getPropertyValue('--depth')), '0')
+  await goTime()
+  assert.equal(await page.locator('.tag-shelf .tag-choice').filter({ hasText: '专注' }).first().evaluate(element => element.style.getPropertyValue('--depth')), '0')
 
-  await page.getByRole('button', { name: 'GTD', exact: true }).click()
   await page.getByRole('button', { name: 'Tags', exact: true }).click()
-  assert.equal(await kind.inputValue(), 'context')
+  await page.getByRole('button', { name: '情境标签', exact: true }).click()
   await addManagedTag('地点')
   await addManagedTag('电脑')
   await drop('电脑', '地点')
@@ -1357,13 +1375,13 @@ test('real Chromium host light/dark themes drive readable tokens and 390px layou
     await page.getByRole('button', { name: /实录 工作 09:00/ }).waitFor()
     observed[theme] = await page.evaluate(() => {
       const panel = document.querySelector('.secretary-time-panel')
-      const header = document.querySelector('.product-header')
+      const header = document.querySelector('.topbar')
       const probe = document.createElement('div')
       probe.style.cssText = 'position:fixed;visibility:hidden;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)'
       document.body.appendChild(probe)
       const panelStyle = getComputedStyle(panel)
       const tokenStyle = getComputedStyle(probe)
-      const selectedStyle = getComputedStyle(document.querySelector('.tag-shelf > button.selected'))
+      const selectedStyle = getComputedStyle(document.querySelector('.tag-shelf .tag-choice.is-brush'))
       const backgroundChain = element => {
         const colors = []
         let current = element
@@ -1383,11 +1401,11 @@ test('real Chromium host light/dark themes drive readable tokens and 390px layou
         controlBackground: getComputedStyle(document.querySelector('.date-strip .date-label')).backgroundColor,
         controlColor: getComputedStyle(document.querySelector('.date-strip .date-label')).color,
         hourColor: getComputedStyle(document.querySelector('.hour-label')).color,
-        selectedBackgroundChain: backgroundChain(document.querySelector('.tag-shelf > button.selected')),
+        selectedBackgroundChain: backgroundChain(document.querySelector('.tag-shelf .tag-choice.is-brush')),
         selectedColor: selectedStyle.color,
         selectedBorder: selectedStyle.borderColor,
         selectedBorderStyle: selectedStyle.borderStyle,
-        selectedControls: [...document.querySelectorAll('.product-header button[aria-current="page"], .segmented button[aria-selected="true"], .segmented button[aria-pressed="true"]')].map(element => ({
+        selectedControls: [...document.querySelectorAll('.topbar button[aria-current="page"], .segmented button[aria-selected="true"], .segmented button[aria-pressed="true"]')].map(element => ({
           color: getComputedStyle(element).color,
           border: getComputedStyle(element).borderColor,
           backgrounds: backgroundChain(element),
@@ -1424,10 +1442,9 @@ test('real Chromium host light/dark themes drive readable tokens and 390px layou
     assert.ok(ratio >= 4.5, `${theme} text/background contrast ${ratio} must be at least 4.5:1`)
     const selectedTextRatio = contrastRatio(current.selectedColor, selectedBackground)
     assert.ok(selectedTextRatio >= 4.5, `${theme} selected Tag text contrast ${selectedTextRatio} (${current.selectedColor} on ${selectedBackground}) must be at least 4.5:1`)
-    assert.equal(current.selectedBorderStyle, 'solid')
-    assert.ok(!/rgba\(0, 0, 0, 0\)|transparent/.test(current.selectedBorder), `${theme} selected Tag needs a visible border`)
-    const selectedBorderRatio = contrastRatio(current.selectedBorder, selectedBackground)
-    assert.ok(selectedBorderRatio >= 3, `${theme} selected Tag border contrast ${selectedBorderRatio} must be at least 3:1`)
+    assert.notEqual(selectedBackground, current.background, `${theme} selected Tag needs a visible background`)
+    const selectedSurfaceRatio = contrastRatio(selectedBackground, current.background)
+    assert.ok(selectedSurfaceRatio >= 1.05, `${theme} selected Tag background contrast ${selectedSurfaceRatio} must be distinguishable`)
     assert.equal(current.selectedControls.length, 3, 'Time, Actual, and granularity selected controls must all be sampled')
     for (const [index, control] of current.selectedControls.entries()) {
       const background = compositeChain(control.backgrounds)
@@ -1441,7 +1458,7 @@ test('real Chromium host light/dark themes drive readable tokens and 390px layou
     const calendarStyles = await page.getByRole('dialog', { name: '选择日期', exact: true }).evaluate(dialog => {
       const style = selector => getComputedStyle(dialog.querySelector(selector))
       const probe = document.createElement('div')
-      probe.style.cssText = 'position:fixed;visibility:hidden;background:var(--dsw-alias-bg-overlay)'
+      probe.style.cssText = 'position:fixed;visibility:hidden;background:var(--dsw-alias-bg-layer-1)'
       document.body.appendChild(probe)
       const values = {
         background: getComputedStyle(dialog).backgroundColor,
@@ -1450,7 +1467,7 @@ test('real Chromium host light/dark themes drive readable tokens and 390px layou
         selectedBackground: style('.calendar-day[aria-current="date"]').backgroundColor,
         selectedColor: style('.calendar-day[aria-current="date"]').color,
         controlColor: style('.calendar-head button').color,
-        weekdayColor: style('.calendar-grid.weekdays span').color,
+        weekdayColor: style('.calendar-weekdays span').color,
       }
       probe.remove()
       return values
@@ -1463,9 +1480,10 @@ test('real Chromium host light/dark themes drive readable tokens and 390px layou
     await page.getByRole('dialog', { name: '选择日期', exact: true }).getByRole('button', { name: '2026-11-02', exact: true }).click()
 
     await page.getByRole('button', { name: /实录 工作 09:00/ }).click({ modifiers: ['Shift'] })
+    await page.getByRole('button', { name: '时间与来源', exact: true }).click()
     const editorStyles = await page.getByRole('dialog', { name: '编辑实录', exact: true }).evaluate(dialog => {
       const probe = document.createElement('div')
-      probe.style.cssText = 'position:fixed;visibility:hidden;background:var(--dsw-alias-bg-overlay)'
+      probe.style.cssText = 'position:fixed;visibility:hidden;background:var(--dsw-alias-bg-layer-1)'
       document.body.appendChild(probe)
       const input = dialog.querySelector('input')
       const values = {
@@ -1475,8 +1493,8 @@ test('real Chromium host light/dark themes drive readable tokens and 390px layou
         labelColor: getComputedStyle(dialog.querySelector('label')).color,
         inputBackground: getComputedStyle(input).backgroundColor,
         inputColor: getComputedStyle(input).color,
-        actionBackground: getComputedStyle(dialog.querySelector('.editor-actions button')).backgroundColor,
-        actionColor: getComputedStyle(dialog.querySelector('.editor-actions button')).color,
+        actionBackground: getComputedStyle(dialog.querySelector('.floating-actions .primary-button')).backgroundColor,
+        actionColor: getComputedStyle(dialog.querySelector('.floating-actions .primary-button')).color,
       }
       probe.remove()
       return values
@@ -1486,7 +1504,7 @@ test('real Chromium host light/dark themes drive readable tokens and 390px layou
     assert.ok(contrastRatio(editorStyles.labelColor, editorStyles.background) >= 4.5, `${theme} editor labels must be readable`)
     assert.ok(contrastRatio(editorStyles.inputColor, editorStyles.inputBackground) >= 4.5, `${theme} editor inputs must be readable`)
     assert.ok(contrastRatio(editorStyles.actionColor, editorStyles.actionBackground) >= 4.5, `${theme} editor actions must be readable`)
-    await page.getByRole('button', { name: '取消', exact: true }).click()
+    await page.getByRole('button', { name: '关闭', exact: true }).click()
     if (screenshotDirectory) await page.screenshot({ path: join(screenshotDirectory, `time-tag-${theme}.png`), fullPage: true })
     await page.setViewportSize({ width: 390, height: 844 })
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `390px ${theme} page has horizontal overflow`)
