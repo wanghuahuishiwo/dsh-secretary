@@ -1,33 +1,33 @@
 # 一期产品基线进展
 
-> 快照：2026-11-03 16:45（Asia/Shanghai）。本页只记总进度、各模块剩余与备注；设计与规格见 [产品架构](product-architecture.md)、[数据模型](data-model.md)、[规格](specs/2026-11-03-secretary-product-foundation.md)。工单入口：[Issue #1](https://github.com/wanghuahuishiwo/dsh-secretary/issues/1)（子工单 #2–#8）。
+> 快照：2026-11-03 16:55（Asia/Shanghai）。本页只记总进度、各模块剩余与备注；设计与规格见 [产品架构](product-architecture.md)、[数据模型](data-model.md)、[规格](specs/2026-11-03-secretary-product-foundation.md)。工单入口：[Issue #1](https://github.com/wanghuahuishiwo/dsh-secretary/issues/1)（子工单 #2–#8）。
 
 ## 总进度
 
-**约 59%**（按主模块加权估算，权重和分模块完成度见下；权重和「Goal 是否计入」需要你确认）。
+计算规则（每层同一算法）：
 
-- 分模块完成度：GTD ~70%、Time ~70%、Tag 100%、Agent ~65%、Goal 0%、交付与集成 ~15%。
-- 暂定权重：GTD 35%、Time 30%、Tag 5%、Agent 10%、Goal 10%、交付 10%。若 Goal 按一期范围排除，约 65%。
-- 视图是单独阶段：Time 的视图已按原型落地；GTD 的 Inbox／澄清／Projects／Next／Forecast 已在本地接入真实 Service，Review 留 #6；Goal 不实现；Agent 按设计没有独立视图。
-- 子工单：#2、#3、#4 已合入集成分支，#5 本地完成待集成，其余 3 个未开始。
+- 叶子 = 下方交付项，完成计 1、未完成计 0。
+- 每个非叶节点 = 子节点进展的算术平均，同级等权，不设人工权重。
+- 整体 = 一级节点（GTD、Time、Tag、Agent、Goal、交付与集成）进展的平均。
+- 条目增减会改变分母，数值随 Actions 勾选更新，可复算。
 
-| 模块 | 状态 | 还差 |
+按当前勾选：整体 **51%**。
+
+| 节点 | 进展 | 计算 |
 |---|---|---|
-| GTD | 基础闭环本地完成 | #6：Folder／完整 Action Group／Review／Repeat 与结构变化验收 |
-| Time／时间计划（含模板） | 完成（已集成） | 远程交付 |
-| Time／时间实录 | 基本完成 | 共用交互增强、主题证据 |
-| Time／深度时间 | 完成（已集成） | 日期例外属二期 |
-| Time／计划与实录共用 | 部分 | 连续拖刷、添加／消除／编辑撤销 |
-| Tag | 完成 | 画布联动断言 |
-| Goal | 未做（规格列为本期不做） | 模型、视图、验收全部未开始 |
-| Agent | 部分 | GTD 工具随模块补齐、端到端同源验收 |
-| 交付与集成（跨模块） | 未开始 | 安装、主题、全量重开、场景重跑、清理、推送 |
+| GTD | 50% | 3/6 项；#5 基础闭环完成，#6 未开始 |
+| Time | 79% | 计划 100%、实录 50%、深度时间 100%、共用 67% 的平均 |
+| Tag | 80% | 4/5 项 |
+| Agent | 83% | 5/6 项 |
+| Goal | 0% | 0/3 项 |
+| 交付与集成 | 11% | 1/9 项 |
+| **整体** | **51%** | 6 个节点等权平均，四舍五入 |
 
 ## Actions
 
 ### GTD（#5、#6）
 
-- [x] 契约改造：数字 ID、独立／项目澄清、直接标签字段、`plannedAt`（备注：无 UUID／旧 Action-TimeBlock 兼容层）
+- [x] 契约改造：数字 ID、独立／项目澄清、直接标签字段、`plannedAt`（无 UUID／旧 Action-TimeBlock 兼容层）
 - [x] Project 恰好一个直接 time Tag，Project／parent Action 全层累加去重，Tag 防引用删除与并发
 - [x] Inbox、澄清、Projects、Next Actions、Forecast 查询与真实视图；Completed／Actual 独立及持久化重开
 - [ ] Folder、完整 Action Group（#6）
@@ -46,7 +46,7 @@
   - [ ] 共用交互增强落地后同步复用并验收
   - [ ] 明暗主题证据
 - 深度时间（#4）
-  - [x] 提交 `ticket/4-deep-time` 改动并验证（备注：`7a051b6`，已随 `56e1b9a` 集成）
+  - [x] 提交 `ticket/4-deep-time` 改动并验证（备注：`7a051b6`，合入 `56e1b9a`）
   - [x] 7×24 周模板与原子能力（high／medium／low／未设置，未设置 ≠ low；公共 tools + 临时 SQLite 覆盖）
   - [x] 周网格画笔：点按、拖刷、同档起手清除（真实 dsh web + Chromium 覆盖）
   - [x] 完整重开恢复基础周模板（工具与浏览器两层均覆盖）
@@ -61,7 +61,7 @@
 ### Tag（#2）
 
 - [x] 统一字段与两种 kind、增删改、层级移动、选色
-- [x] 防循环、防跨类型、有子级或仍被引用时拒绝删除（备注：引用保护覆盖 GTD、计划、实录与模板）
+- [x] 防循环、防跨类型、有子级或仍被引用时拒绝删除（引用保护覆盖 GTD、计划、实录与模板）
 - [x] 父标签查询包含直接与后代关联且按记录去重
 - [x] 面板统一标签管理（产品导航 Tags 入口可用）
 - [ ] 画布联动断言：移动／删除标签后画布即时更新（备注：只缺浏览器断言）
@@ -69,16 +69,24 @@
 ### Agent（#8）
 
 - [x] 三个公共工具门面（GTD／Tag／Time）+ `secretary`／`gtd-inbox-capture`／`gtd-clarify` 技能
-- [x] 工具与面板 host route 共用 Tag／Time Services（备注：tracer 覆盖，含计划／模板）
+- [x] 工具与面板 Host route 共用 GTD／Tag／Time Services（tracer 覆盖）
 - [x] Time 工具补齐计划、模板（备注：随 #3 合入）
-- [x] Time 工具补齐深度时间（备注：随 #4 本地完成）
+- [x] Time 工具补齐深度时间（备注：随 #4 合入）
 - [x] GTD 工具随 GTD 改造补齐（数字 ID、CRUD、Next／Forecast／effective Tags）
-- [x] GTD 工具与 Host route 同源，真实 Chromium 完成 capture→clarify→Next／Forecast→完成→重开（#5 本地）
-- [ ] 端到端同源总验收与跨模块交付收口（归 #8）
+- [ ] 端到端同源总验收与跨模块交付收口（#5 已完成 GTD 同源与重开，整体归 #8）
+
+### Goal
+
+- [ ] Goal 模型
+- [ ] Goal 视图
+- [ ] Goal 验收
+
+（备注：规格把 Goal 列为本期不做；这里按产品全景计入整体进展。）
 
 ### 交付与集成（跨模块，#8）
 
-- [x] 产品导航：GTD、Time、Tags、Goal（备注：GTD 五视图已接入；Goal 仅保留本期未实现入口，Agent 无入口）
+- [x] 产品导航壳：GTD／Time／Tags／Goal 入口（GTD 五视图已接入；Goal 仅为本期未实现入口，Agent 无入口）
+- [ ] GTD／Goal 真实页面接入（GTD 已完成；Goal 本期明确不实现，保留该项作产品全景跟踪）
 - [ ] 真实 bundle 安装与新开会话生效（备注：现有浏览器测试用 overlay + `file://`，不是正式安装）
 - [ ] 明暗主题在真实客户端验证（390px 已测）
 - [ ] 完整重开恢复全部领域事实：GTD、计划、实录、模板、深度时间、Tag
@@ -89,8 +97,7 @@
 
 ## 备注
 
-- 基线：#5 开工时集成分支 `integration/secretary-product-foundation` @ `56e1b9a`；#2／#3／#4 均已合入。
-- #4 在 `ticket/4-deep-time` 完成并集成；当时实测公共 tools + 临时 SQLite 32/32、真实 Chromium 2/2。
-- #5 在 `ticket/5-gtd-tags` 本地实现；16:45 实测公开 tools／Host routes + 临时 SQLite 39/39、真实 Chromium 3/3，最终合并复验结果以交付回报为准。
+- 基线：#5 开工为 `56e1b9a`；报告前已读取并 merge 最新 integration `2798f57`，保留其统一等权进展算法与 Goal 跟踪。
+- Time 由并行会话按切片推进：#3、#4 已合入。#4 已知边界：深度时间 UI 对一次手势逐格串行提交，中途失败可能部分持久化。
+- #5 在 `ticket/5-gtd-tags` 本地实现：公开 tools／Host routes + 临时 SQLite 39/39、真实 Chromium 3/3；覆盖 capture → clarify → Next／Forecast → 编辑／完成 → 完整重开。
 - 远端仓库为空，Issue 全部 open；远程交付为零。
-- 本期不做：Goal 模型与界面（导航保留入口）、统计、预算、时间对账、深度时间例外模板、Agent 调用策略、旧数据迁移。
