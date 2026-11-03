@@ -6,7 +6,7 @@
 
 - **本轮只验收 Time + Tag。** 集中修复在 `acceptance/time-tag` 实施，证据只来自真实临时 SQLite、隔离 `dsh web` 与 Chromium。
 - **#6 暂停**：GTD Review、Repeat、完整 OmniFocus 交互和 UI 终稿不在本轮；当前 GTD UI 只是已实现基础切片的载体。
-- **全产品 #8 暂停**：真实 bundle 新会话／desktop profile、跨模块总验收和远程交付收口由 lead 后续处理。本 agent 不操作远程 Issue，也不修改真实 profile。
+- **全产品 #8 暂停**：跨模块总验收和远程交付收口不在本轮。Time + Tag 的完整 desktop 副本已启动成功；真实 Electron 因 `package-moved` 需一次 DSH 重启后再新开会话验收。
 - Goal、统计、预算、对账不实现；独立 Statistics 包及旧 timeBlocks 代码已删除。
 
 ## Time（#2、#3、#4、#7）
@@ -43,5 +43,5 @@
 
 - #5 基础 GTD 闭环已在本地集成；公开 tools／Host routes、真实 SQLite 与 Chromium 覆盖 capture → clarify → Next／Forecast → 编辑／完成 → 重开。该结果不等同 #6 或全产品交付。
 - #7 计划／实录共用画布已集成为本轮基线；通用 Undo 仍只保存当前会话，模板 undo 继续持久化。
-- 本轮修复前基线为 `464c8cc57cd611d147c7252ddb70afc113ff15a1`。最终提交、精确测试数量和未覆盖项以 [verification.md](verification.md) 为准。
+- 本轮修复前基线为 `464c8cc57cd611d147c7252ddb70afc113ff15a1`；当前 integration 为 `bec21a3536d4af3f386fa9ac10a4e05ed193e57d`。精确测试数量和未覆盖项以 [verification.md](verification.md) 为准。
 - 远程 Issue 状态保持原样；本轮没有远程交付操作。

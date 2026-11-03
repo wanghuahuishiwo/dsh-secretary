@@ -63,9 +63,13 @@ git diff --check
 - `package.json`、`lib/index.js`、`cordis.patch.yml`、`README.md`、`assets/secretary/SKILL.md`。
 - `workspace:*` 兄弟依赖已转换为 `0.1.0`；`engines.dsh` 为 `>=0.2.1-rc.5 <0.3.0`；Storage dev 依赖为 rc5。
 
+另外用 desktop profile 配置的完整副本、同一份真实数据库的隔离副本启动完整 Secretary bundle，Time 产品壳可打开，说明 bundle、当前数据文件和生产 client 的组合可运行。该诊断不修改真实数据库。
+
+真实 desktop profile 已补齐 `dsh-secretary-tag` 直接依赖并移除 Statistics 链接；重组后插件管理接口明确返回 `restart-required / package-moved`，因此**当前 Electron 必须重启后再以新会话验收**，不能把副本结果写成当前 GUI 已通过。真实数据库中另有旧 UUID GTD Inbox 记录不符合新 schema；按“不做旧数据迁移、#6 暂停”的决定未擅自修改，这与 Time + Tag 验收分开记录。
+
 ## 5. 明确未覆盖项与剩余风险
 
-- **未做真实 bundle 安装后的新会话／desktop profile 验收**；由 lead 后续执行。本轮没有修改真实 profile 或远程 Issue。
+- **当前 Electron 的新会话验收仍待一次 DSH 重启**，原因是插件管理接口明确报告 `package-moved`；不会以完整副本启动结果替代当前 GUI 结论。远程 Issue 未修改交付状态。
 - #6 的 GTD Review／Repeat／OmniFocus UI、全产品 #8、Goal、统计、预算、对账均未交付；现有 GTD UI 不是终稿。
 - 只验收桌面 HTML5 标签层级拖拽，未宣称触摸拖拽。
 - 通用添加／消除／编辑 Undo 仍只保存当前会话；模板 undo 才持久化。
