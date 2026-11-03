@@ -171,11 +171,29 @@ test('real Chromium client covers Plan/Template/date navigation and restores all
   await slot.click()
   const first = page.getByRole('button', { name: /实录 专注工作 09:00/ })
   await first.waitFor()
+  await page.getByRole('button', { name: '撤销添加', exact: true }).click()
+  await first.waitFor({ state: 'detached' })
+  await slot.click()
+  await first.waitFor()
   await page.getByRole('button', { name: '听播客', exact: true }).click()
   await first.click()
   await page.locator('[data-slot="09:00"] .actual-fragment').nth(1).waitFor()
   assert.equal(await page.locator('[data-slot="09:00"] .actual-fragment').count(), 2)
+  await page.getByRole('button', { name: '专注工作', exact: true }).click()
+  await first.click()
+  await first.waitFor({ state: 'detached' })
+  assert.equal(await page.locator('[data-slot="09:00"] .actual-fragment').count(), 1)
+  assert.equal(await page.getByRole('dialog', { name: '编辑实录', exact: true }).count(), 0)
+  await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+  await first.waitFor()
+  assert.equal(await page.locator('[data-slot="09:00"] .actual-fragment').count(), 2)
 
+  await first.click({ modifiers: ['Shift'] })
+  await page.getByLabel('实录备注').fill('浏览器真实实录')
+  await page.getByRole('button', { name: '保存实录', exact: true }).click()
+  await page.getByText('浏览器真实实录', { exact: true }).waitFor()
+  await page.getByRole('button', { name: '撤销编辑', exact: true }).click()
+  await page.getByText('浏览器真实实录', { exact: true }).waitFor({ state: 'detached' })
   await first.click({ modifiers: ['Shift'] })
   await page.getByLabel('实录备注').fill('浏览器真实实录')
   await page.getByRole('button', { name: '保存实录', exact: true }).click()
@@ -269,6 +287,289 @@ test('real Chromium client covers Plan/Template/date navigation and restores all
   await page.getByRole('tab', { name: '实录', exact: true }).click()
   await chooseDate(page, '2026-11-02')
   await page.getByText('浏览器真实实录', { exact: true }).waitFor()
+  assert.deepEqual(pageErrors, [])
+})
+
+test('real Chromium Plan and Actual erase gestures keep the starting Tag fixed and undo the whole drag', { timeout: 360_000 }, async (t) => {
+  const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-canvas-browser-'))
+  const overlay = join(home, 'overlay.yml')
+  await writeFile(overlay, [
+    '- id: ui-settings-general',
+    '  config:',
+    "    welcomeNoticeVersion: '2026-09-28.1'",
+    '- id: ui-settings-account',
+    '  config:',
+    '    version: 1',
+    '    step: done',
+    '    usage: detailed',
+    '    developerTools: true',
+    '    purpose: null',
+    '    process: standard',
+    '    completion: api-key',
+    '- insert:',
+    "    - id: secretary-browser-sqlite",
+    `      name: 'file://${join(ROOT, 'packages/secretary/node_modules/@deepseek-ai/dsh-storage-sqlite/lib/index.js')}'`,
+    '      config:',
+    `        path: ${join(home, 'secretary.sqlite')}`,
+    '        journalMode: delete',
+    "    - id: secretary-browser-storage",
+    `      name: 'file://${join(ROOT, 'packages/storage/lib/index.js')}'`,
+    "    - id: secretary-browser-tag",
+    `      name: 'file://${join(ROOT, 'packages/tag/lib/index.js')}'`,
+    "    - id: secretary-browser-gtd",
+    `      name: 'file://${join(ROOT, 'packages/gtd/lib/index.js')}'`,
+    "    - id: secretary-browser-time",
+    `      name: 'file://${join(ROOT, 'packages/time-block/lib/index.js')}'`,
+    "    - id: secretary-browser-panel",
+    `      name: 'file://${join(ROOT, 'packages/panel/lib/index.js')}'`,
+    '',
+  ].join('\n'))
+
+  const browser = await chromium.launch({ headless: true })
+  const dshVersion = execFileSync('dsh', ['--version'], { encoding: 'utf8' }).trim()
+  execFileSync('dsh', [
+    'plugin', '--profile', 'web', 'allow-version', '@deepseek-ai/dsh-storage-sqlite@0.2.1-rc.3',
+    '--dsh-version', dshVersion, '--accept-risk',
+  ], { env: { ...process.env, DSH_HOME: home }, stdio: 'pipe' })
+  let server
+  const pageErrors = []
+  t.after(async () => {
+    if (server) await server.stop()
+    await browser.close()
+    await rm(home, { recursive: true, force: true })
+  })
+
+  server = await boot(home, overlay)
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, timezoneId: 'Asia/Shanghai' })
+  const page = await context.newPage()
+  page.on('pageerror', error => pageErrors.push(error))
+  await openPanel(page, server.url)
+  for (const name of ['甲', '乙', '丙', '丁']) await createTag(page, name)
+  await chooseDate(page, '2026-11-02')
+
+  for (const view of ['actual', 'plan']) {
+    const kind = view === 'actual' ? '实录' : '计划'
+    if (view === 'plan') await page.getByRole('tab', { name: '计划', exact: true }).click()
+    const fragment = (slot, tag) => page.locator(`[data-slot="${slot}"] .time-fragment[aria-label="${kind} ${tag} ${slot}"]`)
+    const add = async (slot, tag) => {
+      await page.getByRole('button', { name: tag, exact: true }).click()
+      const existing = page.locator(`[data-slot="${slot}"] .time-fragment`).first()
+      if (await existing.count() > 0) await existing.click()
+      else await page.getByRole('button', { name: `2026-11-02 ${slot} 时间格`, exact: true }).click()
+      await fragment(slot, tag).waitFor()
+    }
+
+    for (const tag of ['甲', '乙', '丙', '丁']) await add('08:00', tag)
+    await page.getByRole('button', { name: '丁', exact: true }).dblclick()
+    await page.getByText('消除态：点击记录删除', { exact: true }).waitFor()
+    await fragment('08:00', '甲').click()
+    await fragment('08:00', '甲').waitFor({ state: 'detached' })
+    assert.equal(await fragment('08:00', '乙').count(), 1)
+    assert.equal(await fragment('08:00', '丙').count(), 1)
+    assert.equal(await fragment('08:00', '丁').count(), 1)
+    await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+    await fragment('08:00', '甲').waitFor()
+    await page.getByRole('button', { name: '甲', exact: true }).click()
+    assert.equal(await page.getByText('消除态：点击记录删除', { exact: true }).count(), 0)
+
+    await add('08:10', '乙')
+    await add('08:10', '甲')
+    await add('08:20', '乙')
+    await add('08:20', '甲')
+    await page.getByRole('button', { name: '乙', exact: true }).dblclick()
+    await page.getByText('消除态：点击记录删除', { exact: true }).waitFor()
+    const boxes = []
+    for (const slot of ['08:00', '08:10', '08:20']) {
+      const box = await fragment(slot, '乙').boundingBox()
+      assert.ok(box)
+      boxes.push(box)
+    }
+    await page.mouse.move(boxes[0].x + boxes[0].width / 2, boxes[0].y + boxes[0].height / 2)
+    await page.mouse.down()
+    for (const box of boxes.slice(1)) {
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 6 })
+    }
+    await page.mouse.up()
+    for (const slot of ['08:00', '08:10', '08:20']) await fragment(slot, '乙').waitFor({ state: 'detached' })
+    assert.equal(await fragment('08:00', '甲').count(), 1)
+    assert.equal(await fragment('08:00', '丙').count(), 1)
+    assert.equal(await fragment('08:00', '丁').count(), 1)
+    assert.equal(await fragment('08:10', '甲').count(), 1)
+    assert.equal(await fragment('08:20', '甲').count(), 1)
+    await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+    for (const slot of ['08:00', '08:10', '08:20']) await fragment(slot, '乙').waitFor()
+    await page.getByRole('button', { name: '丙', exact: true }).click()
+    assert.equal(await page.getByText('消除态：点击记录删除', { exact: true }).count(), 0)
+  }
+  assert.deepEqual(pageErrors, [])
+})
+
+test('real Chromium Plan and Actual keep parallel layout, cross-hour titles, editing undo, and facts across granularity changes', { timeout: 360_000 }, async (t) => {
+  const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-layout-browser-'))
+  const overlay = join(home, 'overlay.yml')
+  await writeFile(overlay, [
+    '- id: ui-settings-general',
+    '  config:',
+    "    welcomeNoticeVersion: '2026-09-28.1'",
+    '- id: ui-settings-account',
+    '  config:',
+    '    version: 1',
+    '    step: done',
+    '    usage: detailed',
+    '    developerTools: true',
+    '    purpose: null',
+    '    process: standard',
+    '    completion: api-key',
+    '- insert:',
+    "    - id: secretary-browser-sqlite",
+    `      name: 'file://${join(ROOT, 'packages/secretary/node_modules/@deepseek-ai/dsh-storage-sqlite/lib/index.js')}'`,
+    '      config:',
+    `        path: ${join(home, 'secretary.sqlite')}`,
+    '        journalMode: delete',
+    "    - id: secretary-browser-storage",
+    `      name: 'file://${join(ROOT, 'packages/storage/lib/index.js')}'`,
+    "    - id: secretary-browser-tag",
+    `      name: 'file://${join(ROOT, 'packages/tag/lib/index.js')}'`,
+    "    - id: secretary-browser-gtd",
+    `      name: 'file://${join(ROOT, 'packages/gtd/lib/index.js')}'`,
+    "    - id: secretary-browser-time",
+    `      name: 'file://${join(ROOT, 'packages/time-block/lib/index.js')}'`,
+    "    - id: secretary-browser-panel",
+    `      name: 'file://${join(ROOT, 'packages/panel/lib/index.js')}'`,
+    '',
+  ].join('\n'))
+
+  const browser = await chromium.launch({ headless: true })
+  const dshVersion = execFileSync('dsh', ['--version'], { encoding: 'utf8' }).trim()
+  execFileSync('dsh', [
+    'plugin', '--profile', 'web', 'allow-version', '@deepseek-ai/dsh-storage-sqlite@0.2.1-rc.3',
+    '--dsh-version', dshVersion, '--accept-risk',
+  ], { env: { ...process.env, DSH_HOME: home }, stdio: 'pipe' })
+  let server
+  const pageErrors = []
+  t.after(async () => {
+    if (server) await server.stop()
+    await browser.close()
+    await rm(home, { recursive: true, force: true })
+  })
+
+  server = await boot(home, overlay)
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, timezoneId: 'Asia/Shanghai' })
+  const page = await context.newPage()
+  page.on('pageerror', error => pageErrors.push(error))
+  await openPanel(page, server.url)
+  for (const name of ['甲', '乙', '丙', '丁', '跨时']) await createTag(page, name)
+  await chooseDate(page, '2026-11-02')
+
+  for (const view of ['actual', 'plan']) {
+    const kind = view === 'actual' ? '实录' : '计划'
+    if (view === 'plan') await page.getByRole('tab', { name: '计划', exact: true }).click()
+    const fragment = (slot, tag, labelTime = slot) => page.locator(`[data-slot="${slot}"] .time-fragment[aria-label="${kind} ${tag} ${labelTime}"]`)
+    const add = async (slot, tag) => {
+      await page.getByRole('button', { name: tag, exact: true }).click()
+      const existing = page.locator(`[data-slot="${slot}"] .time-fragment`).first()
+      if (await existing.count() > 0) await existing.click()
+      else await page.getByRole('button', { name: `2026-11-02 ${slot} 时间格`, exact: true }).click()
+      await fragment(slot, tag).waitFor()
+    }
+    const widths = async () => page.locator('[data-slot="09:00"] .time-fragment').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().width))
+    const assertHourGeometry = async () => {
+      assert.equal(await page.locator('.hour-row').count(), 24)
+      assert.ok(await page.locator('.hour-row').evaluateAll(rows => rows.every(row => row.getBoundingClientRect().height === 48)))
+    }
+
+    await add('09:00', '甲')
+    await page.getByRole('button', { name: '撤销添加', exact: true }).click()
+    await fragment('09:00', '甲').waitFor({ state: 'detached' })
+    await add('09:00', '甲')
+    for (const tag of ['乙', '丙', '丁']) await add('09:00', tag)
+    assert.equal(await page.locator('[data-slot="09:00"] .time-fragment').count(), 4)
+    const quarters = await widths()
+    assert.equal(quarters.length, 4)
+    assert.ok(Math.max(...quarters) - Math.min(...quarters) <= 1, `four parallel widths differ: ${quarters}`)
+    await assertHourGeometry()
+    const visual = await page.locator('[data-slot="09:00"]').evaluate(slot => ({
+      gap: getComputedStyle(slot.querySelector('.fragment-layer')).gap,
+      fragments: [...slot.querySelectorAll('.time-fragment')].map(element => ({
+        color: getComputedStyle(element).backgroundColor,
+        radius: getComputedStyle(element).borderRadius,
+      })),
+    }))
+    assert.equal(visual.gap, '1px')
+    assert.ok(visual.fragments.every(item => item.color === 'rgb(71, 123, 199)' && item.radius === '4px'))
+
+    await page.getByRole('button', { name: '甲', exact: true }).click()
+    await page.getByRole('button', { name: '2026-11-02 09:00 时间格', exact: true }).click({ position: { x: 1, y: 1 } })
+    await fragment('09:00', '甲').waitFor({ state: 'detached' })
+    assert.equal(await page.locator('[data-slot="09:00"] .time-fragment').count(), 3)
+    await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+    await fragment('09:00', '甲').waitFor()
+
+    await page.getByRole('button', { name: '甲', exact: true }).click()
+    await fragment('09:00', '乙').click()
+    await fragment('09:00', '甲').waitFor({ state: 'detached' })
+    assert.equal(await page.locator('[data-slot="09:00"] .time-fragment').count(), 3)
+    assert.equal(await fragment('09:00', '乙').count(), 1)
+    assert.equal(await fragment('09:00', '丙').count(), 1)
+    assert.equal(await fragment('09:00', '丁').count(), 1)
+    await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+    await fragment('09:00', '甲').waitFor()
+
+    await page.getByRole('button', { name: '丁', exact: true }).click()
+    await fragment('09:00', '丁').click()
+    await fragment('09:00', '丁').waitFor({ state: 'detached' })
+    assert.equal(await page.getByRole('dialog', { name: `编辑${kind}`, exact: true }).count(), 0)
+    const thirds = await widths()
+    assert.equal(thirds.length, 3)
+    assert.ok(Math.max(...thirds) - Math.min(...thirds) <= 1, `three parallel widths differ: ${thirds}`)
+    assert.equal(await fragment('09:00', '甲').count(), 1)
+    assert.equal(await fragment('09:00', '乙').count(), 1)
+    assert.equal(await fragment('09:00', '丙').count(), 1)
+    await assertHourGeometry()
+    await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+    await fragment('09:00', '丁').waitFor()
+    assert.equal((await widths()).length, 4)
+
+    await fragment('09:00', '甲').click({ modifiers: ['Shift'] })
+    await page.getByRole('dialog', { name: `编辑${kind}`, exact: true }).waitFor()
+    await page.getByLabel(`${kind}标签`).selectOption({ label: '丁' })
+    await page.getByLabel(`${kind}备注`).fill(`${kind}修改`)
+    await page.getByRole('button', { name: `保存${kind}`, exact: true }).click()
+    await page.getByText(`${kind}修改`, { exact: true }).waitFor()
+    await fragment('09:00', '甲').waitFor({ state: 'detached' })
+    await page.getByRole('button', { name: '撤销编辑', exact: true }).click()
+    await fragment('09:00', '甲').waitFor()
+    await page.getByText(`${kind}修改`, { exact: true }).waitFor({ state: 'detached' })
+    assert.equal(await fragment('09:00', '丁').count(), 1)
+
+    await add('10:50', '跨时')
+    await fragment('10:50', '跨时').click({ modifiers: ['Shift'] })
+    await page.getByLabel('开始时刻').fill('2026-11-02T10:50:00+08:00')
+    await page.getByLabel('结束时刻').fill('2026-11-02T11:20:00+08:00')
+    await page.getByLabel(`${kind}备注`).fill(`${kind}跨小时标题`)
+    await page.getByRole('button', { name: `保存${kind}`, exact: true }).click()
+    await fragment('11:10', '跨时', '10:50').waitFor()
+    const covered = await Promise.all(['10:50', '11:00', '11:10'].map(async slot => {
+      const target = fragment(slot, '跨时', '10:50')
+      return { id: await target.getAttribute('data-block-id'), text: await target.innerText() }
+    }))
+    assert.equal(new Set(covered.map(item => item.id)).size, 1)
+    assert.deepEqual(covered.map(item => item.text), [`${kind}跨小时标题`, '', ''])
+    await assertHourGeometry()
+
+    const facts = async () => page.evaluate(async ({ view }) => {
+      const response = await fetch('/api/secretary.state?date=2026-11-02&timeZone=Asia%2FShanghai')
+      const state = await response.json()
+      return view === 'plan' ? state.plans : state.blocks
+    }, { view })
+    const before = await facts()
+    for (const [minutes, slots] of [[15, 4], [30, 2], [10, 6]]) {
+      await page.getByRole('button', { name: `${minutes} 分钟`, exact: true }).click()
+      assert.equal(await page.locator('.hour-row').nth(9).locator('.time-slot').count(), slots)
+      await assertHourGeometry()
+      assert.deepEqual(await facts(), before, `${kind} ${minutes}-minute display rewrote persisted facts`)
+    }
+  }
   assert.deepEqual(pageErrors, [])
 })
 
