@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { Tag, TagKind } from 'dsh-secretary-tag/contract'
 import type {
-  ActualBlock, ActualSource, FocusLevel, PlanBlock, PlanTemplateBlock,
+  ActualBlock, ActualSource, DeepCell, DeepCellLevel, DeepLevel, DeepWeek, FocusLevel, PlanBlock, PlanTemplateBlock,
 } from 'dsh-secretary-time-block/contract'
 import { fetchState, sendCommand, type PanelCommand } from './api.ts'
 
@@ -55,6 +55,21 @@ function flatten(tags: Tag[], kind: TagKind): { tag: Tag; depth: number }[] {
   return result
 }
 
+function emptyDeepWeek(): DeepWeek {
+  return {
+    scope: 'base',
+    cells: Array.from({ length: 168 }, (_, index) => ({
+      weekday: Math.floor(index / 24) + 1, hour: index % 24, level: 'unset',
+    })),
+  }
+}
+
+interface DeepGesture {
+  readonly brush: DeepLevel
+  readonly operation: 'set' | 'clear'
+  readonly cells: Map<string, { weekday: number; hour: number }>
+}
+
 export function ActualPanel() {
   const timeZone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Shanghai', [])
   const [product, setProduct] = useState<ProductView>('time')
@@ -70,6 +85,8 @@ export function ActualPanel() {
   const [plans, setPlans] = useState<PlanBlock[]>([])
   const [templates, setTemplates] = useState<PlanTemplateBlock[]>([])
   const [templateUndo, setTemplateUndo] = useState(false)
+  const [deepWeek, setDeepWeek] = useState<DeepWeek>(emptyDeepWeek)
+  const [deepBrush, setDeepBrush] = useState<DeepLevel>('high')
   const [selectedTagId, setSelectedTagId] = useState<number>()
   const [eraseMode, setEraseMode] = useState(false)
   const [managerKind, setManagerKind] = useState<TagKind>('time')
@@ -91,6 +108,7 @@ export function ActualPanel() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const request = useRef(0)
+  const deepGesture = useRef<DeepGesture | null>(null)
 
   const refresh = async () => {
     const id = ++request.current
@@ -102,6 +120,7 @@ export function ActualPanel() {
       setPlans(state.plans)
       setTemplates(state.templates)
       setTemplateUndo(state.templateUndo)
+      setDeepWeek(state.deepWeek)
       setError('')
     } catch (cause) {
       if (id === request.current) setError(cause instanceof Error ? cause.message : String(cause))
@@ -128,6 +147,74 @@ export function ActualPanel() {
     } finally {
       setBusy(false)
     }
+  }
+
+  const paintDeepCell = (gesture: DeepGesture, weekday: number, hour: number) => {
+    const key = `${weekday}-${hour}`
+    if (gesture.cells.has(key)) return
+    gesture.cells.set(key, { weekday, hour })
+    const level: DeepCellLevel = gesture.operation === 'set' ? gesture.brush : 'unset'
+    setDeepWeek(current => ({
+      ...current,
+      cells: current.cells.map(cell => cell.weekday === weekday && cell.hour === hour ? { ...cell, level } : cell),
+    }))
+  }
+
+  const commitDeepGesture = async (gesture: DeepGesture) => {
+    setBusy(true)
+    try {
+      for (const { weekday, hour } of gesture.cells.values()) {
+        await sendCommand({
+          domain: 'time', op: gesture.operation === 'set' ? 'deep.setCell' : 'deep.clearCell',
+          weekday, hour, ...(gesture.operation === 'set' ? { level: gesture.brush } : {}),
+        })
+      }
+      await refresh()
+      setError('')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+      await refresh()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const startDeepGesture = (event: React.PointerEvent<HTMLButtonElement>, cell: DeepCell) => {
+    if (event.button !== 0 || busy) return
+    event.preventDefault()
+    const gesture: DeepGesture = {
+      brush: deepBrush,
+      operation: cell.level === deepBrush ? 'clear' : 'set',
+      cells: new Map(),
+    }
+    deepGesture.current = gesture
+    paintDeepCell(gesture, cell.weekday, cell.hour)
+    const finish = () => {
+      window.removeEventListener('pointerup', finish)
+      window.removeEventListener('pointercancel', finish)
+      if (deepGesture.current !== gesture) return
+      deepGesture.current = null
+      void commitDeepGesture(gesture)
+    }
+    window.addEventListener('pointerup', finish)
+    window.addEventListener('pointercancel', finish)
+  }
+
+  const moveDeepGesture = (event: React.PointerEvent<HTMLDivElement>) => {
+    const gesture = deepGesture.current
+    if (!gesture || event.buttons === 0) return
+    const element = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-deep-cell]')
+    if (!element || !event.currentTarget.contains(element)) return
+    paintDeepCell(gesture, Number(element.dataset.weekday), Number(element.dataset.hour))
+  }
+
+  const clickDeepCellWithKeyboard = (event: React.MouseEvent<HTMLButtonElement>, cell: DeepCell) => {
+    if (event.detail !== 0 || busy) return
+    const gesture: DeepGesture = {
+      brush: deepBrush, operation: cell.level === deepBrush ? 'clear' : 'set', cells: new Map(),
+    }
+    paintDeepCell(gesture, cell.weekday, cell.hour)
+    void commitDeepGesture(gesture)
   }
 
   const tagById = (id: number) => tags.find(tag => tag.id === id)
@@ -305,7 +392,43 @@ export function ActualPanel() {
             {[10, 15, 30].map(value => <button type="button" key={value} aria-pressed={granularity === value} onClick={() => setGranularity(value)}>{value} 分钟</button>)}
           </div>}
         </div>
-        {timeView === 'deep' ? <section className="module-placeholder">深度时间将由后续 #4 切片接入。</section> : <>
+        {timeView === 'deep' ? <section className="deep-module" aria-label="深度时间周模板" aria-busy={busy}>
+          <div className="deep-head">
+            <div><div className="deep-title">深度时间</div><div className="deep-subtitle">7×24 基础周模板 · 每周重复 · 未设置不等于 low</div></div>
+            <div className="segmented deep-brush" role="group" aria-label="当前深度时间画笔">
+              {(['high', 'medium', 'low'] as DeepLevel[]).map(level => <button
+                type="button" key={level} data-level={level} aria-pressed={deepBrush === level}
+                onClick={() => setDeepBrush(level)}
+              ><span className="deep-brush-dot" />{level}</button>)}
+            </div>
+          </div>
+          <div className="deep-grid-scroll">
+            <div className="deep-grid" onPointerMove={moveDeepGesture}>
+              <span className="deep-corner" aria-hidden="true" />
+              {WEEKDAYS.map(day => <span className="deep-day" key={day}>{day}</span>)}
+              {Array.from({ length: 24 }, (_, hour) => <Fragment key={hour}>
+                <span className="deep-hour">{String(hour).padStart(2, '0')}:00</span>
+                {WEEKDAYS.map((_, index) => {
+                  const weekday = index + 1
+                  const cell = deepWeek.cells[(weekday - 1) * 24 + hour] ?? { weekday, hour, level: 'unset' as const }
+                  const levelLabel = cell.level === 'unset' ? '未设置' : cell.level
+                  return <button
+                    type="button" className="deep-cell" data-deep-cell="" data-weekday={weekday} data-hour={hour}
+                    data-level={cell.level} aria-label={`${WEEKDAYS[index]} ${String(hour).padStart(2, '0')}:00 ${levelLabel}`}
+                    disabled={busy} onPointerDown={event => startDeepGesture(event, cell)}
+                    onClick={event => clickDeepCellWithKeyboard(event, cell)} key={weekday}
+                  />
+                })}
+              </Fragment>)}
+            </div>
+          </div>
+          <div className="deep-legend" aria-label="深度时间图例">
+            {(['high', 'medium', 'low', 'unset'] as DeepCellLevel[]).map(level => <span key={level}>
+              <i className="deep-swatch" data-level={level} />{level === 'unset' ? '未设置' : level}
+            </span>)}
+          </div>
+          <p className="deep-hint">点按或连续拖刷 · 同档起手清除，其他情况写入当前画笔 · 一次操作不逐格切换</p>
+        </section> : <>
           <div className="date-strip">
             <button type="button" aria-label="前一天" onClick={() => { setDate(shiftDate(date, -1)); setTemplateMode(false) }}>‹</button>
             <button type="button" className="date-label" aria-label="打开日历选择日期" onClick={openCalendar}>{dateLabel(date)}</button>
@@ -511,6 +634,29 @@ const styles = `
 .calendar-today { display: block; margin: 8px auto 0; }
 .editor-backdrop { position: fixed; z-index: 100; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 24px)); max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; padding: 14px; border: 1px solid var(--dsw-alias-border, #ddd); border-radius: 12px; background: var(--dsw-alias-surface-raised, #fff); box-shadow: 0 12px 36px #0004; }
 .editor-actions { display: flex; justify-content: flex-end; gap: 7px; }
+.deep-module { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 12px 16px 32px; }
+.deep-head { max-width: 780px; margin: 0 auto 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.deep-title { font-size: 13px; font-weight: 650; }
+.deep-subtitle, .deep-hint { color: var(--dsw-alias-muted, #777); font-size: 10px; }
+.deep-subtitle { margin-top: 2px; }
+.deep-brush button { display: inline-flex; align-items: center; gap: 5px; }
+.deep-brush-dot { width: 8px; height: 8px; border-radius: 2px; background: currentColor; }
+.deep-brush button[data-level="high"] .deep-brush-dot { color: var(--dsw-alias-high, #317b68); }
+.deep-brush button[data-level="medium"] .deep-brush-dot { color: var(--dsw-alias-medium, #ad7927); }
+.deep-brush button[data-level="low"] .deep-brush-dot { color: var(--dsw-alias-low, #806a96); }
+.deep-grid-scroll { width: 100%; max-width: 780px; min-width: 0; margin: 0 auto; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
+.deep-grid { min-width: 350px; display: grid; grid-template-columns: 42px repeat(7, minmax(0, 1fr)); gap: 2px; user-select: none; }
+.deep-day { padding-bottom: 7px; text-align: center; color: var(--dsw-alias-muted, #777); font-size: 10px; font-weight: 600; }
+.deep-hour { height: 22px; display: flex; align-items: center; justify-content: flex-end; padding-right: 7px; color: var(--dsw-alias-muted, #777); font: 9px ui-monospace, monospace; }
+.deep-cell { height: 22px; min-width: 0; border: 1px solid var(--dsw-alias-border-soft, #eee); border-radius: 4px; background: var(--dsw-alias-surface, #fff); padding: 0; touch-action: pan-y; }
+.deep-cell:hover { border-color: var(--dsw-alias-accent, #3972d8); }
+.deep-cell[data-level="high"], .deep-swatch[data-level="high"] { background: var(--dsw-alias-high, #317b68); border-color: var(--dsw-alias-high, #317b68); }
+.deep-cell[data-level="medium"], .deep-swatch[data-level="medium"] { background: var(--dsw-alias-medium, #ad7927); border-color: var(--dsw-alias-medium, #ad7927); }
+.deep-cell[data-level="low"], .deep-swatch[data-level="low"] { background: var(--dsw-alias-low, #806a96); border-color: var(--dsw-alias-low, #806a96); }
+.deep-legend { max-width: 780px; margin: 12px auto 0; display: flex; flex-wrap: wrap; gap: 12px; color: var(--dsw-alias-muted, #777); font-size: 10px; }
+.deep-legend > span { display: inline-flex; align-items: center; gap: 5px; }
+.deep-swatch { width: 11px; height: 11px; border: 1px solid var(--dsw-alias-border-soft, #eee); border-radius: 3px; background: var(--dsw-alias-surface, #fff); }
+.deep-hint { max-width: 780px; margin: 9px auto 0; }
 @media (max-width: 640px) {
   .product-header { flex-wrap: wrap; gap: 6px 10px; padding-inline: 7px; }
   .product-header nav { width: 100%; justify-content: space-between; }
@@ -523,5 +669,9 @@ const styles = `
   .actual-status { padding-inline: 7px; }
   .tag-form, .template-form { grid-template-columns: 1fr 1fr; }
   .calendar-popover { top: 132px; max-height: calc(100% - 142px); }
+  .deep-module { padding: 9px 8px 32px; }
+  .deep-head { align-items: flex-start; }
+  .deep-grid { grid-template-columns: 34px repeat(7, minmax(0, 1fr)); }
+  .deep-cell, .deep-hour { height: 20px; }
 }
 `

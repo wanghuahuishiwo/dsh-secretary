@@ -14,7 +14,7 @@ export function apply(ctx: Context): void {
   const time = () => (ctx as Context & { time: TimeService }).time
   registerTool(ctx, {
     name: 'secretary_time',
-    description: `Manage independent date Plans, weekday PlanTemplates, and ActualBlocks classified only by a time Tag. Use plan.list/get/create/update/delete, template.list/create/update/delete/apply/undo, and actual.list/get/create/update/delete/start/stop. template.apply requires weekday, targetDate, and timeZone; template.undo restores the persistent pre-apply day. Plans and actuals may overlap and never rewrite each other or complete GTD Actions. focus is a closed enum: ${FOCUS_LIST}.`,
+    description: `Manage independent date Plans, weekday PlanTemplates, ActualBlocks, and the reusable base DeepTime week, all through one TimeService. Use plan.list/get/create/update/delete, template.list/create/update/delete/apply/undo, actual.list/get/create/update/delete/start/stop, and deep.getWeek/setCell/clearCell/setRange/clearRange. template.apply requires weekday, targetDate, and timeZone; template.undo restores the persistent pre-apply day. Deep ranges are inclusive weekday-by-hour rectangles; deep.setCell/setRange accept only high/medium/low, while clear operations restore the independent unset value. DeepTime never derives from or rewrites Actual. Plans and actuals may overlap and never rewrite each other or complete GTD Actions. focus is a closed enum: ${FOCUS_LIST}.`,
     parameters: {
       type: 'object', additionalProperties: false,
       properties: {
@@ -22,6 +22,7 @@ export function apply(ctx: Context): void {
           'plan.create', 'plan.get', 'plan.list', 'plan.update', 'plan.delete',
           'template.list', 'template.create', 'template.update', 'template.delete', 'template.apply', 'template.undo',
           'actual.create', 'actual.get', 'actual.list', 'actual.update', 'actual.delete', 'actual.start', 'actual.stop',
+          'deep.getWeek', 'deep.setCell', 'deep.clearCell', 'deep.setRange', 'deep.clearRange',
         ] },
         id: { type: 'integer', minimum: 1 },
         timeTagId: { type: 'integer', minimum: 1 },
@@ -34,6 +35,12 @@ export function apply(ctx: Context): void {
         targetDate: { type: 'string' },
         timeZone: { type: 'string' },
         weekday: { type: 'integer', minimum: 1, maximum: 7 },
+        hour: { type: 'integer', minimum: 0, maximum: 23 },
+        level: { type: 'string', enum: ['high', 'medium', 'low'] },
+        startWeekday: { type: 'integer', minimum: 1, maximum: 7 },
+        startHour: { type: 'integer', minimum: 0, maximum: 23 },
+        endWeekday: { type: 'integer', minimum: 1, maximum: 7 },
+        endHour: { type: 'integer', minimum: 0, maximum: 23 },
         startTime: { type: 'string' },
         endTime: { type: 'string' },
         from: { type: 'string' },
@@ -63,6 +70,11 @@ export function apply(ctx: Context): void {
         case 'actual.delete': return { block: await time().deleteActual(args.id) }
         case 'actual.start': return { block: await time().startActual(args) }
         case 'actual.stop': return { block: await time().stopActual(args.id, args.endAt) }
+        case 'deep.getWeek': return { week: await time().getDeepWeek() }
+        case 'deep.setCell': return { week: await time().setDeepCell(args) }
+        case 'deep.clearCell': return { week: await time().clearDeepCell(args) }
+        case 'deep.setRange': return { week: await time().setDeepRange(args) }
+        case 'deep.clearRange': return { week: await time().clearDeepRange(args) }
         default: throw new Error(`secretary: unknown time operation ${JSON.stringify(args.op)}`)
       }
     },

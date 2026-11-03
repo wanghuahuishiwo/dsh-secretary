@@ -9,6 +9,40 @@ export function isFocusLevel(raw: unknown): raw is FocusLevel {
   return typeof raw === 'string' && (FOCUS_LEVELS as readonly string[]).includes(raw)
 }
 
+export type DeepLevel = 'high' | 'medium' | 'low'
+export type DeepCellLevel = DeepLevel | 'unset'
+
+export interface DeepCell {
+  readonly weekday: number
+  readonly hour: number
+  readonly level: DeepCellLevel
+}
+
+export interface DeepWeek {
+  readonly scope: 'base'
+  readonly cells: readonly DeepCell[]
+}
+
+export interface DeepCellPosition {
+  readonly weekday: number
+  readonly hour: number
+}
+
+export interface SetDeepCellInput extends DeepCellPosition {
+  readonly level: DeepLevel
+}
+
+export interface DeepRange {
+  readonly startWeekday: number
+  readonly startHour: number
+  readonly endWeekday: number
+  readonly endHour: number
+}
+
+export interface SetDeepRangeInput extends DeepRange {
+  readonly level: DeepLevel
+}
+
 export interface TimeBlockContent {
   readonly timeTagId: number
   readonly note?: string
@@ -138,4 +172,9 @@ export abstract class TimeService extends Service {
   abstract deleteActual(id: number): Promise<ActualBlock>
   abstract startActual(input: StartActualInput): Promise<ActualBlock>
   abstract stopActual(id: number, endAt?: string): Promise<ActualBlock>
+  abstract getDeepWeek(): Promise<DeepWeek>
+  abstract setDeepCell(input: SetDeepCellInput): Promise<DeepWeek>
+  abstract clearDeepCell(input: DeepCellPosition): Promise<DeepWeek>
+  abstract setDeepRange(input: SetDeepRangeInput): Promise<DeepWeek>
+  abstract clearDeepRange(input: DeepRange): Promise<DeepWeek>
 }

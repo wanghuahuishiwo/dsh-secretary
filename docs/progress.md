@@ -1,6 +1,6 @@
 # 一期产品基线进展
 
-> 快照：2026-11-03 15:36（Asia/Shanghai）。本页只记总进度、各模块剩余与备注；设计与规格见 [产品架构](product-architecture.md)、[数据模型](data-model.md)、[规格](specs/2026-11-03-secretary-product-foundation.md)。工单入口：[Issue #1](https://github.com/wanghuahuishiwo/dsh-secretary/issues/1)（子工单 #2–#8）。
+> 快照：2026-11-03 15:47（Asia/Shanghai）。本页只记总进度、各模块剩余与备注；设计与规格见 [产品架构](product-architecture.md)、[数据模型](data-model.md)、[规格](specs/2026-11-03-secretary-product-foundation.md)。工单入口：[Issue #1](https://github.com/wanghuahuishiwo/dsh-secretary/issues/1)（子工单 #2–#8）。
 
 ## 总进度
 
@@ -9,18 +9,18 @@
 - 分模块完成度：GTD ~20%、Time ~70%、Tag ~95%、Agent ~55%、Goal 0%、交付与集成 ~10%。
 - 暂定权重：GTD 35%、Time 30%、Tag 5%、Agent 10%、Goal 10%、交付 10%。若 Goal 按一期范围排除，约 44%。
 - 视图是单独阶段：Time 的视图已按原型落地；GTD（Inbox／Next／Forecast／Review）和 Goal 的视图尚未开始；Agent 按设计没有独立视图。
-- 子工单：#2、#3 已合入集成分支，#4 进行中，其余 4 个未开始。
+- 子工单：#2、#3 已合入集成分支，#4 本地完成待集成，其余 4 个未开始。
 
 | 模块 | 状态 | 还差 |
 |---|---|---|
 | GTD | 未开始（有旧底座） | 契约改造、标签继承、视图（Inbox／Next／Forecast／Review）、结构／Repeat |
 | Time／时间计划（含模板） | 完成（本地集成） | 远程交付 |
 | Time／时间实录 | 基本完成 | 共用交互增强、主题证据 |
-| Time／深度时间 | 进行中（worktree 未提交） | 提交验证、周网格 UI、重开验收 |
+| Time／深度时间 | 本地完成（待集成） | 日期例外属二期 |
 | Time／计划与实录共用 | 部分 | 连续拖刷、添加／消除／编辑撤销 |
 | Tag | 完成 | 画布联动断言 |
 | Goal | 未做（规格列为本期不做） | 模型、视图、验收全部未开始 |
-| Agent | 部分 | Time／GTD 工具随模块补齐、端到端同源验收 |
+| Agent | 部分 | GTD 工具随模块补齐、端到端同源验收 |
 | 交付与集成（跨模块） | 未开始 | 安装、主题、全量重开、场景重跑、清理、推送 |
 
 ## Actions
@@ -46,9 +46,10 @@
   - [ ] 共用交互增强落地后同步复用并验收
   - [ ] 明暗主题证据
 - 深度时间（#4）
-  - [ ] 提交 `ticket/4-deep-time` 改动并验证（备注：域层、`deep.*` 工具与 tracer 已在 worktree，未提交、未验证）
-  - [ ] 7×24 周网格界面接入面板（备注：集成分支中仍是占位页）
-  - [ ] 浏览器验收：档位读写、拖刷、重开恢复
+  - [x] 提交 `ticket/4-deep-time` 改动并验证（备注：`7a051b6`）
+  - [x] 7×24 周模板与原子能力（high／medium／low／未设置，未设置 ≠ low；公共 tools + 临时 SQLite 覆盖）
+  - [x] 周网格画笔：点按、拖刷、同档起手清除（真实 dsh web + Chromium 覆盖）
+  - [x] 完整重开恢复基础周模板（工具与浏览器两层均覆盖）
 - 计划与实录共用（#3、#7）
   - [x] 日期导航：前后箭头、日期输入、今天
   - [x] 月历跨月选择与高亮
@@ -70,7 +71,7 @@
 - [x] 三个公共工具门面（GTD／Tag／Time）+ `secretary`／`gtd-inbox-capture`／`gtd-clarify` 技能
 - [x] 工具与面板 host route 共用 Tag／Time Services（备注：tracer 覆盖，含计划／模板）
 - [x] Time 工具补齐计划、模板（备注：随 #3 合入）
-- [ ] Time 工具补齐深度时间（备注：随 #4）
+- [x] Time 工具补齐深度时间（备注：随 #4 本地完成）
 - [ ] GTD 工具随 GTD 改造补齐
 - [ ] 端到端同源验收：Agent 工具与 UI 操作同一事实源、重开一致（归交付）
 
@@ -88,6 +89,6 @@
 ## 备注
 
 - 基线：集成分支 `integration/secretary-product-foundation` @ `612172a`；2026-11-03 15:29 复跑 `pnpm build && pnpm test` 通过（tracer 24/24、真实浏览器 1/1）。
-- Time 由并行会话按切片推进：#3 已提交并合入；#4 在 `../dsh-secretary-ticket-4` worktree 实施中，未提交。本记录只跟状态，不重复安排。
+- #4 在 `ticket/4-deep-time` 完成本地实现；15:47 实测 `pnpm build && pnpm test` 通过（公共 tools + 临时 SQLite 32/32、真实 Chromium 2/2），尚未合入 integration。
 - 远端仓库为空，Issue 全部 open；远程交付为零。
 - 本期不做：Goal 模型与界面（导航保留入口）、统计、预算、时间对账、深度时间例外模板、Agent 调用策略、旧数据迁移。
