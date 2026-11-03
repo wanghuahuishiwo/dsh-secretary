@@ -36,6 +36,12 @@ importers:
       '@deepseek-ai/cordis':
         specifier: 4.0.5
         version: 4.0.5
+      dsh-secretary-tag:
+        specifier: workspace:*
+        version: link:../tag
+      dsh-secretary-time-block:
+        specifier: workspace:*
+        version: link:../time-block
     devDependencies:
       esbuild:
         specifier: ^0.25.10
@@ -55,12 +61,12 @@ importers:
       dsh-secretary-panel:
         specifier: workspace:*
         version: link:../panel
-      dsh-secretary-statistics:
-        specifier: workspace:*
-        version: link:../statistics
       dsh-secretary-storage:
         specifier: workspace:*
         version: link:../storage
+      dsh-secretary-tag:
+        specifier: workspace:*
+        version: link:../tag
       dsh-secretary-time-block:
         specifier: workspace:*
         version: link:../time-block
@@ -74,6 +80,9 @@ importers:
       esbuild:
         specifier: ^0.25.10
         version: 0.25.12
+      playwright:
+        specifier: 1.62.1
+        version: 1.62.1
 
   packages/statistics:
     dependencies:
@@ -110,6 +119,19 @@ importers:
         specifier: ^0.25.10
         version: 0.25.12
 
+  packages/tag:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5
+      dsh-secretary-core:
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
+
   packages/time-block:
     dependencies:
       '@deepseek-ai/cordis':
@@ -118,9 +140,9 @@ importers:
       dsh-secretary-core:
         specifier: workspace:*
         version: link:../core
-      dsh-secretary-gtd:
+      dsh-secretary-tag:
         specifier: workspace:*
-        version: link:../gtd
+        version: link:../tag
     devDependencies:
       esbuild:
         specifier: ^0.25.10
@@ -327,6 +349,21 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
+  fsevents@2.3.2:
+    resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
+    engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
+    os: [darwin]
+
+  playwright-core@1.62.1:
+    resolution: {integrity: sha512-wPYSwEBJY9GHraISXqyqtx0na0LpO3XEX7jNDhntbex7tzUS7kLnZsOlFruFJB4Hi/rhDMjXGqHewDZ68nYZVw==}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  playwright@1.62.1:
+    resolution: {integrity: sha512-0M+L3LAD8/nm554LOla9Ayx0j0tmFZ0FBcoQ7F1VuVHpM/XpiC8RcDzBQB8W5+hA8L22THxELzeF+2WcUzvcLg==}
+    engines: {node: '>=20'}
+    hasBin: true
+
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
@@ -469,5 +506,16 @@ snapshots:
       '@esbuild/win32-arm64': 0.25.12
       '@esbuild/win32-ia32': 0.25.12
       '@esbuild/win32-x64': 0.25.12
+
+  fsevents@2.3.2:
+    optional: true
+
+  playwright-core@1.62.1: {}
+
+  playwright@1.62.1:
+    dependencies:
+      playwright-core: 1.62.1
+    optionalDependencies:
+      fsevents: 2.3.2
 
   zod@4.4.3: {}

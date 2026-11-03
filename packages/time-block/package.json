@@ -1,7 +1,7 @@
 {
   "name": "dsh-secretary-time-block",
   "version": "0.1.0",
-  "description": "TimeBlock domain for dsh-secretary: planned/actual intervals linked to GTD Actions.",
+  "description": "Time domain for dsh-secretary: independent, Tag-classified ActualBlocks.",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
@@ -21,7 +21,7 @@
   "dependencies": {
     "@deepseek-ai/cordis": "4.0.5",
     "dsh-secretary-core": "workspace:*",
-    "dsh-secretary-gtd": "workspace:*"
+    "dsh-secretary-tag": "workspace:*"
   },
   "devDependencies": {
     "esbuild": "^0.25.10"

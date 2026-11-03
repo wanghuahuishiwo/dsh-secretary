@@ -1,60 +1,67 @@
 import { Service, type Context } from '@deepseek-ai/cordis'
-import type { TimeRange } from 'dsh-secretary-core/validation'
 
 export type ActualSource = 'user_reported' | 'agent_observed' | 'imported'
-export type TimeUse = 'dedicated' | 'parallel'
-
-/**
- * 专注档位：固定封闭枚举，只有深度与浅层两档，没有任何自定义入口。
- * 沿用知识库 2026-10-25 的口径：深度和中度统一叫「深度」，连续性比分级重要。
- * 它描述「这段时间里这个人能专注到什么程度」，用于校准一天中的状态曲线；
- * 不是 lifecycle status（active / completed / dropped），也不表示时间花在哪条线。
- */
 export const FOCUS_LEVELS = ['deep', 'shallow'] as const
 export type FocusLevel = (typeof FOCUS_LEVELS)[number]
-
-export const FOCUS_LABELS: Record<FocusLevel, string> = {
-  deep: '深度',
-  shallow: '浅层',
-}
+export const FOCUS_LABELS: Record<FocusLevel, string> = { deep: '深度', shallow: '浅层' }
 
 export function isFocusLevel(raw: unknown): raw is FocusLevel {
   return typeof raw === 'string' && (FOCUS_LEVELS as readonly string[]).includes(raw)
 }
 
-export interface TimeBlock {
-  readonly id: string
-  readonly actionId: string
-  readonly planned: TimeRange
-  readonly actual?: TimeRange
-  readonly actualSource?: ActualSource
+export interface TimeBlockContent {
+  readonly timeTagId: number
+  readonly note?: string
+}
+
+export interface ActualBlock extends TimeBlockContent {
+  readonly id: number
+  readonly startAt: string
+  readonly endAt?: string
+  readonly actualSource: ActualSource
   readonly focus?: FocusLevel
-  readonly use: TimeUse
-  readonly preparationReminderId?: string
-  readonly createdAt: string
-  readonly updatedAt: string
 }
 
-export interface CreateTimeBlockInput {
-  readonly actionId: string
-  readonly planned: TimeRange
-  readonly use?: TimeUse
+export interface CreateActualInput extends TimeBlockContent {
+  readonly startAt: string
+  readonly endAt?: string
+  readonly actualSource: ActualSource
+  readonly focus?: FocusLevel
 }
 
-export interface UpdateTimeBlockInput {
-  readonly planned?: TimeRange
-  readonly use?: TimeUse
-  readonly preparationReminderId?: string | null
+export interface StartActualInput extends TimeBlockContent {
+  readonly startAt?: string
+  readonly actualSource: ActualSource
+  readonly focus?: FocusLevel
 }
 
-export abstract class TimeBlockService extends Service {
+export interface UpdateActualInput {
+  readonly timeTagId?: number
+  readonly note?: string | null
+  readonly startAt?: string
+  readonly endAt?: string | null
+  readonly actualSource?: ActualSource
+  readonly focus?: FocusLevel | null
+}
+
+export interface ListActualQuery {
+  readonly date?: string
+  readonly timeZone?: string
+  readonly from?: string
+  readonly to?: string
+  readonly timeTagId?: number
+}
+
+export abstract class TimeService extends Service {
   constructor(ctx: Context) {
-    super(ctx, 'timeBlocks')
+    super(ctx, 'time')
   }
 
-  abstract createBlock(input: CreateTimeBlockInput): Promise<TimeBlock>
-  abstract getBlock(id: string): Promise<TimeBlock>
-  abstract listBlocks(): Promise<TimeBlock[]>
-  abstract updateBlock(id: string, input: UpdateTimeBlockInput): Promise<TimeBlock>
-  abstract recordActual(id: string, actual: TimeRange, actualSource: ActualSource, focus?: FocusLevel): Promise<TimeBlock>
+  abstract createActual(input: CreateActualInput): Promise<ActualBlock>
+  abstract getActual(id: number): Promise<ActualBlock>
+  abstract listActual(query?: ListActualQuery): Promise<ActualBlock[]>
+  abstract updateActual(id: number, input: UpdateActualInput): Promise<ActualBlock>
+  abstract deleteActual(id: number): Promise<ActualBlock>
+  abstract startActual(input: StartActualInput): Promise<ActualBlock>
+  abstract stopActual(id: number, endAt?: string): Promise<ActualBlock>
 }

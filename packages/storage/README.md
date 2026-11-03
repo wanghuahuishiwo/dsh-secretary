@@ -12,7 +12,7 @@
 
 ## 数据所有权
 
-- `secretary_gtd` 与 `secretary_time` 通过本 facility 打开，其他 Host domains 不经过它。
+- `secretary_gtd`、`secretary_tag` 与 `secretary_time` 通过本 facility 打开，其他 Host domains 不经过它。
 - 本模块不直接关闭共享 SQLite backend；卸载时只关闭本 facility 打开的 domains，backend 仍由其 Provider 拥有。
 - 不提供跨 domain 事务，也不复制旧 JSON 或 Obsidian 数据。
 
