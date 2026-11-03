@@ -1,6 +1,6 @@
 # 一期产品基线进展
 
-> 快照：2026-11-03 16:55（Asia/Shanghai）。本页只记总进度、各模块剩余与备注；设计与规格见 [产品架构](product-architecture.md)、[数据模型](data-model.md)、[规格](specs/2026-11-03-secretary-product-foundation.md)。工单入口：[Issue #1](https://github.com/wanghuahuishiwo/dsh-secretary/issues/1)（子工单 #2–#8）。
+> 快照：2026-11-03 17:30（Asia/Shanghai）。本页只记总进度、各模块剩余与备注；设计与规格见 [产品架构](product-architecture.md)、[数据模型](data-model.md)、[规格](specs/2026-11-03-secretary-product-foundation.md)。工单入口：[Issue #1](https://github.com/wanghuahuishiwo/dsh-secretary/issues/1)（子工单 #2–#8）。
 
 ## 总进度
 
@@ -11,17 +11,17 @@
 - 整体 = 一级节点（GTD、Time、Tag、Agent、Goal、交付与集成）进展的平均。
 - 条目增减会改变分母，数值随 Actions 勾选更新，可复算。
 
-按当前勾选：整体 **51%**。
+按当前勾选：整体 **53%**。
 
 | 节点 | 进展 | 计算 |
 |---|---|---|
 | GTD | 50% | 3/6 项；#5 基础闭环完成，#6 未开始 |
-| Time | 79% | 计划 100%、实录 50%、深度时间 100%、共用 67% 的平均 |
+| Time | 94% | 计划 100%、实录 75%、深度时间 100%、共用 100% 的平均 |
 | Tag | 80% | 4/5 项 |
 | Agent | 83% | 5/6 项 |
 | Goal | 0% | 0/3 项 |
 | 交付与集成 | 11% | 1/9 项 |
-| **整体** | **51%** | 6 个节点等权平均，四舍五入 |
+| **整体** | **53%** | 6 个节点等权平均，四舍五入 |
 
 ## Actions
 
@@ -43,7 +43,7 @@
 - 时间实录（#2、#7）
   - [x] CRUD、start／stop、actualSource、focus，与 Action Completed 独立（备注：tracer 覆盖）
   - [x] 日期／范围查询、父标签去重、重启恢复、390px（备注：浏览器测试覆盖）
-  - [ ] 共用交互增强落地后同步复用并验收
+  - [x] 共用交互增强落地后同步复用并验收（备注：计划／实录同一画布矩阵）
   - [ ] 明暗主题证据
 - 深度时间（#4）
   - [x] 提交 `ticket/4-deep-time` 改动并验证（备注：`7a051b6`，合入 `56e1b9a`）
@@ -55,8 +55,8 @@
   - [x] 月历跨月选择与高亮
   - [x] 15／30 分钟粒度切换
   - [x] 计划侧复用同一画布
-  - [ ] 连续拖刷（一次拖刷只处理起手标签）
-  - [ ] 撤销添加、消除、编辑（备注：模板应用撤销已有）
+  - [x] 连续拖刷（一次拖刷只处理起手标签）
+  - [x] 撤销添加、消除、编辑（备注：当前会话通用 Undo；模板应用沿用持久化撤销）
 
 ### Tag（#2）
 
@@ -100,4 +100,5 @@
 - 基线：#5 开工为 `56e1b9a`；报告前已读取并 merge 最新 integration `2798f57`，保留其统一等权进展算法与 Goal 跟踪。
 - Time 由并行会话按切片推进：#3、#4 已合入。#4 已知边界：深度时间 UI 对一次手势逐格串行提交，中途失败可能部分持久化。
 - #5 在 `ticket/5-gtd-tags` 本地实现：公开 tools／Host routes + 临时 SQLite 39/39、真实 Chromium 3/3；覆盖 capture → clarify → Next／Forecast → 编辑／完成 → 完整重开。
+- #7 在 `ticket/7-time-canvas` 实现计划／实录共用画布：真实隔离 `dsh web` + Chromium 5/5（保留原 3 条并新增 2 条共用矩阵），公开 tools／Host routes + 临时 SQLite 39/39。通用 Undo 限当前会话；模板 apply/undo 仍走持久化契约。
 - 远端仓库为空，Issue 全部 open；远程交付为零。

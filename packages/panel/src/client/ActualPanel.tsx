@@ -72,6 +72,12 @@ interface DeepGesture {
   readonly cells: Map<string, { weekday: number; hour: number }>
 }
 
+interface EraseGesture {
+  readonly timeTagId: number
+  readonly candidates: Map<number, EditableBlock>
+  readonly selected: Map<number, EditableBlock>
+}
+
 export function ActualPanel() {
   const timeZone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Shanghai', [])
   const [product, setProduct] = useState<ProductView>('time')
@@ -103,6 +109,7 @@ export function ActualPanel() {
   const [tagColor, setTagColor] = useState(DEFAULT_COLOR)
   const [editingTagId, setEditingTagId] = useState<number>()
   const [editing, setEditing] = useState<EditableBlock>()
+  const [undoStack, setUndoStack] = useState<{ label: '添加' | '消除' | '编辑'; commands: PanelCommand[] }[]>([])
   const [editNote, setEditNote] = useState('')
   const [editTagId, setEditTagId] = useState('')
   const [editStart, setEditStart] = useState('')
@@ -117,6 +124,7 @@ export function ActualPanel() {
   const [busy, setBusy] = useState(false)
   const request = useRef(0)
   const deepGesture = useRef<DeepGesture | null>(null)
+  const eraseGesture = useRef<EraseGesture | null>(null)
 
   const refresh = async () => {
     const id = ++request.current
@@ -147,19 +155,26 @@ export function ActualPanel() {
     setSelectedTagId(timeTags[0]?.tag.id)
   }, [tags, timeTags, selectedTagId])
 
-  const run = async (command: PanelCommand): Promise<boolean> => {
+  const runBatch = async (commands: PanelCommand[]): Promise<any[] | undefined> => {
     setBusy(true)
     try {
-      await sendCommand(command)
+      const results = []
+      for (const command of commands) results.push(await sendCommand(command))
       await refresh()
       setError('')
-      return true
+      return results
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
-      return false
+      await refresh()
+      return undefined
     } finally {
       setBusy(false)
     }
+  }
+
+  const run = async (command: PanelCommand): Promise<any> => {
+    const results = await runBatch([command])
+    return results?.[0]
   }
 
   const paintDeepCell = (gesture: DeepGesture, weekday: number, hour: number) => {
@@ -249,8 +264,62 @@ export function ActualPanel() {
       timeTagId: selectedTagId,
       startAt: atMinute(date, minute), endAt: atMinute(date, minute + granularity),
     }
-    if (timeView === 'plan') await run({ domain: 'time', op: 'plan.create', date, timeZone, ...input })
-    else await run({ domain: 'time', op: 'actual.create', actualSource: 'user_reported', ...input })
+    let result
+    if (timeView === 'plan') result = await run({ domain: 'time', op: 'plan.create', date, timeZone, ...input })
+    else result = await run({ domain: 'time', op: 'actual.create', actualSource: 'user_reported', ...input })
+    if (result?.block) {
+      const id = result.block.id
+      setUndoStack(current => [...current, {
+        label: '添加',
+        commands: [{ domain: 'time', op: timeView === 'plan' ? 'plan.delete' : 'actual.delete', id }],
+      }].slice(-40))
+    }
+  }
+
+  const restoreCommand = (block: EditableBlock): PanelCommand => 'actualSource' in block
+    ? {
+      domain: 'time', op: 'actual.create', timeTagId: block.timeTagId, note: block.note,
+      startAt: block.startAt, endAt: block.endAt, actualSource: block.actualSource, focus: block.focus,
+    }
+    : {
+      domain: 'time', op: 'plan.create', date, timeZone, timeTagId: block.timeTagId, note: block.note,
+      startAt: block.startAt, endAt: block.endAt,
+    }
+
+  const removeBlocks = async (blocks: EditableBlock[]) => {
+    if (blocks.length === 0) return
+    const results = await runBatch(blocks.map<PanelCommand>(block => ({
+      domain: 'time', op: 'actualSource' in block ? 'actual.delete' : 'plan.delete', id: block.id,
+    })))
+    if (results) setUndoStack(current => [...current, { label: '消除', commands: blocks.map(restoreCommand) }].slice(-40))
+  }
+
+  const removeBlock = async (block: EditableBlock) => removeBlocks([block])
+
+  const activateCell = (minute: number, covering: EditableBlock[], clicked?: EditableBlock) => {
+    if (eraseMode) return
+    const selectedBlock = clicked?.timeTagId === selectedTagId
+      ? clicked
+      : covering.find(item => item.timeTagId === selectedTagId)
+    if (selectedBlock) void removeBlock(selectedBlock)
+    else void createAt(minute)
+  }
+
+  const updateCommand = (block: EditableBlock): PanelCommand => 'actualSource' in block
+    ? {
+      domain: 'time', op: 'actual.update', id: block.id, timeTagId: block.timeTagId, note: block.note ?? null,
+      startAt: block.startAt, endAt: block.endAt ?? null, actualSource: block.actualSource, focus: block.focus ?? null,
+    }
+    : {
+      domain: 'time', op: 'plan.update', id: block.id, timeTagId: block.timeTagId, note: block.note ?? null,
+      startAt: block.startAt, endAt: block.endAt,
+    }
+
+  const undoLast = async () => {
+    const entry = undoStack[undoStack.length - 1]
+    if (!entry || busy) return
+    const result = await runBatch(entry.commands)
+    if (result) setUndoStack(current => current[current.length - 1] === entry ? current.slice(0, -1) : current)
   }
 
   const editTag = (tag: Tag) => {
@@ -297,6 +366,36 @@ export function ActualPanel() {
 
   const currentBlocks: EditableBlock[] = timeView === 'plan' ? plans : blocks
   const currentKind = timeView === 'plan' ? '计划' : '实录'
+
+  const startEraseGesture = (event: React.PointerEvent<HTMLButtonElement>, block: EditableBlock) => {
+    if (!eraseMode || event.shiftKey || event.button !== 0 || busy) return
+    event.preventDefault()
+    const gesture: EraseGesture = {
+      timeTagId: block.timeTagId,
+      candidates: new Map(currentBlocks.map(item => [item.id, item] as const)),
+      selected: new Map([[block.id, block]]),
+    }
+    eraseGesture.current = gesture
+    const finish = () => {
+      window.removeEventListener('pointerup', finish)
+      window.removeEventListener('pointercancel', finish)
+      if (eraseGesture.current !== gesture) return
+      eraseGesture.current = null
+      void removeBlocks([...gesture.selected.values()])
+    }
+    window.addEventListener('pointerup', finish)
+    window.addEventListener('pointercancel', finish)
+  }
+
+  const moveEraseGesture = (event: React.PointerEvent<HTMLDivElement>) => {
+    const gesture = eraseGesture.current
+    if (!gesture || event.buttons === 0) return
+    const element = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-time-fragment]')
+    if (!element || !event.currentTarget.contains(element)) return
+    const block = gesture.candidates.get(Number(element.dataset.blockId))
+    if (block?.timeTagId === gesture.timeTagId) gesture.selected.set(block.id, block)
+  }
+
   const visibleTemplates = templates.filter(block => block.weekday === weekday)
   const editTemplate = (block: PlanTemplateBlock) => {
     setEditingTemplateId(block.id)
@@ -480,6 +579,7 @@ export function ActualPanel() {
             <main className="actual-main">
               <div className="actual-status">
                 <span>{eraseMode ? '消除态：点击记录删除' : `点击格子记录 ${granularity} 分钟 · Shift 点击编辑`}</span>
+                {undoStack.length > 0 && <button type="button" disabled={busy} onClick={() => void undoLast()}>撤销{undoStack[undoStack.length - 1].label}</button>}
                 {timeView === 'actual' && <button type="button" disabled={busy || selectedTagId === undefined} onClick={() => void run({
                   domain: 'time', op: 'actual.start', timeTagId: selectedTagId, actualSource: 'user_reported',
                 })}>开始实录</button>}
@@ -491,7 +591,7 @@ export function ActualPanel() {
                   </span>
                 ))}
               </div>}
-              <div className="day-canvas" aria-label={`${currentKind}画布`}>
+              <div className="day-canvas" aria-label={`${currentKind}画布`} onPointerMove={moveEraseGesture}>
                 {Array.from({ length: 24 }, (_, hour) => (
                   <div className="hour-row" key={hour}>
                     <span className="hour-label">{String(hour).padStart(2, '0')}:00</span>
@@ -506,23 +606,24 @@ export function ActualPanel() {
                         })
                         const label = `${String(hour).padStart(2, '0')}:${String(slotIndex * granularity).padStart(2, '0')}`
                         return <div className="time-slot" data-slot={label} key={slotIndex}>
-                          <button type="button" className="slot-hit" aria-label={`${date} ${label} 时间格`} onClick={() => void createAt(minute)} />
+                          <button type="button" className="slot-hit" aria-label={`${date} ${label} 时间格`} onClick={() => activateCell(minute, covering)} />
                           <div className="fragment-layer">
                             {covering.map(block => {
                               const tag = tagById(block.timeTagId)
                               const first = Date.parse(block.startAt) >= start && Date.parse(block.startAt) < end
                               return <button
-                                type="button" key={block.id} className={`${timeView === 'actual' ? 'actual-fragment' : 'plan-fragment'} time-fragment`} data-block-id={block.id}
+                                type="button" key={block.id} className={`${timeView === 'actual' ? 'actual-fragment' : 'plan-fragment'} time-fragment`} data-block-id={block.id} data-time-fragment=""
                                 aria-label={`${currentKind} ${tag?.name ?? block.timeTagId} ${timeLabel(block.startAt, timeZone)}`}
                                 style={{ background: tag?.color ?? DEFAULT_COLOR }}
+                                onPointerDown={event => startEraseGesture(event, block)}
                                 onClick={event => {
                                   event.stopPropagation()
                                   if (event.shiftKey) { openEditor(block); return }
-                                  if (eraseMode || block.timeTagId === selectedTagId) {
-                                    void run({ domain: 'time', op: timeView === 'plan' ? 'plan.delete' : 'actual.delete', id: block.id })
-                                  } else {
-                                    void createAt(minute)
+                                  if (eraseMode) {
+                                    if (event.detail === 0) void removeBlock(block)
+                                    return
                                   }
+                                  activateCell(minute, covering, block)
                                 }}
                               >{first && <span>{block.note ?? tag?.name ?? block.timeTagId}</span>}</button>
                             })}
@@ -566,15 +667,17 @@ export function ActualPanel() {
         </>}
         <div className="editor-actions">
           <button type="button" onClick={() => setEditing(undefined)}>取消</button>
-          <button type="button" onClick={() => { void run({ domain: 'time', op: 'actualSource' in editing ? 'actual.delete' : 'plan.delete', id: editing.id }); setEditing(undefined) }}>{'actualSource' in editing ? '删除实录' : '删除计划'}</button>
+          <button type="button" onClick={() => { void removeBlock(editing); setEditing(undefined) }}>{'actualSource' in editing ? '删除实录' : '删除计划'}</button>
           <button type="button" disabled={busy} onClick={async () => {
             const input = { timeTagId: Number(editTagId), note: editNote, startAt: editStart, endAt: editEnd }
-            if ('actualSource' in editing) await run({
+            const result = 'actualSource' in editing ? await run({
               domain: 'time', op: 'actual.update', id: editing.id, ...input,
               endAt: editEnd === '' ? null : editEnd, actualSource: editSource, focus: editFocus === '' ? null : editFocus,
-            })
-            else await run({ domain: 'time', op: 'plan.update', id: editing.id, ...input })
-            setEditing(undefined)
+            }) : await run({ domain: 'time', op: 'plan.update', id: editing.id, ...input })
+            if (result) {
+              setUndoStack(current => [...current, { label: '编辑', commands: [updateCommand(editing)] }].slice(-40))
+              setEditing(undefined)
+            }
           }}>{'actualSource' in editing ? '保存实录' : '保存计划'}</button>
         </div>
       </div>}
@@ -601,7 +704,7 @@ const styles = `
 .actual-status { flex: none; min-height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 12px; color: var(--dsw-alias-muted, #777); font-size: 11px; }
 .running-list { padding: 5px 12px; font-size: 11px; }
 .day-canvas { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
-.hour-row { height: 48px; display: grid; grid-template-columns: 50px minmax(0, 1fr); border-bottom: 1px solid var(--dsw-alias-border-soft, #eee); }
+.hour-row { box-sizing: border-box; height: 48px; display: grid; grid-template-columns: 50px minmax(0, 1fr); border-bottom: 1px solid var(--dsw-alias-border-soft, #eee); }
 .hour-label { padding: 6px 7px 0 0; text-align: right; color: var(--dsw-alias-muted, #777); font: 10px ui-monospace, monospace; }
 .hour-slots { min-width: 0; display: grid; }
 .time-slot { min-width: 0; position: relative; border-left: 1px solid var(--dsw-alias-border-soft, #eee); }

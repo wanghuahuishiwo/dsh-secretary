@@ -40,6 +40,12 @@ Schedule 消息不是完成回执。醒来后必须完成一段有价值的工�
 3. apply 后模板与日期计划互不同步，也不生成或修改 ActualBlock。需要撤销时使用公开 `template.undo`，它读取 SQLite 中持久化的 apply 前后事实；刷新或重启不依赖对话内临时状态。若用户 apply 后又改了当日计划，不强行 undo 覆盖后续编辑，先协商。
 4. 计划修改、模板 apply/undo 都不完成 Action，也不伪造实际投入。
 
+## 时间画布交互与修正边界
+
+1. 计划与实录共用同一画布：cell 内没有当前标签时添加并行，已有时消除当前标签；双击已选标签进入消除态，消除拖刷只处理起手标签，单击任意标签退出。只有 Shift + 点击打开备注、标签、区间或删除编辑。
+2. 画布的添加、消除（含整次拖刷）和编辑 Undo 只保证当前会话可用；模板 apply 继续使用 SQLite 持久化的 `template.undo`。不要把通用 Undo 承诺成跨完整重启历史，也不要用一串延迟请求覆盖用户后续编辑。
+3. 10／15／30 分钟粒度只影响显示与手动对齐。需要修改事实区间时使用明确的 `startAt/endAt`，不能以切换粒度代替计划或实录更新。
+
 ## 深度时间
 
 1. `secretary_time` 的 `deep.getWeek` 读取持续复用的 base 周模板；`deep.setCell / clearCell / setRange / clearRange` 分别设置或清除单格与闭区间矩形。档位只有 `high / medium / low / unset`，set 不接受 `unset`，清除才恢复未设置；未设置不等于 `low`，可以只使用 `high`。
