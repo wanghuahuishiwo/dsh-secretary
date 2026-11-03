@@ -5,7 +5,8 @@
 ## 当前范围
 
 - **本轮只验收 Time + Tag。** 集中修复在 `acceptance/time-tag` 实施，证据只来自真实临时 SQLite、隔离 `dsh web` 与 Chromium。
-- **面板按原型重做。** 产品面板（`packages/panel`）以 `design/time-tag-prototype.html` 的 A · 标签架为准重写：顶栏、Time 分段与粒度、日期条、画布状态条、绝对定位时间块、右侧标签架、浮层编辑与月历、深度时间与标签管理；样式由原型 CSS 移植并在 `.secretary-time-panel` 下作用域化，宿主主题 token 统一映射一次。
+- **交互重做中（2026-11-04 起）。** 用户要求把整个产品搬进 **DSH 右边栏**，Time 完全照 iPhone「时间块」App 的交互模型，一级模块改名走抽屉。新交互稿在 [rail-prototype.html](../design/rail-prototype.html)，说明见 [rail-prototype-brief.md](../design/rail-prototype-brief.md)；**尚未改动 `packages/panel`**，现有主面板实现等于待替换基线。
+- **旧版（将替换）面板按原型重做。** 产品面板（`packages/panel`）以 `design/time-tag-prototype.html` 的 A · 标签架为准重写：顶栏、Time 分段与粒度、日期条、画布状态条、绝对定位时间块、右侧标签架、浮层编辑与月历、深度时间与标签管理；样式由原型 CSS 移植并在 `.secretary-time-panel` 下作用域化，宿主主题 token 统一映射一次。
 - **#6 暂停**：GTD Review、Repeat、完整 OmniFocus 交互和 UI 终稿不在本轮；当前 GTD UI 只是已实现基础切片的载体。
 - **全产品 #8 暂停**：跨模块总验收和远程交付收口不在本轮。Time + Tag 的完整 desktop 副本已启动成功；DSH 重启后 Time／Panel 已恢复 `active`，等待用户完成真实 GUI 冒烟验收。
 - **阻断缺陷已修**：真实库里一条旧 UUID GTD Inbox 记录会让 `GET /api/secretary.state` 整页 400，时间与标签全部空白。现在 Time／Tag 严格、GTD 单独降级为空集合并返回 `warnings`，面板只显示可关闭的警示条；新增 tracer 回归用例覆盖。
