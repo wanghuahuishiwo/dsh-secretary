@@ -362,6 +362,18 @@ test('real Chromium Plan and Actual erase gestures keep the starting Tag fixed a
     for (const tag of ['甲', '乙', '丙', '丁']) await add('08:00', tag)
     await page.getByRole('button', { name: '丁', exact: true }).dblclick()
     await page.getByText('消除态：点击记录删除', { exact: true }).waitFor()
+    const accidentalCommands = []
+    const collectCommand = request => {
+      if (request.url().includes('/api/secretary.command')) accidentalCommands.push(request)
+    }
+    page.on('request', collectCommand)
+    await page.getByRole('button', { name: '2026-11-02 12:00 时间格', exact: true }).click({ position: { x: 1, y: 1 } })
+    page.off('request', collectCommand)
+    assert.equal(accidentalCommands.length, 0, 'erase-mode empty-cell click must not add a record')
+    assert.equal(await page.locator('[data-slot="12:00"] .time-fragment').count(), 0)
+    await fragment('08:00', '甲').click({ modifiers: ['Shift'] })
+    await page.getByRole('dialog', { name: `编辑${kind}`, exact: true }).waitFor()
+    await page.getByRole('button', { name: '取消', exact: true }).click()
     await fragment('08:00', '甲').click()
     await fragment('08:00', '甲').waitFor({ state: 'detached' })
     assert.equal(await fragment('08:00', '乙').count(), 1)

@@ -4,6 +4,8 @@
 
 - GTD 提供 Inbox、澄清、Projects、Next Actions、Forecast 视图；支持 Project／独立 Action 澄清、日期与直接 Tags 编辑、完成 Action，并展示 Availability 与派生 effective Tags。
 - Time 保留具体日期计划／实录、右侧时间标签树、10／15／30 分钟粒度、Shift 编辑、开始／停止，以及计划页内模板 apply/undo。
+- 计划与实录共用 cell 级标记／消除：当前标签不存在时添加并行，存在时消除；双击已选标签进入消除态，拖刷固定处理起手 `timeTagId`，单击任意标签退出。添加、消除（含整次拖刷）和编辑提供当前会话 Undo；通用 Undo 不承诺跨完整重启保留。
+- 同一 cell 的 N 条并行记录 N 等分，一小时一行且实际行高 48px；记录使用实心标签色、4px 圆角和细间距，跨小时只在首个覆盖 cell 显示标题。粒度切换只改显示与手动对齐，不重写 Host 事实。
 - 深度时间保留 7×24 base 周模板、high／medium／low 画笔和固定操作拖刷；未设置不等于 low。
 - Tags 的时间／情境树复用同一套管理界面；移动端把 Time 标签架移到底部，GTD 与全部模块遵循宿主 token 和 390px 布局。
 
@@ -14,4 +16,4 @@ Host 半通过 `ctx.connection.fetch.register` 注册两个精确、受宿主认
 
 route 只调用 `ctx.gtd`、`ctx.tags` 与 `ctx.time`。浏览器不获得 Host Cordis Context，不直接访问 Domain／SQLite，也没有另一套浏览器领域 store；React state 只保存界面选择、表单和 Host 返回的读取结果。公共 tools 与 routes 因而共享同一 Services 和事实源。
 
-`packages/secretary/tests/browser.mjs` 在临时 `DSH_HOME` 启动真实 `dsh web`，用 Chromium 操作生产 client。三条测试分别覆盖 Time 计划／实录／模板、DeepTime，以及 GTD capture → clarify → Next／Forecast → 编辑／完成 → 完整重开；全部检查页面错误与窄屏边界，不连接真实用户数据或静态 prototype。
+`packages/secretary/tests/browser.mjs` 在临时 `DSH_HOME` 启动真实 `dsh web`，用 Chromium 操作生产 client。五条测试覆盖 Time 计划／实录／模板、DeepTime、GTD，以及两组计划／实录共用矩阵：固定起手标签的消除点击／拖刷与整批 Undo，3／4 并行等分、48px 行高、跨小时标题、Shift 编辑 Undo 和粒度切换事实不变。全部检查页面错误，原有流程保留窄屏与完整重开边界；测试不连接真实用户数据或静态 prototype。
