@@ -7,10 +7,11 @@
 - [data-model.md](data-model.md) — 时间标签、日期计划／实录、计划模板、深度时间与 GTD 继承的底层设计基线
 - [product-architecture.md](product-architecture.md) — 一级模块、Time 内部工作区与一期产品边界
 - [verification.md](verification.md) — 曳光弹的 SQLite、打包安装、真实 AgentLoop／Schedule 与重启验证证据
+- [progress.md](progress.md) — 一期进展：按产品模块列状态、剩余 action 与备注（设计见各模块文档）
 
 ## 规格
 
-- [specs/2026-11-03-secretary-product-foundation.md](specs/2026-11-03-secretary-product-foundation.md) — GTD、Time、Tag 一期产品基线；已发布为 GitHub Issue #1，状态 ready-for-agent
+- [specs/2026-11-03-secretary-product-foundation.md](specs/2026-11-03-secretary-product-foundation.md) — GTD、Time、Tag 一期产品基线；已发布为 GitHub Issue #1，子工单 #2–#8，状态 ready-for-agent
 
 ## 研究资料
 
