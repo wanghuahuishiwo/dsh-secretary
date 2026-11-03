@@ -285,7 +285,7 @@ export class SQLiteTimeService extends TimeService {
     this.context = ctx
     this.ready = (ctx as Context & { secretaryStorageDomain: { open(spec: unknown): Promise<StorageDomain> } }).secretaryStorageDomain.open({
       name: config.domain ?? 'secretary_time',
-      version: 2,
+      version: 1,
       tables: {
         actual_blocks: { valueSchema: { parse: parseActual } },
         deep_templates: { valueSchema: { parse: parseDeepTemplate } },
@@ -308,8 +308,9 @@ export class SQLiteTimeService extends TimeService {
         if ([...domain.table('actual_blocks').entries()].some(([, block]) => block.timeTagId === tagId)) return true
         if ([...domain.table('plan_template_blocks').entries()].some(([, block]) => block.timeTagId === tagId)) return true
         if ([...domain.table('plan_blocks').entries()].some(([, block]) => block.timeTagId === tagId)) return true
-        return [...domain.table('plan_template_undos').entries()].some(([, undo]) =>
-          [...undo.before, ...undo.after].some(block => block.timeTagId === tagId))
+        return [...domain.table('plan_template_undos').entries()].some(([targetDate, undo]) =>
+          JSON.stringify(this.plansForDate(domain, targetDate, undo.timeZone)) === JSON.stringify(undo.after)
+          && [...undo.before, ...undo.after].some(block => block.timeTagId === tagId))
       },
     }), 'secretary: TimeBlock tag reference inspector')
   }

@@ -47,6 +47,14 @@ function timeLabel(instant: string, timeZone: string): string {
   return new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(instant))
 }
 
+function dateAtInstant(instant: string, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date(instant))
+  const field = (type: string) => parts.find(part => part.type === type)?.value
+  return `${field('year')}-${field('month')}-${field('day')}`
+}
+
 function flatten(tags: Tag[], kind: TagKind): { tag: Tag; depth: number }[] {
   const result: { tag: Tag; depth: number }[] = []
   const walk = (parentId: number | undefined, depth: number) => {
@@ -162,8 +170,8 @@ export function ActualPanel() {
     onResult?: (command: UndoCommand, result: any) => void,
   ): Promise<any[] | undefined> => {
     setBusy(true)
+    const results: any[] = []
     try {
-      const results = []
       for (const command of commands) {
         const { restoreOf: _restoreOf, ...payload } = command
         const result = await sendCommand(payload)
@@ -174,9 +182,10 @@ export function ActualPanel() {
       setError('')
       return results
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+      const message = cause instanceof Error ? cause.message : String(cause)
       await refresh()
-      return undefined
+      setError(message)
+      return results
     } finally {
       setBusy(false)
     }
@@ -292,7 +301,7 @@ export function ActualPanel() {
       startAt: block.startAt, endAt: block.endAt, actualSource: block.actualSource, focus: block.focus,
     }
     : {
-      domain: 'time', op: 'plan.create', restoreOf: block.id, date, timeZone, timeTagId: block.timeTagId, note: block.note,
+      domain: 'time', op: 'plan.create', restoreOf: block.id, date: dateAtInstant(block.startAt, timeZone), timeZone, timeTagId: block.timeTagId, note: block.note,
       startAt: block.startAt, endAt: block.endAt,
     }
 
@@ -301,7 +310,11 @@ export function ActualPanel() {
     const results = await runBatch(blocks.map<PanelCommand>(block => ({
       domain: 'time', op: 'actualSource' in block ? 'actual.delete' : 'plan.delete', id: block.id,
     })))
-    if (results) setUndoStack(current => [...current, { label: '消除', commands: blocks.map(restoreCommand) }].slice(-40))
+    if (results && results.length > 0) {
+      setUndoStack(current => [...current, {
+        label: '消除', commands: blocks.slice(0, results.length).map(restoreCommand),
+      }].slice(-40))
+    }
   }
 
   const removeBlock = async (block: EditableBlock) => removeBlocks([block])
@@ -753,7 +766,7 @@ const styles = `
 .product-header { flex: none; min-height: 45px; padding: calc(var(--dsh-frame-top-clearance, 0px) + 6px) 12px 6px; display: flex; align-items: center; gap: 18px; border-bottom: 1px solid var(--dsw-alias-border-l3, #ddd); background: var(--dsw-alias-bg-layer-1, #fff); }
 .product-header nav, .time-toolbar, .date-strip, .manager-header, .template-heading { display: flex; align-items: center; gap: 6px; }
 .product-header button, .time-toolbar button, .date-strip button, .manager-header button, .template-heading button, .actual-status button, .tag-form button, .editor-actions button, .running-list button, .template-form button, .template-row button, .shelf-title button { border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 6px; background: var(--dsw-alias-bg-layer-1, #fff); color: inherit; padding: 5px 8px; cursor: pointer; }
-.product-header button[aria-current="page"], .segmented button[aria-selected="true"], .segmented button[aria-pressed="true"], .week-strip button[aria-pressed="true"] { background: var(--dsw-alias-interactive-bg-hover-accent, #e8efff); color: var(--dsw-alias-link, #3972d8); }
+.product-header button[aria-current="page"], .segmented button[aria-selected="true"], .segmented button[aria-pressed="true"], .week-strip button[aria-pressed="true"] { background: var(--dsw-alias-interactive-bg-hover-accent, #e8efff); color: var(--dsw-alias-label-primary, #1d1d1f); }
 .time-error { flex: none; padding: 8px 12px; color: var(--dsw-alias-state-error-primary, #bd443d); }
 .time-toolbar { flex: none; min-height: 43px; justify-content: space-between; padding: 6px 12px; border-bottom: 1px solid var(--dsw-alias-border-l2, #eee); background: var(--dsw-alias-bg-layer-1, #fff); }
 .segmented { display: inline-flex; gap: 3px; padding: 2px; border-radius: 7px; background: var(--dsw-alias-bg-module-platform, #eee); }
@@ -779,7 +792,7 @@ const styles = `
 .shelf-title { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 0 6px 8px; font-size: 12px; font-weight: 650; }
 .shelf-title button { font-size: 10px; padding: 3px 5px; }
 .tag-shelf > button { width: 100%; min-height: 30px; display: flex; align-items: center; gap: 7px; padding: 4px 6px 4px calc(6px + var(--depth, 0) * 14px); border: 1px solid transparent; border-radius: 6px; background: transparent; color: inherit; text-align: left; }
-.tag-shelf > button.selected { background: var(--dsw-alias-interactive-bg-hover-accent, #e8efff); color: var(--dsw-alias-link, #3972d8); }
+.tag-shelf > button.selected { border-color: var(--dsw-alias-label-primary, #1d1d1f); background: var(--dsw-alias-interactive-bg-hover-accent, #e8efff); color: var(--dsw-alias-label-primary, #1d1d1f); }
 .tag-dot { width: 9px; height: 9px; flex: none; border-radius: 3px; }
 .tag-manager { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; }
 .manager-header { justify-content: space-between; margin-bottom: 12px; }
@@ -788,6 +801,7 @@ const styles = `
 .kind-switch button[aria-pressed="true"] { background: var(--dsw-alias-interactive-bg-hover-accent, #e8efff); }
 .tag-form { display: grid; grid-template-columns: minmax(120px, 2fr) minmax(80px, 1fr) minmax(120px, 2fr) 60px auto; align-items: end; gap: 8px; }
 .tag-form label, .editor-backdrop label, .template-form label { display: flex; flex-direction: column; gap: 4px; color: var(--dsw-alias-label-secondary, #777); font-size: 11px; }
+.editor-backdrop label { color: var(--dsw-alias-label-primary, #1d1d1f); }
 .tag-form input, .tag-form select, .editor-backdrop input, .editor-backdrop select, .editor-backdrop textarea, .template-form input { width: 100%; min-width: 0; border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 6px; background: var(--dsw-alias-bg-layer-1, #fff); color: inherit; padding: 6px; }
 .tag-form input[type="color"] { height: 31px; padding: 2px; }
 .tag-root-drop { margin: 0 0 8px; padding: 8px; border: 1px dashed var(--dsw-alias-border-l3, #ddd); border-radius: 6px; color: var(--dsw-alias-label-secondary, #777); font-size: 11px; text-align: center; }
@@ -810,10 +824,10 @@ const styles = `
 .calendar-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
 .calendar-head button, .calendar-today { border: 0; border-radius: 6px; background: transparent; color: inherit; padding: 5px 9px; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
-.calendar-grid.weekdays { margin-bottom: 3px; color: var(--dsw-alias-label-secondary, #777); font-size: 10px; text-align: center; }
+.calendar-grid.weekdays { margin-bottom: 3px; color: var(--dsw-alias-label-primary, #1d1d1f); font-size: 10px; text-align: center; }
 .calendar-day { min-height: 34px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: inherit; }
 .calendar-day.is-today { border-color: var(--dsw-alias-link, #3972d8); color: var(--dsw-alias-link, #3972d8); }
-.calendar-day[aria-current="date"] { background: var(--dsw-alias-link, #3972d8); color: var(--dsw-alias-label-primary-inverted, #fff); }
+.calendar-day[aria-current="date"] { border-color: var(--dsw-alias-label-primary, #1d1d1f); background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-label-primary, #1d1d1f); }
 .calendar-today { display: block; margin: 8px auto 0; }
 .editor-backdrop { position: fixed; z-index: 100; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 24px)); max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; padding: 14px; border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 12px; background: var(--dsw-alias-bg-overlay, #fff); box-shadow: 0 12px 36px #0004; }
 .editor-actions { display: flex; justify-content: flex-end; gap: 7px; }

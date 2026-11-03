@@ -20,18 +20,18 @@
 
 共同约束：
 
-- ID 是同一个 TimeService 内持久化自增数字，KV key 仅在其字符串形式下使用；写失败允许留下 ID 空洞，但不留下半套计划事实。
+- ID 是同一个 TimeService 内持久化自增数字，KV key 仅在其字符串形式下使用；写失败允许留下 ID 空洞，单次写失败且补偿成功时不留下半套计划事实。
 - 任意区间可以重叠；计划或模板的创建、改绑与 apply 验证时间 Tag，并与 Tag 删除共用一致性写队列。
 - `actualSource` 固定为 `user_reported / agent_observed / imported`；`focus` 是可选封闭枚举 `deep / shallow`，与 Action Completed 无关。
 - `actual.list` 与 `plan.list` 支持具体日期及父时间标签的直接＋所有后代关联查询，并按块 ID 去重；`actual.list` 另支持 `from/to` 范围。
 
 ## 数据所有权与原子性
 
-默认 domain 为 `secretary_time`（schema version 2），拥有 `plan_blocks`、`actual_blocks`、`plan_template_blocks`、`plan_template_undos`、`deep_templates` 表和 next-id global。默认 bundle 中它经 `secretaryStorageDomain` 路由到 `$DSH_HOME/storages/secretary.db`。UI Host routes 与公共工具都调用 `TimeService`，不直接写 SQLite。旧 `plan_days` 聚合桶及 Action-TimeBlock 数据没有兼容层或自动迁移。
+默认 domain 为 `secretary_time`（schema version 1），拥有 `plan_blocks`、`actual_blocks`、`plan_template_blocks`、`plan_template_undos`、`deep_templates` 表和 next-id global。默认 bundle 中它经 `secretaryStorageDomain` 路由到 `$DSH_HOME/storages/secretary.db`。UI Host routes 与公共工具都调用 `TimeService`，不直接写 SQLite。旧 `plan_days` 聚合桶及 Action-TimeBlock 数据没有兼容层或自动迁移；既有 v1 Actual／Template／Deep 记录可直接重开，旧 Plan 数据按空数据处理。
 
 `deep_templates` 以 `base` key 保存含 `scope: base` 的完整周模板，为后续适用范围扩展保留位置；本期没有日期例外。每次单格或区间修改只写一个聚合 record。
 
-`plan_blocks` 以 ID 独立保存每条 PlanBlock。日期列表、模板 apply 与 undo 共用目标日期的时区区间重叠语义，因此跨午夜块和已改到其他日期的块不会受起始日期桶影响。`plan_template_undos` 按 target date 持久化最近一次 before／after；undo 只在当前集合仍精确等于 after 时恢复 before，随后删除该 undo 记录。Storage 没有跨 record 事务，多记录替换使用明确补偿恢复，真实写失败允许 ID 空洞但不会静默留下半套计划或半套 undo；补偿本身失败会显式报错。当前集合和可恢复 undo 中的 Tag 引用都受删除保护。
+`plan_blocks` 以 ID 独立保存每条 PlanBlock。日期列表、模板 apply 与 undo 共用目标日期的时区区间重叠语义，因此跨午夜块和已改到其他日期的块不会受起始日期桶影响。`plan_template_undos` 按 target date 持久化最近一次 before／after；undo 只在当前集合仍精确等于 after 时恢复 before，随后删除该 undo 记录。Storage 没有跨 record 事务，多记录替换使用明确补偿恢复；单次真实写失败且补偿成功时恢复完整 before／after，失败允许 ID 空洞。补偿自身再次失败会显式报错并可能留下可重开的部分事实，不保证绝对原子。当前集合和仍可执行的 undo 中的 Tag 引用受删除保护；后续编辑使 undo 失效后，其历史快照不再单独阻止 Tag 删除。
 
 ## 当前限制
 

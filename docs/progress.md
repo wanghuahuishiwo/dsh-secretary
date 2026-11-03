@@ -14,13 +14,15 @@
 - [x] 具体日期 Plan／Actual CRUD、独立区间、跨小时与跨午夜查询，Actual 来源／focus 与 Completed 独立。
 - [x] 计划模板 weekday 维护、显式 apply/undo、完整重开后持久化 undo，后续编辑拒绝覆盖。
 - [x] Plan 使用独立 `plan_blocks`；跨日期 update、跨午夜 apply 与 undo 共用区间重叠语义，不保留 `plan_days`。
-- [x] 多记录 apply／undo 的真实 SQLite 故障补偿与重试验证；Actual／Template 不变，ID 允许空洞。
+- [x] 多记录 apply／undo 的真实 SQLite 故障补偿与重试验证；Actual／Template 不变，ID 允许空洞。双次故障／重开证据明确补偿失败可能留下部分事实，不声称绝对原子。
+- [x] `secretary_time` 保持 schema version 1；真实 v1 存储重开后 Actual／Template／Deep 可读，新 Plan 可写，旧空 `plan_days` 不迁移也不保留兼容层。
 - [x] 10／15／30 分钟只改显示，24 行、48px、N 等分、跨小时标题、4px 实心标签色。
 - [x] 标记／消除矩阵、安全 erase drag、Shift 编辑；添加／消除／编辑 Undo。
-- [x] Undo 在 recreate 新 ID 后重映射早期编辑／删除逆操作，覆盖整次 erase drag 链。
+- [x] Undo 在 recreate 新 ID 后重映射早期编辑／删除逆操作，覆盖整次 erase drag 链；中途失败不误弹栈，剩余命令可重试并继续 remap 旧栈。
+- [x] 批量消除在第二次 delete 失败时保留已删前缀的错误与 Undo；Plan 跨午夜次日或切换日期后 Undo 均按 `startAt + timeZone` 恢复原日期。
 - [x] DeepTime 7×24、high／medium／low／unset、点按／拖刷／同档清除和重开恢复。
 - [x] 同一临时 SQLite 一次完整关闭／重开同时恢复 Plan、Actual、PlanTemplate、DeepTime、Tag。
-- [x] 真实宿主 light／dark token、文字对比度、390px 无页面横向溢出及 light／dark PNG 证据。
+- [x] 真实宿主 light／dark token、选中标签与 Time 分段控件对比度、月历与编辑 dialog 计算样式、390px 无页面横向溢出及 light／dark PNG 证据。
 
 ## Tag（#2）
 
@@ -28,7 +30,7 @@
 - [x] Plan 与 Actual 父标签查询均包含直接＋所有后代关联，并按记录 ID 去重。
 - [x] time／context 共用真实桌面 HTML5 drag/drop 改父级和移回根级；Host 与 Time 画布重新读取层级。不宣称触摸拖拽。
 - [x] Time 进入 Tags 自动选择 time，GTD 进入 Tags 自动选择 context。
-- [x] 引用保护覆盖当前 Plan／Actual／Template 和可恢复的模板 undo。
+- [x] 引用保护覆盖当前 Plan／Actual／Template 和仍可执行的模板 undo；后续编辑使 undo 失效后，历史快照不再单独阻止已无现实引用的 Tag 删除。
 
 ## 暂停与后续
 
