@@ -29,6 +29,7 @@
     "@deepseek-ai/cordis": "4.0.5"
   },
   "dependencies": {
+    "dsh-secretary-gtd": "workspace:*",
     "dsh-secretary-tag": "workspace:*",
     "dsh-secretary-time-block": "workspace:*"
   },

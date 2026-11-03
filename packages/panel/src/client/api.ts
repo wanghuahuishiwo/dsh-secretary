@@ -1,4 +1,5 @@
 import type { Tag } from 'dsh-secretary-tag/contract'
+import type { ActionView, InboxItem, Project } from 'dsh-secretary-gtd/contract'
 import type { ActualBlock, DeepWeek, PlanBlock, PlanTemplateBlock } from 'dsh-secretary-time-block/contract'
 
 export interface PanelState {
@@ -8,10 +9,15 @@ export interface PanelState {
   readonly templates: PlanTemplateBlock[]
   readonly templateUndo: boolean
   readonly deepWeek: DeepWeek
+  readonly inbox: InboxItem[]
+  readonly projects: Project[]
+  readonly actions: ActionView[]
+  readonly nextActions: ActionView[]
+  readonly forecast: ActionView[]
 }
 
 export type PanelCommand = Record<string, unknown> & {
-  readonly domain: 'tag' | 'time'
+  readonly domain: 'gtd' | 'tag' | 'time'
   readonly op: string
 }
 
@@ -22,8 +28,8 @@ async function read(response: Response): Promise<any> {
   return body
 }
 
-export async function fetchState(date: string, timeZone: string): Promise<PanelState> {
-  const query = new URLSearchParams({ date, timeZone })
+export async function fetchState(date: string, timeZone: string, forecastDate = date): Promise<PanelState> {
+  const query = new URLSearchParams({ date, timeZone, forecastDate })
   return read(await fetch(`/api/secretary.state?${query}`, { headers: { accept: 'application/json' } }))
 }
 

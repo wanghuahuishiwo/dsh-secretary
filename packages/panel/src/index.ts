@@ -1,5 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { TagService } from 'dsh-secretary-tag/contract'
+import type { GtdService } from 'dsh-secretary-gtd/contract'
 import type { TimeService } from 'dsh-secretary-time-block/contract'
 
 export const STATE_PATH = '/api/secretary.state'
@@ -15,6 +16,7 @@ interface Route {
 interface PanelContext extends Context {
   connection: { fetch: { register(route: Route): () => void } }
   tags: TagService
+  gtd: GtdService
   time: TimeService
 }
 
@@ -41,6 +43,22 @@ async function command(ctx: PanelContext, raw: unknown): Promise<unknown> {
       default: throw new Error(`secretary: unsupported panel tag operation ${JSON.stringify(input.op)}`)
     }
   }
+  if (input.domain === 'gtd') {
+    switch (input.op) {
+      case 'inbox.capture': return { item: await ctx.gtd.captureInbox(input) }
+      case 'inbox.clarify': return ctx.gtd.clarifyInbox(input)
+      case 'inbox.delete': return { item: await ctx.gtd.deleteInbox(input.id) }
+      case 'project.create': return { project: await ctx.gtd.createProject(input) }
+      case 'project.update': return { project: await ctx.gtd.updateProject(input.id, input) }
+      case 'project.delete': return { project: await ctx.gtd.deleteProject(input.id) }
+      case 'action.create': return { action: await ctx.gtd.createAction(input) }
+      case 'action.update': return { action: await ctx.gtd.updateAction(input.id, input) }
+      case 'action.delete': return { action: await ctx.gtd.deleteAction(input.id) }
+      case 'action.complete': return { action: await ctx.gtd.completeAction(input.id, input.completedAt) }
+      case 'action.drop': return { action: await ctx.gtd.dropAction(input.id, input.droppedAt) }
+      default: throw new Error(`secretary: unsupported panel gtd operation ${JSON.stringify(input.op)}`)
+    }
+  }
   if (input.domain === 'time') {
     switch (input.op) {
       case 'plan.create': return { block: await ctx.time.createPlan(input) }
@@ -63,11 +81,11 @@ async function command(ctx: PanelContext, raw: unknown): Promise<unknown> {
       default: throw new Error(`secretary: unsupported panel time operation ${JSON.stringify(input.op)}`)
     }
   }
-  throw new Error('secretary: panel command domain must be tag or time')
+  throw new Error('secretary: panel command domain must be gtd, tag, or time')
 }
 
 export const name = 'dsh-secretary-panel'
-export const inject = ['connection', 'tags', 'time']
+export const inject = ['connection', 'tags', 'gtd', 'time']
 
 export function apply(context: Context): void {
   const ctx = context as PanelContext
@@ -80,15 +98,22 @@ export function apply(context: Context): void {
         const url = new URL(request.url)
         const date = url.searchParams.get('date') ?? undefined
         const timeZone = url.searchParams.get('timeZone') ?? undefined
-        const [tags, blocks, plans, templates, templateUndo, deepWeek] = await Promise.all([
+        const forecastDate = url.searchParams.get('forecastDate') ?? date
+        if (date === undefined || timeZone === undefined) throw new Error('secretary: panel state requires date and timeZone')
+        const [tags, blocks, plans, templates, templateUndo, deepWeek, inbox, projects, actions, nextActions, forecast] = await Promise.all([
           ctx.tags.listTags(),
           ctx.time.listActual({ date, timeZone }),
           ctx.time.listPlan({ date, timeZone }),
           ctx.time.listPlanTemplate(),
-          date === undefined ? false : ctx.time.canUndoPlanTemplate({ targetDate: date, timeZone: timeZone ?? 'Asia/Shanghai' }),
+          ctx.time.canUndoPlanTemplate({ targetDate: date, timeZone }),
           ctx.time.getDeepWeek(),
+          ctx.gtd.listInbox(),
+          ctx.gtd.listProjects(),
+          ctx.gtd.listActions(),
+          ctx.gtd.listNextActions(),
+          ctx.gtd.listForecast({ date: forecastDate, timeZone }),
         ])
-        return json({ tags, blocks, plans, templates, templateUndo, deepWeek })
+        return json({ tags, blocks, plans, templates, templateUndo, deepWeek, inbox, projects, actions, nextActions, forecast })
       } catch (error) {
         return json({ error: errorMessage(error) }, 400)
       }

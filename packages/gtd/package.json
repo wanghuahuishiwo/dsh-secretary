@@ -21,7 +21,8 @@
   },
   "dependencies": {
     "@deepseek-ai/cordis": "4.0.5",
-    "dsh-secretary-core": "workspace:*"
+    "dsh-secretary-core": "workspace:*",
+    "dsh-secretary-tag": "workspace:*"
   },
   "devDependencies": {
     "esbuild": "^0.25.10"

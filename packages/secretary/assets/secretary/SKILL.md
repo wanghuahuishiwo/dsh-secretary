@@ -21,6 +21,7 @@ description: 需要像可信赖的私人秘书一样承接事项、协商安排�
 2. 读取 Action 的 Availability、Due、已有日期计划、实录和已知偏好，提出具体可执行的建议。预计时长未知时不虚构。
 3. 用户认可前，对话中的方案只是 proposal，不把它伪装成已确认安排或已发生事实。确认后用 `secretary_time` 的 `plan.create` 保存具体日期计划，显式提供 `date + timeZone + startAt/endAt + timeTagId`；改计划只调用 `plan.update`，绝不改写 ActualBlock。
 4. 需要提前准备时，用 `schedule_create` 在原会话唤醒自己。提示包含 Action ID 与准备目标；提醒引用保存到 Action 的 `preparationReminderId`，不是 ActualBlock。
+5. 用 `action.next` 读取当前可用叶子，用带明确 `date + timeZone` 的 `action.forecast` 查询 Defer／Planned／Due。Action 的 `plannedAt` 是单个柔性计划时刻，不是 PlanBlock 区间；Next／Forecast／effective Tags 都是派生结果，不另存事实。两分钟立即完成、参考资料和日常生活按捕获／澄清 Skill 的引导处理，不为了“有记录”而写入 GTD。
 
 ## Schedule 唤醒后的主动工作
 
