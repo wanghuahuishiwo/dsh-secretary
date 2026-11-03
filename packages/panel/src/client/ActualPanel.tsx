@@ -174,6 +174,7 @@ export function ActualPanel() {
   const [forecast, setForecast] = useState<ActionView[]>([])
   const [warnings, setWarnings] = useState<PanelWarning[]>([])
   const [dismissedWarning, setDismissedWarning] = useState('')
+  const [noticesOpen, setNoticesOpen] = useState(false)
   const [deepBrush, setDeepBrush] = useState<DeepLevel>('high')
   const [selectedTagId, setSelectedTagId] = useState<number>()
   const [eraseMode, setEraseMode] = useState(false)
@@ -254,12 +255,13 @@ export function ActualPanel() {
   })
 
   useEffect(() => {
-    if (scrolled.current) return
-    const scroller = document.querySelector('.secretary-time-panel .canvas-scroll')
-    if (!scroller) return
+    if (scrolled.current || product !== 'time' || timeView === 'deep') return
+    const scroller = document.querySelector<HTMLElement>('.secretary-time-panel .canvas-scroll')
+    if (!scroller || scroller.scrollHeight <= scroller.clientHeight) return
+    const rowHeight = Number.parseFloat(getComputedStyle(scroller).getPropertyValue('--dsw-alias-row-height')) || 40
+    scroller.scrollTop = rowHeight * 6
     scrolled.current = true
-    scroller.scrollTop = 48 * 6
-  }, [product, timeView])
+  }, [product, timeView, blocks, plans])
 
   // Keep the floating editor inside the viewport once its real height is known.
   useEffect(() => {
@@ -860,6 +862,10 @@ export function ActualPanel() {
         <span className="shelf-title">时间标签</span>
         <button className="quiet-button" type="button" onClick={() => { setManagerKind('time'); setProduct('tags') }}>管理</button>
       </div>
+      <div className={`shelf-paint${eraseMode ? ' is-erase' : ''}`}>
+        {eraseMode ? <Icon name="x" /> : <span className="tag-dot" style={{ '--tag-color': selectedTagId === undefined ? DEFAULT_COLOR : tagColor(selectedTagId) } as React.CSSProperties} />}
+        <span>{eraseMode ? '消除状态' : `画笔：${brushName}`}</span>
+      </div>
       <input
         className="search-input" type="search" ref={searchRef} value={tagSearch}
         placeholder="搜索时间标签" aria-label="搜索时间标签"
@@ -867,54 +873,69 @@ export function ActualPanel() {
       />
     </div>
     <div className="shelf-body">{renderTagTree('time', tagSearch, selectedTagId, tag => { setSelectedTagId(tag.id); setEraseMode(false) })}</div>
-    <div className={`shelf-foot${eraseMode ? ' is-erase' : ''}`}>{selectionText}</div>
   </aside>
 
-  const dateStrip = <div className="date-strip">
-    <div className="date-nav">
-      <button className="icon-button" type="button" aria-label="前一天" onClick={() => { setDate(shiftDate(date, -1)); setTemplateMode(false) }}><Icon name="chevron-left" /></button>
-      <button className="date-label" type="button" aria-label="打开日历选择日期" onClick={event => openCalendar(event.currentTarget)}>{dateLabel(date)}</button>
-      <button className="icon-button" type="button" aria-label="后一天" onClick={() => { setDate(shiftDate(date, 1)); setTemplateMode(false) }}><Icon name="chevron-right" /></button>
-      <button className="quiet-button" type="button" onClick={goToday}>今天</button>
-    </div>
-    {timeView === 'plan' && <button className="quiet-button" type="button" onClick={() => { setWeekday(weekdayOf(date)); setTemplateMode(true) }}>计划模板</button>}
-    <span className="strip-tail">
-      {timeView === 'plan' && templateUndo && <button type="button" className="quiet-button" disabled={busy} onClick={() => void run({ domain: 'time', op: 'template.undo', targetDate: date, timeZone })}>撤销模板应用</button>}
+  const viewTabs = <div className="segmented" role="tablist" aria-label="Time 子模块">
+    {(['plan', 'actual', 'deep'] as TimeView[]).map(view => <button
+      type="button" role="tab" key={view} aria-selected={timeView === view}
+      onClick={() => { setTimeView(view); setTemplateMode(false); setCalendar(undefined); setEditing(undefined) }}
+    >{view === 'plan' ? '计划' : view === 'actual' ? '实录' : '深度时间'}</button>)}
+  </div>
+
+  const dateNav = <div className="date-nav">
+    <button className="icon-button" type="button" aria-label="前一天" onClick={() => { setDate(shiftDate(date, -1)); setTemplateMode(false) }}><Icon name="chevron-left" /></button>
+    <button className="date-label" type="button" aria-label="打开日历选择日期" onClick={event => openCalendar(event.currentTarget)}>{dateLabel(date)}</button>
+    <button className="icon-button" type="button" aria-label="后一天" onClick={() => { setDate(shiftDate(date, 1)); setTemplateMode(false) }}><Icon name="chevron-right" /></button>
+    <button className="quiet-button" type="button" onClick={goToday}>今天</button>
+  </div>
+
+  const weekStrip = <div className="week-strip" role="group" aria-label="模板星期">
+    {WEEKDAYS.map((label, index) => <button
+      type="button" className="week-day" key={label}
+      aria-current={weekday === index + 1 ? 'date' : 'false'}
+      onClick={() => setWeekday(index + 1)}
+    >{label}</button>)}
+  </div>
+
+  const moduleBar = <div className="module-bar">
+    {viewTabs}
+    {timeView === 'deep'
+      ? <span className="repeat-note">每周重复 · 自动沿用</span>
+      : templateMode
+        ? <>
+          {weekStrip}
+          <span className="template-actions">
+            <button type="button" className="primary-button" disabled={busy} onClick={() => void applyTemplate()}>应用到 {date}</button>
+            <button type="button" className="quiet-button" onClick={() => setTemplateMode(false)}>返回日期</button>
+          </span>
+        </>
+        : <>
+          {dateNav}
+          {timeView === 'plan' && <button className="quiet-button" type="button" onClick={() => { setWeekday(weekdayOf(date)); setTemplateMode(true) }}>计划模板</button>}
+          {timeView === 'plan' && templateUndo && <button type="button" className="quiet-button" disabled={busy} onClick={() => void run({ domain: 'time', op: 'template.undo', targetDate: date, timeZone })}>撤销模板应用</button>}
+        </>}
+    <span className="module-bar-tail">
+      {timeView !== 'deep' && <div className="granularity">
+        <span>时间格</span>
+        <div className="segmented" aria-label="时间格粒度">
+          {[10, 15, 30].map(value => <button
+            type="button" key={value} aria-pressed={granularity === value}
+            onClick={() => setGranularity(value)}
+          >{value} 分钟</button>)}
+        </div>
+      </div>}
+      {timeView === 'actual' && (running.length > 0
+        ? <button type="button" className="quiet-button record-toggle" disabled={busy} onClick={() => stopRunning(running[0])}>
+          <Icon name="stop" />停止 {tagName(running[0].timeTagId)}
+        </button>
+        : <button type="button" className="quiet-button record-toggle" disabled={busy || selectedTagId === undefined} onClick={startRunning}>
+          <Icon name="play" />开始实录
+        </button>)}
     </span>
   </div>
 
-  const templateStrip = <div className="date-strip">
-    <div className="week-strip" role="group" aria-label="模板星期">
-      {WEEKDAYS.map((label, index) => <button
-        type="button" className="week-day" key={label}
-        aria-current={weekday === index + 1 ? 'date' : 'false'}
-        onClick={() => setWeekday(index + 1)}
-      >{label}</button>)}
-    </div>
-    <div className="template-actions">
-      <span className="repeat-note">计划模板</span>
-      <button type="button" className="primary-button" disabled={busy} onClick={() => void applyTemplate()}>应用到 {date}</button>
-      <button type="button" className="quiet-button" onClick={() => setTemplateMode(false)}>返回日期</button>
-    </div>
-  </div>
-
   const canvasLayout = <div className="canvas-layout">
-    <section className="canvas-panel" aria-label="时间画布">
-      <div className="canvas-status">
-        <button type="button" className="brush-current" aria-label="选择当前时间画笔" onClick={() => searchRef.current?.focus()}>
-          {eraseMode ? '消除状态：点击记录消除' : `当前画笔：${brushName}`}
-        </button>
-        <span className="canvas-hint">双击已选标签进入消除 · Shift 点击编辑</span>
-        {timeView === 'actual' && running.length > 0
-          ? <button type="button" className="quiet-button record-toggle" disabled={busy} onClick={() => stopRunning(running[0])}>
-            <Icon name="stop" />停止 {tagName(running[0].timeTagId)}
-          </button>
-          : timeView === 'actual'
-            ? <button type="button" className="quiet-button record-toggle" disabled={busy || selectedTagId === undefined} onClick={startRunning}>
-              <Icon name="play" />开始实录
-            </button>
-            : null}
-      </div>
+    <section className="canvas-panel" aria-label="时间画布" title="双击已选标签进入消除 · Shift 点击编辑">
       <div className="canvas-scroll"><div className="day-grid">{canvasRows}</div></div>
     </section>
     {shelf}
@@ -960,29 +981,8 @@ export function ActualPanel() {
   </section>
 
   const timeModule = <section className="time-module">
-    <div className="time-toolbar">
-      <div className="segmented" role="tablist" aria-label="Time 子模块">
-        {(['plan', 'actual', 'deep'] as TimeView[]).map(view => <button
-          type="button" role="tab" key={view} aria-selected={timeView === view}
-          onClick={() => { setTimeView(view); setTemplateMode(false); setCalendar(undefined); setEditing(undefined) }}
-        >{view === 'plan' ? '计划' : view === 'actual' ? '实录' : '深度时间'}</button>)}
-      </div>
-      {timeView === 'deep'
-        ? <span className="repeat-note">每周重复 · 自动沿用</span>
-        : <div className="granularity">
-          <span>时间格</span>
-          <div className="segmented" aria-label="时间格粒度">
-            {[10, 15, 30].map(value => <button
-              type="button" key={value} aria-pressed={granularity === value}
-              onClick={() => setGranularity(value)}
-            >{value} 分钟</button>)}
-          </div>
-        </div>}
-    </div>
-    {timeView === 'deep' ? energyModule : <>
-      {templateMode && timeView === 'plan' ? templateStrip : dateStrip}
-      {canvasLayout}
-    </>}
+    {moduleBar}
+    {timeView === 'deep' ? energyModule : canvasLayout}
   </section>
 
   const managedTree = (parentId: number | undefined, depth: number): React.ReactNode[] => tags
@@ -1125,9 +1125,7 @@ export function ActualPanel() {
   </div>
 
   const warning = warnings.find(item => item.message !== dismissedWarning)
-  const banner = error !== ''
-    ? { tone: 'is-error', message: error, dismiss: () => setError('') }
-    : warning === undefined ? undefined : { tone: '', message: warning.message, dismiss: () => setDismissedWarning(warning.message) }
+  const notice = warning === undefined ? undefined : { message: warning.message, dismiss: () => setDismissedWarning(warning.message) }
 
   return <div className="secretary-time-panel">
     <IconSprite />
@@ -1150,15 +1148,23 @@ export function ActualPanel() {
         >{item === 'gtd' ? 'GTD' : item === 'time' ? 'Time' : item === 'tags' ? 'Tags' : <>Goal <span className="phase-badge">二期</span></>}</button>)}
       </nav>
       <div className="top-actions">
+        {notice !== undefined && <button
+          type="button" className="icon-button" aria-label="提示" aria-expanded={noticesOpen}
+          title="有一条提示" onClick={() => setNoticesOpen(value => !value)}
+        ><Icon name="alert" /></button>}
         <button
           type="button" className="icon-button" aria-label="撤销" title="撤销 Cmd/Ctrl+Z"
           disabled={undoStack.length === 0 || busy} onClick={() => void undoLast()}
         ><Icon name="undo" /></button>
       </div>
     </header>
-    {banner !== undefined && <div className={`warning-strip ${banner.tone}`} role="alert">
-      <span>{banner.message}</span>
-      <button type="button" onClick={banner.dismiss}>知道了</button>
+    {notice !== undefined && noticesOpen && <div className="notice-popover" role="status">
+      <div className="notice-text">{notice.message}</div>
+      <button type="button" className="quiet-button" onClick={() => { notice.dismiss(); setNoticesOpen(false) }}>知道了</button>
+    </div>}
+    {error !== '' && <div className="toast" role="alert">
+      <span className="toast-message">{error}</span>
+      <button type="button" onClick={() => setError('')}>关闭</button>
     </div>}
 
     {product === 'gtd' && <GtdWorkspace

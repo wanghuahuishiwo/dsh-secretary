@@ -51,8 +51,8 @@ export const panelStyles = `.secretary-time-panel {
   --dsw-alias-radius-small: 6px;
   --dsw-alias-radius: 9px;
   --dsw-alias-radius-large: 12px;
-  --dsw-alias-row-height: 48px;
-  --dsw-alias-hour-width: 50px;
+  --dsw-alias-row-height: 40px;
+  --dsw-alias-hour-width: 44px;
   --dsw-alias-motion: 140ms;
 }
 
@@ -118,7 +118,8 @@ export const panelStyles = `.secretary-time-panel {
 .secretary-time-panel .canvas-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .secretary-time-panel .day-grid { min-width: 0; }
 .secretary-time-panel .hour-row { display: grid; grid-template-columns: var(--dsw-alias-hour-width) minmax(0, 1fr); height: var(--dsw-alias-row-height); border-bottom: 1px solid var(--dsw-alias-border-soft); }
-.secretary-time-panel .hour-label { padding: 7px 8px 0 0; text-align: right; color: var(--dsw-alias-muted); font-family: var(--dsw-alias-font-mono); font-size: 10px; user-select: none; }
+.secretary-time-panel .day-grid { border-top: 1px solid var(--dsw-alias-border-soft); }
+.secretary-time-panel .hour-label { padding: 5px 7px 0 0; text-align: right; color: var(--dsw-alias-muted); font-family: var(--dsw-alias-font-mono); font-size: 9px; font-variant-numeric: tabular-nums; user-select: none; }
 .secretary-time-panel .hour-track { min-width: 0; height: 100%; position: relative; }
 .secretary-time-panel .slot-grid { position: absolute; inset: 0; display: grid; z-index: 1; }
 .secretary-time-panel .slot { min-width: 0; border: 0; border-right: 1px solid var(--dsw-alias-border-soft); background: transparent; padding: 0; touch-action: pan-y; }
@@ -126,11 +127,11 @@ export const panelStyles = `.secretary-time-panel {
 .secretary-time-panel .slot:hover { background: var(--dsw-alias-accent-soft); }
 .secretary-time-panel .slot.is-selected { background: var(--dsw-alias-accent-soft); box-shadow: inset 0 0 0 1px var(--dsw-alias-accent); }
 .secretary-time-panel .record-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
-.secretary-time-panel .record-fragment { position: absolute; pointer-events: auto; min-width: 0; overflow: hidden; border: 1px solid var(--dsw-alias-bg); border-radius: 4px; background: var(--record-color); color: var(--dsw-alias-on-tag); padding: 3px 5px; text-align: left; touch-action: manipulation; }
+.secretary-time-panel .record-fragment { position: absolute; pointer-events: auto; min-width: 0; overflow: hidden; border: 1px solid var(--dsw-alias-bg); border-radius: 3px; background: var(--record-color); color: var(--dsw-alias-on-tag); padding: 2px 4px; text-align: left; touch-action: manipulation; }
 .secretary-time-panel .record-fragment:hover { filter: brightness(1.05); }
 .secretary-time-panel .record-fragment.is-selected { box-shadow: 0 0 0 2px var(--dsw-alias-accent); z-index: 5; }
-.secretary-time-panel .record-name { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 10px; font-weight: 650; line-height: 1.2; }
-.secretary-time-panel .record-time { display: block; margin-top: 2px; color: inherit; opacity: 0.72; font-family: var(--dsw-alias-font-mono); font-size: 8px; line-height: 1.1; }
+.secretary-time-panel .record-name { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 9.5px; font-weight: 600; line-height: 1.15; letter-spacing: 0.01em; }
+.secretary-time-panel .record-time { display: block; margin-top: 1px; color: inherit; opacity: 0.7; font-family: var(--dsw-alias-font-mono); font-size: 7.5px; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .secretary-time-panel .record-fragment.is-continuation .record-name, .secretary-time-panel .record-fragment.is-continuation .record-time { display: none; }
 .secretary-time-panel .record-fragment.is-compact { padding: 1px 2px; }
 .secretary-time-panel .record-fragment.is-compact .record-time { display: none; }
@@ -293,6 +294,13 @@ export const panelStyles = `.secretary-time-panel {
 .secretary-time-panel .gtd-row-actions { display: flex; flex-wrap: wrap; gap: 5px; }
 .secretary-time-panel .gtd-section-title label { flex-direction: row; align-items: center; }
 
+@media (max-width: 700px) {
+  .secretary-time-panel .module-bar { flex-wrap: wrap; row-gap: 4px; padding: 5px 8px; }
+  .secretary-time-panel .module-bar-tail { margin-left: 0; width: 100%; justify-content: space-between; }
+  .secretary-time-panel .granularity > span { display: none; }
+  .secretary-time-panel .module-bar .week-strip { order: 3; width: 100%; }
+}
+
 @media (max-width: 640px) {
   .secretary-time-panel .gtd-tabs { padding-inline: 8px; }
   .secretary-time-panel .gtd-section { padding: 10px 8px; }
@@ -308,4 +316,16 @@ body[data-ds-dark-theme] .secretary-time-panel .manage-color { filter: brightnes
 @media (max-width: 640px) { .secretary-time-panel .canvas-hint { display: none; } }
 .secretary-time-panel .editor-tags { max-height: 240px; overflow-y: auto; }
 .secretary-time-panel .editor-actions-tail { display: flex; align-items: center; gap: 6px; }
+.secretary-time-panel .module-bar { flex: none; display: flex; align-items: center; gap: 9px; min-height: 42px; padding: 4px 14px; background: var(--dsw-alias-surface); border-bottom: 1px solid var(--dsw-alias-border-soft); }
+.secretary-time-panel .module-bar-tail { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.secretary-time-panel .module-bar .date-label { font-weight: 600; }
+.secretary-time-panel .shelf-paint { display: flex; align-items: center; gap: 5px; margin-top: 7px; padding: 0 1px; color: var(--dsw-alias-text-secondary); font-size: 10px; font-weight: 600; }
+.secretary-time-panel .shelf-paint .tag-dot { width: 8px; height: 8px; border-radius: 2px; }
+.secretary-time-panel .shelf-paint.is-erase { color: var(--dsw-alias-danger); }
+.secretary-time-panel .shelf-paint-hint { margin-left: auto; width: 15px; height: 15px; display: grid; place-items: center; border: 1px solid var(--dsw-alias-border); border-radius: 50%; background: transparent; color: var(--dsw-alias-muted); padding: 0; font-size: 9px; line-height: 1; }
+.secretary-time-panel .notice-popover { position: absolute; z-index: 95; top: calc(100% + 6px); right: 12px; width: min(430px, calc(100% - 24px)); display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--dsw-alias-border); border-radius: var(--dsw-alias-radius); background: var(--dsw-alias-surface-raised); box-shadow: var(--dsw-alias-shadow); }
+.secretary-time-panel .notice-text { flex: 1; min-width: 0; color: var(--dsw-alias-text-secondary); font-size: 11px; line-height: 1.45; word-break: break-word; }
+.secretary-time-panel .toast { position: absolute; z-index: 96; left: 50%; bottom: 18px; transform: translateX(-50%); max-width: calc(100% - 24px); display: flex; align-items: center; gap: 10px; padding: 7px 11px; border-radius: var(--dsw-alias-radius); background: var(--dsw-alias-text); color: var(--dsw-alias-surface); box-shadow: var(--dsw-alias-shadow); font-size: 11px; }
+.secretary-time-panel .toast-message { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.secretary-time-panel .toast button { flex: none; border: 0; background: transparent; color: inherit; padding: 2px 3px; font-size: 10px; text-decoration: underline; }
 `

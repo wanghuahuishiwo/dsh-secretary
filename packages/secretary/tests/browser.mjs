@@ -423,7 +423,7 @@ test('real Chromium Plan and Actual erase gestures keep the starting Tag fixed a
 
     for (const tag of ['甲', '乙', '丙', '丁']) await add('08:00', tag)
     await page.getByLabel('时间标签架').getByRole('button', { name: '丁', exact: true }).dblclick()
-    await page.getByText('消除状态：点击记录消除', { exact: true }).waitFor()
+    await page.getByText('消除状态', { exact: true }).waitFor()
     const accidentalCommands = []
     const collectCommand = request => {
       if (request.url().includes('/api/secretary.command')) accidentalCommands.push(request)
@@ -444,14 +444,14 @@ test('real Chromium Plan and Actual erase gestures keep the starting Tag fixed a
     await page.getByRole('button', { name: '撤销', exact: true }).click()
     await fragment('08:00', '甲').waitFor()
     await page.getByLabel('时间标签架').getByRole('button', { name: '甲', exact: true }).click()
-    assert.equal(await page.getByText('消除状态：点击记录消除', { exact: true }).count(), 0)
+    assert.equal(await page.getByText('消除状态', { exact: true }).count(), 0)
 
     await add('08:10', '乙')
     await add('08:10', '甲')
     await add('08:20', '乙')
     await add('08:20', '甲')
     await page.getByLabel('时间标签架').getByRole('button', { name: '乙', exact: true }).dblclick()
-    await page.getByText('消除状态：点击记录消除', { exact: true }).waitFor()
+    await page.getByText('消除状态', { exact: true }).waitFor()
     const boxes = []
     for (const slot of ['08:00', '08:10', '08:20']) {
       const box = await fragment(slot, '乙').boundingBox()
@@ -473,7 +473,7 @@ test('real Chromium Plan and Actual erase gestures keep the starting Tag fixed a
     await page.getByRole('button', { name: '撤销', exact: true }).click()
     for (const slot of ['08:00', '08:10', '08:20']) await fragment(slot, '乙').waitFor()
     await page.getByLabel('时间标签架').getByRole('button', { name: '丙', exact: true }).click()
-    assert.equal(await page.getByText('消除状态：点击记录消除', { exact: true }).count(), 0)
+    assert.equal(await page.getByText('消除状态', { exact: true }).count(), 0)
   }
   assert.deepEqual(pageErrors, [])
 })
@@ -544,7 +544,7 @@ test('real Chromium Plan and Actual keep parallel layout, cross-hour titles, edi
     const widths = async () => page.locator('.time-fragment[data-slot="09:00"]').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().width))
     const assertHourGeometry = async () => {
       assert.equal(await page.locator('.hour-row').count(), 24)
-      assert.ok(await page.locator('.hour-row').evaluateAll(rows => rows.every(row => row.getBoundingClientRect().height === 48)))
+      assert.ok(await page.locator('.hour-row').evaluateAll(rows => rows.every(row => row.getBoundingClientRect().height === 40)), 'hour rows keep the compact 40px rhythm')
     }
 
     await add('09:00', '甲')
@@ -561,7 +561,7 @@ test('real Chromium Plan and Actual keep parallel layout, cross-hour titles, edi
       color: getComputedStyle(element).backgroundColor,
       radius: getComputedStyle(element).borderRadius,
     })))
-    assert.ok(visual.every(item => item.radius === '4px'), 'every parallel fragment keeps the prototype radius')
+    assert.ok(visual.every(item => item.radius === '3px'), 'every parallel fragment keeps the compact radius')
     assert.equal(new Set(visual.map(item => item.color)).size, 4, 'each parallel Tag keeps its own colour')
 
     await page.getByLabel('时间标签架').getByRole('button', { name: '甲', exact: true }).click()
@@ -1398,8 +1398,8 @@ test('real Chromium host light/dark themes drive readable tokens and 390px layou
         tokenBackground: tokenStyle.backgroundColor,
         tokenColor: tokenStyle.color,
         headerBackground: getComputedStyle(header).backgroundColor,
-        controlBackground: getComputedStyle(document.querySelector('.date-strip .date-label')).backgroundColor,
-        controlColor: getComputedStyle(document.querySelector('.date-strip .date-label')).color,
+        controlBackground: getComputedStyle(document.querySelector('.module-bar .date-label')).backgroundColor,
+        controlColor: getComputedStyle(document.querySelector('.module-bar .date-label')).color,
         hourColor: getComputedStyle(document.querySelector('.hour-label')).color,
         selectedBackgroundChain: backgroundChain(document.querySelector('.tag-shelf .tag-choice.is-brush')),
         selectedColor: selectedStyle.color,
