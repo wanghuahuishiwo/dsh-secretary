@@ -14,11 +14,15 @@ export function apply(ctx: Context): void {
   const time = () => (ctx as Context & { time: TimeService }).time
   registerTool(ctx, {
     name: 'secretary_time',
-    description: `Record independent ActualBlocks classified only by a time Tag. Use actual.create/get/list/update/delete/start/stop. Actual intervals may overlap and never complete GTD Actions. focus is a closed enum: ${FOCUS_LIST}.`,
+    description: `Manage independent date Plans, weekday PlanTemplates, and ActualBlocks classified only by a time Tag. Use plan.list/get/create/update/delete, template.list/create/update/delete/apply/undo, and actual.list/get/create/update/delete/start/stop. template.apply requires weekday, targetDate, and timeZone; template.undo restores the persistent pre-apply day. Plans and actuals may overlap and never rewrite each other or complete GTD Actions. focus is a closed enum: ${FOCUS_LIST}.`,
     parameters: {
       type: 'object', additionalProperties: false,
       properties: {
-        op: { type: 'string', enum: ['actual.create', 'actual.get', 'actual.list', 'actual.update', 'actual.delete', 'actual.start', 'actual.stop'] },
+        op: { type: 'string', enum: [
+          'plan.create', 'plan.get', 'plan.list', 'plan.update', 'plan.delete',
+          'template.list', 'template.create', 'template.update', 'template.delete', 'template.apply', 'template.undo',
+          'actual.create', 'actual.get', 'actual.list', 'actual.update', 'actual.delete', 'actual.start', 'actual.stop',
+        ] },
         id: { type: 'integer', minimum: 1 },
         timeTagId: { type: 'integer', minimum: 1 },
         note: nullable({ type: 'string' }),
@@ -27,7 +31,11 @@ export function apply(ctx: Context): void {
         actualSource: { type: 'string', enum: ['user_reported', 'agent_observed', 'imported'] },
         focus: nullable({ type: 'string', enum: [...FOCUS_LEVELS] }),
         date: { type: 'string' },
+        targetDate: { type: 'string' },
         timeZone: { type: 'string' },
+        weekday: { type: 'integer', minimum: 1, maximum: 7 },
+        startTime: { type: 'string' },
+        endTime: { type: 'string' },
         from: { type: 'string' },
         to: { type: 'string' },
       },
@@ -37,6 +45,17 @@ export function apply(ctx: Context): void {
     async execute(raw: unknown) {
       const args = raw as Record<string, any>
       switch (args.op) {
+        case 'plan.create': return { block: await time().createPlan(args) }
+        case 'plan.get': return { block: await time().getPlan(args.id) }
+        case 'plan.list': return { blocks: await time().listPlan(args) }
+        case 'plan.update': return { block: await time().updatePlan(args.id, args) }
+        case 'plan.delete': return { block: await time().deletePlan(args.id) }
+        case 'template.list': return { blocks: await time().listPlanTemplate(args) }
+        case 'template.create': return { block: await time().createPlanTemplate(args) }
+        case 'template.update': return { block: await time().updatePlanTemplate(args.id, args) }
+        case 'template.delete': return { block: await time().deletePlanTemplate(args.id) }
+        case 'template.apply': return { blocks: await time().applyPlanTemplate(args) }
+        case 'template.undo': return { blocks: await time().undoPlanTemplate(args) }
         case 'actual.create': return { block: await time().createActual(args) }
         case 'actual.get': return { block: await time().getActual(args.id) }
         case 'actual.list': return { blocks: await time().listActual(args) }

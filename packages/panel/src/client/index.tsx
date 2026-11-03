@@ -1,6 +1,6 @@
 /**
- * Browser half of the secretary panel: the date-based ActualBlock canvas,
- * its right-side Tag shelf, and the shared sidebar entry.
+ * Browser half of the secretary panel: the date-based Plan/Actual canvases,
+ * persistent PlanTemplate apply/undo, right-side Tag shelf, and shared sidebar entry.
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'

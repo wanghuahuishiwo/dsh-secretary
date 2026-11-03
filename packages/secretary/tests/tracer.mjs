@@ -85,7 +85,7 @@ async function sqliteHarness(t, databasePath, failOn) {
     await close()
     if (directory !== undefined) await rm(directory, { recursive: true, force: true })
   })
-  return { ctx, tools, skills, routes, databasePath: resolvedDatabasePath, close }
+  return { ctx, tools, skills, routes, databasePath: resolvedDatabasePath, close, failOn }
 }
 
 function execute(harness, name, args) {
@@ -205,6 +205,226 @@ test('ActualBlock public tools persist independent, arbitrarily overlapping actu
   assert.deepEqual((await execute(harness, 'secretary_time', { op: 'actual.list' })).blocks.map(block => block.id), [1])
 })
 
+test('PlanBlock public tools provide numeric-id CRUD on a concrete date', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '专注工作', kind: 'time' })
+  const created = await execute(harness, 'secretary_time', {
+    op: 'plan.create', date: '2026-11-02', timeZone: 'Asia/Shanghai', timeTagId: tag.id,
+    startAt: '2026-11-02T09:00:00+08:00', endAt: '2026-11-02T10:00:00+08:00', note: '实现日期计划',
+  })
+  assert.deepEqual(created.block, {
+    id: 1, timeTagId: tag.id, note: '实现日期计划',
+    startAt: '2026-11-02T09:00:00+08:00', endAt: '2026-11-02T10:00:00+08:00',
+  })
+  const overlap = await execute(harness, 'secretary_time', {
+    op: 'plan.create', date: '2026-11-02', timeZone: 'Asia/Shanghai', timeTagId: tag.id,
+    startAt: '2026-11-02T09:00:00+08:00', endAt: '2026-11-02T10:00:00+08:00',
+  })
+  assert.equal(overlap.block.id, 2)
+  const listed = await execute(harness, 'secretary_time', {
+    op: 'plan.list', date: '2026-11-02', timeZone: 'Asia/Shanghai',
+  })
+  assert.deepEqual(listed.blocks.map(block => block.id), [1, 2])
+  const updated = await execute(harness, 'secretary_time', {
+    op: 'plan.update', id: 1, endAt: '2026-11-02T09:30:00+08:00', note: '缩短计划',
+  })
+  assert.equal(updated.block.endAt, '2026-11-02T09:30:00+08:00')
+  assert.equal(updated.block.note, '缩短计划')
+  assert.equal((await execute(harness, 'secretary_time', { op: 'plan.get', id: 1 })).block.id, 1)
+  await execute(harness, 'secretary_time', { op: 'plan.delete', id: 2 })
+  assert.deepEqual((await execute(harness, 'secretary_time', { op: 'plan.list' })).blocks.map(block => block.id), [1])
+})
+
+test('Plan dates honor explicit time zones and overnight intervals while CRUD never rewrites Actual', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '通勤', kind: 'time' })
+  const { block: actual } = await execute(harness, 'secretary_time', {
+    op: 'actual.create', timeTagId: tag.id, startAt: '2026-11-02T23:30:00-05:00',
+    endAt: '2026-11-03T00:30:00-05:00', actualSource: 'user_reported', note: '实录不变',
+  })
+  const { block: overnight } = await execute(harness, 'secretary_time', {
+    op: 'plan.create', date: '2026-11-02', timeZone: 'America/New_York', timeTagId: tag.id,
+    startAt: '2026-11-02T23:30:00-05:00', endAt: '2026-11-03T00:30:00-05:00',
+  })
+  for (const date of ['2026-11-02', '2026-11-03']) {
+    const listed = await execute(harness, 'secretary_time', { op: 'plan.list', date, timeZone: 'America/New_York' })
+    assert.deepEqual(listed.blocks.map(block => block.id), [overnight.id])
+  }
+  const holiday = await execute(harness, 'secretary_time', {
+    op: 'plan.create', date: '2026-11-04', timeZone: 'America/New_York', timeTagId: tag.id,
+    startAt: '2026-11-04T09:00:00-05:00', endAt: '2026-11-04T10:00:00-05:00', note: '小长假独立安排',
+  })
+  await execute(harness, 'secretary_time', { op: 'plan.update', id: overnight.id, note: '只调整计划' })
+  await execute(harness, 'secretary_time', { op: 'plan.delete', id: holiday.block.id })
+  assert.equal((await execute(harness, 'secretary_time', { op: 'actual.get', id: actual.id })).block.note, '实录不变')
+  assert.deepEqual((await execute(harness, 'secretary_time', { op: 'plan.list' })).blocks.map(block => block.id), [overnight.id])
+  await assert.rejects(execute(harness, 'secretary_time', {
+    op: 'plan.create', date: '2026-02-31', timeZone: 'Asia/Shanghai', timeTagId: tag.id,
+    startAt: '2026-03-01T09:00:00+08:00', endAt: '2026-03-01T10:00:00+08:00',
+  }), /invalid date/)
+  await assert.rejects(execute(harness, 'secretary_time', {
+    op: 'plan.create', date: '2026-11-02', timeZone: 'Asia/Shanghai', timeTagId: tag.id,
+    startAt: '2026-11-02T23:30:00-05:00', endAt: '2026-11-03T00:30:00-05:00',
+  }), /must fall on date/)
+  await assert.rejects(execute(harness, 'secretary_time', {
+    op: 'plan.list', date: '2026-11-02', timeZone: 'Not/A_Zone',
+  }), /invalid timeZone/)
+})
+
+test('PlanTemplateBlock public tools maintain weekday-local template records with numeric ids', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '晨间例行', kind: 'time' })
+  const created = await execute(harness, 'secretary_time', {
+    op: 'template.create', weekday: 1, startTime: '09:00', endTime: '10:00', timeTagId: tag.id, note: '周模板',
+  })
+  assert.deepEqual(created.block, {
+    id: 1, weekday: 1, startTime: '09:00', endTime: '10:00', timeTagId: tag.id, note: '周模板',
+  })
+  const updated = await execute(harness, 'secretary_time', {
+    op: 'template.update', id: 1, weekday: 6, startTime: '10:15', endTime: '11:30', note: null,
+  })
+  assert.equal(updated.block.weekday, 6)
+  assert.equal(updated.block.startTime, '10:15')
+  assert.equal(updated.block.endTime, '11:30')
+  assert.equal(updated.block.note, undefined)
+  assert.deepEqual((await execute(harness, 'secretary_time', { op: 'template.list', weekday: 1 })).blocks, [])
+  assert.deepEqual((await execute(harness, 'secretary_time', { op: 'template.list', weekday: 6 })).blocks.map(block => block.id), [1])
+  await execute(harness, 'secretary_time', { op: 'template.delete', id: 1 })
+  assert.deepEqual((await execute(harness, 'secretary_time', { op: 'template.list' })).blocks, [])
+})
+
+test('template.apply atomically replaces a date plan and template.undo restores it without touching Actual or Template', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
+  const { block: actual } = await execute(harness, 'secretary_time', {
+    op: 'actual.create', timeTagId: tag.id, startAt: '2026-11-02T09:00:00+08:00',
+    endAt: '2026-11-02T10:00:00+08:00', actualSource: 'user_reported', note: '真实实录',
+  })
+  const { block: original } = await execute(harness, 'secretary_time', {
+    op: 'plan.create', date: '2026-11-02', timeZone: 'Asia/Shanghai', timeTagId: tag.id,
+    startAt: '2026-11-02T08:00:00+08:00', endAt: '2026-11-02T08:30:00+08:00', note: '原计划',
+  })
+  await execute(harness, 'secretary_time', {
+    op: 'template.create', weekday: 1, startTime: '09:00', endTime: '10:00', timeTagId: tag.id, note: '模板工作',
+  })
+  await execute(harness, 'secretary_time', {
+    op: 'template.create', weekday: 1, startTime: '23:30', endTime: '00:30', timeTagId: tag.id, note: '跨日模板',
+  })
+  const applied = await execute(harness, 'secretary_time', {
+    op: 'template.apply', weekday: 1, targetDate: '2026-11-02', timeZone: 'Asia/Shanghai',
+  })
+  assert.deepEqual(applied.blocks.map(block => block.id), [5, 6])
+  assert.equal(applied.blocks[0].startAt, '2026-11-02T09:00:00+08:00')
+  assert.equal(applied.blocks[1].startAt, '2026-11-02T23:30:00+08:00')
+  assert.equal(applied.blocks[1].endAt, '2026-11-03T00:30:00+08:00')
+  assert.deepEqual((await execute(harness, 'secretary_time', {
+    op: 'plan.list', date: '2026-11-02', timeZone: 'Asia/Shanghai',
+  })).blocks.map(block => block.id), [5, 6])
+  assert.deepEqual((await execute(harness, 'secretary_time', {
+    op: 'actual.list', date: '2026-11-02', timeZone: 'Asia/Shanghai',
+  })).blocks.map(block => block.id), [actual.id])
+
+  const undone = await execute(harness, 'secretary_time', {
+    op: 'template.undo', targetDate: '2026-11-02', timeZone: 'Asia/Shanghai',
+  })
+  assert.deepEqual(undone.blocks, [original])
+  assert.deepEqual((await execute(harness, 'secretary_time', { op: 'plan.list' })).blocks, [original])
+  assert.equal((await execute(harness, 'secretary_time', { op: 'actual.get', id: actual.id })).block.note, '真实实录')
+  const templates = await execute(harness, 'secretary_time', { op: 'template.list', weekday: 1 })
+  assert.deepEqual(templates.blocks.map(block => [block.id, block.startTime, block.endTime]), [[3, '09:00', '10:00'], [4, '23:30', '00:30']])
+
+  await execute(harness, 'secretary_time', { op: 'template.update', id: 3, startTime: '11:00', endTime: '12:00' })
+  assert.equal((await execute(harness, 'secretary_time', { op: 'plan.get', id: original.id })).block.startAt, '2026-11-02T08:00:00+08:00')
+  await execute(harness, 'secretary_time', { op: 'plan.update', id: original.id, note: '只改日期计划' })
+  assert.equal((await execute(harness, 'secretary_time', { op: 'template.list', weekday: 1 })).blocks[0].note, '模板工作')
+})
+
+test('multi-record template apply and undo roll back on a real SQLite write failure', async (t) => {
+  const harness = await sqliteHarness(t, undefined, {})
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
+  const { block: actual } = await execute(harness, 'secretary_time', {
+    op: 'actual.create', timeTagId: tag.id, startAt: '2026-11-02T09:00:00+08:00',
+    endAt: '2026-11-02T10:00:00+08:00', actualSource: 'user_reported',
+  })
+  const { block: original } = await execute(harness, 'secretary_time', {
+    op: 'plan.create', date: '2026-11-02', timeZone: 'Asia/Shanghai', timeTagId: tag.id,
+    startAt: '2026-11-02T08:00:00+08:00', endAt: '2026-11-02T08:30:00+08:00',
+  })
+  for (const [startTime, endTime] of [['09:00', '10:00'], ['10:00', '11:00']]) {
+    await execute(harness, 'secretary_time', { op: 'template.create', weekday: 1, startTime, endTime, timeTagId: tag.id })
+  }
+  harness.failOn.put = 'plan_days'
+  await assert.rejects(execute(harness, 'secretary_time', {
+    op: 'template.apply', weekday: 1, targetDate: '2026-11-02', timeZone: 'Asia/Shanghai',
+  }), /injected put failure/)
+  harness.failOn.put = undefined
+  assert.deepEqual((await execute(harness, 'secretary_time', { op: 'plan.list' })).blocks, [original])
+
+  const applied = await execute(harness, 'secretary_time', {
+    op: 'template.apply', weekday: 1, targetDate: '2026-11-02', timeZone: 'Asia/Shanghai',
+  })
+  harness.failOn.put = 'plan_days'
+  await assert.rejects(execute(harness, 'secretary_time', {
+    op: 'template.undo', targetDate: '2026-11-02', timeZone: 'Asia/Shanghai',
+  }), /injected put failure/)
+  harness.failOn.put = undefined
+  assert.deepEqual((await execute(harness, 'secretary_time', { op: 'plan.list' })).blocks, applied.blocks)
+  assert.deepEqual((await execute(harness, 'secretary_time', {
+    op: 'template.undo', targetDate: '2026-11-02', timeZone: 'Asia/Shanghai',
+  })).blocks, [original])
+  assert.deepEqual((await execute(harness, 'secretary_time', { op: 'actual.list' })).blocks.map(block => block.id), [actual.id])
+})
+
+test('Plan, Template, and pending template undo recover after a complete SQLite restart', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'dsh-secretary-plan-restart-'))
+  const databasePath = join(directory, 'secretary.sqlite')
+  t.after(async () => { await rm(directory, { recursive: true, force: true }) })
+  const first = await sqliteHarness(t, databasePath)
+  const { tag } = await execute(first, 'secretary_tag', { op: 'create', name: '生活', kind: 'time' })
+  const { block: original } = await execute(first, 'secretary_time', {
+    op: 'plan.create', date: '2026-11-02', timeZone: 'Asia/Shanghai', timeTagId: tag.id,
+    startAt: '2026-11-02T07:30:00+08:00', endAt: '2026-11-02T08:00:00+08:00', note: '原有安排',
+  })
+  const { block: template } = await execute(first, 'secretary_time', {
+    op: 'template.create', weekday: 1, startTime: '09:00', endTime: '10:00', timeTagId: tag.id,
+  })
+  const applied = await execute(first, 'secretary_time', {
+    op: 'template.apply', weekday: 1, targetDate: '2026-11-02', timeZone: 'Asia/Shanghai',
+  })
+  await first.close()
+
+  const reopened = await sqliteHarness(t, databasePath)
+  assert.deepEqual((await execute(reopened, 'secretary_time', { op: 'plan.list' })).blocks, applied.blocks)
+  assert.deepEqual((await execute(reopened, 'secretary_time', { op: 'template.list' })).blocks, [template])
+  assert.deepEqual((await execute(reopened, 'secretary_time', {
+    op: 'template.undo', targetDate: '2026-11-02', timeZone: 'Asia/Shanghai',
+  })).blocks, [original])
+  const next = await execute(reopened, 'secretary_time', {
+    op: 'plan.create', date: '2026-11-02', timeZone: 'Asia/Shanghai', timeTagId: tag.id,
+    startAt: '2026-11-02T12:00:00+08:00', endAt: '2026-11-02T12:30:00+08:00',
+  })
+  assert.equal(next.block.id, applied.blocks[0].id + 1)
+})
+
+test('template.undo refuses to overwrite subsequent date-plan edits', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
+  await execute(harness, 'secretary_time', {
+    op: 'template.create', weekday: 1, startTime: '09:00', endTime: '10:00', timeTagId: tag.id,
+  })
+  const applied = await execute(harness, 'secretary_time', {
+    op: 'template.apply', weekday: 1, targetDate: '2026-11-02', timeZone: 'Asia/Shanghai',
+  })
+  const extra = await execute(harness, 'secretary_time', {
+    op: 'plan.create', date: '2026-11-02', timeZone: 'Asia/Shanghai', timeTagId: tag.id,
+    startAt: '2026-11-02T12:00:00+08:00', endAt: '2026-11-02T12:30:00+08:00',
+  })
+  await assert.rejects(execute(harness, 'secretary_time', {
+    op: 'template.undo', targetDate: '2026-11-02', timeZone: 'Asia/Shanghai',
+  }), /changed after template apply/)
+  assert.deepEqual((await execute(harness, 'secretary_time', { op: 'plan.list' })).blocks.map(block => block.id), [applied.blocks[0].id, extra.block.id])
+})
+
 test('Actual start/stop persists running state and enforces source and focus enums', async (t) => {
   const harness = await sqliteHarness(t)
   const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '专注工作', kind: 'time' })
@@ -293,6 +513,24 @@ test('Tag deletion protects Actual references, including concurrent create/delet
   )
 })
 
+test('Tag deletion protects Plan, Template, and recoverable template-undo references', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag: originalTag } = await execute(harness, 'secretary_tag', { op: 'create', name: '原计划标签', kind: 'time' })
+  const { tag: templateTag } = await execute(harness, 'secretary_tag', { op: 'create', name: '模板标签', kind: 'time' })
+  await execute(harness, 'secretary_time', {
+    op: 'plan.create', date: '2026-11-02', timeZone: 'Asia/Shanghai', timeTagId: originalTag.id,
+    startAt: '2026-11-02T08:00:00+08:00', endAt: '2026-11-02T09:00:00+08:00',
+  })
+  await execute(harness, 'secretary_time', {
+    op: 'template.create', weekday: 1, startTime: '10:00', endTime: '11:00', timeTagId: templateTag.id,
+  })
+  await execute(harness, 'secretary_time', {
+    op: 'template.apply', weekday: 1, targetDate: '2026-11-02', timeZone: 'Asia/Shanghai',
+  })
+  await assert.rejects(execute(harness, 'secretary_tag', { op: 'delete', id: originalTag.id }), /referenced/)
+  await assert.rejects(execute(harness, 'secretary_tag', { op: 'delete', id: templateTag.id }), /referenced/)
+})
+
 test('GTD Completed and Actual start/stop remain independent facts', async (t) => {
   const harness = await sqliteHarness(t)
   const captured = await execute(harness, 'secretary_gtd', {
@@ -375,7 +613,7 @@ test('Tag, Actual, and GTD facts reopen from the same SQLite file after a full s
   assert.equal(nextActual.block.id, 3)
 })
 
-test('Actual tool exposes only the new model and rejects invalid intervals without overwriting facts', async (t) => {
+test('Time tool exposes only the new Plan/Template/Actual model and rejects invalid intervals without overwriting facts', async (t) => {
   const harness = await sqliteHarness(t)
   const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
   const { block } = await execute(harness, 'secretary_time', {
@@ -398,6 +636,13 @@ test('Actual tool exposes only the new model and rejects invalid intervals witho
   assert.ok(!tool.parameters.properties.op.enum.includes('record_actual'))
   assert.ok(tool.parameters.properties.op.enum.includes('actual.start'))
   assert.ok(tool.parameters.properties.op.enum.includes('actual.stop'))
+  for (const op of [
+    'plan.list', 'plan.get', 'plan.create', 'plan.update', 'plan.delete',
+    'template.list', 'template.create', 'template.update', 'template.delete', 'template.apply', 'template.undo',
+  ]) assert.ok(tool.parameters.properties.op.enum.includes(op), `missing public operation ${op}`)
+  assert.equal(tool.parameters.properties.id.type, 'integer')
+  assert.equal(tool.parameters.properties.timeTagId.type, 'integer')
+  assert.equal(tool.parameters.properties.weekday.type, 'integer')
 })
 
 
@@ -445,6 +690,42 @@ test('panel Host routes and public tools share the same Tag and Time Services', 
   const { block } = await created.json()
   const fromTool = await execute(harness, 'secretary_time', { op: 'actual.get', id: block.id })
   assert.equal(fromTool.block.timeTagId, tag.id)
+})
+
+test('panel Host routes expose Plan and Template apply/undo through the same TimeService', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
+  const commandRoute = harness.routes.get('/api/secretary.command')
+  const stateRoute = harness.routes.get('/api/secretary.state')
+  const command = body => commandRoute.fetch(new Request('http://test.local/api/secretary.command', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+  }))
+  const state = async () => {
+    const response = await stateRoute.fetch(new Request('http://test.local/api/secretary.state?date=2026-11-02&timeZone=Asia%2FShanghai'))
+    assert.equal(response.status, 200)
+    return response.json()
+  }
+  const originalResponse = await command({
+    domain: 'time', op: 'plan.create', date: '2026-11-02', timeZone: 'Asia/Shanghai', timeTagId: tag.id,
+    startAt: '2026-11-02T08:00:00+08:00', endAt: '2026-11-02T08:30:00+08:00', note: 'Host 原计划',
+  })
+  assert.equal(originalResponse.status, 200)
+  const { block: original } = await originalResponse.json()
+  assert.equal((await execute(harness, 'secretary_time', { op: 'plan.get', id: original.id })).block.note, 'Host 原计划')
+  await command({ domain: 'time', op: 'template.create', weekday: 1, startTime: '09:00', endTime: '10:00', timeTagId: tag.id })
+  const applied = await command({ domain: 'time', op: 'template.apply', weekday: 1, targetDate: '2026-11-02', timeZone: 'Asia/Shanghai' })
+  assert.equal(applied.status, 200)
+  const afterApply = await state()
+  assert.equal(afterApply.plans.length, 1)
+  assert.equal(afterApply.plans[0].startAt, '2026-11-02T09:00:00+08:00')
+  assert.equal(afterApply.templates.length, 1)
+  assert.equal(afterApply.templateUndo, true)
+  assert.deepEqual(afterApply.blocks, [])
+  const undone = await command({ domain: 'time', op: 'template.undo', targetDate: '2026-11-02', timeZone: 'Asia/Shanghai' })
+  assert.equal(undone.status, 200)
+  const afterUndo = await state()
+  assert.deepEqual(afterUndo.plans, [original])
+  assert.equal(afterUndo.templateUndo, false)
 })
 
 test('Secretary composition registers one coherent assistant and user-only GTD skills over SQLite services', async (t) => {

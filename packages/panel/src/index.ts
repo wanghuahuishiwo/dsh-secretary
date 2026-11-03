@@ -43,6 +43,14 @@ async function command(ctx: PanelContext, raw: unknown): Promise<unknown> {
   }
   if (input.domain === 'time') {
     switch (input.op) {
+      case 'plan.create': return { block: await ctx.time.createPlan(input) }
+      case 'plan.update': return { block: await ctx.time.updatePlan(input.id, input) }
+      case 'plan.delete': return { block: await ctx.time.deletePlan(input.id) }
+      case 'template.create': return { block: await ctx.time.createPlanTemplate(input) }
+      case 'template.update': return { block: await ctx.time.updatePlanTemplate(input.id, input) }
+      case 'template.delete': return { block: await ctx.time.deletePlanTemplate(input.id) }
+      case 'template.apply': return { blocks: await ctx.time.applyPlanTemplate(input) }
+      case 'template.undo': return { blocks: await ctx.time.undoPlanTemplate(input) }
       case 'actual.create': return { block: await ctx.time.createActual(input) }
       case 'actual.update': return { block: await ctx.time.updateActual(input.id, input) }
       case 'actual.delete': return { block: await ctx.time.deleteActual(input.id) }
@@ -68,11 +76,14 @@ export function apply(context: Context): void {
         const url = new URL(request.url)
         const date = url.searchParams.get('date') ?? undefined
         const timeZone = url.searchParams.get('timeZone') ?? undefined
-        const [tags, blocks] = await Promise.all([
+        const [tags, blocks, plans, templates, templateUndo] = await Promise.all([
           ctx.tags.listTags(),
           ctx.time.listActual({ date, timeZone }),
+          ctx.time.listPlan({ date, timeZone }),
+          ctx.time.listPlanTemplate(),
+          date === undefined ? false : ctx.time.canUndoPlanTemplate({ targetDate: date, timeZone: timeZone ?? 'Asia/Shanghai' }),
         ])
-        return json({ tags, blocks })
+        return json({ tags, blocks, plans, templates, templateUndo })
       } catch (error) {
         return json({ error: errorMessage(error) }, 400)
       }
