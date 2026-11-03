@@ -1,9 +1,11 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { Tag, TagKind } from 'dsh-secretary-tag/contract'
+import type { ActionView, InboxItem, Project } from 'dsh-secretary-gtd/contract'
 import type {
   ActualBlock, ActualSource, DeepCell, DeepCellLevel, DeepLevel, DeepWeek, FocusLevel, PlanBlock, PlanTemplateBlock,
 } from 'dsh-secretary-time-block/contract'
 import { fetchState, sendCommand, type PanelCommand } from './api.ts'
+import { GtdWorkspace } from './GtdWorkspace.tsx'
 
 const DEFAULT_COLOR = '#477bc7'
 const SOURCES: ActualSource[] = ['user_reported', 'agent_observed', 'imported']
@@ -75,6 +77,7 @@ export function ActualPanel() {
   const [product, setProduct] = useState<ProductView>('time')
   const [timeView, setTimeView] = useState<TimeView>('actual')
   const [date, setDate] = useState(localDate)
+  const [forecastDate, setForecastDate] = useState(localDate)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [calendarMonth, setCalendarMonth] = useState(localDate().slice(0, 7))
   const [granularity, setGranularity] = useState(10)
@@ -86,6 +89,11 @@ export function ActualPanel() {
   const [templates, setTemplates] = useState<PlanTemplateBlock[]>([])
   const [templateUndo, setTemplateUndo] = useState(false)
   const [deepWeek, setDeepWeek] = useState<DeepWeek>(emptyDeepWeek)
+  const [inbox, setInbox] = useState<InboxItem[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
+  const [actions, setActions] = useState<ActionView[]>([])
+  const [nextActions, setNextActions] = useState<ActionView[]>([])
+  const [forecast, setForecast] = useState<ActionView[]>([])
   const [deepBrush, setDeepBrush] = useState<DeepLevel>('high')
   const [selectedTagId, setSelectedTagId] = useState<number>()
   const [eraseMode, setEraseMode] = useState(false)
@@ -113,7 +121,7 @@ export function ActualPanel() {
   const refresh = async () => {
     const id = ++request.current
     try {
-      const state = await fetchState(date, timeZone)
+      const state = await fetchState(date, timeZone, forecastDate)
       if (id !== request.current) return
       setTags(state.tags)
       setBlocks(state.blocks)
@@ -121,12 +129,17 @@ export function ActualPanel() {
       setTemplates(state.templates)
       setTemplateUndo(state.templateUndo)
       setDeepWeek(state.deepWeek)
+      setInbox(state.inbox)
+      setProjects(state.projects)
+      setActions(state.actions)
+      setNextActions(state.nextActions)
+      setForecast(state.forecast)
       setError('')
     } catch (cause) {
       if (id === request.current) setError(cause instanceof Error ? cause.message : String(cause))
     }
   }
-  useEffect(() => { void refresh() }, [date, timeZone])
+  useEffect(() => { void refresh() }, [date, forecastDate, timeZone])
 
   const timeTags = useMemo(() => flatten(tags, 'time'), [tags])
   useEffect(() => {
@@ -348,7 +361,10 @@ export function ActualPanel() {
       </header>
       {error && <div role="alert" className="time-error">{error}</div>}
 
-      {product === 'gtd' && <section className="module-placeholder">GTD 产品界面由后续 #5 切片接入。</section>}
+      {product === 'gtd' && <GtdWorkspace
+        tags={tags} inbox={inbox} projects={projects} actions={actions} nextActions={nextActions} forecast={forecast}
+        forecastDate={forecastDate} onForecastDateChange={setForecastDate} busy={busy} run={run}
+      />}
       {product === 'goal' && <section className="module-placeholder">Goal 是保留的一级模块，本期不实现。</section>}
       {product === 'tags' ? (
         <section className="tag-manager" aria-label="统一标签管理">
@@ -657,6 +673,35 @@ const styles = `
 .deep-legend > span { display: inline-flex; align-items: center; gap: 5px; }
 .deep-swatch { width: 11px; height: 11px; border: 1px solid var(--dsw-alias-border-soft, #eee); border-radius: 3px; background: var(--dsw-alias-surface, #fff); }
 .deep-hint { max-width: 780px; margin: 9px auto 0; }
+.gtd-workspace { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.gtd-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 7px 12px; border-bottom: 1px solid var(--dsw-alias-border-soft, #eee); background: var(--dsw-alias-surface, #fff); }
+.gtd-tabs button, .gtd-section button { border: 1px solid var(--dsw-alias-border, #ddd); border-radius: 6px; background: var(--dsw-alias-surface, #fff); color: inherit; padding: 5px 8px; cursor: pointer; }
+.gtd-tabs button[aria-selected="true"] { background: var(--dsw-alias-accent-soft, #e8efff); color: var(--dsw-alias-accent, #3972d8); }
+.gtd-section { max-width: 980px; margin: 0 auto; padding: 14px; }
+.gtd-section-title { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.gtd-section-title > span, .gtd-forecast-note { color: var(--dsw-alias-muted, #777); font-size: 11px; }
+.gtd-section-title > div { display: flex; flex-wrap: wrap; gap: 5px; }
+.gtd-capture-form, .gtd-clarify-form { display: flex; flex-direction: column; align-items: stretch; gap: 9px; margin-bottom: 14px; }
+.gtd-section label, .gtd-field-label { display: flex; flex-direction: column; gap: 4px; color: var(--dsw-alias-muted, #777); font-size: 11px; }
+.gtd-section input:not([type="checkbox"]), .gtd-section select, .gtd-section textarea { width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid var(--dsw-alias-border, #ddd); border-radius: 6px; background: var(--dsw-alias-surface, #fff); color: inherit; padding: 6px; }
+.gtd-capture-form button, .gtd-clarify-form > button { align-self: flex-start; }
+.gtd-list, .gtd-project > div { display: flex; flex-direction: column; gap: 7px; }
+.gtd-inbox-row, .gtd-action-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 9px; border: 1px solid var(--dsw-alias-border-soft, #eee); border-radius: 7px; background: var(--dsw-alias-surface, #fff); }
+.gtd-inbox-row > div { flex: 1; min-width: 180px; }
+.gtd-inbox-row p { margin: 4px 0; white-space: pre-wrap; }
+.gtd-inbox-row small, .gtd-action-meta, .gtd-project header span { display: block; color: var(--dsw-alias-muted, #777); font-size: 10px; }
+.gtd-clarify-form fieldset { min-width: 0; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--dsw-alias-border-soft, #eee); border-radius: 7px; }
+.gtd-tag-choices { display: flex; flex-wrap: wrap; gap: 5px 10px; }
+.gtd-tag-choices label { flex-direction: row; align-items: center; min-width: 0; }
+.gtd-date-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.gtd-project { margin-bottom: 12px; }
+.gtd-project > header { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 8px 0; }
+.gtd-project > header > div { flex: 1; min-width: 180px; }
+.gtd-project > header p { margin: 4px 0; font-size: 11px; }
+.gtd-action-main { flex: 1; min-width: 200px; }
+.gtd-action-main strong, .gtd-action-meta { margin-bottom: 3px; }
+.gtd-row-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+.gtd-section-title label { flex-direction: row; align-items: center; }
 @media (max-width: 640px) {
   .product-header { flex-wrap: wrap; gap: 6px 10px; padding-inline: 7px; }
   .product-header nav { width: 100%; justify-content: space-between; }
@@ -673,5 +718,9 @@ const styles = `
   .deep-head { align-items: flex-start; }
   .deep-grid { grid-template-columns: 34px repeat(7, minmax(0, 1fr)); }
   .deep-cell, .deep-hour { height: 20px; }
+  .gtd-tabs { padding-inline: 7px; }
+  .gtd-section { padding: 10px 7px; }
+  .gtd-date-grid { grid-template-columns: minmax(0, 1fr); }
+  .gtd-action-main { min-width: 150px; }
 }
 `

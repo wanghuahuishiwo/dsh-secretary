@@ -133,6 +133,8 @@ test('real Chromium client covers Plan/Template/date navigation and restores all
     `      name: 'file://${join(ROOT, 'packages/storage/lib/index.js')}'`,
     "    - id: secretary-browser-tag",
     `      name: 'file://${join(ROOT, 'packages/tag/lib/index.js')}'`,
+    "    - id: secretary-browser-gtd",
+    `      name: 'file://${join(ROOT, 'packages/gtd/lib/index.js')}'`,
     "    - id: secretary-browser-time",
     `      name: 'file://${join(ROOT, 'packages/time-block/lib/index.js')}'`,
     "    - id: secretary-browser-panel",
@@ -296,6 +298,8 @@ test('real Chromium deep-time grid supports high-only use, fixed-operation point
     `      name: 'file://${join(ROOT, 'packages/storage/lib/index.js')}'`,
     "    - id: secretary-browser-tag",
     `      name: 'file://${join(ROOT, 'packages/tag/lib/index.js')}'`,
+    "    - id: secretary-browser-gtd",
+    `      name: 'file://${join(ROOT, 'packages/gtd/lib/index.js')}'`,
     "    - id: secretary-browser-time",
     `      name: 'file://${join(ROOT, 'packages/time-block/lib/index.js')}'`,
     "    - id: secretary-browser-panel",
@@ -413,5 +417,122 @@ test('real Chromium deep-time grid supports high-only use, fixed-operation point
   await level(2, 9, 'medium')
   await level(2, 10, 'low')
   for (const hour of [9, 10, 11]) await level(3, hour, 'unset')
+  assert.deepEqual(pageErrors, [])
+})
+
+test('real Chromium GTD flow uses the product shell and survives a full isolated dsh restart', { timeout: 360_000 }, async (t) => {
+  const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-gtd-browser-'))
+  const overlay = join(home, 'overlay.yml')
+  await writeFile(overlay, [
+    '- id: ui-settings-general',
+    '  config:',
+    "    welcomeNoticeVersion: '2026-09-28.1'",
+    '- id: ui-settings-account',
+    '  config:',
+    '    version: 1',
+    '    step: done',
+    '    usage: detailed',
+    '    developerTools: true',
+    '    purpose: null',
+    '    process: standard',
+    '    completion: api-key',
+    '- insert:',
+    "    - id: secretary-browser-sqlite",
+    `      name: 'file://${join(ROOT, 'packages/secretary/node_modules/@deepseek-ai/dsh-storage-sqlite/lib/index.js')}'`,
+    '      config:',
+    `        path: ${join(home, 'secretary.sqlite')}`,
+    '        journalMode: delete',
+    "    - id: secretary-browser-storage",
+    `      name: 'file://${join(ROOT, 'packages/storage/lib/index.js')}'`,
+    "    - id: secretary-browser-tag",
+    `      name: 'file://${join(ROOT, 'packages/tag/lib/index.js')}'`,
+    "    - id: secretary-browser-gtd",
+    `      name: 'file://${join(ROOT, 'packages/gtd/lib/index.js')}'`,
+    "    - id: secretary-browser-time",
+    `      name: 'file://${join(ROOT, 'packages/time-block/lib/index.js')}'`,
+    "    - id: secretary-browser-panel",
+    `      name: 'file://${join(ROOT, 'packages/panel/lib/index.js')}'`,
+    '',
+  ].join('\n'))
+
+  const browser = await chromium.launch({ headless: true })
+  const dshVersion = execFileSync('dsh', ['--version'], { encoding: 'utf8' }).trim()
+  execFileSync('dsh', [
+    'plugin', '--profile', 'web', 'allow-version', '@deepseek-ai/dsh-storage-sqlite@0.2.1-rc.3',
+    '--dsh-version', dshVersion, '--accept-risk',
+  ], { env: { ...process.env, DSH_HOME: home }, stdio: 'pipe' })
+  let server
+  const pageErrors = []
+  t.after(async () => {
+    if (server) await server.stop()
+    await browser.close()
+    await rm(home, { recursive: true, force: true })
+  })
+
+  server = await boot(home, overlay)
+  let context = await browser.newContext({ viewport: { width: 1280, height: 900 } })
+  let page = await context.newPage()
+  page.on('pageerror', error => pageErrors.push(error))
+  await openPanel(page, server.url)
+  await createTag(page, '工作')
+  await page.getByRole('button', { name: '管理标签', exact: true }).click()
+  await page.getByRole('button', { name: '情境标签', exact: true }).click()
+  await page.getByLabel('标签名称').fill('电脑')
+  await page.getByRole('button', { name: '新建标签', exact: true }).click()
+  await page.getByRole('button', { name: '返回实录', exact: true }).click()
+
+  await page.getByRole('button', { name: 'GTD', exact: true }).click()
+  await page.getByRole('region', { name: 'GTD 工作区' }).waitFor()
+  await page.getByLabel('捕获标题').fill('浏览器 GTD')
+  await page.getByLabel('捕获原文').fill('在真实产品中完成浏览器 GTD 闭环。')
+  await page.getByRole('button', { name: '捕获到 Inbox', exact: true }).click()
+  await page.getByRole('button', { name: '澄清 浏览器 GTD', exact: true }).click()
+  await page.getByLabel('Project 标题').fill('浏览器 GTD 项目')
+  await page.getByLabel('Project Outcome').fill('真实 UI 与 Service 同源')
+  await page.getByLabel('Project 标签 工作').check()
+  await page.getByLabel('Project 标签 电脑').check()
+  await page.getByLabel('Action 标题').fill('浏览器下一步')
+  await page.getByLabel('Action 标签 电脑').check()
+  await page.getByLabel('Action Planned At').fill('2026-11-03T09:00:00+08:00')
+  await page.getByRole('button', { name: '完成澄清', exact: true }).click()
+
+  await page.getByRole('region', { name: 'Next Actions 视图' }).waitFor()
+  await page.getByText('浏览器下一步', { exact: true }).waitFor()
+  await page.getByText(/· available/).waitFor()
+  await page.getByText(/有效 Tags.*工作.*电脑/).waitFor()
+  await page.getByRole('tab', { name: 'Forecast', exact: true }).click()
+  await page.getByLabel('Forecast 日期').fill('2026-11-03')
+  await page.getByText('浏览器下一步', { exact: true }).waitFor()
+
+  await page.getByRole('tab', { name: 'Projects', exact: true }).click()
+  await page.getByRole('button', { name: '编辑 浏览器下一步', exact: true }).click()
+  await page.getByLabel('Planned At').fill('2026-11-04T10:00:00+08:00')
+  await page.getByLabel('Due At').fill('2026-11-05T18:00:00+08:00')
+  await page.getByRole('button', { name: '保存 Action', exact: true }).click()
+  await page.getByRole('tab', { name: 'Forecast', exact: true }).click()
+  await page.getByLabel('Forecast 日期').fill('2026-11-04')
+  await page.getByText('浏览器下一步', { exact: true }).waitFor()
+  await page.getByRole('tab', { name: 'Next Actions', exact: true }).click()
+  await page.getByRole('button', { name: '完成 浏览器下一步', exact: true }).click()
+  await page.getByText('浏览器下一步', { exact: true }).waitFor({ state: 'detached' })
+
+  await server.stop()
+  server = await boot(home, overlay)
+  await context.close()
+  context = await browser.newContext({ viewport: { width: 390, height: 844 } })
+  page = await context.newPage()
+  page.on('pageerror', error => pageErrors.push(error))
+  await openPanel(page, server.url)
+  await page.getByRole('button', { name: 'GTD', exact: true }).click()
+  await page.getByRole('tab', { name: 'Projects', exact: true }).click()
+  await page.getByText('浏览器下一步', { exact: true }).waitFor()
+  await page.getByText(/· completed ·/).waitFor()
+  await page.getByText(/有效 Tags.*工作.*电脑/).waitFor()
+  await page.getByRole('tab', { name: 'Next Actions', exact: true }).click()
+  assert.equal(await page.getByText('浏览器下一步', { exact: true }).count(), 0)
+  await page.getByRole('tab', { name: 'Forecast', exact: true }).click()
+  await page.getByLabel('Forecast 日期').fill('2026-11-04')
+  await page.getByText('浏览器下一步', { exact: true }).waitFor()
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), '390px GTD layout has horizontal overflow')
   assert.deepEqual(pageErrors, [])
 })

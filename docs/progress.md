@@ -1,6 +1,6 @@
 # 一期产品基线进展
 
-> 快照：2026-11-03 16:07（Asia/Shanghai）。本页只记总进度、各模块剩余与备注；设计与规格见 [产品架构](product-architecture.md)、[数据模型](data-model.md)、[规格](specs/2026-11-03-secretary-product-foundation.md)。工单入口：[Issue #1](https://github.com/wanghuahuishiwo/dsh-secretary/issues/1)（子工单 #2–#8）。
+> 快照：2026-11-03 16:55（Asia/Shanghai）。本页只记总进度、各模块剩余与备注；设计与规格见 [产品架构](product-architecture.md)、[数据模型](data-model.md)、[规格](specs/2026-11-03-secretary-product-foundation.md)。工单入口：[Issue #1](https://github.com/wanghuahuishiwo/dsh-secretary/issues/1)（子工单 #2–#8）。
 
 ## 总进度
 
@@ -11,28 +11,28 @@
 - 整体 = 一级节点（GTD、Time、Tag、Agent、Goal、交付与集成）进展的平均。
 - 条目增减会改变分母，数值随 Actions 勾选更新，可复算。
 
-按当前勾选：整体 **39%**。
+按当前勾选：整体 **51%**。
 
 | 节点 | 进展 | 计算 |
 |---|---|---|
-| GTD | 0% | 0/6 项 |
+| GTD | 50% | 3/6 项；#5 基础闭环完成，#6 未开始 |
 | Time | 79% | 计划 100%、实录 50%、深度时间 100%、共用 67% 的平均 |
 | Tag | 80% | 4/5 项 |
-| Agent | 67% | 4/6 项 |
+| Agent | 83% | 5/6 项 |
 | Goal | 0% | 0/3 项 |
 | 交付与集成 | 11% | 1/9 项 |
-| **整体** | **39%** | 6 个节点等权平均 |
+| **整体** | **51%** | 6 个节点等权平均，四舍五入 |
 
 ## Actions
 
 ### GTD（#5、#6）
 
-- [ ] 契约改造：标签字段、`plannedAt`、数字 ID（备注：现为字符串 ID；旧数据为空，不需要迁移）
-- [ ] Project 时间标签必填，后代 Action 累加继承，父标签查询去重
-- [ ] Inbox、Next Actions、Forecast、Review 的查询与视图（备注：视图尚未设计；产品导航已有 GTD 占位页）
-- [ ] Folder、Action Group
-- [ ] Review、Repeat
-- [ ] 项目结构变化后 Availability 与标签继承仍正确
+- [x] 契约改造：数字 ID、独立／项目澄清、直接标签字段、`plannedAt`（无 UUID／旧 Action-TimeBlock 兼容层）
+- [x] Project 恰好一个直接 time Tag，Project／parent Action 全层累加去重，Tag 防引用删除与并发
+- [x] Inbox、澄清、Projects、Next Actions、Forecast 查询与真实视图；Completed／Actual 独立及持久化重开
+- [ ] Folder、完整 Action Group（#6）
+- [ ] Review、Repeat（#6）
+- [ ] 项目结构变化后 Availability 与标签继承仍正确（#6）
 
 ### Time（#3、#4、#7）
 
@@ -61,7 +61,7 @@
 ### Tag（#2）
 
 - [x] 统一字段与两种 kind、增删改、层级移动、选色
-- [x] 防循环、防跨类型、有子级或仍被引用时拒绝删除（备注：引用保护已覆盖计划与模板）
+- [x] 防循环、防跨类型、有子级或仍被引用时拒绝删除（引用保护覆盖 GTD、计划、实录与模板）
 - [x] 父标签查询包含直接与后代关联且按记录去重
 - [x] 面板统一标签管理（产品导航 Tags 入口可用）
 - [ ] 画布联动断言：移动／删除标签后画布即时更新（备注：只缺浏览器断言）
@@ -69,11 +69,11 @@
 ### Agent（#8）
 
 - [x] 三个公共工具门面（GTD／Tag／Time）+ `secretary`／`gtd-inbox-capture`／`gtd-clarify` 技能
-- [x] 工具与面板 host route 共用 Tag／Time Services（备注：tracer 覆盖，含计划／模板／深度时间）
+- [x] 工具与面板 Host route 共用 GTD／Tag／Time Services（tracer 覆盖）
 - [x] Time 工具补齐计划、模板（备注：随 #3 合入）
 - [x] Time 工具补齐深度时间（备注：随 #4 合入）
-- [ ] GTD 工具随 GTD 改造补齐
-- [ ] 端到端同源验收：Agent 工具与 UI 操作同一事实源、重开一致（归交付）
+- [x] GTD 工具随 GTD 改造补齐（数字 ID、CRUD、Next／Forecast／effective Tags）
+- [ ] 端到端同源总验收与跨模块交付收口（#5 已完成 GTD 同源与重开，整体归 #8）
 
 ### Goal
 
@@ -85,8 +85,8 @@
 
 ### 交付与集成（跨模块，#8）
 
-- [x] 产品导航壳：GTD／Time／Tags／Goal 入口（备注：GTD、Goal 仍是占位页）
-- [ ] GTD／Goal 真实页面接入
+- [x] 产品导航壳：GTD／Time／Tags／Goal 入口（GTD 五视图已接入；Goal 仅为本期未实现入口，Agent 无入口）
+- [ ] GTD／Goal 真实页面接入（GTD 已完成；Goal 本期明确不实现，保留该项作产品全景跟踪）
 - [ ] 真实 bundle 安装与新开会话生效（备注：现有浏览器测试用 overlay + `file://`，不是正式安装）
 - [ ] 明暗主题在真实客户端验证（390px 已测）
 - [ ] 完整重开恢复全部领域事实：GTD、计划、实录、模板、深度时间、Tag
@@ -97,7 +97,7 @@
 
 ## 备注
 
-- 基线：集成分支 `integration/secretary-product-foundation` @ `56e1b9a`（merge #4）；2026-11-03 16:07 复跑 `pnpm build && pnpm test` 通过（tracer 32/32、真实浏览器 2/2）。
+- 基线：#5 开工为 `56e1b9a`；报告前已读取并 merge 最新 integration `2798f57`，保留其统一等权进展算法与 Goal 跟踪。
 - Time 由并行会话按切片推进：#3、#4 已合入。#4 已知边界：深度时间 UI 对一次手势逐格串行提交，中途失败可能部分持久化。
-- GTD 旧底座（Inbox 捕获／澄清、Project／Action／Availability）不计入总进度：按规格要迁到新契约后才算完成项。
+- #5 在 `ticket/5-gtd-tags` 本地实现：公开 tools／Host routes + 临时 SQLite 39/39、真实 Chromium 3/3；覆盖 capture → clarify → Next／Forecast → 编辑／完成 → 完整重开。
 - 远端仓库为空，Issue 全部 open；远程交付为零。

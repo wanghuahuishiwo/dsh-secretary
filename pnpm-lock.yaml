@@ -26,6 +26,9 @@ importers:
       dsh-secretary-core:
         specifier: workspace:*
         version: link:../core
+      dsh-secretary-tag:
+        specifier: workspace:*
+        version: link:../tag
     devDependencies:
       esbuild:
         specifier: ^0.25.10
@@ -36,6 +39,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: 4.0.5
         version: 4.0.5
+      dsh-secretary-gtd:
+        specifier: workspace:*
+        version: link:../gtd
       dsh-secretary-tag:
         specifier: workspace:*
         version: link:../tag
