@@ -1,7 +1,9 @@
 # ADR 0005 — 时间类型是固定的专注档位 `focus`，不是可自定义分类
 
-- 状态：已接受（2026-10-29）
+- 状态：部分被 2026-11-03 产品基线取代；`ActualBlock.focus: deep | shallow` 的封闭枚举继续有效
 - 更新：[ADR 0001](0001-action-centric-model.md)、[ADR 0002](0002-gtd-time-block-agent.md) 中「TimeCategory 可自定义」的部分
+
+> 当前模型为独立 PlanBlock／ActualBlock＋time Tag；本文旧 `TimeBlock` 字段、`use` 和 Statistics 实现决策仅作历史记录。统计本轮不实现。
 
 ## 背景
 

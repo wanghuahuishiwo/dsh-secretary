@@ -1,73 +1,74 @@
-# 曳光弹验证记录
+# Time + Tag 专项验证记录
 
-- 日期：2026-10-28（Asia/Shanghai）
-- 产品基线：GTD + TimeBlock + Secretary Agent，SQLite，不兼容旧 Action 模型
-- 运行宿主：DSH `0.2.1-rc.3`，隔离 `DSH_HOME` 与独立 Web profile
+> 日期：2026-11-03（Asia/Shanghai）。范围仅为 Time + Tag；#6 GTD Review／Repeat／UI 与全产品 #8 暂停。当前 GTD UI 不是终稿，本记录不代表全产品交付。
 
-## 1. 公开工具与真实 SQLite
+## 1. 完整门禁
 
-命令：
+实际在工作区根目录运行：
 
 ```sh
+pnpm install --frozen-lockfile
 pnpm build
-node --test tests/tracer.mjs
+pnpm test
+git diff --check
 ```
 
-结果：5 个测试全部通过，覆盖：
+结果：
 
-1. 捕获 → 澄清 → Project／Action → TimeBlock → 改期 → actual／Completed → 55 分钟分类统计；actual 已存在时改期仍保持原值。
-2. 完整关闭后，使用同一 SQLite 文件重开并读回 GTD 与 TimeBlock。
-3. Secretary 与 GTD Skills 的调用边界、bundle 行、专用 SQLite facility，以及公开 Service Definition 与实现的类型同一性。
-4. Action 的 Defer／Due／预计时长更新与清除、Availability 派生，以及非法预计时长的拒绝。
-5. 在 Action 写入与 Inbox 删除两个故障点注入失败，验证澄清会补偿删除部分写入并保留原 Inbox。
+- frozen lockfile 安装成功，workspace 为 8 个项目；`pnpm build` 构建 7 个包全部成功。
+- `packages/secretary/tests/tracer.mjs`：**47/47** 通过，0 skipped／todo／failed。
+- `packages/secretary/tests/browser.mjs`：**11/11** 通过，0 skipped／todo／failed。
+- 合计 **58 项测试全部通过**。
+- `git diff --check` 无输出、退出码 0。
 
-E2E 发现的 `undefined` 可选字段导致 lossless JSON 工具输出失败，已转为回归断言并修复；普通改期的同类边界也已覆盖。组合测试还固定了扁平工具 schema，`action.update` 的嵌套误用会显式失败。
+运行宿主为 DSH **0.2.1-rc.5**。Storage／storage-domain／storage-sqlite 均为 rc5；浏览器测试没有 `allow-version` 或其他版本豁免。
 
-## 2. 发布与安装
+## 2. Service、SQLite 与故障证据
 
-- `pnpm pack` 的 tarball 包含全部 subpath entries、Skills、patch 与 package manifest。
-- 在隔离 profile 安装后，`pnpm peers check` 无问题。
-- `--dump-config` 确认全局 GTD／TimeBlock、Secretary preset、SQLite 与 `tool-ask-user`。小秘书使用独立 `secretaryStorageDomain`，不覆盖宿主全局 `storage-domain` 的默认 backend。
-- 多入口构建启用 shared chunks，公开 `GtdService`／`TimeBlockService` 与运行实现的类型身份一致。
-- 真实 DSH 进程创建 `$DSH_HOME/storages/secretary.db`，`units` 同时包含 `secretary_gtd` 和 `secretary_time`。
+真实 Cordis 公共 tools、Host routes 和临时 SQLite 已覆盖：
 
-## 3. 真实 AgentLoop 与 Schedule
+1. Plan／Actual 的父标签查询都包含直接父级、子级和孙级关联，按记录 ID 去重；跨 kind 查询与非法时间区间被拒绝。
+2. Plan 在 day A 创建后 update 到 day B：A 不再显示、B 显示；随后 apply day A 不会误删已移动到 B 的记录。
+3. 跨午夜块在起始日、次日及 target date apply 中使用同一区间重叠语义；undo 精确恢复 before，后续编辑使 undo 拒绝覆盖，Actual／Template 不变。
+4. `plan_blocks` 独立记录和 `plan_template_undos` 持久化 before／after，完整关闭／重开后仍可 undo；没有 `plan_days` 双写兼容层。
+5. 对多记录 apply／undo 的每一个 PlanBlock put/delete 及 undo record 写入分别注入一次真实 SQLite 失败：补偿后保持完整 before 或 after，失败 apply 不留半套 undo，失败 undo 可重试。ID 允许空洞。
+6. 当前 Plan／Actual／Template 和仍可执行的 template undo 中的 Tag 引用均阻止删除；后续编辑使 undo 失效后，不再被当前事实引用的 before／after Tag 可删除。Tag Service 继续防循环和跨 kind。
+7. 同一个 `databasePath` 在一次完整关闭／重开后，同时读回 Plan、Actual、PlanTemplate、DeepTime、Tag，不是各领域分别建库。
+8. DeepTime 7×24、枚举、点按／区间写入、清除与重开；GTD Completed 与 Actual 独立；公共 tools 与 Host routes 看到同一 Services 事实。
+9. 用 v1 的真实 `secretary_time` schema（含空 `plan_days`）写入 Actual／Template／Deep，完整关闭后以当前服务重开：三类旧记录逐字段读回，新 `plan_blocks` 可继续写入；domain 保持 version 1，不读取或恢复 `plan_days` 兼容层。
+10. 对主写入与后续补偿删除各注入一次真实 SQLite 失败，服务显式报 `rollback failed`；完整重开后读回同样的部分 Plan 集合，且不存在可伪造恢复完整 before 的 template undo。该用例证明并记录补偿失败边界，不作为原子性保证。
 
-使用 keyless scripted adapter，仅替换模型边界；Web Host、AgentLoop、preset、Tools、Schedule、文件写入和 SQLite 均使用真实实现。
+## 3. 真实 Chromium 证据
 
-会话 `secretary-e2e-flow-2` 中观察到：
+所有用例都启动隔离 `DSH_HOME` 中的真实 `dsh web` 和生产 client，不使用静态 prototype，不连接真实 desktop profile。
 
-1. 用户消息触发 GTD 捕获与澄清，创建 Project、Action 和 TimeBlock。
-2. `schedule_create` 创建准备唤醒，TimeBlock 保存对应 reminder ID。
-3. 后续 inbox 消息具有 `source.kind = schedule`，携带同一 Action 与准备提示。
-4. Agent 读取 Action，实际写出产品评审准备清单，并把文件引用保存为 `preparationResultRef`。
-5. 用户确认后，Agent 写入 actual、`completedAt` 和分类统计，最终回复实际投入 55 分钟。
-6. SQLite 最终保持 Action `status = completed`，TimeBlock 同时保留 planned、actual、`actualSource = user_reported` 和准备引用。
+- 日期计划、实录、模板、月历、完整进程停止／重开、10／15／30 分钟、N 等分、48px、跨小时标题和 Shift 编辑。
+- 添加／消除／编辑 Undo；recreate 产生新 ID 后，继续撤销较早编辑和添加。Actual 与 Plan 均覆盖整次 erase drag 恢复及后续 Undo 链。
+- 整批 Actual erase 的第二次 delete 注入 HTTP 500：错误持续可见，首条已删除记录保留 Undo，恢复后首条与未删除的第二条同时存在。
+- Plan 跨午夜块在次日消除后 Undo 恢复到原始开始日期；在原日消除、切换到其他日期后 Undo 也恢复原日。两种场景均产生新 ID，且最终无错误提示。
+- 三条 Actual 的 erase Undo 在第二次 create 注入 HTTP 500：不误弹栈，已恢复首条与剩余两条命令保留；重试只执行剩余两条，随后较早编辑和三个添加逆操作均正确使用 remap 后的新 ID。
+- time 和 context 都通过真实桌面 HTML5 drag/drop 拖到父级并移回根级；Host 重新读取持久化 parentId，Time 画布重新读取 depth。Time→Tags 为 time，GTD→Tags 为 context。
+- 通过真实宿主 Account menu → Settings → Appearance 切换浅色／深色。面板计算背景与 `--dsw-alias-bg-base` 一致，计算文字与 `--dsw-alias-label-primary` 一致；两种主题的正文、次级日期按钮、Time 分段选中控件、小时刻度、选中标签文字／边框、月历及其选中日期、编辑 dialog 标签／输入／动作均做计算样式与对比度断言。文字对比度 ≥ 4.5:1，选中标签边框 ≥ 3:1；半透明选中背景先逐层合成到面板背景再计算。
+- light／dark 及既有流程均覆盖 390px 页面无横向溢出。全部 pageerror 为零，非预期 console.error 为零；仅在明确 reload／进程重启用例中分类放行 `ERR_INCOMPLETE_CHUNKED_ENCODING` 和 WebSocket `ERR_CONNECTION_REFUSED` 导航／关闭瞬时错误。
 
-这证明目标装配与主动工作链路可以真实运行。改用专用 `secretaryStorageDomain` 后，又在 `secretary-e2e-review` 中重复验证了主动准备、actual 与 Completed。脚本生成的准备文件属于测试产物，验证后已删除。
+真实截图由同一主题测试设置 `SECRETARY_SCREENSHOT_DIR` 生成，默认测试不写仓库：
 
-## 4. 真实 Web 进程重启
+- [light：真实宿主与 Time 画布](assets/verification/time-tag-light.png)
+- [dark：真实宿主与 Time 画布](assets/verification/time-tag-dark.png)
 
-完成上述链路后关闭并重新启动同一隔离 Web profile：
+## 4. Bundle 检查
 
-- 原 Session 历史仍可读取，共 113 条事件，最后为第三轮 `turn/end`。
-- GTD 与 TimeBlock 仍可从同一 SQLite 文件读取。
-- Secretary preset 继续可用于新会话。
+在 `packages/secretary` 实际运行 `pnpm pack` 成功。tarball 包含：
 
-## 5. 真实模型验收
+- `package.json`、`lib/index.js`、`cordis.patch.yml`、`README.md`、`assets/secretary/SKILL.md`。
+- `workspace:*` 兄弟依赖已转换为 `0.1.0`；`engines.dsh` 为 `>=0.2.1-rc.5 <0.3.0`；Storage dev 依赖为 rc5。
 
-凭据从当前 DSH credential store 安全复用到隔离环境，未输出密钥。真实模型为 `zai-coding-cn / glm-5.3`，不是 scripted adapter。
+## 5. 明确未覆盖项与剩余风险
 
-会话 `secretary-real-e2e-2` 完整验证：
-
-1. 首次运行发现 `oneOf` 工具 schema 导致该 provider 连续生成空参数。改为 `op` 枚举的扁平 schema 后，Project、Action、TimeBlock 均成功创建。
-2. Schedule 到点后，真实模型生成并读取评审准备清单，随后通过 `ask_user_question` 发起结构化确认；用户在 Web 问题卡片中选择“按计划进行”。
-3. 验收还发现模型把准备引用误嵌套在 `action` 中，却向用户声称已经关联。随后为 `action.update` 增加顶层参数引导和嵌套误用显式拒绝，并在 Skill 中明确 reminder 归 TimeBlock、准备引用归 Action。
-4. 真实模型在原会话中纠正两处引用，最终 SQLite 保存 `preparationResultRef`、`preparationReminderId`、actual、`actualSource = user_reported` 和 `completedAt`。
-5. 统计返回本次实际投入 55 分钟；模型还识别出同名“工作”分类可能造成统计拆分并提醒用户，体现了超出机械工具调用的上下文价值。
-
-真实 Web 重启后，该会话能够恢复并继续完成纠正与后续工具调用。
-
-## 6. 验证边界
-
-上述结果证明当前场景下的真实模型对话、主动准备、结构化确认和持久化链路可用，但不代表所有模型、所有事项类型或所有对话分支都具有相同表现。当前仍未验证独立 UI、IM、Obsidian 迁移、Repeat、Project Review 或真实 OmniFocus 数据兼容。
+- **未做真实 bundle 安装后的新会话／desktop profile 验收**；由 lead 后续执行。本轮没有修改真实 profile 或远程 Issue。
+- #6 的 GTD Review／Repeat／OmniFocus UI、全产品 #8、Goal、统计、预算、对账均未交付；现有 GTD UI 不是终稿。
+- 只验收桌面 HTML5 标签层级拖拽，未宣称触摸拖拽。
+- 通用添加／消除／编辑 Undo 仍只保存当前会话；模板 undo 才持久化。
+- Storage 无跨 record 事务，不能声称所有故障下绝对原子。单点写入失败且补偿成功已逐项覆盖；另已覆盖主写入与补偿删除连续失败，服务显式报错，部分事实在重开后仍存在。持续介质不可用、其他二次失败组合及进程在多条写入之间崩溃仍不保证自动恢复。
+- DeepTime 一次指针手势仍逐格串行提交，中途失败可能保留部分格子的修改，这是本轮未扩大的既有边界。
+- 浏览器测试使用 `DEEPSEEK_API_KEY=browser-test-no-model`，不评价真实模型的语义判断或 Agent 工作流。

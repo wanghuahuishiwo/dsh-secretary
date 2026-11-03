@@ -8,7 +8,7 @@
 ADR 0003 选择「单仓单包、多 subpath plugins」：一个 package.json、根级 `src/<模块>/`、subpath exports（`dsh-secretary/gtd` 等）。运行一年内暴露两个问题：
 
 1. **结构漂移**：模块 README/GLOSSARY 混在 `src/` 代码目录里，技能资产挂在仓根 `skills/`，与 dsh-plugin-template 规范和 deepseek-harness 官方仓「一插件一包、src 纯代码、assets 放资源」的形态不一致。
-2. **演进受限**：preset 插件底座已与官方 standard preset 全量对齐，领域包（gtd/time-block/statistics）边界清晰，单包 subpath 装配让包间依赖只能靠路径约定。
+2. **演进受限**：preset 插件底座已与官方 standard preset 全量对齐，领域包边界逐步清晰，单包 subpath 装配让包间依赖只能靠路径约定。
 
 ## 决策
 
@@ -19,8 +19,9 @@ packages/
 ├── core/          dsh-secretary-core：validation / tooling / skill-resources 共享件
 ├── storage/       dsh-secretary-storage：secretaryStorageDomain facility
 ├── gtd/           dsh-secretary-gtd：Service + tools + agent + assets/（GTD 技能）
-├── time-block/    dsh-secretary-time-block：Service + tools
-├── statistics/    dsh-secretary-statistics：只读 Projection
+├── tag/           dsh-secretary-tag：统一 time/context Tag Service + tools
+├── time-block/    dsh-secretary-time-block：Time Service + tools
+├── panel/         dsh-secretary-panel：Host routes + Web client
 └── secretary/     dsh-secretary：可安装 bundle（cordis.patch.yml + preset + secretary 技能 assets）
 ```
 

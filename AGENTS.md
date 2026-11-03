@@ -2,6 +2,8 @@
 
 个人 Secretary Agent：以 GTD 管理事项，以 TimeBlock 管理时间，通过主动准备、协商和跟进帮助用户推进结果。
 
+当前集中验收只覆盖 Time + Tag；#6 GTD Review／Repeat／UI 与全产品 #8 暂停，现有 GTD UI 不是终稿，不实现 Goal 或统计。
+
 **pnpm workspace，一插件一包，对齐 deepseek-harness 官方仓与 dsh-plugin-template 规范**（结构决策见 [ADR 0004](docs/adr/0004-workspace-packages.md)，supersede 0003）。
 
 ## 命令（workspace 根）
@@ -21,8 +23,9 @@ packages/
 ├── core/          dsh-secretary-core       共享件：validation / tooling / skill-resources
 ├── storage/       dsh-secretary-storage    secretaryStorageDomain facility（SQLite 路由）
 ├── gtd/           dsh-secretary-gtd        GTD Service + tools + agent + assets/（GTD 技能）
-├── time-block/    dsh-secretary-time-block TimeBlock Service + tools（依赖 gtd 契约）
-├── statistics/    dsh-secretary-statistics 只读统计 Projection（依赖 time-block 契约）
+├── tag/           dsh-secretary-tag        统一 time/context Tag Service + tools
+├── time-block/    dsh-secretary-time-block Time Service + tools（依赖 tag 契约）
+├── panel/         dsh-secretary-panel      真实 Host routes + Web client 产品壳
 └── secretary/     dsh-secretary            可安装 bundle：cordis.patch.yml + preset + secretary 技能 assets
 ```
 
@@ -37,7 +40,7 @@ packages/
 
 ## 数据来源
 
-GTD 与 TimeBlock 的唯一运行事实分别存于 `secretary_gtd` 与 `secretary_time`，默认都路由到 `$DSH_HOME/storages/secretary.db`。Statistics 不另存事实。准备产物由文件工具保存，Action 只保存引用。DSH Schedule 只负责定时唤醒，投递不代表模型已经执行。旧 `secretary.json` 与 Obsidian vault 不参与运行期读写。
+GTD、Tag 与 Time 的唯一运行事实分别存于 `secretary_gtd`、`secretary_tag` 与 `secretary_time`，默认都路由到 `$DSH_HOME/storages/secretary.db`。准备产物由文件工具保存，Action 只保存引用。DSH Schedule 只负责定时唤醒，投递不代表模型已经执行。旧 `secretary.json`、Obsidian vault 与已删除的 Statistics 包不参与运行期读写。
 
 ## 文档
 

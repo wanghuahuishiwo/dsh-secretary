@@ -44,12 +44,6 @@ interface TemplateUndo {
   readonly after: readonly PlanBlock[]
 }
 
-interface PlanDay {
-  readonly date: string
-  readonly blocks: readonly PlanBlock[]
-  readonly templateUndo?: TemplateUndo
-}
-
 interface DeepTemplate {
   readonly scope: 'base'
   readonly levels: readonly DeepCellLevel[]
@@ -59,8 +53,9 @@ interface StorageDomain {
   readonly global: { get(): number; set(value: number): Promise<void> }
   table(name: 'actual_blocks'): Table<ActualBlock>
   table(name: 'deep_templates'): Table<DeepTemplate>
-  table(name: 'plan_days'): Table<PlanDay>
+  table(name: 'plan_blocks'): Table<PlanBlock>
   table(name: 'plan_template_blocks'): Table<PlanTemplateBlock>
+  table(name: 'plan_template_undos'): Table<TemplateUndo>
   close(): Promise<void>
 }
 
@@ -155,21 +150,14 @@ function parsePlan(raw: unknown): PlanBlock {
   return block
 }
 
-function parsePlanDay(raw: unknown): PlanDay {
-  const day = objectOf(raw, 'plan day') as unknown as PlanDay
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(day.date) || !Array.isArray(day.blocks)) {
-    throw new Error('secretary: invalid stored plan day')
-  }
-  day.blocks.forEach(parsePlan)
-  if (day.templateUndo !== undefined) {
-    const undo = objectOf(day.templateUndo, 'template undo') as unknown as TemplateUndo
-    parseWeekday(undo.weekday)
-    validateTimeZone(undo.timeZone)
-    if (!Array.isArray(undo.before) || !Array.isArray(undo.after)) throw new Error('secretary: invalid stored template undo')
-    undo.before.forEach(parsePlan)
-    undo.after.forEach(parsePlan)
-  }
-  return day
+function parseTemplateUndo(raw: unknown): TemplateUndo {
+  const undo = objectOf(raw, 'template undo') as unknown as TemplateUndo
+  parseWeekday(undo.weekday)
+  validateTimeZone(undo.timeZone)
+  if (!Array.isArray(undo.before) || !Array.isArray(undo.after)) throw new Error('secretary: invalid stored template undo')
+  undo.before.forEach(parsePlan)
+  undo.after.forEach(parsePlan)
+  return undo
 }
 
 function validateInterval(startAt: string, endAt: string): void {
@@ -301,8 +289,9 @@ export class SQLiteTimeService extends TimeService {
       tables: {
         actual_blocks: { valueSchema: { parse: parseActual } },
         deep_templates: { valueSchema: { parse: parseDeepTemplate } },
-        plan_days: { valueSchema: { parse: parsePlanDay } },
+        plan_blocks: { valueSchema: { parse: parsePlan } },
         plan_template_blocks: { valueSchema: { parse: parsePlanTemplate } },
+        plan_template_undos: { valueSchema: { parse: parseTemplateUndo } },
       },
       global: { initial: 1, schema: { parse(value: unknown) {
         if (!Number.isSafeInteger(value) || (value as number) <= 0) throw new Error('secretary: invalid stored actual sequence')
@@ -318,9 +307,10 @@ export class SQLiteTimeService extends TimeService {
         const domain = await this.ready
         if ([...domain.table('actual_blocks').entries()].some(([, block]) => block.timeTagId === tagId)) return true
         if ([...domain.table('plan_template_blocks').entries()].some(([, block]) => block.timeTagId === tagId)) return true
-        return [...domain.table('plan_days').entries()].some(([, day]) => [
-          ...day.blocks, ...(day.templateUndo?.before ?? []), ...(day.templateUndo?.after ?? []),
-        ].some(block => block.timeTagId === tagId))
+        if ([...domain.table('plan_blocks').entries()].some(([, block]) => block.timeTagId === tagId)) return true
+        return [...domain.table('plan_template_undos').entries()].some(([targetDate, undo]) =>
+          JSON.stringify(this.plansForDate(domain, targetDate, undo.timeZone)) === JSON.stringify(undo.after)
+          && [...undo.before, ...undo.after].some(block => block.timeTagId === tagId))
       },
     }), 'secretary: TimeBlock tag reference inspector')
   }
@@ -336,13 +326,57 @@ export class SQLiteTimeService extends TimeService {
     if (tag.kind !== 'time') throw new Error('secretary: TimeBlock requires a time tag')
   }
 
-  private async findPlan(id: number): Promise<{ day: PlanDay; block: PlanBlock }> {
+  private async findPlan(id: number): Promise<PlanBlock> {
     const domain = await this.ready
-    for (const [, day] of domain.table('plan_days').entries()) {
-      const block = day.blocks.find(item => item.id === id)
-      if (block !== undefined) return { day, block }
+    const block = domain.table('plan_blocks').get(String(id))
+    if (block === undefined) throw new Error(`secretary: no plan block "${id}"`)
+    return block
+  }
+
+  private plansForDate(domain: StorageDomain, date: string, timeZone: string): PlanBlock[] {
+    const from = startOfZonedDate(date, timeZone)
+    const to = startOfZonedDate(nextDate(date), timeZone)
+    return [...domain.table('plan_blocks').entries()].map(([, block]) => block)
+      .filter(block => Date.parse(block.startAt) < to && Date.parse(block.endAt) > from)
+      .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt) || a.id - b.id)
+  }
+
+  private async replaceDatePlans(
+    domain: StorageDomain,
+    targetDate: string,
+    current: readonly PlanBlock[],
+    after: readonly PlanBlock[],
+    undo: TemplateUndo | undefined,
+  ): Promise<void> {
+    const plans = domain.table('plan_blocks')
+    const undos = domain.table('plan_template_undos')
+    const previousUndo = undos.get(targetDate)
+    const currentById = new Map(current.map(block => [block.id, block]))
+    const afterIds = new Set(after.map(block => block.id))
+    const touchedIds = new Set([...currentById.keys(), ...afterIds])
+    try {
+      for (const block of after) await plans.put(String(block.id), block)
+      for (const id of currentById.keys()) if (!afterIds.has(id)) await plans.delete(String(id))
+      if (undo === undefined) await undos.delete(targetDate)
+      else await undos.put(targetDate, undo)
+    } catch (error) {
+      const rollbackErrors: unknown[] = []
+      for (const id of touchedIds) {
+        const original = currentById.get(id)
+        try {
+          if (original === undefined) await plans.delete(String(id))
+          else await plans.put(String(id), original)
+        } catch (rollbackError) { rollbackErrors.push(rollbackError) }
+      }
+      try {
+        if (previousUndo === undefined) await undos.delete(targetDate)
+        else await undos.put(targetDate, previousUndo)
+      } catch (rollbackError) { rollbackErrors.push(rollbackError) }
+      if (rollbackErrors.length > 0) {
+        throw new Error(`secretary: date-plan write failed (${String(error)}); rollback failed: ${rollbackErrors.map(String).join('; ')}`, { cause: error })
+      }
+      throw error
     }
-    throw new Error(`secretary: no plan block "${id}"`)
   }
 
   async createPlanTemplate(input: CreatePlanTemplateInput): Promise<PlanTemplateBlock> {
@@ -421,14 +455,11 @@ export class SQLiteTimeService extends TimeService {
           endAt: templateInstant(input.targetDate, template.endTime, timeZone, overnight),
         })
       })
-      const current = domain.table('plan_days').get(input.targetDate)
-      const day: PlanDay = {
-        date: input.targetDate,
-        blocks,
-        templateUndo: { weekday, timeZone, before: current?.blocks ?? [], after: blocks },
-      }
+      const before = this.plansForDate(domain, input.targetDate, timeZone)
       if (blocks.length > 0) await domain.global.set(nextId)
-      await domain.table('plan_days').put(input.targetDate, day)
+      await this.replaceDatePlans(domain, input.targetDate, before, blocks, {
+        weekday, timeZone, before, after: blocks,
+      })
       return blocks
     }))
   }
@@ -438,14 +469,14 @@ export class SQLiteTimeService extends TimeService {
       const timeZone = validateTimeZone(input.timeZone)
       startOfZonedDate(input.targetDate, timeZone)
       const domain = await this.ready
-      const day = domain.table('plan_days').get(input.targetDate)
-      const undo = day?.templateUndo
-      if (day === undefined || undo === undefined) throw new Error('secretary: no template apply to undo for targetDate')
+      const undo = domain.table('plan_template_undos').get(input.targetDate)
+      if (undo === undefined) throw new Error('secretary: no template apply to undo for targetDate')
       if (undo.timeZone !== timeZone) throw new Error('secretary: template undo timeZone does not match apply')
-      if (JSON.stringify(day.blocks) !== JSON.stringify(undo.after)) {
+      const current = this.plansForDate(domain, input.targetDate, timeZone)
+      if (JSON.stringify(current) !== JSON.stringify(undo.after)) {
         throw new Error('secretary: date plan changed after template apply; undo refused')
       }
-      await domain.table('plan_days').put(input.targetDate, { date: day.date, blocks: undo.before })
+      await this.replaceDatePlans(domain, input.targetDate, current, undo.before, undefined)
       return [...undo.before]
     })
   }
@@ -454,9 +485,9 @@ export class SQLiteTimeService extends TimeService {
     const timeZone = validateTimeZone(input.timeZone)
     startOfZonedDate(input.targetDate, timeZone)
     const domain = await this.ready
-    const day = domain.table('plan_days').get(input.targetDate)
-    return day?.templateUndo?.timeZone === timeZone
-      && JSON.stringify(day.blocks) === JSON.stringify(day.templateUndo.after)
+    const undo = domain.table('plan_template_undos').get(input.targetDate)
+    return undo?.timeZone === timeZone
+      && JSON.stringify(this.plansForDate(domain, input.targetDate, timeZone)) === JSON.stringify(undo.after)
   }
 
   async createPlan(input: CreatePlanInput): Promise<PlanBlock> {
@@ -475,16 +506,14 @@ export class SQLiteTimeService extends TimeService {
         id, timeTagId: input.timeTagId, note: optionalString(input.note, 'note'),
         startAt: input.startAt, endAt: input.endAt,
       })
-      const current = domain.table('plan_days').get(input.date)
-      const day: PlanDay = { ...current, date: input.date, blocks: [...(current?.blocks ?? []), block] }
       await domain.global.set(id + 1)
-      await domain.table('plan_days').put(input.date, day)
+      await domain.table('plan_blocks').put(String(id), block)
       return block
     }))
   }
 
   async getPlan(id: number): Promise<PlanBlock> {
-    return (await this.findPlan(id)).block
+    return this.findPlan(id)
   }
 
   async listPlan(query: ListPlanQuery = {}): Promise<PlanBlock[]> {
@@ -495,9 +524,27 @@ export class SQLiteTimeService extends TimeService {
       from = startOfZonedDate(query.date, timeZone)
       to = startOfZonedDate(nextDate(query.date), timeZone)
     }
+    let tagIds: Set<number> | undefined
+    if (query.timeTagId !== undefined) {
+      const tags = (this.context as Context & { tags: TagService }).tags
+      const root = await tags.getTag(query.timeTagId)
+      if (root.kind !== 'time') throw new Error('secretary: PlanBlock query requires a time tag')
+      const all = await tags.listTags('time')
+      tagIds = new Set([root.id])
+      let changed = true
+      while (changed) {
+        changed = false
+        for (const tag of all) {
+          if (tag.parentId !== undefined && tagIds.has(tag.parentId) && !tagIds.has(tag.id)) {
+            tagIds.add(tag.id)
+            changed = true
+          }
+        }
+      }
+    }
     const domain = await this.ready
-    return [...domain.table('plan_days').entries()].flatMap(([, day]) => day.blocks)
-      .filter(block => query.timeTagId === undefined || block.timeTagId === query.timeTagId)
+    return [...domain.table('plan_blocks').entries()].map(([, block]) => block)
+      .filter(block => tagIds === undefined || tagIds.has(block.timeTagId))
       .filter(block => from === undefined || to === undefined
         || (Date.parse(block.startAt) < to && Date.parse(block.endAt) > from))
       .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt) || a.id - b.id)
@@ -506,7 +553,7 @@ export class SQLiteTimeService extends TimeService {
   async updatePlan(id: number, input: UpdatePlanInput): Promise<PlanBlock> {
     const tags = (this.context as Context & { tags: TagService }).tags
     return tags.withReferenceConsistency(() => this.mutate(async () => {
-      const { day, block: current } = await this.findPlan(id)
+      const current = await this.findPlan(id)
       if (input.timeTagId !== undefined) await this.requireTimeTag(input.timeTagId)
       const block: PlanBlock = withoutUndefined({
         ...current,
@@ -517,20 +564,16 @@ export class SQLiteTimeService extends TimeService {
       })
       validateInterval(block.startAt, block.endAt)
       const domain = await this.ready
-      await domain.table('plan_days').put(day.date, {
-        ...day, blocks: day.blocks.map(item => item.id === id ? block : item),
-      })
+      await domain.table('plan_blocks').put(String(id), block)
       return block
     }))
   }
 
   async deletePlan(id: number): Promise<PlanBlock> {
     return this.mutate(async () => {
-      const { day, block } = await this.findPlan(id)
+      const block = await this.findPlan(id)
       const domain = await this.ready
-      await domain.table('plan_days').put(day.date, {
-        ...day, blocks: day.blocks.filter(item => item.id !== id),
-      })
+      await domain.table('plan_blocks').delete(String(id))
       return block
     })
   }
