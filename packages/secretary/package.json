@@ -1,0 +1,44 @@
+{
+  "name": "dsh-secretary",
+  "version": "0.1.0",
+  "description": "Personal Secretary Agent for DSH: GTD, TimeBlock, proactive preparation, and follow-through. Installable bundle composing the dsh-secretary-* packages.",
+  "license": "MIT",
+  "keywords": ["dsh", "dsh-plugin"],
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": ["lib/**/*.js", "cordis.patch.yml", "assets"],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0",
+    "dsh": ">=0.2.1-rc.3 <0.3.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch",
+    "prepare": "node build.mjs",
+    "test": "node --test tests/tracer.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "dsh-secretary-core": "workspace:*",
+    "dsh-secretary-storage": "workspace:*",
+    "dsh-secretary-gtd": "workspace:*",
+    "dsh-secretary-time-block": "workspace:*",
+    "dsh-secretary-panel": "workspace:*",
+    "dsh-secretary-statistics": "workspace:*"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/dsh-storage": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-storage-sqlite": "0.2.1-rc.3",
+    "esbuild": "^0.25.10"
+  }
+}

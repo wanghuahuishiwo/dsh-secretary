@@ -1,0 +1,26 @@
+{
+  "name": "dsh-secretary-core",
+  "version": "0.1.0",
+  "description": "Shared helpers for dsh-secretary packages: validation, tooling, skill registration.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    "./validation": "./lib/validation.js",
+    "./tooling": "./lib/tooling.js",
+    "./skill-resources": "./lib/skill-resources.js",
+    "./package.json": "./package.json"
+  },
+  "files": ["lib/**/*.js"],
+  "engines": { "node": "^22.19.0 || >=24.0.0" },
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch",
+    "prepare": "node build.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "4.0.5"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.10"
+  }
+}

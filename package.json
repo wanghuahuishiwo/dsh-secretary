@@ -1,32 +1,14 @@
 {
-  "name": "dsh-secretary",
+  "name": "dsh-secretary-workspace",
   "version": "0.1.0",
-  "description": "Personal Secretary Agent for DSH: Action-based planning, timely preparation, and actual completion records.",
+  "private": true,
+  "description": "Personal Secretary Agent for DSH — pnpm workspace: domain packages plus the installable secretary bundle.",
   "license": "MIT",
-  "keywords": ["dsh", "dsh-plugin"],
   "type": "module",
-  "main": "lib/index.js",
-  "exports": {
-    ".": "./lib/index.js",
-    "./src/*": "./src/*",
-    "./package.json": "./package.json"
-  },
-  "files": ["lib/index.js", "cordis.patch.yml", "skills"],
-  "engines": {
-    "node": "^22.19.0 || >=24.0.0",
-    "dsh": ">=0.2.1-rc.3 <0.3.0"
-  },
-  "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    }
-  },
   "scripts": {
-    "build": "node build.mjs",
-    "prepare": "node build.mjs",
-    "test": "node tests/contracts.mjs"
-  },
-  "devDependencies": {
-    "esbuild": "^0.25.10"
+    "build": "pnpm -r build",
+    "dev": "pnpm -r --parallel dev",
+    "test": "pnpm -r test",
+    "clean": "pnpm -r exec rm -rf lib"
   }
 }

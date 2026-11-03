@@ -1,0 +1,1542 @@
+<!doctype html>
+<!--
+  PROTOTYPE · 可丢弃、无外部依赖、仅内存演示状态。
+  A 回答：桌面端右侧时间标签架是否能让“选时间 → 点标签”保持高效？
+  B 回答：移除常驻标签 UI 后，选区旁 contextual picker 是否更安静且仍易用？
+  C 回答：底部快捷标签 dock 是否更适合连续标记与触摸操作？
+  通过 ?variant=A|B|C、底部浮动栏或非输入状态下的左右方向键切换。
+-->
+<html lang="zh-CN" data-theme="light" data-variant="A">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:,">
+  <title>小秘书 · 时间与标签 · PROTOTYPE</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --dsw-alias-bg: light-dark(#f5f5f7, #111214);
+      --dsw-alias-surface: light-dark(#ffffff, #191a1d);
+      --dsw-alias-surface-raised: light-dark(#ffffff, #202125);
+      --dsw-alias-surface-subtle: light-dark(#ececf0, #27292e);
+      --dsw-alias-surface-hover: light-dark(#e4e4e9, #303238);
+      --dsw-alias-text: light-dark(#1d1d1f, #f2f2f3);
+      --dsw-alias-text-secondary: light-dark(#54545b, #c7c8cc);
+      --dsw-alias-muted: light-dark(#797981, #94969d);
+      --dsw-alias-border: light-dark(rgba(29, 29, 31, 0.12), rgba(242, 242, 243, 0.13));
+      --dsw-alias-border-soft: light-dark(rgba(29, 29, 31, 0.07), rgba(242, 242, 243, 0.075));
+      --dsw-alias-accent: light-dark(#3972d8, #8aaaf0);
+      --dsw-alias-accent-soft: light-dark(rgba(57, 114, 216, 0.12), rgba(138, 170, 240, 0.15));
+      --dsw-alias-on-accent: light-dark(#ffffff, #151619);
+      --dsw-alias-danger: light-dark(#bd443d, #ee8c84);
+      --dsw-alias-danger-soft: light-dark(rgba(189, 68, 61, 0.1), rgba(238, 140, 132, 0.12));
+      --dsw-alias-high: light-dark(#317b68, #70b7a2);
+      --dsw-alias-high-soft: light-dark(rgba(49, 123, 104, 0.16), rgba(112, 183, 162, 0.17));
+      --dsw-alias-medium: light-dark(#ad7927, #d1a356);
+      --dsw-alias-medium-soft: light-dark(rgba(173, 121, 39, 0.16), rgba(209, 163, 86, 0.17));
+      --dsw-alias-low: light-dark(#806a96, #b39bc6);
+      --dsw-alias-low-soft: light-dark(rgba(128, 106, 150, 0.16), rgba(179, 155, 198, 0.17));
+      --dsw-alias-backdrop: light-dark(rgba(29, 29, 31, 0.22), rgba(0, 0, 0, 0.48));
+      --dsw-alias-shadow: 0 12px 36px light-dark(rgba(29, 29, 31, 0.16), rgba(0, 0, 0, 0.48)), 0 2px 8px light-dark(rgba(29, 29, 31, 0.08), rgba(0, 0, 0, 0.32));
+      --dsw-alias-focus: 0 0 0 3px light-dark(rgba(57, 114, 216, 0.24), rgba(138, 170, 240, 0.28));
+      --dsw-alias-on-tag: light-dark(#ffffff, #151619);
+      --dsw-alias-tag-blue: light-dark(#477bc7, #82a6e5);
+      --dsw-alias-tag-sky: light-dark(#4c91b8, #7db9d3);
+      --dsw-alias-tag-green: light-dark(#4b8b6a, #83b99a);
+      --dsw-alias-tag-mint: light-dark(#4c9688, #7cbcaf);
+      --dsw-alias-tag-amber: light-dark(#b17c32, #d0a361);
+      --dsw-alias-tag-orange: light-dark(#b96f45, #d39670);
+      --dsw-alias-tag-purple: light-dark(#876cae, #b39ace);
+      --dsw-alias-tag-pink: light-dark(#aa667e, #ce93a7);
+      --dsw-alias-tag-slate: light-dark(#6f7b86, #9aa6b0);
+      --dsw-alias-tag-brown: light-dark(#8a715c, #b09a83);
+      --dsw-alias-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
+      --dsw-alias-font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Segoe UI", sans-serif;
+      --dsw-alias-font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+      --dsw-alias-radius-small: 6px;
+      --dsw-alias-radius: 9px;
+      --dsw-alias-radius-large: 12px;
+      --dsw-alias-row-height: 48px;
+      --dsw-alias-hour-width: 50px;
+      --dsw-alias-motion: 140ms;
+    }
+
+    :root[data-theme="dark"] { color-scheme: dark; }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: var(--dsw-alias-bg);
+      color: var(--dsw-alias-text-secondary);
+      font-family: var(--dsw-alias-font);
+      font-size: 14px;
+      line-height: 1.4;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, textarea, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    button, input, textarea { -webkit-tap-highlight-color: transparent; }
+    :focus-visible { outline: none; box-shadow: var(--dsw-alias-focus); }
+    [hidden] { display: none !important; }
+    .svg-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+    .app { height: 100dvh; display: flex; flex-direction: column; min-width: 0; }
+    .topbar {
+      flex: none;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-height: 52px;
+      padding: 7px 14px;
+      background: var(--dsw-alias-surface);
+      border-bottom: 1px solid var(--dsw-alias-border);
+      position: relative;
+      z-index: 30;
+    }
+    .brand { display: flex; align-items: center; gap: 8px; color: var(--dsw-alias-text); white-space: nowrap; }
+    .brand-mark { width: 24px; height: 24px; border-radius: var(--dsw-alias-radius-small); display: grid; place-items: center; background: var(--dsw-alias-text); color: var(--dsw-alias-surface); }
+    .brand-name { font-family: var(--dsw-alias-font-display); font-size: 13px; font-weight: 650; }
+    .prototype-badge, .phase-badge {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--dsw-alias-border);
+      border-radius: var(--dsw-alias-radius-small);
+      padding: 1px 5px;
+      color: var(--dsw-alias-muted);
+      font-family: var(--dsw-alias-font-mono);
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .module-nav { display: flex; align-items: center; gap: 3px; min-width: 0; }
+    .nav-button {
+      min-height: 31px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid transparent;
+      border-radius: var(--dsw-alias-radius-small);
+      background: transparent;
+      color: var(--dsw-alias-muted);
+      padding: 4px 9px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .nav-button:hover { background: var(--dsw-alias-surface-subtle); color: var(--dsw-alias-text); }
+    .nav-button[aria-current="page"] { background: var(--dsw-alias-accent-soft); color: var(--dsw-alias-accent); }
+    .top-actions { margin-left: auto; display: flex; align-items: center; gap: 3px; }
+    .icon-button, .quiet-button, .danger-button {
+      min-width: 30px;
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      border: 1px solid transparent;
+      border-radius: var(--dsw-alias-radius-small);
+      background: transparent;
+      color: var(--dsw-alias-muted);
+      padding: 4px 7px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .icon-button { padding: 4px; }
+    .icon-button:hover, .quiet-button:hover { background: var(--dsw-alias-surface-subtle); color: var(--dsw-alias-text); }
+    .danger-button { color: var(--dsw-alias-danger); }
+    .danger-button:hover { background: var(--dsw-alias-danger-soft); }
+    .primary-button {
+      min-height: 30px;
+      border: 1px solid var(--dsw-alias-accent);
+      border-radius: var(--dsw-alias-radius-small);
+      background: var(--dsw-alias-accent);
+      color: var(--dsw-alias-on-accent);
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 650;
+    }
+    .primary-button:hover { filter: brightness(1.05); }
+    .module-root { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+    .placeholder { flex: 1; display: grid; place-items: center; padding: 24px; color: var(--dsw-alias-muted); text-align: center; }
+
+    .time-module { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+    .time-toolbar {
+      flex: none;
+      min-height: 45px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 6px 14px;
+      background: var(--dsw-alias-surface);
+      border-bottom: 1px solid var(--dsw-alias-border-soft);
+    }
+    .segmented { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--dsw-alias-border-soft); border-radius: var(--dsw-alias-radius); background: var(--dsw-alias-surface-subtle); }
+    .segmented button {
+      min-height: 26px;
+      border: 1px solid transparent;
+      border-radius: var(--dsw-alias-radius-small);
+      background: transparent;
+      color: var(--dsw-alias-muted);
+      padding: 3px 9px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .segmented button:hover { color: var(--dsw-alias-text); }
+    .segmented button[aria-selected="true"], .segmented button[aria-pressed="true"] { background: var(--dsw-alias-surface); border-color: var(--dsw-alias-border); color: var(--dsw-alias-text); }
+    .granularity { display: flex; align-items: center; gap: 7px; color: var(--dsw-alias-muted); font-size: 10px; white-space: nowrap; }
+    .date-strip { flex: none; display: flex; align-items: center; gap: 10px; min-height: 43px; padding: 5px 14px; border-bottom: 1px solid var(--dsw-alias-border-soft); background: var(--dsw-alias-surface); }
+    .template-actions { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .week-strip { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+    .week-day { min-height: 30px; border: 1px solid transparent; border-radius: var(--dsw-alias-radius-small); background: transparent; color: var(--dsw-alias-muted); padding: 3px; font-size: 10px; }
+    .week-day:hover { background: var(--dsw-alias-surface-subtle); color: var(--dsw-alias-text); }
+    .week-day[aria-current="date"] { background: var(--dsw-alias-accent-soft); border-color: var(--dsw-alias-accent); color: var(--dsw-alias-accent); }
+    .repeat-note { color: var(--dsw-alias-muted); font-size: 10px; white-space: nowrap; }
+    .date-nav { display: flex; align-items: center; gap: 3px; min-width: 0; }
+    .date-label { border: 0; border-radius: var(--dsw-alias-radius-small); background: transparent; color: var(--dsw-alias-text); padding: 4px 7px; font-size: 12px; font-weight: 620; white-space: nowrap; }
+    .date-label:hover { background: var(--dsw-alias-surface-subtle); }
+    .demo-note { margin-left: auto; color: var(--dsw-alias-muted); font-size: 10px; white-space: nowrap; }
+
+    .canvas-layout { flex: 1; min-height: 0; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; }
+    [data-variant="A"] .canvas-layout { grid-template-columns: minmax(0, 1fr) 282px; }
+    .canvas-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+    .canvas-status { flex: none; min-height: 35px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 14px; border-bottom: 1px solid var(--dsw-alias-border-soft); color: var(--dsw-alias-muted); font-size: 10px; }
+    .canvas-status strong { color: var(--dsw-alias-text-secondary); font-weight: 600; }
+    .brush-current { border: 0; background: transparent; color: var(--dsw-alias-text-secondary); padding: 0; font-size: 10px; font-weight: 650; }
+    .brush-current:hover { color: var(--dsw-alias-accent); }
+    .canvas-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-gutter: stable; }
+    .day-grid { min-width: 0; }
+    .hour-row { display: grid; grid-template-columns: var(--dsw-alias-hour-width) minmax(0, 1fr); height: var(--dsw-alias-row-height); border-bottom: 1px solid var(--dsw-alias-border-soft); }
+    .hour-label { padding: 7px 8px 0 0; text-align: right; color: var(--dsw-alias-muted); font-family: var(--dsw-alias-font-mono); font-size: 10px; user-select: none; }
+    .hour-track { min-width: 0; height: 100%; position: relative; }
+    .slot-grid { position: absolute; inset: 0; display: grid; z-index: 1; }
+    .slot { min-width: 0; border: 0; border-right: 1px solid var(--dsw-alias-border-soft); background: transparent; padding: 0; touch-action: pan-y; }
+    .slot:last-child { border-right: 0; }
+    .slot:hover { background: var(--dsw-alias-accent-soft); }
+    .slot.is-selected { background: var(--dsw-alias-accent-soft); box-shadow: inset 0 0 0 1px var(--dsw-alias-accent); }
+    .record-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+    .record-fragment {
+      position: absolute;
+      pointer-events: auto;
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--dsw-alias-bg);
+      border-radius: 4px;
+      background: var(--record-color);
+      color: var(--dsw-alias-on-tag);
+      padding: 3px 5px;
+      text-align: left;
+      touch-action: manipulation;
+    }
+    .record-fragment:hover { filter: brightness(1.05); }
+    .record-fragment.is-selected { box-shadow: 0 0 0 2px var(--dsw-alias-accent); z-index: 5; }
+    .record-name { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 10px; font-weight: 650; line-height: 1.2; }
+    .record-time { display: block; margin-top: 2px; color: inherit; opacity: 0.72; font-family: var(--dsw-alias-font-mono); font-size: 8px; line-height: 1.1; }
+    .record-fragment.is-continuation .record-name, .record-fragment.is-continuation .record-time { display: none; }
+    .record-fragment.is-compact { padding: 1px 2px; }
+    .record-fragment.is-compact .record-time { display: none; }
+    .record-fragment.is-micro .record-name { font-size: 8px; }
+
+    .tag-shelf { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--dsw-alias-surface); border-left: 1px solid var(--dsw-alias-border); }
+    .shelf-head { flex: none; padding: 10px 11px 8px; border-bottom: 1px solid var(--dsw-alias-border-soft); }
+    .shelf-title-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .shelf-title { color: var(--dsw-alias-text); font-size: 12px; font-weight: 650; }
+    .search-input, .field-input, .field-textarea {
+      width: 100%;
+      border: 1px solid var(--dsw-alias-border);
+      border-radius: var(--dsw-alias-radius-small);
+      background: var(--dsw-alias-bg);
+      color: var(--dsw-alias-text);
+      padding: 6px 8px;
+      font-size: 11px;
+    }
+    .search-input { margin-top: 8px; }
+    .search-input::placeholder, .field-input::placeholder, .field-textarea::placeholder { color: var(--dsw-alias-muted); }
+    .shelf-body { flex: 1; min-height: 0; overflow-y: auto; padding: 6px; }
+    .tag-choice {
+      width: 100%;
+      min-height: 29px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid transparent;
+      border-radius: var(--dsw-alias-radius-small);
+      background: transparent;
+      color: var(--dsw-alias-text-secondary);
+      padding: 4px 6px 4px calc(6px + var(--depth, 0) * 14px);
+      text-align: left;
+      font-size: 11px;
+    }
+    .tag-choice:hover { background: var(--dsw-alias-surface-subtle); color: var(--dsw-alias-text); }
+    .tag-choice.is-brush { background: var(--dsw-alias-accent-soft); color: var(--dsw-alias-accent); }
+    .tag-dot { width: 9px; height: 9px; flex: none; border-radius: 3px; background: var(--tag-color); }
+    .tag-choice-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tag-parent-mark { margin-left: auto; color: var(--dsw-alias-muted); font-size: 9px; }
+    .shelf-foot { flex: none; padding: 8px 11px; border-top: 1px solid var(--dsw-alias-border-soft); color: var(--dsw-alias-muted); font-size: 10px; }
+
+    .quick-dock { flex: none; min-height: 116px; display: flex; flex-direction: column; gap: 6px; padding: 8px 14px 58px; border-top: 1px solid var(--dsw-alias-border); background: var(--dsw-alias-surface); position: relative; z-index: 10; }
+    .dock-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+    .dock-status-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-text-secondary); font-size: 11px; }
+    .dock-row { display: flex; gap: 5px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+    .dock-row::-webkit-scrollbar { display: none; }
+    .dock-chip { flex: none; display: inline-flex; align-items: center; border: 1px solid var(--dsw-alias-border-soft); border-radius: var(--dsw-alias-radius-small); background: var(--dsw-alias-bg); }
+    .dock-chip.is-expanded { border-color: var(--dsw-alias-accent); }
+    .dock-tag-button, .dock-expand-button {
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: 0;
+      background: transparent;
+      color: var(--dsw-alias-text-secondary);
+      padding: 4px 7px;
+      font-size: 10px;
+      white-space: nowrap;
+    }
+    .dock-expand-button { border-left: 1px solid var(--dsw-alias-border-soft); color: var(--dsw-alias-muted); padding-inline: 5px; }
+    .dock-tag-button:hover, .dock-expand-button:hover { color: var(--dsw-alias-text); }
+    .dock-note { min-width: 180px; width: 260px; min-height: 29px; resize: vertical; }
+    .empty-note { padding: 12px 6px; color: var(--dsw-alias-muted); font-size: 11px; }
+
+    .floating {
+      position: fixed;
+      z-index: 80;
+      width: 326px;
+      max-width: calc(100vw - 16px);
+      max-height: min(570px, calc(100dvh - 90px));
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--dsw-alias-border);
+      border-radius: var(--dsw-alias-radius-large);
+      background: var(--dsw-alias-surface-raised);
+      box-shadow: var(--dsw-alias-shadow);
+    }
+    .floating-head { flex: none; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 10px 11px 8px; border-bottom: 1px solid var(--dsw-alias-border-soft); }
+    .floating-title { color: var(--dsw-alias-text); font-size: 12px; font-weight: 650; }
+    .floating-subtitle { margin-top: 2px; color: var(--dsw-alias-muted); font-size: 10px; }
+    .floating-body { flex: 1; min-height: 0; overflow-y: auto; padding: 9px 11px 11px; }
+    .floating-section { margin-top: 10px; }
+    .floating-section:first-child { margin-top: 0; }
+    .field-label { display: block; margin-bottom: 5px; color: var(--dsw-alias-muted); font-size: 10px; font-weight: 600; }
+    .field-textarea { min-height: 58px; resize: vertical; }
+    .floating-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--dsw-alias-border-soft); }
+    .calendar-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; color: var(--dsw-alias-text); font-size: 12px; }
+    .calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; padding: 0 10px 10px; }
+    .calendar-weekdays { padding-bottom: 3px; color: var(--dsw-alias-muted); font-size: 9px; text-align: center; }
+    .calendar-day { min-height: 34px; border: 1px solid transparent; border-radius: var(--dsw-alias-radius-small); background: transparent; color: var(--dsw-alias-text-secondary); padding: 0; font-size: 11px; }
+    .calendar-day:hover { background: var(--dsw-alias-surface-subtle); color: var(--dsw-alias-text); }
+    .calendar-day.is-today { border-color: var(--dsw-alias-accent); color: var(--dsw-alias-accent); }
+    .calendar-day[aria-current="date"] { background: var(--dsw-alias-accent); color: var(--dsw-alias-on-accent); }
+    .calendar-footer { display: flex; justify-content: center; padding: 0 10px 9px; border-top: 1px solid var(--dsw-alias-border-soft); }
+
+    .energy-module { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 16px 72px; }
+    .energy-head { max-width: 780px; margin: 0 auto 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .energy-title { color: var(--dsw-alias-text); font-size: 13px; font-weight: 650; }
+    .energy-subtitle { margin-top: 2px; color: var(--dsw-alias-muted); font-size: 10px; }
+    .brush-picker { flex: none; }
+    .brush-button { display: inline-flex; align-items: center; gap: 5px; }
+    .brush-dot { width: 8px; height: 8px; border-radius: 2px; background: currentColor; }
+    .energy-grid { max-width: 780px; margin: 0 auto; display: grid; grid-template-columns: 42px repeat(7, minmax(0, 1fr)); gap: 2px; user-select: none; }
+    .energy-day { padding: 0 0 7px; text-align: center; color: var(--dsw-alias-muted); font-size: 10px; font-weight: 600; }
+    .energy-hour { height: 22px; display: flex; align-items: center; justify-content: flex-end; padding-right: 7px; color: var(--dsw-alias-muted); font-family: var(--dsw-alias-font-mono); font-size: 9px; }
+    .energy-cell { height: 22px; border: 1px solid var(--dsw-alias-border-soft); border-radius: 4px; background: var(--dsw-alias-surface); padding: 0; touch-action: pan-y; }
+    .energy-cell:hover { border-color: var(--dsw-alias-accent); }
+    .energy-cell[data-level="high"] { background: var(--dsw-alias-high); border-color: var(--dsw-alias-high); }
+    .energy-cell[data-level="medium"] { background: var(--dsw-alias-medium); border-color: var(--dsw-alias-medium); }
+    .energy-cell[data-level="low"] { background: var(--dsw-alias-low); border-color: var(--dsw-alias-low); }
+    .energy-legend { max-width: 780px; margin: 12px auto 0; display: flex; flex-wrap: wrap; gap: 12px; color: var(--dsw-alias-muted); font-size: 10px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 5px; }
+    .legend-swatch { width: 11px; height: 11px; border-radius: 3px; border: 1px solid var(--dsw-alias-border-soft); background: var(--dsw-alias-surface); }
+    .legend-swatch.high { background: var(--dsw-alias-high); border-color: var(--dsw-alias-high); }
+    .legend-swatch.medium { background: var(--dsw-alias-medium); border-color: var(--dsw-alias-medium); }
+    .legend-swatch.low { background: var(--dsw-alias-low); border-color: var(--dsw-alias-low); }
+    .energy-hint { max-width: 780px; margin: 9px auto 0; color: var(--dsw-alias-muted); font-size: 10px; }
+
+    .tag-manager { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .tag-manager-toolbar { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--dsw-alias-border); background: var(--dsw-alias-surface); }
+    .tag-manager-body { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 16px 78px; }
+    .tag-manager-inner { max-width: 760px; margin: 0 auto; }
+    .manager-hint { margin-bottom: 10px; color: var(--dsw-alias-muted); font-size: 10px; }
+    .root-drop { margin-bottom: 8px; padding: 7px 9px; border: 1px dashed var(--dsw-alias-border); border-radius: var(--dsw-alias-radius-small); color: var(--dsw-alias-muted); font-size: 10px; text-align: center; }
+    .root-drop.is-drop-target, .manage-row.is-drop-target { background: var(--dsw-alias-accent-soft); border-color: var(--dsw-alias-accent); }
+    .manage-row { min-height: 38px; display: flex; align-items: center; gap: 6px; margin-left: calc(var(--depth, 0) * 20px); padding: 3px 5px; border: 1px solid transparent; border-radius: var(--dsw-alias-radius-small); background: var(--dsw-alias-surface); }
+    .manage-row:hover { border-color: var(--dsw-alias-border-soft); }
+    .drag-handle { color: var(--dsw-alias-muted); cursor: grab; }
+    .manage-color { width: 18px; height: 18px; border: 1px solid var(--dsw-alias-border-soft); border-radius: 5px; background: var(--tag-color); padding: 0; }
+    .manage-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-text); font-size: 12px; }
+    .manage-id { color: var(--dsw-alias-muted); font-family: var(--dsw-alias-font-mono); font-size: 9px; }
+    .manage-actions { display: flex; align-items: center; gap: 1px; }
+    .manage-actions .icon-button { min-width: 27px; min-height: 27px; }
+    .manage-edit { flex: 1; min-width: 0; }
+    .draft-box { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; padding: 9px; border: 1px solid var(--dsw-alias-border); border-radius: var(--dsw-alias-radius); background: var(--dsw-alias-surface); }
+    .draft-label { flex: none; color: var(--dsw-alias-muted); font-size: 10px; }
+
+    .variant-switcher {
+      position: fixed;
+      left: 50%;
+      bottom: calc(9px + env(safe-area-inset-bottom, 0px));
+      transform: translateX(-50%);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      max-width: calc(100vw - 16px);
+      padding: 4px;
+      border: 1px solid var(--dsw-alias-border);
+      border-radius: var(--dsw-alias-radius-large);
+      background: var(--dsw-alias-surface-raised);
+      box-shadow: var(--dsw-alias-shadow);
+    }
+    .variant-label { padding: 0 5px; color: var(--dsw-alias-muted); font-family: var(--dsw-alias-font-mono); font-size: 8px; font-weight: 700; white-space: nowrap; }
+    .variant-button { min-height: 28px; border: 0; border-radius: var(--dsw-alias-radius-small); background: transparent; color: var(--dsw-alias-muted); padding: 4px 8px; font-size: 10px; font-weight: 650; white-space: nowrap; }
+    .variant-button:hover { background: var(--dsw-alias-surface-subtle); color: var(--dsw-alias-text); }
+    .variant-button[aria-current="true"] { background: var(--dsw-alias-text); color: var(--dsw-alias-surface); }
+    .variant-arrow { min-width: 27px; padding-inline: 4px; }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+      transform: translateX(-50%);
+      z-index: 110;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      max-width: calc(100vw - 24px);
+      padding: 7px 10px;
+      border-radius: var(--dsw-alias-radius);
+      background: var(--dsw-alias-text);
+      color: var(--dsw-alias-surface);
+      box-shadow: var(--dsw-alias-shadow);
+      font-size: 11px;
+    }
+    .toast-message { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .toast button { border: 0; background: transparent; color: inherit; padding: 2px; text-decoration: underline; font-size: 10px; }
+
+    @media (max-width: 820px) {
+      [data-variant="A"] .canvas-layout { grid-template-columns: minmax(0, 1fr) 236px; }
+      .topbar { gap: 9px; }
+      .brand-name { display: none; }
+      .repeat-note { display: none; }
+    }
+    @media (max-width: 640px) {
+      :root { --dsw-alias-row-height: 48px; --dsw-alias-hour-width: 42px; }
+      .topbar { flex-wrap: wrap; gap: 4px 8px; padding: 6px 8px; }
+      .brand { order: 1; }
+      .top-actions { order: 2; }
+      .module-nav { order: 3; width: 100%; justify-content: space-between; }
+      .nav-button { flex: 1; justify-content: center; padding-inline: 5px; }
+      .time-toolbar { padding-inline: 8px; gap: 5px; }
+      .segmented button { padding-inline: 7px; font-size: 10px; }
+      .granularity { gap: 4px; }
+      .granularity > span { display: none; }
+      .date-strip { padding-inline: 8px; gap: 5px; }
+      .demo-note { display: none; }
+      .date-label { font-size: 11px; padding-inline: 4px; }
+      [data-variant="A"] .canvas-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 196px; }
+      [data-variant="A"] .tag-shelf { border-left: 0; border-top: 1px solid var(--dsw-alias-border); }
+      [data-variant="A"] .shelf-head { padding: 6px 9px; }
+      [data-variant="A"] .search-input { margin-top: 5px; padding-block: 4px; }
+      [data-variant="A"] .shelf-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 0 4px; }
+      [data-variant="A"] .shelf-foot { display: none; }
+      .canvas-status { padding-inline: 9px; }
+      .canvas-status > span:last-child { display: none; }
+      .quick-dock { padding: 7px 9px 58px; }
+      .floating { left: 8px !important; right: 8px; top: auto !important; bottom: 58px; width: auto !important; max-height: 61dvh; }
+      .energy-module { padding: 9px 8px 68px; }
+      .energy-head { align-items: flex-start; flex-direction: column; gap: 8px; }
+      .energy-grid { grid-template-columns: 34px repeat(7, minmax(0, 1fr)); gap: 2px; }
+      .energy-cell, .energy-hour { height: 20px; }
+      .tag-manager-toolbar { padding-inline: 9px; }
+      .tag-manager-body { padding-inline: 9px; }
+      .manage-id { display: none; }
+      .manage-row { margin-left: calc(var(--depth, 0) * 13px); }
+      .draft-box { flex-wrap: wrap; }
+      .draft-label { width: 100%; }
+      .variant-label { display: none; }
+      .variant-button { padding-inline: 7px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <svg class="svg-sprite" aria-hidden="true">
+    <defs>
+      <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></symbol>
+      <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16l-1 4zM14 6l3 3"/></symbol>
+      <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
+      <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></symbol>
+      <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+      <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 7H5v4M5.5 11a7.5 7.5 0 1 1 1.8 6"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M5 5l1.5 1.5M17.5 17.5L19 19M2 12h2M20 12h2M5 19l1.5-1.5M17.5 6.5L19 5"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2z"/></symbol>
+      <symbol id="i-tags" viewBox="0 0 24 24"><path d="M20 13l-7 7-9-9V4h7l9 9z"/><circle cx="8.5" cy="8.5" r="1.2"/></symbol>
+      <symbol id="i-drag" viewBox="0 0 24 24"><circle cx="9" cy="7" r="1"/><circle cx="15" cy="7" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="17" r="1"/><circle cx="15" cy="17" r="1"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-grid"/></svg></span>
+        <span class="brand-name">小秘书</span>
+        <span class="prototype-badge">PROTOTYPE</span>
+      </div>
+      <nav class="module-nav" aria-label="一级模块">
+        <button class="nav-button" type="button" data-action="module" data-module="gtd">GTD</button>
+        <button class="nav-button" type="button" data-action="module" data-module="time" aria-current="page">Time</button>
+        <button class="nav-button" type="button" data-action="module" data-module="tags">Tags</button>
+        <button class="nav-button" type="button" data-action="module" data-module="goal">Goal <span class="phase-badge">二期</span></button>
+      </nav>
+      <div class="top-actions">
+        <button class="icon-button" type="button" data-action="undo" aria-label="撤销" title="撤销 Cmd/Ctrl+Z"><svg class="icon"><use href="#i-undo"/></svg></button>
+        <button class="icon-button" type="button" data-action="theme" aria-label="切换明暗主题" title="切换明暗主题"><svg class="icon" id="themeIcon"><use href="#i-moon"/></svg></button>
+      </div>
+    </header>
+
+    <main class="module-root" id="moduleRoot"></main>
+  </div>
+
+  <div class="variant-switcher" role="group" aria-label="原型方案切换">
+    <span class="variant-label">PROTOTYPE</span>
+    <button class="icon-button variant-arrow" type="button" data-action="variant-prev" aria-label="上一方案"><svg class="icon"><use href="#i-chevron-left"/></svg></button>
+    <button class="variant-button" type="button" data-action="variant" data-variant="A" aria-current="true">A · 标签架</button>
+    <button class="variant-button" type="button" data-action="variant" data-variant="B" aria-current="false">B · 纯净画布</button>
+    <button class="variant-button" type="button" data-action="variant" data-variant="C" aria-current="false">C · 底部 Dock</button>
+    <button class="icon-button variant-arrow" type="button" data-action="variant-next" aria-label="下一方案"><svg class="icon"><use href="#i-chevron-right"/></svg></button>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script>
+  (() => {
+    "use strict";
+
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+    const DAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+    const VARIANTS = ["A", "B", "C"];
+    const PALETTES = ["blue", "sky", "green", "mint", "amber", "orange", "purple", "pink", "slate", "brown"];
+    const color = (name) => `var(--dsw-alias-tag-${name})`;
+    const icon = (name) => `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+    const escapeHTML = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+    const fmtTime = (minutes) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+    const fmtDuration = (minutes) => minutes >= 60 ? `${Math.floor(minutes / 60)} 小时${minutes % 60 ? ` ${minutes % 60} 分` : ""}` : `${minutes} 分钟`;
+    const uid = (() => { let value = 1000; return () => ++value; })();
+
+    let nextTagId = 31;
+    let tags = [
+      { id: 1, name: "生理", kind: "time", parentId: null, color: color("slate") },
+      { id: 2, name: "睡眠", kind: "time", parentId: 1, color: color("slate") },
+      { id: 3, name: "吃饭", kind: "time", parentId: 1, color: color("orange") },
+      { id: 4, name: "洗漱", kind: "time", parentId: 1, color: color("sky") },
+      { id: 5, name: "上厕所", kind: "time", parentId: 1, color: color("slate") },
+      { id: 6, name: "午睡", kind: "time", parentId: 1, color: color("mint") },
+      { id: 7, name: "工作", kind: "time", parentId: null, color: color("blue") },
+      { id: 8, name: "专注工作", kind: "time", parentId: 7, color: color("blue") },
+      { id: 9, name: "会议", kind: "time", parentId: 7, color: color("purple") },
+      { id: 10, name: "沟通", kind: "time", parentId: 7, color: color("sky") },
+      { id: 11, name: "个人发展", kind: "time", parentId: null, color: color("green") },
+      { id: 12, name: "技术", kind: "time", parentId: 11, color: color("green") },
+      { id: 13, name: "投资", kind: "time", parentId: 11, color: color("amber") },
+      { id: 14, name: "英语", kind: "time", parentId: 11, color: color("mint") },
+      { id: 15, name: "作品", kind: "time", parentId: 11, color: color("purple") },
+      { id: 16, name: "通勤", kind: "time", parentId: null, color: color("brown") },
+      { id: 17, name: "运动", kind: "time", parentId: null, color: color("orange") },
+      { id: 18, name: "娱乐", kind: "time", parentId: null, color: color("purple") },
+      { id: 19, name: "刷短视频", kind: "time", parentId: 18, color: color("pink") },
+      { id: 20, name: "WOW", kind: "time", parentId: 18, color: color("purple") },
+      { id: 21, name: "家庭", kind: "time", parentId: null, color: color("pink") },
+      { id: 22, name: "生活事务", kind: "time", parentId: null, color: color("brown") },
+      { id: 23, name: "地点", kind: "context", parentId: null, color: color("sky") },
+      { id: 24, name: "公司", kind: "context", parentId: 23, color: color("blue") },
+      { id: 25, name: "家里", kind: "context", parentId: 23, color: color("green") },
+      { id: 26, name: "工具", kind: "context", parentId: null, color: color("slate") },
+      { id: 27, name: "电脑", kind: "context", parentId: 26, color: color("slate") },
+      { id: 28, name: "手机", kind: "context", parentId: 26, color: color("purple") },
+      { id: 29, name: "人员", kind: "context", parentId: null, color: color("pink") },
+      { id: 30, name: "女友", kind: "context", parentId: 29, color: color("pink") }
+    ];
+
+    const makeRecord = (start, end, timeTagId, note = "") => ({ id: uid(), start, end, timeTagId, note });
+    function seedPlan() {
+      const result = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] };
+      for (let day = 1; day <= 5; day += 1) {
+        result[day].push(
+          makeRecord(0, 380, 2),
+          makeRecord(380, 400, 4),
+          makeRecord(400, 450, 16),
+          makeRecord(400, 450, 12, "听 Git 热榜视频"),
+          makeRecord(540, 690, 11),
+          makeRecord(700, 730, 3),
+          makeRecord(730, 780, 20, "WOW · 三路并行演示"),
+          makeRecord(730, 780, 12, "AI 任务后台运行 · 三路并行演示"),
+          makeRecord(730, 780, 10, "回复消息 · 三路并行演示"),
+          makeRecord(780, 810, 6),
+          makeRecord(1320, 1380, 16),
+          makeRecord(1320, 1380, 13, "听美股大盘直播"),
+          makeRecord(1380, 1390, 4),
+          makeRecord(1390, 1440, 2)
+        );
+      }
+      result[6].push(
+        makeRecord(0, 480, 2),
+        makeRecord(550, 720, 15, "周六作品时间"),
+        makeRecord(750, 1110, 18, "周六娱乐"),
+        makeRecord(1380, 1440, 2)
+      );
+      result[7].push(
+        makeRecord(0, 510, 2),
+        makeRecord(540, 600, 22, "家务"),
+        makeRecord(720, 1080, 21, "陪女儿"),
+        makeRecord(1390, 1440, 2)
+      );
+      return result;
+    }
+    function seedActual() {
+      return {
+        "2026-11-02": [
+          makeRecord(0, 380, 2),
+          makeRecord(380, 400, 4),
+          makeRecord(400, 450, 16),
+          makeRecord(400, 450, 12, "听 Git 热榜视频"),
+          makeRecord(700, 730, 3),
+          makeRecord(730, 780, 20, "WOW · 三路并行演示"),
+          makeRecord(730, 780, 12, "AI 任务后台运行 · 三路并行演示"),
+          makeRecord(730, 780, 10, "回复消息 · 三路并行演示"),
+          makeRecord(840, 890, 12, "@小秘书 · 演示数据"),
+          makeRecord(890, 900, 19, "浪费时间 · 演示数据"),
+          makeRecord(1320, 1380, 16),
+          makeRecord(1320, 1380, 13, "听美股大盘直播")
+        ]
+      };
+    }
+    function seedEnergy() {
+      const result = {};
+      for (let day = 1; day <= 5; day += 1) {
+        [9, 10, 11, 16, 17].forEach((hour) => { result[`${day}-${hour}`] = "high"; });
+        [14, 15].forEach((hour) => { result[`${day}-${hour}`] = "medium"; });
+        [12, 13, 21].forEach((hour) => { result[`${day}-${hour}`] = "low"; });
+      }
+      [9, 10, 11].forEach((hour) => { result[`6-${hour}`] = "high"; });
+      return result;
+    }
+
+    let plan = seedPlan();
+    let datedPlans = { "2026-11-02": plan[1].map((record) => makeRecord(record.start, record.end, record.timeTagId, record.note)) };
+    let actual = seedActual();
+    let energy = seedEnergy();
+    const state = {
+      variant: "A",
+      module: "time",
+      timeView: "plan",
+      planTemplate: false,
+      weekday: 1,
+      date: "2026-11-02",
+      dateMonth: "2026-11",
+      grid: 10,
+      theme: "light",
+      selection: null,
+      pointerSelection: null,
+      selectedRecordId: null,
+      tagSearch: "",
+      pickerSearch: "",
+      dockRootId: 11,
+      brushTagId: 12,
+      brush: "high",
+      energyGesture: null,
+      tagKind: "time",
+      tagDraft: null,
+      editingTagId: null,
+      draggedTagId: null,
+      noteSnapshot: null,
+      noteDirty: false,
+      undoStack: [],
+      toastTimer: null
+    };
+
+    function tagById(id) { return tags.find((tag) => tag.id === Number(id)) || null; }
+    function currentRecords() {
+      if (state.timeView === "plan") {
+        if (state.planTemplate) return plan[state.weekday];
+        if (!datedPlans[state.date]) datedPlans[state.date] = [];
+        return datedPlans[state.date];
+      }
+      if (!actual[state.date]) actual[state.date] = [];
+      return actual[state.date];
+    }
+    function allRecords() {
+      return [...Object.values(plan).flat(), ...Object.values(datedPlans).flat(), ...Object.values(actual).flat()];
+    }
+    function findRecord(id) {
+      const numericId = Number(id);
+      for (const [key, records] of Object.entries(plan)) {
+        const record = records.find((item) => item.id === numericId);
+        if (record) return { record, records, source: "template", key };
+      }
+      for (const [key, records] of Object.entries(datedPlans)) {
+        const record = records.find((item) => item.id === numericId);
+        if (record) return { record, records, source: "plan", key };
+      }
+      for (const [key, records] of Object.entries(actual)) {
+        const record = records.find((item) => item.id === numericId);
+        if (record) return { record, records, source: "actual", key };
+      }
+      return null;
+    }
+    function snapshot() { return JSON.stringify({ tags, plan, datedPlans, actual, energy }); }
+    function pushUndo(label, data = snapshot()) {
+      state.undoStack.push({ label, data });
+      if (state.undoStack.length > 40) state.undoStack.shift();
+    }
+    function undo() {
+      const entry = state.undoStack.pop();
+      if (!entry) { showToast("没有可撤销的操作"); return; }
+      const data = JSON.parse(entry.data);
+      tags = data.tags;
+      plan = data.plan;
+      datedPlans = data.datedPlans;
+      actual = data.actual;
+      energy = data.energy;
+      state.selection = null;
+      state.selectedRecordId = null;
+      state.noteSnapshot = null;
+      state.noteDirty = false;
+      closeFloating();
+      render();
+      showToast(`已撤销：${entry.label}`);
+    }
+
+    function showToast(message, withUndo = false) {
+      const toast = $("#toast");
+      clearTimeout(state.toastTimer);
+      toast.innerHTML = `<span class="toast-message">${escapeHTML(message)}</span>${withUndo ? `<button type="button" data-action="undo">撤销</button>` : ""}`;
+      toast.hidden = false;
+      state.toastTimer = setTimeout(() => { toast.hidden = true; }, 3200);
+    }
+
+    function setVariant(variant) {
+      if (!VARIANTS.includes(variant) || state.variant === variant) return;
+      state.variant = variant;
+      state.selection = null;
+      state.selectedRecordId = null;
+      closeFloating();
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set("variant", variant);
+        history.replaceState(null, "", url);
+      } catch (_) { /* file:// 下仍保留内存切换 */ }
+      render();
+    }
+
+    function closeFloating() {
+      ["contextPicker", "recordEditor", "datePicker"].forEach((id) => {
+        const element = document.getElementById(id);
+        if (element) element.hidden = true;
+      });
+    }
+
+    function timeTabs() {
+      return `<div class="segmented" role="tablist" aria-label="Time 子模块">
+        <button type="button" role="tab" data-action="time-view" data-view="plan" aria-selected="${state.timeView === "plan"}">计划</button>
+        <button type="button" role="tab" data-action="time-view" data-view="actual" aria-selected="${state.timeView === "actual"}">实录</button>
+        <button type="button" role="tab" data-action="time-view" data-view="energy" aria-selected="${state.timeView === "energy"}">深度时间</button>
+      </div>`;
+    }
+
+    function render() {
+      document.documentElement.dataset.variant = state.variant;
+      document.documentElement.dataset.theme = state.theme;
+      document.documentElement.style.colorScheme = state.theme;
+      $$('[data-action="module"]').forEach((button) => {
+        if (["gtd", "goal"].includes(button.dataset.module)) button.removeAttribute("aria-current");
+        else if (button.dataset.module === state.module) button.setAttribute("aria-current", "page");
+        else button.removeAttribute("aria-current");
+      });
+      $$('[data-action="variant"]').forEach((button) => button.setAttribute("aria-current", String(button.dataset.variant === state.variant)));
+      $("#themeIcon").innerHTML = `<use href="#i-${state.theme === "light" ? "moon" : "sun"}"/>`;
+      if (state.module === "tags") renderTagManager();
+      else renderTime();
+    }
+
+    function renderTime() {
+      const previousScroll = $("#canvasScroll")?.scrollTop || null;
+      const root = $("#moduleRoot");
+      if (state.timeView === "energy") {
+        root.innerHTML = `<section class="time-module" data-od-id="time-energy">
+          <div class="time-toolbar">${timeTabs()}<span class="repeat-note">每周重复 · 自动沿用</span></div>
+          <div class="energy-module">
+            <div class="energy-head">
+              <div><div class="energy-title">深度时间</div><div class="energy-subtitle">7×24 周模板 · 未设置不等于 low</div></div>
+              <div class="segmented brush-picker" aria-label="当前精力画笔">
+                ${["high", "medium", "low"].map((level) => `<button type="button" class="brush-button" data-action="brush" data-level="${level}" aria-pressed="${state.brush === level}"><span class="brush-dot"></span>${level}</button>`).join("")}
+              </div>
+            </div>
+            <div class="energy-grid" id="energyGrid"></div>
+            <div class="energy-legend">
+              <span class="legend-item"><span class="legend-swatch high"></span>high</span>
+              <span class="legend-item"><span class="legend-swatch medium"></span>medium</span>
+              <span class="legend-item"><span class="legend-swatch low"></span>low</span>
+              <span class="legend-item"><span class="legend-swatch"></span>未设置</span>
+            </div>
+            <div class="energy-hint">点按或连续拖刷 · 同档起手清除，其他情况写入当前画笔 · 一次拖刷只执行一种操作</div>
+          </div>
+        </section>`;
+        renderEnergy();
+        return;
+      }
+
+      root.innerHTML = `<section class="time-module" data-od-id="time-blocks">
+        <div class="time-toolbar">
+          ${timeTabs()}
+          <div class="granularity"><span>时间格</span><div class="segmented" aria-label="时间格粒度">
+            ${[10, 15, 30].map((value) => `<button type="button" data-action="grid" data-grid="${value}" aria-pressed="${state.grid === value}">${value} 分钟</button>`).join("")}
+          </div></div>
+        </div>
+        ${state.timeView === "plan" && state.planTemplate ? `<div class="date-strip"><div class="week-strip">${DAYS.map((day, index) => `<button type="button" class="week-day" data-action="weekday" data-day="${index + 1}" aria-current="${state.weekday === index + 1 ? "date" : "false"}">${day}</button>`).join("")}</div><div class="template-actions"><span class="repeat-note">计划模板</span><button class="primary-button" type="button" data-action="apply-plan-template">应用到 ${state.date.slice(5)}</button><button class="quiet-button" type="button" data-action="toggle-plan-template">返回日期</button></div></div>` : `<div class="date-strip"><div class="date-nav">
+          <button class="icon-button" type="button" data-action="date-prev" aria-label="前一天">${icon("chevron-left")}</button>
+          <button class="date-label" type="button" data-action="open-date-picker" title="打开日历" aria-label="打开日历选择日期">${escapeHTML(dateLabel(state.date))}</button>
+          <button class="icon-button" type="button" data-action="date-next" aria-label="后一天">${icon("chevron-right")}</button>
+          <button class="quiet-button" type="button" data-action="date-today">今天</button>
+        </div>${state.timeView === "plan" ? `<button class="quiet-button" type="button" data-action="toggle-plan-template">计划模板</button>` : ""}<span class="demo-note">演示数据 · 仅内存状态</span></div>`}
+        <div class="canvas-layout">
+          <section class="canvas-panel" aria-label="时间画布" data-od-id="time-canvas">
+            <div class="canvas-status"><button type="button" class="brush-current" data-action="open-brush-picker" data-selection-status aria-label="选择当前时间画笔"></button><span>双击已选标签进入消除 · Shift 点击编辑</span></div>
+            <div class="canvas-scroll" id="canvasScroll"><div class="day-grid" id="dayGrid"></div></div>
+          </section>
+          ${state.variant === "A" ? `<aside class="tag-shelf" aria-label="时间标签架">
+            <div class="shelf-head"><div class="shelf-title-row"><span class="shelf-title">时间标签</span><button class="quiet-button" type="button" data-action="open-tags">管理</button></div><input class="search-input" id="shelfSearch" type="search" placeholder="搜索时间标签" value="${escapeHTML(state.tagSearch)}" aria-label="搜索时间标签"></div>
+            <div class="shelf-body" id="shelfBody"></div>
+            <div class="shelf-foot" data-selection-status></div>
+          </aside>` : ""}
+        </div>
+        ${state.variant === "C" ? `<section class="quick-dock" id="quickDock" aria-label="快捷标签 Dock" data-od-id="quick-dock"></section>` : ""}
+        <div class="floating" id="contextPicker" role="dialog" aria-label="选择时间标签" hidden></div>
+        <div class="floating" id="recordEditor" role="dialog" aria-label="编辑时间块" hidden></div>
+        <div class="floating" id="datePicker" role="dialog" aria-label="选择日期" hidden></div>
+      </section>`;
+      renderCanvas();
+      if (state.variant === "A") renderShelf();
+      if (state.variant === "C") renderDock();
+      updateSelectionUI();
+      requestAnimationFrame(() => {
+        const scroller = $("#canvasScroll");
+        if (!scroller) return;
+        const rowHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--dsw-alias-row-height")) || 48;
+        scroller.scrollTop = previousScroll === null ? rowHeight * 6 : previousScroll;
+      });
+    }
+
+    function dateLabel(key) {
+      const date = new Date(`${key}T12:00:00`);
+      const weekday = DAYS[(date.getDay() + 6) % 7];
+      return `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日 · ${weekday}`;
+    }
+    function localDateKey() {
+      const date = new Date();
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    }
+    function goToToday() {
+      state.date = localDateKey();
+      state.dateMonth = state.date.slice(0, 7);
+      state.planTemplate = false;
+      state.selection = null;
+      state.selectedRecordId = null;
+      closeFloating();
+      renderTime();
+      showToast(`已回到今天 · ${dateLabel(state.date)}`);
+    }
+    function shiftDate(delta) {
+      const date = new Date(`${state.date}T12:00:00`);
+      date.setDate(date.getDate() + delta);
+      state.date = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      state.planTemplate = false;
+      state.selection = null;
+      state.selectedRecordId = null;
+      closeFloating();
+      renderTime();
+    }
+
+    function openDatePicker(anchor) {
+      state.dateMonth = state.date.slice(0, 7);
+      renderDatePicker();
+      positionFloating($("#datePicker"), anchor);
+    }
+
+    function shiftDateMonth(delta) {
+      const [year, month] = state.dateMonth.split("-").map(Number);
+      const date = new Date(year, month - 1 + delta, 1, 12);
+      state.dateMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      renderDatePicker();
+    }
+
+    function renderDatePicker() {
+      const picker = $("#datePicker");
+      if (!picker) return;
+      const [year, month] = state.dateMonth.split("-").map(Number);
+      const firstOffset = (new Date(year, month - 1, 1, 12).getDay() + 6) % 7;
+      const total = new Date(year, month, 0, 12).getDate();
+      let days = "";
+      for (let index = 0; index < firstOffset; index += 1) days += `<span class="calendar-blank"></span>`;
+      for (let day = 1; day <= total; day += 1) {
+        const value = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        days += `<button type="button" class="calendar-day${value === localDateKey() ? " is-today" : ""}" data-action="choose-date" data-date="${value}" aria-current="${value === state.date ? "date" : "false"}" aria-label="${value}">${day}</button>`;
+      }
+      picker.innerHTML = `<div class="calendar-head"><button class="icon-button" type="button" data-action="date-month-prev" aria-label="上一月">${icon("chevron-left")}</button><strong>${year} 年 ${month} 月</strong><button class="icon-button" type="button" data-action="date-month-next" aria-label="下一月">${icon("chevron-right")}</button></div><div class="calendar-weekdays">${["一", "二", "三", "四", "五", "六", "日"].map(day => `<span>${day}</span>`).join("")}</div><div class="calendar-grid">${days}</div><div class="calendar-footer"><button class="quiet-button" type="button" data-action="date-today">回到今天</button></div>`;
+    }
+
+    function applyPlanTemplate() {
+      pushUndo("应用计划模板");
+      datedPlans[state.date] = plan[state.weekday].map((record) => makeRecord(record.start, record.end, record.timeTagId, record.note));
+      state.planTemplate = false;
+      state.selection = null;
+      state.selectedRecordId = null;
+      closeFloating();
+      renderTime();
+      showToast(`已将${DAYS[state.weekday - 1]}模板应用到 ${state.date}，后续互不影响`, true);
+    }
+
+    function computeLanes(records) {
+      const laneEnds = [];
+      const lanes = new Map();
+      [...records].sort((a, b) => a.start - b.start || a.end - b.end || a.id - b.id).forEach((record) => {
+        let lane = laneEnds.findIndex((end) => end <= record.start);
+        if (lane < 0) lane = laneEnds.length;
+        laneEnds[lane] = record.end;
+        lanes.set(record.id, lane);
+      });
+      return { lanes, count: Math.max(1, laneEnds.length) };
+    }
+
+    function renderCanvas() {
+      const grid = $("#dayGrid");
+      if (!grid) return;
+      const records = currentRecords();
+      const layout = computeLanes(records);
+      const columns = 60 / state.grid;
+      let html = "";
+      for (let hour = 0; hour < 24; hour += 1) {
+        const hourStart = hour * 60;
+        html += `<div class="hour-row"><div class="hour-label">${String(hour).padStart(2, "0")}:00</div><div class="hour-track" data-hour-start="${hourStart}"><div class="slot-grid" style="grid-template-columns:repeat(${columns},minmax(0,1fr))">`;
+        for (let minute = hourStart; minute < hourStart + 60; minute += state.grid) {
+          html += `<button type="button" class="slot" data-minute="${minute}" aria-label="选择 ${fmtTime(minute)} 起的 ${state.grid} 分钟"></button>`;
+        }
+        html += `</div><div class="record-layer">`;
+        for (let slotStart = hourStart; slotStart < hourStart + 60; slotStart += state.grid) {
+          const overlapping = records
+            .filter((record) => record.start < slotStart + state.grid && record.end > slotStart)
+            .sort((a, b) => (layout.lanes.get(a.id) || 0) - (layout.lanes.get(b.id) || 0));
+          overlapping.forEach((record, lane) => {
+            const tag = tagById(record.timeTagId);
+            if (!tag) return;
+            const count = overlapping.length;
+            const left = ((slotStart - hourStart) / 60) * 100;
+            const width = (state.grid / 60) * 100;
+            const top = (lane / count) * 100;
+            const height = 100 / count;
+            const firstCell = record.start >= slotStart && record.start < slotStart + state.grid;
+            const classes = `${firstCell ? "" : " is-continuation"}${count > 1 ? " is-compact" : ""}${count > 2 ? " is-micro" : ""}${state.selectedRecordId === record.id ? " is-selected" : ""}`;
+            html += `<button type="button" class="record-fragment${classes}" data-action="edit-record" data-record-id="${record.id}" data-tag-id="${record.timeTagId}" data-start="${record.start}" data-end="${record.end}" data-slot="${slotStart}" data-lane="${lane}" data-parallel-count="${count}" style="--record-color:${tag.color};left:${left}%;width:${width}%;top:${top}%;height:${height}%" title="${escapeHTML(record.note || tag.name)} · ${fmtTime(record.start)}–${fmtTime(record.end)}"><span class="record-name">${escapeHTML(tag.name)}</span><span class="record-time">${fmtTime(record.start)}–${fmtTime(record.end)}</span></button>`;
+          });
+        }
+        html += `</div></div></div>`;
+      }
+      grid.innerHTML = html;
+      updateSelectionUI();
+    }
+
+    function visibleTagSet(kind, query) {
+      const normalized = query.trim().toLowerCase();
+      const visible = new Set();
+      tags.filter((tag) => tag.kind === kind).forEach((tag) => {
+        if (!normalized || tag.name.toLowerCase().includes(normalized)) {
+          let current = tag;
+          while (current) {
+            visible.add(current.id);
+            current = tagById(current.parentId);
+          }
+        }
+      });
+      return visible;
+    }
+
+    function tagTreeHTML(kind, query = "") {
+      const visible = visibleTagSet(kind, query);
+      const build = (parentId, depth) => tags
+        .filter((tag) => tag.kind === kind && tag.parentId === parentId && visible.has(tag.id))
+        .map((tag) => {
+          const hasChildren = tags.some((child) => child.kind === kind && child.parentId === tag.id);
+          return `<button type="button" class="tag-choice${state.brushTagId === tag.id ? " is-brush" : ""}" data-action="choose-tag" data-tag-id="${tag.id}" aria-pressed="${state.brushTagId === tag.id}" style="--depth:${depth};--tag-color:${tag.color}"><span class="tag-dot"></span><span class="tag-choice-name">${escapeHTML(tag.name)}</span>${hasChildren ? `<span class="tag-parent-mark">父级可选</span>` : ""}</button>${build(tag.id, depth + 1)}`;
+        }).join("");
+      return build(null, 0) || `<div class="empty-note">没有匹配的时间标签</div>`;
+    }
+
+    function renderShelf() {
+      const body = $("#shelfBody");
+      if (body) body.innerHTML = tagTreeHTML("time", state.tagSearch);
+    }
+
+    function descendantsOf(rootId) {
+      const result = [];
+      const visit = (id, depth) => {
+        tags.filter((tag) => tag.parentId === id).forEach((tag) => {
+          result.push({ tag, depth });
+          visit(tag.id, depth + 1);
+        });
+      };
+      visit(rootId, 0);
+      return result;
+    }
+
+    function renderDock() {
+      const dock = $("#quickDock");
+      if (!dock) return;
+      const found = findRecord(state.selectedRecordId);
+      const roots = tags.filter((tag) => tag.kind === "time" && tag.parentId === null);
+      const expanded = tagById(state.dockRootId)?.kind === "time" ? state.dockRootId : roots[0]?.id;
+      const descendants = expanded ? descendantsOf(expanded) : [];
+      dock.innerHTML = `<div class="dock-status"><span class="dock-status-text" data-selection-status></span>${found ? `<button class="danger-button" type="button" data-action="delete-record">${icon("trash")}删除</button>` : `<button class="quiet-button" type="button" data-action="open-tags">${icon("tags")}管理标签</button>`}</div>
+        ${found ? `<textarea class="field-textarea dock-note" data-action="record-note" data-record-id="${found.record.id}" placeholder="备注，可提及 GTD">${escapeHTML(found.record.note)}</textarea>` : ""}
+        <div class="dock-row">${roots.map((tag) => `<div class="dock-chip${expanded === tag.id ? " is-expanded" : ""}" style="--tag-color:${tag.color}"><button class="dock-tag-button" type="button" data-action="choose-tag" data-tag-id="${tag.id}"><span class="tag-dot"></span>${escapeHTML(tag.name)}</button><button class="dock-expand-button" type="button" data-action="dock-root" data-tag-id="${tag.id}" aria-label="展开 ${escapeHTML(tag.name)}">${icon("chevron-down")}</button></div>`).join("")}</div>
+        <div class="dock-row">${descendants.map(({ tag, depth }) => `<div class="dock-chip" style="--tag-color:${tag.color};margin-left:${Math.min(depth, 2) * 6}px"><button class="dock-tag-button" type="button" data-action="choose-tag" data-tag-id="${tag.id}"><span class="tag-dot"></span>${escapeHTML(tag.name)}</button></div>`).join("") || `<span class="empty-note">点击父标签本身可直接标记，箭头展开子标签</span>`}</div>`;
+      updateSelectionUI();
+    }
+
+    function selectionText() {
+      const found = findRecord(state.selectedRecordId);
+      if (found) return `${tagById(found.record.timeTagId)?.name || "时间块"} · ${fmtTime(found.record.start)}–${fmtTime(found.record.end)}`;
+      if (state.selection) return `已选 ${fmtDuration(state.selection.end - state.selection.start)}`;
+      if (state.brushTagId === null) return "消除状态：点击任意记录消除";
+      return `当前画笔：${tagById(state.brushTagId)?.name || "未选择"}`;
+    }
+
+    function updateSelectionUI() {
+      $$('[data-selection-status]').forEach((element) => { element.textContent = selectionText(); });
+      $$('.slot').forEach((slot) => {
+        const minute = Number(slot.dataset.minute);
+        const selected = state.selection && minute >= state.selection.start && minute < state.selection.end;
+        slot.classList.toggle("is-selected", Boolean(selected));
+      });
+    }
+
+    function setSelection(start, end) {
+      state.selection = { start, end };
+      state.selectedRecordId = null;
+      closeFloating();
+      updateSelectionUI();
+    }
+
+    function positionFloating(element, anchor) {
+      element.hidden = false;
+      if (window.innerWidth <= 640) return;
+      const rect = anchor?.getBoundingClientRect();
+      const width = 326;
+      const height = Math.min(element.offsetHeight || 400, window.innerHeight - 90);
+      let left = rect ? rect.right + 8 : window.innerWidth - width - 16;
+      if (left + width > window.innerWidth - 8) left = rect ? rect.left - width - 8 : 8;
+      left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
+      let top = rect ? rect.top : 80;
+      top = Math.max(8, Math.min(top, window.innerHeight - height - 60));
+      element.style.left = `${left}px`;
+      element.style.top = `${top}px`;
+    }
+
+    function openTagPicker(anchor) {
+      const picker = $("#contextPicker");
+      if (!picker) return;
+      state.pickerSearch = "";
+      picker.innerHTML = `<div class="floating-head"><div><div class="floating-title">选择当前时间画笔</div><div class="floating-subtitle">添加并行 · 双击已选标签进入消除 · 父标签也可选</div></div><button class="icon-button" type="button" data-action="close-floating" aria-label="关闭">${icon("x")}</button></div><div class="floating-body"><input class="search-input" id="pickerSearch" type="search" placeholder="搜索时间标签" aria-label="搜索时间标签"><div id="pickerTags" class="floating-section">${tagTreeHTML("time")}</div></div>`;
+      positionFloating(picker, anchor);
+    }
+
+    function openRecordEditor(id, anchor) {
+      const found = findRecord(id);
+      if (!found) return;
+      state.selectedRecordId = found.record.id;
+      state.selection = null;
+      updateSelectionUI();
+      $$('.record-fragment').forEach((fragment) => fragment.classList.toggle("is-selected", Number(fragment.dataset.recordId) === found.record.id));
+      if (state.variant === "C") { closeFloating(); renderDock(); return; }
+      const editor = $("#recordEditor");
+      const tag = tagById(found.record.timeTagId);
+      editor.innerHTML = `<div class="floating-head"><div><div class="floating-title">${escapeHTML(tag?.name || "时间块")}</div><div class="floating-subtitle">${fmtTime(found.record.start)}–${fmtTime(found.record.end)} · 即时生效</div></div><button class="icon-button" type="button" data-action="close-floating" aria-label="关闭">${icon("x")}</button></div><div class="floating-body">
+        <div class="floating-section"><span class="field-label">时间标签</span>${tagTreeHTML("time")}</div>
+        <div class="floating-section"><label class="field-label" for="recordNote">备注，可提及 GTD</label><textarea class="field-textarea" id="recordNote" data-action="record-note" data-record-id="${found.record.id}" placeholder="例如 @小秘书">${escapeHTML(found.record.note)}</textarea></div>
+        <div class="floating-actions"><button class="danger-button" type="button" data-action="delete-record">${icon("trash")}删除时间块</button><button class="quiet-button" type="button" data-action="close-floating">完成</button></div>
+      </div>`;
+      positionFloating(editor, anchor);
+    }
+
+    function chooseTag(id) {
+      const tag = tagById(id);
+      if (!tag || tag.kind !== "time") return;
+      const selected = findRecord(state.selectedRecordId);
+      if (selected) {
+        pushUndo("修改时间标签");
+        selected.record.timeTagId = tag.id;
+        state.selectedRecordId = null;
+        closeFloating();
+        renderTime();
+        showToast(`已改为「${tag.name}」`, true);
+        return;
+      }
+      if (state.brushTagId === tag.id && state.module === "time" && ["plan", "actual"].includes(state.timeView)) return;
+      state.brushTagId = tag.id;
+      state.selection = null;
+      closeFloating();
+      renderTime();
+      showToast(`当前时间画笔：「${tag.name}」`);
+    }
+
+    function applyTimeCell(minute) {
+      const gesture = state.pointerSelection;
+      if (!gesture || gesture.lastMinute === minute) return;
+      gesture.lastMinute = minute;
+      const records = currentRecords();
+      const start = minute;
+      const end = minute + state.grid;
+      const matching = records.filter((record) => record.timeTagId === gesture.tagId && record.start < end && record.end > start);
+      if (gesture.mode === "remove") {
+        matching.forEach((record) => {
+          records.splice(records.indexOf(record), 1);
+          if (record.start < start) records.push(makeRecord(record.start, start, record.timeTagId, record.note));
+          if (record.end > end) records.push(makeRecord(end, record.end, record.timeTagId, record.note));
+        });
+      } else {
+        let missing = [{ start, end }];
+        matching.forEach((record) => {
+          const next = [];
+          missing.forEach((part) => {
+            if (record.end <= part.start || record.start >= part.end) { next.push(part); return; }
+            if (part.start < record.start) next.push({ start: part.start, end: record.start });
+            if (record.end < part.end) next.push({ start: record.end, end: part.end });
+          });
+          missing = next;
+        });
+        missing.forEach((part) => records.push(makeRecord(part.start, part.end, gesture.tagId)));
+      }
+      renderCanvas();
+    }
+
+    function deleteSelectedRecord() {
+      const found = findRecord(state.selectedRecordId);
+      if (!found) { showToast("先选择一个时间块"); return; }
+      pushUndo("删除时间块");
+      const index = found.records.findIndex((record) => record.id === found.record.id);
+      found.records.splice(index, 1);
+      state.selectedRecordId = null;
+      closeFloating();
+      renderTime();
+      showToast("已删除时间块", true);
+    }
+
+    function renderEnergy() {
+      const grid = $("#energyGrid");
+      if (!grid) return;
+      let html = `<span></span>${DAYS.map((day) => `<div class="energy-day">${day}</div>`).join("")}`;
+      for (let hour = 0; hour < 24; hour += 1) {
+        html += `<div class="energy-hour">${String(hour).padStart(2, "0")}</div>`;
+        for (let day = 1; day <= 7; day += 1) {
+          const level = energy[`${day}-${hour}`] || "unset";
+          html += `<button type="button" class="energy-cell" data-action="energy-cell" data-day="${day}" data-hour="${hour}" data-level="${level}" aria-label="${DAYS[day - 1]} ${hour}:00 ${level}"></button>`;
+        }
+      }
+      grid.innerHTML = html;
+    }
+
+    function applyEnergyCell(cell) {
+      if (!state.energyGesture || !cell) return;
+      const key = `${cell.dataset.day}-${cell.dataset.hour}`;
+      if (state.energyGesture.value) energy[key] = state.energyGesture.value;
+      else delete energy[key];
+      cell.dataset.level = state.energyGesture.value || "unset";
+      cell.setAttribute("aria-label", `${DAYS[Number(cell.dataset.day) - 1]} ${cell.dataset.hour}:00 ${cell.dataset.level}`);
+    }
+
+    function renderTagManager() {
+      const root = $("#moduleRoot");
+      const draft = state.tagDraft;
+      root.innerHTML = `<section class="tag-manager" data-od-id="tag-manager">
+        <div class="tag-manager-toolbar"><div class="segmented" aria-label="标签类型"><button type="button" data-action="tag-kind" data-kind="time" aria-selected="${state.tagKind === "time"}">时间</button><button type="button" data-action="tag-kind" data-kind="context" aria-selected="${state.tagKind === "context"}">情境</button></div><button class="primary-button" type="button" data-action="add-root">${icon("plus")}新增根标签</button></div>
+        <div class="tag-manager-body"><div class="tag-manager-inner">
+          <div class="manager-hint">同一套字段与管理交互 · 拖拽到标签上设为子级，拖到下方区域设为根级 · 防止循环</div>
+          ${draft ? `<div class="draft-box"><span class="draft-label">${draft.parentId ? `在「${escapeHTML(tagById(draft.parentId)?.name)}」下新增` : "新增根标签"}</span><input class="field-input" id="tagDraftInput" placeholder="标签名称" autocomplete="off"><button class="primary-button" type="button" data-action="save-draft">添加</button><button class="quiet-button" type="button" data-action="cancel-draft">取消</button></div>` : ""}
+          <div id="tagTree">${manageTreeHTML()}</div>
+          <div class="root-drop" id="rootDrop">拖到这里设为根标签</div>
+        </div></div>
+      </section>`;
+      if (draft) requestAnimationFrame(() => $("#tagDraftInput")?.focus());
+      if (state.editingTagId) requestAnimationFrame(() => $("#tagRenameInput")?.focus());
+    }
+
+    function manageTreeHTML() {
+      const build = (parentId, depth) => tags.filter((tag) => tag.kind === state.tagKind && tag.parentId === parentId).map((tag) => {
+        const editing = state.editingTagId === tag.id;
+        return `<div class="manage-row" draggable="true" data-tag-id="${tag.id}" style="--depth:${depth};--tag-color:${tag.color}">
+          <span class="drag-handle" title="拖拽调整层级">${icon("drag")}</span>
+          <button class="manage-color" type="button" data-action="cycle-color" data-tag-id="${tag.id}" aria-label="更换 ${escapeHTML(tag.name)} 的颜色" title="更换颜色"></button>
+          ${editing ? `<input class="field-input manage-edit" id="tagRenameInput" data-tag-id="${tag.id}" value="${escapeHTML(tag.name)}" autocomplete="off"><button class="quiet-button" type="button" data-action="save-rename" data-tag-id="${tag.id}">保存</button>` : `<span class="manage-name">${escapeHTML(tag.name)}</span><span class="manage-id">tag:${tag.id}</span>`}
+          <div class="manage-actions"><button class="icon-button" type="button" data-action="add-child" data-tag-id="${tag.id}" aria-label="新增子标签" title="新增子标签">${icon("plus")}</button>${editing ? "" : `<button class="icon-button" type="button" data-action="rename-tag" data-tag-id="${tag.id}" aria-label="重命名" title="重命名">${icon("pencil")}</button>`}<button class="icon-button" type="button" data-action="delete-tag" data-tag-id="${tag.id}" aria-label="删除" title="删除">${icon("trash")}</button></div>
+        </div>${build(tag.id, depth + 1)}`;
+      }).join("");
+      return build(null, 0) || `<div class="empty-note">还没有标签，点击“新增根标签”开始。</div>`;
+    }
+
+    function saveDraft() {
+      const input = $("#tagDraftInput");
+      const name = input?.value.trim();
+      if (!name) { showToast("请输入标签名称"); input?.focus(); return; }
+      const parentId = state.tagDraft?.parentId ?? null;
+      const parent = tagById(parentId);
+      const palette = parent ? PALETTES[parent.id % PALETTES.length] : PALETTES[nextTagId % PALETTES.length];
+      pushUndo("新增标签");
+      tags.push({ id: nextTagId++, name, kind: state.tagKind, parentId, color: parent?.color || color(palette) });
+      state.tagDraft = null;
+      renderTagManager();
+      showToast(`已新增「${name}」`, true);
+    }
+
+    function saveRename(id) {
+      if (state.editingTagId !== Number(id)) return;
+      const tag = tagById(id);
+      const input = $("#tagRenameInput");
+      const name = input?.value.trim();
+      if (!name) { showToast("名称不能为空"); input?.focus(); return; }
+      if (tag && tag.name !== name) {
+        pushUndo("重命名标签");
+        tag.name = name;
+        showToast(`已重命名为「${name}」`, true);
+      }
+      state.editingTagId = null;
+      renderTagManager();
+    }
+
+    function deleteTag(id) {
+      const tag = tagById(id);
+      if (!tag) return;
+      if (tags.some((child) => child.parentId === tag.id)) { showToast("请先移动或删除子标签"); return; }
+      if (allRecords().some((record) => record.timeTagId === tag.id)) { showToast(`「${tag.name}」正被时间块引用，未删除`); return; }
+      pushUndo("删除标签");
+      tags = tags.filter((item) => item.id !== tag.id);
+      renderTagManager();
+      showToast(`已删除「${tag.name}」`, true);
+    }
+
+    function isDescendant(candidateId, ancestorId) {
+      let current = tagById(candidateId);
+      while (current?.parentId !== null && current?.parentId !== undefined) {
+        if (current.parentId === Number(ancestorId)) return true;
+        current = tagById(current.parentId);
+      }
+      return false;
+    }
+
+    function reparentTag(draggedId, parentId) {
+      const dragged = tagById(draggedId);
+      const parent = tagById(parentId);
+      if (!dragged || dragged.id === Number(parentId)) return;
+      if (parent && (parent.kind !== dragged.kind || isDescendant(parent.id, dragged.id))) { showToast("不能移动到自身或后代中"); return; }
+      if (dragged.parentId === parentId) return;
+      pushUndo("调整标签层级");
+      dragged.parentId = parentId;
+      renderTagManager();
+      showToast("已调整标签层级", true);
+    }
+
+    function onClick(event) {
+      const actionElement = event.target.closest("[data-action]");
+      if (!actionElement) {
+        if (!event.target.closest(".floating, .slot")) closeFloating();
+        return;
+      }
+      const action = actionElement.dataset.action;
+      if (action === "module") {
+        const module = actionElement.dataset.module;
+        if (module === "gtd") { showToast("GTD 将按 OmniFocus 复刻，本原型不重新设计"); return; }
+        if (module === "goal") { showToast("Goal 是重要一级模块，本期不做，二期再设计"); return; }
+        state.module = module;
+        state.selection = null;
+        state.selectedRecordId = null;
+        closeFloating();
+        render();
+        return;
+      }
+      if (action === "variant") { setVariant(actionElement.dataset.variant); return; }
+      if (action === "variant-prev" || action === "variant-next") {
+        const delta = action === "variant-next" ? 1 : -1;
+        setVariant(VARIANTS[(VARIANTS.indexOf(state.variant) + delta + VARIANTS.length) % VARIANTS.length]);
+        return;
+      }
+      if (action === "theme") { state.theme = state.theme === "light" ? "dark" : "light"; render(); return; }
+      if (action === "undo") { undo(); return; }
+      if (action === "time-view") {
+        state.timeView = actionElement.dataset.view;
+        state.planTemplate = false;
+        state.selection = null;
+        state.selectedRecordId = null;
+        closeFloating();
+        renderTime();
+        return;
+      }
+      if (action === "weekday") { state.weekday = Number(actionElement.dataset.day); state.selection = null; state.selectedRecordId = null; closeFloating(); renderTime(); return; }
+      if (action === "toggle-plan-template") {
+        state.planTemplate = !state.planTemplate;
+        if (state.planTemplate) state.weekday = ((new Date(`${state.date}T12:00:00`).getDay() + 6) % 7) + 1;
+        state.selection = null;
+        state.selectedRecordId = null;
+        closeFloating();
+        renderTime();
+        return;
+      }
+      if (action === "apply-plan-template") { applyPlanTemplate(); return; }
+      if (action === "date-prev") { shiftDate(-1); return; }
+      if (action === "date-next") { shiftDate(1); return; }
+      if (action === "date-today") { goToToday(); return; }
+      if (action === "open-date-picker") { openDatePicker(actionElement); return; }
+      if (action === "date-month-prev") { shiftDateMonth(-1); return; }
+      if (action === "date-month-next") { shiftDateMonth(1); return; }
+      if (action === "choose-date") {
+        state.date = actionElement.dataset.date;
+        state.planTemplate = false;
+        state.selection = null;
+        state.selectedRecordId = null;
+        closeFloating();
+        renderTime();
+        showToast(`已切换到 ${dateLabel(state.date)}`);
+        return;
+      }
+      if (action === "grid") { state.grid = Number(actionElement.dataset.grid); state.selection = null; closeFloating(); renderTime(); showToast(`时间格已改为 ${state.grid} 分钟，记录未改变`); return; }
+      if (action === "open-brush-picker") { openTagPicker(actionElement); return; }
+      if (action === "choose-tag") { chooseTag(actionElement.dataset.tagId); return; }
+      if (action === "edit-record") { if (!event.shiftKey) return; openRecordEditor(actionElement.dataset.recordId, actionElement); return; }
+      if (action === "delete-record") { deleteSelectedRecord(); return; }
+      if (action === "close-floating") { closeFloating(); return; }
+      if (action === "dock-root") { state.dockRootId = Number(actionElement.dataset.tagId); renderDock(); return; }
+      if (action === "open-tags") { state.module = "tags"; state.tagKind = "time"; closeFloating(); render(); return; }
+      if (action === "brush") { state.brush = actionElement.dataset.level; renderTime(); return; }
+      if (action === "energy-cell") {
+        if (event.detail === 0) {
+          const key = `${actionElement.dataset.day}-${actionElement.dataset.hour}`;
+          pushUndo("调整深度时间");
+          state.energyGesture = { value: (energy[key] || null) === state.brush ? null : state.brush };
+          applyEnergyCell(actionElement);
+          state.energyGesture = null;
+        }
+        return;
+      }
+      if (action === "tag-kind") { state.tagKind = actionElement.dataset.kind; state.tagDraft = null; state.editingTagId = null; renderTagManager(); return; }
+      if (action === "add-root") { state.tagDraft = { parentId: null }; state.editingTagId = null; renderTagManager(); return; }
+      if (action === "add-child") { state.tagDraft = { parentId: Number(actionElement.dataset.tagId) }; state.editingTagId = null; renderTagManager(); return; }
+      if (action === "cancel-draft") { state.tagDraft = null; renderTagManager(); return; }
+      if (action === "save-draft") { saveDraft(); return; }
+      if (action === "rename-tag") { state.editingTagId = Number(actionElement.dataset.tagId); state.tagDraft = null; renderTagManager(); return; }
+      if (action === "save-rename") { saveRename(actionElement.dataset.tagId); return; }
+      if (action === "delete-tag") { deleteTag(actionElement.dataset.tagId); return; }
+      if (action === "cycle-color") {
+        const tag = tagById(actionElement.dataset.tagId);
+        if (!tag) return;
+        pushUndo("更换标签颜色");
+        const values = PALETTES.map(color);
+        const index = values.indexOf(tag.color);
+        tag.color = values[(index + 1 + values.length) % values.length];
+        renderTagManager();
+        showToast("标签颜色已更新", true);
+      }
+    }
+
+    function onInput(event) {
+      const target = event.target;
+      if (target.id === "shelfSearch") { state.tagSearch = target.value; renderShelf(); return; }
+      if (target.id === "pickerSearch") { state.pickerSearch = target.value; $("#pickerTags").innerHTML = tagTreeHTML("time", state.pickerSearch); return; }
+      if (target.matches('[data-action="record-note"]')) {
+        const found = findRecord(target.dataset.recordId);
+        if (!found) return;
+        if (!state.noteDirty) {
+          pushUndo("编辑备注", state.noteSnapshot || snapshot());
+          state.noteDirty = true;
+        }
+        found.record.note = target.value;
+        renderCanvas();
+      }
+    }
+
+    function onFocusIn(event) {
+      if (event.target.matches('[data-action="record-note"]')) {
+        state.noteSnapshot = snapshot();
+        state.noteDirty = false;
+      }
+    }
+    function onFocusOut(event) {
+      if (event.target.matches('[data-action="record-note"]')) {
+        state.noteSnapshot = null;
+        state.noteDirty = false;
+      }
+      if (event.target.id === "tagRenameInput") {
+        const id = Number(event.target.dataset.tagId);
+        setTimeout(() => { if (state.editingTagId === id && !document.activeElement?.matches('[data-action="save-rename"]')) saveRename(id); }, 0);
+      }
+    }
+
+    function onPointerDown(event) {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey) return;
+      const energyCell = event.target.closest(".energy-cell");
+      if (energyCell && state.module === "time" && state.timeView === "energy") {
+        event.preventDefault();
+        const key = `${energyCell.dataset.day}-${energyCell.dataset.hour}`;
+        pushUndo("调整深度时间");
+        state.energyGesture = { value: (energy[key] || null) === state.brush ? null : state.brush };
+        applyEnergyCell(energyCell);
+        return;
+      }
+      const existingRecord = event.target.closest(".record-fragment");
+      if (existingRecord && event.shiftKey) return;
+      const slot = event.target.closest(".slot");
+      if ((!slot && !existingRecord) || state.module !== "time" || !["plan", "actual"].includes(state.timeView)) return;
+      const start = slot ? Number(slot.dataset.minute) : minuteAtPoint(event.clientX, event.clientY);
+      if (start === null) return;
+      event.preventDefault();
+      if (state.brushTagId === null && !existingRecord) return;
+      const tagId = state.brushTagId === null ? Number(existingRecord.dataset.tagId) : state.brushTagId;
+      const hasCurrentTag = state.brushTagId !== null && currentRecords().some((record) => record.timeTagId === state.brushTagId && record.start < start + state.grid && record.end > start);
+      const mode = state.brushTagId === null || hasCurrentTag ? "remove" : "add";
+      state.pointerSelection = { tagId, mode, lastMinute: null };
+      state.selectedRecordId = null;
+      state.selection = null;
+      closeFloating();
+      pushUndo(mode === "remove" ? "取消时间标签" : "添加时间标签");
+      applyTimeCell(start);
+    }
+
+    function minuteAtPoint(x, y) {
+      const hit = document.elementFromPoint(x, y);
+      const slot = hit?.closest(".slot");
+      if (slot) return Number(slot.dataset.minute);
+      const track = hit?.closest(".hour-track");
+      if (!track) return null;
+      const rect = track.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(0.999, (x - rect.left) / rect.width));
+      return Number(track.dataset.hourStart) + Math.floor((ratio * 60) / state.grid) * state.grid;
+    }
+
+    function onPointerMove(event) {
+      if (state.energyGesture) {
+        const cell = document.elementFromPoint(event.clientX, event.clientY)?.closest(".energy-cell");
+        if (cell) applyEnergyCell(cell);
+        return;
+      }
+      if (!state.pointerSelection) return;
+      const minute = minuteAtPoint(event.clientX, event.clientY);
+      if (minute !== null) applyTimeCell(minute);
+    }
+
+    function onPointerUp() {
+      if (state.energyGesture) state.energyGesture = null;
+      state.pointerSelection = null;
+    }
+
+    function onKeyDown(event) {
+      const target = event.target;
+      if (event.key === "Enter" && target.id === "tagDraftInput") { event.preventDefault(); saveDraft(); return; }
+      if (event.key === "Enter" && target.id === "tagRenameInput") { event.preventDefault(); saveRename(target.dataset.tagId); return; }
+      if (event.key === "Escape" && (state.tagDraft || state.editingTagId)) {
+        state.tagDraft = null;
+        state.editingTagId = null;
+        renderTagManager();
+        return;
+      }
+      const inField = target.closest("input, textarea, select, [contenteditable='true']");
+      if (event.key === "Escape") {
+        closeFloating();
+        state.selection = null;
+        state.selectedRecordId = null;
+        updateSelectionUI();
+        if (state.variant === "C") renderDock();
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z" && !inField) { event.preventDefault(); undo(); return; }
+      if (inField || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      if ($("#contextPicker:not([hidden]), #recordEditor:not([hidden]), #datePicker:not([hidden])")) return;
+      event.preventDefault();
+      const delta = event.key === "ArrowRight" ? 1 : -1;
+      setVariant(VARIANTS[(VARIANTS.indexOf(state.variant) + delta + VARIANTS.length) % VARIANTS.length]);
+    }
+
+    function onDragStart(event) {
+      const row = event.target.closest(".manage-row");
+      if (!row) return;
+      state.draggedTagId = Number(row.dataset.tagId);
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(state.draggedTagId));
+    }
+    function onDragOver(event) {
+      const target = event.target.closest(".manage-row, #rootDrop");
+      if (!target || state.draggedTagId === null) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      $$(".is-drop-target").forEach((element) => element.classList.remove("is-drop-target"));
+      target.classList.add("is-drop-target");
+    }
+    function onDrop(event) {
+      const target = event.target.closest(".manage-row, #rootDrop");
+      if (!target || state.draggedTagId === null) return;
+      event.preventDefault();
+      const parentId = target.id === "rootDrop" ? null : Number(target.dataset.tagId);
+      reparentTag(state.draggedTagId, parentId);
+      state.draggedTagId = null;
+      $$(".is-drop-target").forEach((element) => element.classList.remove("is-drop-target"));
+    }
+    function onDragEnd() {
+      state.draggedTagId = null;
+      $$(".is-drop-target").forEach((element) => element.classList.remove("is-drop-target"));
+    }
+
+    function onDoubleClick(event) {
+      const actionElement = event.target.closest('[data-action="choose-tag"]');
+      if (!actionElement || state.module !== "time" || !["plan", "actual"].includes(state.timeView) || state.selectedRecordId) return;
+      const tagId = Number(actionElement.dataset.tagId);
+      if (state.brushTagId !== tagId) return;
+      event.preventDefault();
+      state.brushTagId = null;
+      state.selection = null;
+      closeFloating();
+      renderTime();
+      showToast("已进入消除状态：点击或拖刷任意记录即可消除");
+    }
+
+    function init() {
+      try {
+        const variant = new URLSearchParams(window.location.search).get("variant")?.toUpperCase();
+        if (VARIANTS.includes(variant)) state.variant = variant;
+      } catch (_) { /* 默认 A */ }
+      document.addEventListener("click", onClick);
+      document.addEventListener("dblclick", onDoubleClick);
+      document.addEventListener("input", onInput);
+      document.addEventListener("focusin", onFocusIn);
+      document.addEventListener("focusout", onFocusOut);
+      document.addEventListener("pointerdown", onPointerDown);
+      document.addEventListener("pointermove", onPointerMove);
+      document.addEventListener("pointerup", onPointerUp);
+      document.addEventListener("pointercancel", () => { state.pointerSelection = null; state.energyGesture = null; });
+      document.addEventListener("keydown", onKeyDown);
+      document.addEventListener("dragstart", onDragStart);
+      document.addEventListener("dragover", onDragOver);
+      document.addEventListener("drop", onDrop);
+      document.addEventListener("dragend", onDragEnd);
+      render();
+    }
+
+    init();
+  })();
+  </script>
+</body>
+</html>

@@ -1,32 +1,42 @@
 # dsh-secretary
 
-个人 Secretary Agent：读取你已有的时间规划，通过对话创建具体 Action，到点前准备材料，并保存实际时间与完成结果。
+DeepSeek Harness 的私人 Secretary Agent：以 GTD 管理事项、以 TimeBlock 管理时间，通过主动准备、协商安排和持续跟进帮你推进结果。pnpm workspace，一插件一包，安装入口是 [packages/secretary](packages/secretary/README.md)。
 
-首版只包含 **Action + TimeCategory** 两类业务数据。每次具体活动都是独立子 Action，计划时间、实际时间和完成状态保存在它自身；不引入独立 Schedule／Execution／Budget 模型。
+## 能力全景
 
-## 构建与验证
+**领域能力（本项目开发，小秘书私有）**
+
+| 能力 | 干什么 | 入口 |
+|---|---|---|
+| 事项管理（GTD） | Inbox 捕获与澄清、Project 与 Action、完成与 Availability 派生 | `secretary_gtd` 工具 |
+| 时间安排（TimeBlock） | 为 Action 安排 planned 区间、记录 actual 实际区间、协商改期 | `secretary_time_block` 工具 |
+| 统计（Statistics） | 按范围汇总 actual 时间，只读投影，不另存事实 | `secretary_statistics` 工具 |
+| 主动工作 | Schedule 定时唤醒 → 读取事项 → 准备实际材料 → 保存引用 → 带着成果联系你 | DSH Schedule + `secretary` 技能 |
+
+**通用执行能力（全部复用 DSH 官方插件，与 standard preset 对齐）**
+
+Shell（bash）、文件读写与搜索、联网搜索抓取、后台任务、定时提醒、长期目标、计划模式、任务清单、子代理与工作流委派、向你提问、技能加载、交付卡片。秘书不是能力受限的封闭 agent。
+
+**技能**
+
+`secretary`（模型+用户，委托与主动工作的统一行为）、`gtd-inbox-capture` / `gtd-clarify`（仅用户斜杠命令）。
+
+逐条插件/工具装配清单（含每条归属与配置）见 [packages/secretary/README.md「能力装配」](packages/secretary/README.md)。
+
+## 安装与使用
 
 ```sh
-pnpm build
-pnpm test
+pnpm install && pnpm build && pnpm test
+dsh plugin --profile <name> add <本仓>/packages/secretary   # 含兄弟包依赖，详见 bundle README
 ```
 
-## 安装
+新开会话选择 **Secretary** preset，直接说要推进的结果；`/gtd-inbox-capture` 捕获、`/gtd-clarify` 澄清。数据存于 `$DSH_HOME/storages/secretary.db`。
 
-先构建，再在 DSH 会话内用 `plugin_manager`（`action: install_bundle`，`target` 填本目录绝对路径），或终端：
+## 开发导航
 
-```sh
-dsh plugin --profile <name> add /绝对路径
-```
-
-不要手写 profile 依赖。安装后新建会话并选择 **Secretary** preset；既有会话仍保留原来的 preset。运行环境必须是带 `agentPresets` 与 Schedule 服务的 Web/Desktop 宿主，首版不支持 headless 组合。
-
-Secretary 通过 `secretary_action` 与 `secretary_time_category` 工具读写数据，通过宿主 `schedule_*` 工具设置到点准备。已有时间规划默认作为只读上下文；未配置 `timePlanPath` 时，Agent 会在需要时询问路径。
-
-## 已知限制
-
-- 首版没有独立 UI、周期统计或 Review 页面。
-- DSH 宿主必须运行，定时提醒才能投递到原会话；投递不代表 Agent 已完成准备。
-- 多次活动通过多个具体子 Action 表达，首版没有 recurring 模板。
-- 计划修改不改写实际；准备与定时投递不写实际、不自动完成 Action。
-- 首版不包含外部 IM、通用 Tag、Energy 或时间预算同步。
+| 你要做什么 | 去哪 |
+|---|---|
+| 改代码（命令、包图、改动约束） | [AGENTS.md](AGENTS.md) |
+| 理解领域设计（GTD/时间语义、数据所有权） | [docs/architecture.md](docs/architecture.md) |
+| 改某个包（入口、Config、限制） | 该包自己的 README（`packages/*/README.md`） |
+| 追溯决策 / 术语 / 验证证据 / 调研 | [docs/](docs/README.md) |

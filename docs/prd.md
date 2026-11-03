@@ -1,149 +1,89 @@
 # 小秘书产品需求文档（PRD）
 
-> 状态：首版评审基线  
-> 日期：2026-10-27  
-> 领域术语：[GLOSSARY](../GLOSSARY.md)
+> 状态：曳光弹实施基线
+> 日期：2026-10-28
+> 术语入口：[GLOSSARY-MAP](../GLOSSARY-MAP.md)
 
 ## 1. 产品定位
 
-小秘书是一个运行在 DeepSeek Harness（DSH）中的个人 Secretary Agent。它读取用户已有的人生与时间规划，通过对话确认当前要做的事，创建具体安排，在到点前准备所需材料，并在实际完成后保存事实。
+小秘书是一个可实际安装使用的私人 Secretary Agent，产品组合为 **GTD（参考 OmniFocus）+ TimeBlock + Agent**。GTD 管理结果与下一步，TimeBlock 管理计划与实际时间，Agent 以同一个可信赖秘书的身份主动承接、协商、准备和跟进。
 
-首版以 DSH 对话为主要界面，以 **Action + TimeCategory** 为全部业务分类与事项模型。首版不建设完整时间画布或后台管理界面。
+领域层包含 **GTD、时间、独立 Tag 与 Agent**：GTD 复刻 OmniFocus 的核心产品逻辑；时间管理时间计划与时间实录；Tag 是跨模块的独立分类基础设施；Agent 贯穿各模块，不另建平行事实。**派生视图是各模块内部的读取能力，不是一级模块；产品导航与页面结构另行设计，不由领域模块直接映射为入口。**
 
-## 2. 首版原则
+睡觉、吃饭、洗漱、通勤等日常活动不进入 GTD，但属于时间模块的一等数据，可以出现在时间计划、时间实录和统计中。执行 Action 时可以联动更新 GTD 与时间实录，但两者仍是独立事实：开始／停止记录不自动完成 Action，完成 Action 也不伪造实际区间。
 
-- **只有 Action 事项**：持续父事项与一次具体活动都使用 Action，不引入 Project、Arrangement、Execution、TimeEntry 或 Budget 实体。
-- **一次活动一个具体 Action**：例如“私教”持续存在，“周二 20:00 练胸私教课”是独立的子 Action，完成后结束；下次活动再建新的子 Action。
-- **预计可以未知**：预计时长可选，Agent 不为了排程虚构精度。
-- **安排允许变化**：计划时间是当前判断，可以修改；实际时间记录真实情况，不互相伪装。
-- **完成各自独立**：子 Action 完成不改变父 Action；时间过去或计划结束不自动完成 Action。
-- **Agent 负责判断**：追问、切换、重排和准备由 Agent 根据上下文处理，不建立固定工作流或复杂状态机。
-- **宿主能力保持原名**：DSH `Schedule` 只表示宿主定时任务，不作为小秘书的日历安排。
-- **基础能力完整暴露**：首版实体的查询、创建、修改、删除和完成操作由统一命令接口提供，Agent 与未来 UI 共用。
+用户不应需要理解插件、存储或内部工具。秘书的价值不是替用户录入表单，而是减少用户管理事项和时间的成本。
 
-## 3. 首版端到端链路
+## 2. 曳光弹目标
 
-1. Secretary Agent 读取用户现有的时间规划，将其作为安排依据；不复制成新的预算数据。
-2. 用户表达想做的事情，Agent 结合现有 Action 与规划，只追问尚未明确的关键决策。
-3. 沟通确认后，Agent 创建或更新一个具体 Action，保存计划时间、时间板块和可选准备需求。
-4. 需要提前准备时，Agent 使用 DSH `schedule_*` 创建定时唤醒，提示中引用具体 Action ID。
-5. 到点唤醒后，Agent 读取 Action，准备所需上下文与材料，保存准备结果引用；定时唤醒本身不产生实际时间或完成状态。
-6. 用户明确完成或切换后，Agent 在对应的实际 Action 上记录实际时间与来源，并完成该 Action；临时改做其他事情时，不为原计划伪造执行事实。
+交付一颗可运行的曳光弹，而不是完整 OmniFocus 克隆或只有架构空壳。必须同时打通：
 
-首版验收以这条链路为主，不以页面数量或统计图表数量为标准。
+1. **用户主动触发**：用户提出事项，秘书帮助澄清、安排、改期、确认并跟进。
+2. **Secretary 主动工作**：Schedule 唤醒后，秘书先完成一段有价值的准备，再带着结果联系用户。
 
-## 4. 领域模型
+两条链路都使用当前新模型和 SQLite，不保留旧 Action 兼容层，不使用 Obsidian。
 
-### 4.1 Action
+## 3. 当前领域范围
 
-Action 可以任意嵌套；根 Action 是所有后代的统一归属，不另设子项目类型。
+### GTD
 
-首版字段：
+- **持久化边界（本人 2026-11-01 定）**：能在约两分钟内立即处理的事直接完成，不进入系统；只有尚未完成、需要后续推进的事项才进入 GTD Inbox。GTD 是处理流程，不要求把所有已执行行动留痕。
+- 本产品采用执行型 Inbox：只收需要行动或形成承诺的事项；想法、参考资料与知识沉淀进入知识库，不为了套用 GTD 而混入执行收件箱。
+- 吃饭、睡觉、洗漱等日常生理活动不进入 Inbox，也不生成 Action。它们不需要作为事项管理；若时间视图需要作息背景，应使用独立设置或时间事实，不得冒充 GTD 行动。
+- Inbox 原样捕获与逐条澄清分离。
+- Project 拥有结果、类型和状态；Action 拥有下一步、可选 Defer／Due／估计、Status 和完成时间。
+- Availability 是派生状态，`active` 不等于 `available`。
+- Completed 与 actual 是不同事实；简单事项可以没有 actual 而完成。
 
-| 字段 | 要求 |
-|---|---|
-| `id` | 稳定唯一 ID |
-| `parentId` | 父 Action ID；根 Action 为 `null` |
-| `title` | 非空标题 |
-| `note` | 可选说明 |
-| `timeCategoryId` | 可选；存在计划或实际时间时必填 |
-| `estimatedMinutes` | 可选正整数，未知时省略 |
-| `planned` | 可选计划时间段 |
-| `actual` | 可选实际时间段 |
-| `actualSource` | 有实际时间时必填：`user_reported`、`agent_observed` 或 `imported` |
-| `status` | `active`、`completed` 或 `dropped`；不参与父子自动联动 |
-| `use` | `dedicated` 或 `parallel`，默认 `dedicated` |
-| `preparationReminderId` | 可选 DSH 定时任务 ID |
-| `preparationResultRef` | 可选准备结果引用，如文件路径或会话产物 |
-| `createdAt / updatedAt` | 创建与最近修改时间 |
+当前澄清只创建新 Project 与首个 Action。Action Group、Folder、Tag、Repeat、Perspective、Project Review 和已有 Project 归位属于后续切片。
 
-时间段 `planned` 与 `actual` 使用相同结构：
+### TimeBlock（时间账）
 
-- `startAt`：带明确偏移的 ISO 时间。
-- `endAt`：带明确偏移的 ISO 时间，晚于开始时间。
-- `timeZone`：IANA 时区，用于保留本地时间安排语义。
+- **核心目的**：记录并比较时间分配，找到浪费、时间黑洞和可提高杠杆的位置；不是 GTD 的排期附件。
+- **时间计划（Plan）**精确到具体日期，与实录共用日期导航；可安排睡觉、吃饭、洗漱、通勤、娱乐、运动和个人发展等时间，计划块只要求时间标签，不要求关联 Action。独立的计划模板按星期维护，可明确应用到指定日期，应用后不与日期计划自动同步。
+- **实际时间（Actual）**是真实发生的时间分布，必须由用户陈述、可核实观察或外部记录支持，不从计划自动复制，也不用于伪造 Action 完成。
+- 计划与实际是两条独立序列，可以关联但不得互相冒充。复盘按类别、时段、日／周比较，不强制每个计划块与实际块一一对应。
+- 每个计划或实际块必须且只以时间标签作为分类主体；GTD 对象只能在备注中提及，不与时间块建立直接结构化关联。没有 GTD 对象的生活时间同样是合法时间事实。
+- 目标不是「计划 = 实际 100%」，而是让偏差可见、可解释、可调整。休息、娱乐和家庭时间是主动分配，不因不是深度工作就被判为浪费。
+- 杠杆分析关注：深度时间被碎片或浅层事项吞掉、低价值时间可压缩／委派／自动化、可并行场景，以及睡眠不足等会损害次日产能的偏差。
+- planned 变化不改 actual；actual 不自动完成 Action。
+- actual 可带固定专注档位 `focus`（`deep` / `shallow`），用来回答「一天里什么时段状态好」；这是时间属性而不是 lifecycle status，也不是用户维护的分类表，Agent 只能取值、不能新增或发明档位。
 
-约束：
+### Statistics
 
-- 一个具体 Action 首版最多保存一个计划时间段和一个实际时间段；多次活动创建新的具体子 Action。
-- 计划时间修改不改变实际时间。
-- 记录实际时间不要求先有计划时间。
-- 完成 Action 不自动填写实际时间；实际来源必须来自明确事实。
-- 父 Action 可以长期存在，子 Action 的完成不向父级传播。
+- 当前按「一天中的小时 × 专注档位」汇总 actual，区间按请求范围裁剪；未记录档位的分钟归入 `unlabelled`。
+- Statistics 是只读 Projection，不拥有第二份事实。
 
-### 4.2 TimeCategory
+### Secretary Agent
 
-TimeCategory 描述时间类型，与 Action 归属无关。首版最多两级，用于表达如“技术 / 深度时间”“运动 / 私教”等分类。
+- 以同一个连贯身份理解上下文、提出安排、协商变化并跟进。
+- 能先准备材料、清单或初稿时，不只发送空提醒。
+- 根据情境判断分寸，不使用静态授权矩阵，也不通过重复请示转嫁管理成本。
+- proposal、确认安排、actual 与 Completed 不互相伪装。
 
-字段：
+## 4. 主动工作链路
 
-- `id`：稳定唯一 ID。
-- `parentId`：父分类 ID；一级分类为 `null`，二级分类必须指向一级分类。
-- `name`：同一父级下的非空名称。
-- `createdAt / updatedAt`：创建与最近修改时间。
+1. Secretary 使用宿主 `schedule_*` 在原会话创建唤醒，提示包含 Action 与准备目标。
+2. Schedule 到点只负责投递；Agent 醒来后读取 Project、Action、TimeBlock 和已有准备引用。
+3. 已有有效准备结果时复用，否则生成实际材料并保存文件，再写回 `preparationResultRef`。
+4. Agent 带着准备结果和具体建议联系用户，协商后续。
+5. 准备本身不写 actual、不完成 Action。用户明确报告实际或完成后才分别记录。
 
-TimeCategory 是以后时间画布主颜色与时间构成统计的分类依据，不与 Action 合并。
+## 5. 数据与组合
 
-## 5. 数据与工具接口
+一个 package、一个 bundle、多个 subpath Cordis plugins。GTD 与 TimeBlock Services 全局唯一，Consumers 与 Skills 在 Secretary preset 内组合。运行数据只进入 `$DSH_HOME/storages/secretary.db` 的两个业务 domains，不与旧 JSON 或 Obsidian 双写。
 
-### 5.1 统一命令接口
+## 6. 验收标准
 
-所有写入经过同一个 store 与命令接口，提供结构化校验和错误；Agent、自动化与未来 UI 不各自复制业务规则。进程内变更按 FIFO 串行执行，引用检查与写入不能分离为产生孤儿数据的两个并发步骤；卸载必须等待写入排空与存储关闭。
+1. 捕获后能通过澄清得到 Project 与 Action，原 Inbox 条目被承接。
+2. 能创建、改期 TimeBlock，planned 改期不改 actual。
+3. 能分别保存 actual 与 `completedAt`，并能按「小时 × 状态档位」得到正确统计；专注档位不接受自定义值。
+4. 完整关闭后，同一 SQLite 文件能恢复 GTD 与 TimeBlock。
+5. 打包安装后，Secretary preset 暴露正确 Tools 和 Skills；GTD Skills 保持 user-only。
+6. 真实 AgentLoop 能执行用户委托链路和 Schedule 主动准备链路，准备产物真实存在且引用可读取。
+7. Schedule 消息来源可核实，准备阶段不写 actual、不自动完成 Action。
+8. scripted adapter 不作为真实模型情境判断已通过的证据；真实模型验收单独记录。
 
-### 5.2 Action 操作
+## 7. 当前不做
 
-- `list`：查询 Action；支持父级、状态、时间板块、计划／实际时间范围筛选。
-- `get`：读取单个 Action，并返回其祖先路径与时间板块信息。
-- `create`：创建根或子 Action。
-- `update`：修改标题、说明、父级、分类、估计、计划／实际时间、准备引用等。
-- `complete`：记录完成；可选地同时保存经确认的实际时间与来源。
-- `delete`：删除明确指定的 Action；存在子 Action 时拒绝级联删除。
-
-### 5.3 TimeCategory 操作
-
-- `list`、`get`、`create`、`update`、`delete`。
-- 最多两级；仍被 Action 使用或存在子分类时不得静默删除。
-
-### 5.4 DSH 定时任务
-
-Secretary Agent 直接使用宿主 `schedule_create`、`schedule_list`、`schedule_update` 和 `schedule_delete`。小秘书不实现自己的 cron、提醒存储或 AgentLoop。
-
-## 6. Secretary Agent 行为
-
-- 根据已有时间规划与当前 Action 提出安排，只询问无法从上下文确定的决策。
-- 预计时长未知时仍可沟通安排，不自动补 0 或虚构估计。
-- 用户临时切换时，优先响应当前需求，再调整尚未发生的安排；不要求用户维护计划完成率。
-- 创建具体 Action 后，如用户需要准备，则设置与 Action 对应的 DSH 定时唤醒。
-- 准备唤醒后先读取 Action；已有有效准备结果时不重复生成。准备过程不创建实际时间，不完成 Action。
-- 只有用户明确陈述或可核实的工具结果才能形成实际记录；推断先询问。
-- 低风险的数据调整保持轻量；涉及真实外部承诺或对外发送时，先与用户确认。
-
-## 7. 首版明确不做
-
-- 独立 Project、Arrangement、Execution、TimeEntry、Budget 或通用 Tag 实体。
-- 时间预算的复制导入与双向同步。
-- 完整时间画布、统计与 Review UI。
-- 持久化 Energy、材料流水线、固定重排算法。
-- 自动 recurring 模板；首版由 Agent 创建具体子 Action。
-- 外部 IM、多用户、云同步、快照和 baseline。
-
-## 8. 首版验收标准
-
-1. 能创建多级 Action 与两级 TimeCategory，重启后数据保留。
-2. 能创建“周二 20:00 练胸私教课”这样的具体子 Action，计划时间未知预计时长也可保存。
-3. 修改计划时间不会改变实际时间；无计划时间也能记录实际时间。
-4. 完成具体子 Action 不改变父 Action 或其他子 Action。
-5. 能保存准备提醒 ID 与准备结果引用；准备过程不产生实际时间或完成状态。
-6. 能创建下一次独立私教 Action，不覆盖上一次历史。
-7. Agent 使用统一工具完成创建、准备和完成，不直接修改存储文件。
-8. Action 与 TimeCategory 的全部首版基础操作通过契约测试与构建验证。
-
-## 9. 后续方向
-
-以下能力保留，但不阻塞首版链路：
-
-- 执行统计、专用／并行时间的分母、周期 Review 与计划／实际对照。
-- A 版时间画布与人工校正界面。
-- 精力状态、周计划模板、快照、导出与分享。
-- 与现有 GTD 数据的迁移或联动，由同一个 Secretary Agent 操作。
-- 主动复盘、更多自动化与外部 IM 通道。
+独立 UI、IM、Obsidian runtime adapter、旧数据自动迁移、Action Group、Folder、Tag、Repeat、Project Review、Custom Perspective、完整 OmniFocus 数据兼容和静态授权引擎。
