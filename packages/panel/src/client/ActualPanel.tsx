@@ -8,12 +8,14 @@ import { fetchState, sendCommand, type PanelCommand } from './api.ts'
 import { GtdWorkspace } from './GtdWorkspace.tsx'
 
 const DEFAULT_COLOR = '#477bc7'
+const TAG_DRAG_MIME = 'application/x-secretary-tag-id'
 const SOURCES: ActualSource[] = ['user_reported', 'agent_observed', 'imported']
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
 type TimeView = 'plan' | 'actual' | 'deep'
 type ProductView = 'time' | 'tags' | 'gtd' | 'goal'
 type EditableBlock = ActualBlock | PlanBlock
+type UndoCommand = PanelCommand & { readonly restoreOf?: number }
 
 function localDate(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -109,7 +111,7 @@ export function ActualPanel() {
   const [tagColor, setTagColor] = useState(DEFAULT_COLOR)
   const [editingTagId, setEditingTagId] = useState<number>()
   const [editing, setEditing] = useState<EditableBlock>()
-  const [undoStack, setUndoStack] = useState<{ label: '添加' | '消除' | '编辑'; commands: PanelCommand[] }[]>([])
+  const [undoStack, setUndoStack] = useState<{ label: '添加' | '消除' | '编辑'; commands: UndoCommand[] }[]>([])
   const [editNote, setEditNote] = useState('')
   const [editTagId, setEditTagId] = useState('')
   const [editStart, setEditStart] = useState('')
@@ -155,11 +157,19 @@ export function ActualPanel() {
     setSelectedTagId(timeTags[0]?.tag.id)
   }, [tags, timeTags, selectedTagId])
 
-  const runBatch = async (commands: PanelCommand[]): Promise<any[] | undefined> => {
+  const runBatch = async (
+    commands: UndoCommand[],
+    onResult?: (command: UndoCommand, result: any) => void,
+  ): Promise<any[] | undefined> => {
     setBusy(true)
     try {
       const results = []
-      for (const command of commands) results.push(await sendCommand(command))
+      for (const command of commands) {
+        const { restoreOf: _restoreOf, ...payload } = command
+        const result = await sendCommand(payload)
+        results.push(result)
+        onResult?.(command, result)
+      }
       await refresh()
       setError('')
       return results
@@ -276,13 +286,13 @@ export function ActualPanel() {
     }
   }
 
-  const restoreCommand = (block: EditableBlock): PanelCommand => 'actualSource' in block
+  const restoreCommand = (block: EditableBlock): UndoCommand => 'actualSource' in block
     ? {
-      domain: 'time', op: 'actual.create', timeTagId: block.timeTagId, note: block.note,
+      domain: 'time', op: 'actual.create', restoreOf: block.id, timeTagId: block.timeTagId, note: block.note,
       startAt: block.startAt, endAt: block.endAt, actualSource: block.actualSource, focus: block.focus,
     }
     : {
-      domain: 'time', op: 'plan.create', date, timeZone, timeTagId: block.timeTagId, note: block.note,
+      domain: 'time', op: 'plan.create', restoreOf: block.id, date, timeZone, timeTagId: block.timeTagId, note: block.note,
       startAt: block.startAt, endAt: block.endAt,
     }
 
@@ -318,8 +328,33 @@ export function ActualPanel() {
   const undoLast = async () => {
     const entry = undoStack[undoStack.length - 1]
     if (!entry || busy) return
-    const result = await runBatch(entry.commands)
-    if (result) setUndoStack(current => current[current.length - 1] === entry ? current.slice(0, -1) : current)
+    let completed = 0
+    const recreatedIds = new Map<number, number>()
+    await runBatch(entry.commands, (command, output) => {
+      completed += 1
+      const newId = output?.block?.id
+      if (command.restoreOf !== undefined && Number.isSafeInteger(newId)) recreatedIds.set(command.restoreOf, newId)
+    })
+    setUndoStack(current => {
+      const remapped = current.map(item => ({
+        ...item,
+        commands: item.commands.map(command => {
+          const id = typeof command.id === 'number' ? recreatedIds.get(command.id) : undefined
+          const restoreOf = command.restoreOf === undefined ? undefined : recreatedIds.get(command.restoreOf)
+          return id === undefined && restoreOf === undefined ? command : {
+            ...command,
+            ...(id === undefined ? {} : { id }),
+            ...(restoreOf === undefined ? {} : { restoreOf }),
+          }
+        }),
+      }))
+      const index = current.indexOf(entry)
+      if (index < 0) return remapped
+      if (completed === entry.commands.length) return remapped.filter((_, itemIndex) => itemIndex !== index)
+      return remapped.map((item, itemIndex) => itemIndex === index
+        ? { ...item, commands: item.commands.slice(completed) }
+        : item)
+    })
   }
 
   const editTag = (tag: Tag) => {
@@ -327,6 +362,17 @@ export function ActualPanel() {
     setTagName(tag.name)
     setTagParentId(tag.parentId === undefined ? '' : String(tag.parentId))
     setTagColor(tag.color ?? DEFAULT_COLOR)
+  }
+
+  const allowTagDrop = (event: React.DragEvent<HTMLElement>) => {
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+  }
+  const dropTag = async (event: React.DragEvent<HTMLElement>, parentId: number | null) => {
+    event.preventDefault()
+    const id = Number(event.dataTransfer.getData(TAG_DRAG_MIME) || event.dataTransfer.getData('text/plain'))
+    if (!Number.isSafeInteger(id) || id <= 0 || id === parentId || busy) return
+    await run({ domain: 'tag', op: 'move', id, parentId })
   }
 
   const submitTag = async () => {
@@ -435,7 +481,7 @@ export function ActualPanel() {
   const calendar = calendarDays()
 
   const tagShelf = <aside className="tag-shelf" aria-label="时间标签架">
-    <div className="shelf-title"><span>时间标签</span><button type="button" onClick={() => setProduct('tags')}>管理标签</button></div>
+    <div className="shelf-title"><span>时间标签</span><button type="button" onClick={() => { setManagerKind('time'); setProduct('tags') }}>管理标签</button></div>
     {timeTags.map(({ tag, depth }) => (
       <button
         type="button" key={tag.id} className={selectedTagId === tag.id ? 'selected' : ''}
@@ -454,7 +500,11 @@ export function ActualPanel() {
         <nav aria-label="一级模块">
           {(['gtd', 'time', 'tags', 'goal'] as ProductView[]).map(item => <button
             type="button" key={item} aria-current={product === item ? 'page' : undefined}
-            onClick={() => { setProduct(item); setCalendarOpen(false) }}
+            onClick={() => {
+              if (item === 'tags' && (product === 'time' || product === 'gtd')) setManagerKind(product === 'gtd' ? 'context' : 'time')
+              setProduct(item)
+              setCalendarOpen(false)
+            }}
           >{item === 'gtd' ? 'GTD' : item === 'time' ? 'Time' : item === 'tags' ? 'Tags' : 'Goal'}</button>)}
         </nav>
       </header>
@@ -484,9 +534,21 @@ export function ActualPanel() {
             <label>标签颜色<input type="color" value={tagColor} onChange={event => setTagColor(event.target.value)} /></label>
             <button type="button" disabled={busy || !tagName.trim()} onClick={() => void submitTag()}>{editingTagId === undefined ? '新建标签' : '保存标签'}</button>
           </div>
+          <div className="tag-root-drop" role="region" aria-label="根标签放置区" onDragOver={allowTagDrop} onDrop={event => void dropTag(event, null)}>
+            桌面拖拽到此处移为根标签
+          </div>
           <div className="tag-list">
             {flatten(tags, managerKind).map(({ tag, depth }) => (
-              <div className="managed-tag" key={tag.id} style={{ '--depth': depth } as React.CSSProperties}>
+              <div
+                className="managed-tag" key={tag.id} style={{ '--depth': depth } as React.CSSProperties}
+                draggable={!busy} data-tag-id={tag.id} data-parent-id={tag.parentId ?? ''}
+                onDragStart={event => {
+                  event.dataTransfer.effectAllowed = 'move'
+                  event.dataTransfer.setData(TAG_DRAG_MIME, String(tag.id))
+                  event.dataTransfer.setData('text/plain', String(tag.id))
+                }}
+                onDragOver={allowTagDrop} onDrop={event => void dropTag(event, tag.id)}
+              >
                 <span className="tag-dot" style={{ background: tag.color ?? DEFAULT_COLOR }} />
                 <span>{tag.name}</span><small>tag:{tag.id}</small>
                 <button type="button" onClick={() => editTag(tag)}>编辑 {tag.name}</button>
@@ -686,114 +748,116 @@ export function ActualPanel() {
 }
 
 const styles = `
-.secretary-time-panel { position: relative; height: 100%; min-width: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--dsw-alias-bg, #f5f5f7); color: var(--dsw-alias-text, #1d1d1f); font-family: var(--dsw-alias-font, sans-serif); }
+.secretary-time-panel { position: relative; height: 100%; min-width: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--dsw-alias-bg-base, #f5f5f7); color: var(--dsw-alias-label-primary, #1d1d1f); font-family: var(--dsw-font-family, sans-serif); }
 .secretary-time-panel button, .secretary-time-panel input, .secretary-time-panel select, .secretary-time-panel textarea { font: inherit; }
-.product-header { flex: none; min-height: 45px; padding: calc(var(--dsh-frame-top-clearance, 0px) + 6px) 12px 6px; display: flex; align-items: center; gap: 18px; border-bottom: 1px solid var(--dsw-alias-border, #ddd); background: var(--dsw-alias-surface, #fff); }
+.product-header { flex: none; min-height: 45px; padding: calc(var(--dsh-frame-top-clearance, 0px) + 6px) 12px 6px; display: flex; align-items: center; gap: 18px; border-bottom: 1px solid var(--dsw-alias-border-l3, #ddd); background: var(--dsw-alias-bg-layer-1, #fff); }
 .product-header nav, .time-toolbar, .date-strip, .manager-header, .template-heading { display: flex; align-items: center; gap: 6px; }
-.product-header button, .time-toolbar button, .date-strip button, .manager-header button, .template-heading button, .actual-status button, .tag-form button, .editor-actions button, .running-list button, .template-form button, .template-row button, .shelf-title button { border: 1px solid var(--dsw-alias-border, #ddd); border-radius: 6px; background: var(--dsw-alias-surface, #fff); color: inherit; padding: 5px 8px; cursor: pointer; }
-.product-header button[aria-current="page"], .segmented button[aria-selected="true"], .segmented button[aria-pressed="true"], .week-strip button[aria-pressed="true"] { background: var(--dsw-alias-accent-soft, #e8efff); color: var(--dsw-alias-accent, #3972d8); }
-.time-error { flex: none; padding: 8px 12px; color: var(--dsw-alias-danger, #bd443d); }
-.time-toolbar { flex: none; min-height: 43px; justify-content: space-between; padding: 6px 12px; border-bottom: 1px solid var(--dsw-alias-border-soft, #eee); background: var(--dsw-alias-surface, #fff); }
-.segmented { display: inline-flex; gap: 3px; padding: 2px; border-radius: 7px; background: var(--dsw-alias-surface-subtle, #eee); }
-.date-strip { flex: none; min-height: 43px; padding: 5px 12px; border-bottom: 1px solid var(--dsw-alias-border-soft, #eee); background: var(--dsw-alias-surface, #fff); }
+.product-header button, .time-toolbar button, .date-strip button, .manager-header button, .template-heading button, .actual-status button, .tag-form button, .editor-actions button, .running-list button, .template-form button, .template-row button, .shelf-title button { border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 6px; background: var(--dsw-alias-bg-layer-1, #fff); color: inherit; padding: 5px 8px; cursor: pointer; }
+.product-header button[aria-current="page"], .segmented button[aria-selected="true"], .segmented button[aria-pressed="true"], .week-strip button[aria-pressed="true"] { background: var(--dsw-alias-interactive-bg-hover-accent, #e8efff); color: var(--dsw-alias-link, #3972d8); }
+.time-error { flex: none; padding: 8px 12px; color: var(--dsw-alias-state-error-primary, #bd443d); }
+.time-toolbar { flex: none; min-height: 43px; justify-content: space-between; padding: 6px 12px; border-bottom: 1px solid var(--dsw-alias-border-l2, #eee); background: var(--dsw-alias-bg-layer-1, #fff); }
+.segmented { display: inline-flex; gap: 3px; padding: 2px; border-radius: 7px; background: var(--dsw-alias-bg-module-platform, #eee); }
+.date-strip { flex: none; min-height: 43px; padding: 5px 12px; border-bottom: 1px solid var(--dsw-alias-border-l2, #eee); background: var(--dsw-alias-bg-layer-1, #fff); }
 .date-strip .date-label { font-weight: 650; }
 .date-spacer { flex: 1; }
-.module-placeholder { flex: 1; display: grid; place-items: center; padding: 24px; color: var(--dsw-alias-muted, #777); text-align: center; }
+.module-placeholder { flex: 1; display: grid; place-items: center; padding: 24px; color: var(--dsw-alias-label-secondary, #777); text-align: center; }
 .actual-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 240px; }
 .actual-main, .template-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
-.actual-status { flex: none; min-height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 12px; color: var(--dsw-alias-muted, #777); font-size: 11px; }
+.actual-status { flex: none; min-height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 12px; color: var(--dsw-alias-label-secondary, #777); font-size: 11px; }
 .running-list { padding: 5px 12px; font-size: 11px; }
 .day-canvas { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
-.hour-row { box-sizing: border-box; height: 48px; display: grid; grid-template-columns: 50px minmax(0, 1fr); border-bottom: 1px solid var(--dsw-alias-border-soft, #eee); }
-.hour-label { padding: 6px 7px 0 0; text-align: right; color: var(--dsw-alias-muted, #777); font: 10px ui-monospace, monospace; }
+.hour-row { box-sizing: border-box; height: 48px; display: grid; grid-template-columns: 50px minmax(0, 1fr); border-bottom: 1px solid var(--dsw-alias-border-l2, #eee); }
+.hour-label { padding: 6px 7px 0 0; text-align: right; color: var(--dsw-alias-label-secondary, #777); font: 10px ui-monospace, monospace; }
 .hour-slots { min-width: 0; display: grid; }
-.time-slot { min-width: 0; position: relative; border-left: 1px solid var(--dsw-alias-border-soft, #eee); }
+.time-slot { min-width: 0; position: relative; border-left: 1px solid var(--dsw-alias-border-l2, #eee); }
 .slot-hit { position: absolute; inset: 0; width: 100%; border: 0; background: transparent; padding: 0; }
-.slot-hit:hover { background: var(--dsw-alias-accent-soft, #e8efff); }
+.slot-hit:hover { background: var(--dsw-alias-interactive-bg-hover-accent, #e8efff); }
 .fragment-layer { position: absolute; inset: 2px 1px; display: flex; gap: 1px; pointer-events: none; }
-.time-fragment { flex: 1; min-width: 0; pointer-events: auto; overflow: hidden; border: 0; border-radius: 4px; color: var(--dsw-alias-on-tag, #fff); padding: 3px; font-size: 9px; text-align: left; }
+.time-fragment { flex: 1; min-width: 0; pointer-events: auto; overflow: hidden; border: 0; border-radius: 4px; color: var(--dsw-static-neutral-00, #fff); padding: 3px; font-size: 9px; text-align: left; }
 .time-fragment span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.tag-shelf { min-height: 0; overflow-y: auto; padding: 10px 7px; border-left: 1px solid var(--dsw-alias-border, #ddd); background: var(--dsw-alias-surface, #fff); }
+.tag-shelf { min-height: 0; overflow-y: auto; padding: 10px 7px; border-left: 1px solid var(--dsw-alias-border-l3, #ddd); background: var(--dsw-alias-bg-layer-1, #fff); }
 .shelf-title { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 0 6px 8px; font-size: 12px; font-weight: 650; }
 .shelf-title button { font-size: 10px; padding: 3px 5px; }
 .tag-shelf > button { width: 100%; min-height: 30px; display: flex; align-items: center; gap: 7px; padding: 4px 6px 4px calc(6px + var(--depth, 0) * 14px); border: 1px solid transparent; border-radius: 6px; background: transparent; color: inherit; text-align: left; }
-.tag-shelf > button.selected { background: var(--dsw-alias-accent-soft, #e8efff); color: var(--dsw-alias-accent, #3972d8); }
+.tag-shelf > button.selected { background: var(--dsw-alias-interactive-bg-hover-accent, #e8efff); color: var(--dsw-alias-link, #3972d8); }
 .tag-dot { width: 9px; height: 9px; flex: none; border-radius: 3px; }
 .tag-manager { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; }
 .manager-header { justify-content: space-between; margin-bottom: 12px; }
 .kind-switch { display: flex; gap: 5px; margin-bottom: 12px; }
-.kind-switch button { padding: 6px 10px; border: 1px solid var(--dsw-alias-border, #ddd); border-radius: 6px; background: transparent; color: inherit; }
-.kind-switch button[aria-pressed="true"] { background: var(--dsw-alias-accent-soft, #e8efff); }
+.kind-switch button { padding: 6px 10px; border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 6px; background: transparent; color: inherit; }
+.kind-switch button[aria-pressed="true"] { background: var(--dsw-alias-interactive-bg-hover-accent, #e8efff); }
 .tag-form { display: grid; grid-template-columns: minmax(120px, 2fr) minmax(80px, 1fr) minmax(120px, 2fr) 60px auto; align-items: end; gap: 8px; }
-.tag-form label, .editor-backdrop label, .template-form label { display: flex; flex-direction: column; gap: 4px; color: var(--dsw-alias-muted, #777); font-size: 11px; }
-.tag-form input, .tag-form select, .editor-backdrop input, .editor-backdrop select, .editor-backdrop textarea, .template-form input { width: 100%; min-width: 0; border: 1px solid var(--dsw-alias-border, #ddd); border-radius: 6px; background: var(--dsw-alias-surface, #fff); color: inherit; padding: 6px; }
+.tag-form label, .editor-backdrop label, .template-form label { display: flex; flex-direction: column; gap: 4px; color: var(--dsw-alias-label-secondary, #777); font-size: 11px; }
+.tag-form input, .tag-form select, .editor-backdrop input, .editor-backdrop select, .editor-backdrop textarea, .template-form input { width: 100%; min-width: 0; border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 6px; background: var(--dsw-alias-bg-layer-1, #fff); color: inherit; padding: 6px; }
 .tag-form input[type="color"] { height: 31px; padding: 2px; }
-.managed-tag { min-height: 38px; display: flex; align-items: center; gap: 8px; margin-left: calc(var(--depth, 0) * 18px); border-bottom: 1px solid var(--dsw-alias-border-soft, #eee); }
-.managed-tag small { color: var(--dsw-alias-muted, #777); }
+.tag-root-drop { margin: 0 0 8px; padding: 8px; border: 1px dashed var(--dsw-alias-border-l3, #ddd); border-radius: 6px; color: var(--dsw-alias-label-secondary, #777); font-size: 11px; text-align: center; }
+.managed-tag { min-height: 38px; display: flex; align-items: center; gap: 8px; margin-left: calc(var(--depth, 0) * 18px); border-bottom: 1px solid var(--dsw-alias-border-l2, #eee); }
+.managed-tag[draggable="true"] { cursor: grab; }
+.managed-tag small { color: var(--dsw-alias-label-secondary, #777); }
 .managed-tag button { margin-left: auto; border: 0; background: transparent; color: inherit; }
 .managed-tag button + button { margin-left: 0; }
 .template-main { overflow-y: auto; padding: 12px; }
 .template-heading { flex-wrap: wrap; margin-bottom: 12px; }
 .template-heading strong { margin-right: auto; }
 .week-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-bottom: 12px; }
-.week-strip button { min-width: 0; border: 1px solid var(--dsw-alias-border, #ddd); border-radius: 6px; background: transparent; color: inherit; padding: 6px 3px; }
+.week-strip button { min-width: 0; border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 6px; background: transparent; color: inherit; padding: 6px 3px; }
 .template-form { display: grid; grid-template-columns: 1fr 1fr minmax(140px, 2fr) auto; align-items: end; gap: 8px; margin-bottom: 12px; }
-.template-list { border-top: 1px solid var(--dsw-alias-border-soft, #eee); }
-.template-row { min-height: 42px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--dsw-alias-border-soft, #eee); }
-.template-row span { color: var(--dsw-alias-muted, #777); }
-.empty-note { color: var(--dsw-alias-muted, #777); font-size: 12px; }
-.calendar-popover { position: absolute; z-index: 90; top: 98px; left: 50%; transform: translateX(-50%); width: min(340px, calc(100% - 20px)); max-height: calc(100% - 110px); overflow-y: auto; padding: 9px; border: 1px solid var(--dsw-alias-border, #ddd); border-radius: 12px; background: var(--dsw-alias-surface-raised, #fff); box-shadow: 0 12px 36px #0004; }
+.template-list { border-top: 1px solid var(--dsw-alias-border-l2, #eee); }
+.template-row { min-height: 42px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--dsw-alias-border-l2, #eee); }
+.template-row span { color: var(--dsw-alias-label-secondary, #777); }
+.empty-note { color: var(--dsw-alias-label-secondary, #777); font-size: 12px; }
+.calendar-popover { position: absolute; z-index: 90; top: 98px; left: 50%; transform: translateX(-50%); width: min(340px, calc(100% - 20px)); max-height: calc(100% - 110px); overflow-y: auto; padding: 9px; border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 12px; background: var(--dsw-alias-bg-overlay, #fff); box-shadow: 0 12px 36px #0004; }
 .calendar-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
 .calendar-head button, .calendar-today { border: 0; border-radius: 6px; background: transparent; color: inherit; padding: 5px 9px; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
-.calendar-grid.weekdays { margin-bottom: 3px; color: var(--dsw-alias-muted, #777); font-size: 10px; text-align: center; }
+.calendar-grid.weekdays { margin-bottom: 3px; color: var(--dsw-alias-label-secondary, #777); font-size: 10px; text-align: center; }
 .calendar-day { min-height: 34px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: inherit; }
-.calendar-day.is-today { border-color: var(--dsw-alias-accent, #3972d8); color: var(--dsw-alias-accent, #3972d8); }
-.calendar-day[aria-current="date"] { background: var(--dsw-alias-accent, #3972d8); color: var(--dsw-alias-on-accent, #fff); }
+.calendar-day.is-today { border-color: var(--dsw-alias-link, #3972d8); color: var(--dsw-alias-link, #3972d8); }
+.calendar-day[aria-current="date"] { background: var(--dsw-alias-link, #3972d8); color: var(--dsw-alias-label-primary-inverted, #fff); }
 .calendar-today { display: block; margin: 8px auto 0; }
-.editor-backdrop { position: fixed; z-index: 100; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 24px)); max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; padding: 14px; border: 1px solid var(--dsw-alias-border, #ddd); border-radius: 12px; background: var(--dsw-alias-surface-raised, #fff); box-shadow: 0 12px 36px #0004; }
+.editor-backdrop { position: fixed; z-index: 100; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 24px)); max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; padding: 14px; border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 12px; background: var(--dsw-alias-bg-overlay, #fff); box-shadow: 0 12px 36px #0004; }
 .editor-actions { display: flex; justify-content: flex-end; gap: 7px; }
 .deep-module { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 12px 16px 32px; }
 .deep-head { max-width: 780px; margin: 0 auto 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .deep-title { font-size: 13px; font-weight: 650; }
-.deep-subtitle, .deep-hint { color: var(--dsw-alias-muted, #777); font-size: 10px; }
+.deep-subtitle, .deep-hint { color: var(--dsw-alias-label-secondary, #777); font-size: 10px; }
 .deep-subtitle { margin-top: 2px; }
 .deep-brush button { display: inline-flex; align-items: center; gap: 5px; }
 .deep-brush-dot { width: 8px; height: 8px; border-radius: 2px; background: currentColor; }
-.deep-brush button[data-level="high"] .deep-brush-dot { color: var(--dsw-alias-high, #317b68); }
-.deep-brush button[data-level="medium"] .deep-brush-dot { color: var(--dsw-alias-medium, #ad7927); }
-.deep-brush button[data-level="low"] .deep-brush-dot { color: var(--dsw-alias-low, #806a96); }
+.deep-brush button[data-level="high"] .deep-brush-dot { color: var(--dsw-static-green-500, #317b68); }
+.deep-brush button[data-level="medium"] .deep-brush-dot { color: var(--dsw-static-amber-500, #ad7927); }
+.deep-brush button[data-level="low"] .deep-brush-dot { color: var(--dsw-static-deepseek-400, #806a96); }
 .deep-grid-scroll { width: 100%; max-width: 780px; min-width: 0; margin: 0 auto; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
 .deep-grid { min-width: 350px; display: grid; grid-template-columns: 42px repeat(7, minmax(0, 1fr)); gap: 2px; user-select: none; }
-.deep-day { padding-bottom: 7px; text-align: center; color: var(--dsw-alias-muted, #777); font-size: 10px; font-weight: 600; }
-.deep-hour { height: 22px; display: flex; align-items: center; justify-content: flex-end; padding-right: 7px; color: var(--dsw-alias-muted, #777); font: 9px ui-monospace, monospace; }
-.deep-cell { height: 22px; min-width: 0; border: 1px solid var(--dsw-alias-border-soft, #eee); border-radius: 4px; background: var(--dsw-alias-surface, #fff); padding: 0; touch-action: pan-y; }
-.deep-cell:hover { border-color: var(--dsw-alias-accent, #3972d8); }
-.deep-cell[data-level="high"], .deep-swatch[data-level="high"] { background: var(--dsw-alias-high, #317b68); border-color: var(--dsw-alias-high, #317b68); }
-.deep-cell[data-level="medium"], .deep-swatch[data-level="medium"] { background: var(--dsw-alias-medium, #ad7927); border-color: var(--dsw-alias-medium, #ad7927); }
-.deep-cell[data-level="low"], .deep-swatch[data-level="low"] { background: var(--dsw-alias-low, #806a96); border-color: var(--dsw-alias-low, #806a96); }
-.deep-legend { max-width: 780px; margin: 12px auto 0; display: flex; flex-wrap: wrap; gap: 12px; color: var(--dsw-alias-muted, #777); font-size: 10px; }
+.deep-day { padding-bottom: 7px; text-align: center; color: var(--dsw-alias-label-secondary, #777); font-size: 10px; font-weight: 600; }
+.deep-hour { height: 22px; display: flex; align-items: center; justify-content: flex-end; padding-right: 7px; color: var(--dsw-alias-label-secondary, #777); font: 9px ui-monospace, monospace; }
+.deep-cell { height: 22px; min-width: 0; border: 1px solid var(--dsw-alias-border-l2, #eee); border-radius: 4px; background: var(--dsw-alias-bg-layer-1, #fff); padding: 0; touch-action: pan-y; }
+.deep-cell:hover { border-color: var(--dsw-alias-link, #3972d8); }
+.deep-cell[data-level="high"], .deep-swatch[data-level="high"] { background: var(--dsw-static-green-500, #317b68); border-color: var(--dsw-static-green-500, #317b68); }
+.deep-cell[data-level="medium"], .deep-swatch[data-level="medium"] { background: var(--dsw-static-amber-500, #ad7927); border-color: var(--dsw-static-amber-500, #ad7927); }
+.deep-cell[data-level="low"], .deep-swatch[data-level="low"] { background: var(--dsw-static-deepseek-400, #806a96); border-color: var(--dsw-static-deepseek-400, #806a96); }
+.deep-legend { max-width: 780px; margin: 12px auto 0; display: flex; flex-wrap: wrap; gap: 12px; color: var(--dsw-alias-label-secondary, #777); font-size: 10px; }
 .deep-legend > span { display: inline-flex; align-items: center; gap: 5px; }
-.deep-swatch { width: 11px; height: 11px; border: 1px solid var(--dsw-alias-border-soft, #eee); border-radius: 3px; background: var(--dsw-alias-surface, #fff); }
+.deep-swatch { width: 11px; height: 11px; border: 1px solid var(--dsw-alias-border-l2, #eee); border-radius: 3px; background: var(--dsw-alias-bg-layer-1, #fff); }
 .deep-hint { max-width: 780px; margin: 9px auto 0; }
 .gtd-workspace { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; }
-.gtd-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 7px 12px; border-bottom: 1px solid var(--dsw-alias-border-soft, #eee); background: var(--dsw-alias-surface, #fff); }
-.gtd-tabs button, .gtd-section button { border: 1px solid var(--dsw-alias-border, #ddd); border-radius: 6px; background: var(--dsw-alias-surface, #fff); color: inherit; padding: 5px 8px; cursor: pointer; }
-.gtd-tabs button[aria-selected="true"] { background: var(--dsw-alias-accent-soft, #e8efff); color: var(--dsw-alias-accent, #3972d8); }
+.gtd-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 7px 12px; border-bottom: 1px solid var(--dsw-alias-border-l2, #eee); background: var(--dsw-alias-bg-layer-1, #fff); }
+.gtd-tabs button, .gtd-section button { border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 6px; background: var(--dsw-alias-bg-layer-1, #fff); color: inherit; padding: 5px 8px; cursor: pointer; }
+.gtd-tabs button[aria-selected="true"] { background: var(--dsw-alias-interactive-bg-hover-accent, #e8efff); color: var(--dsw-alias-link, #3972d8); }
 .gtd-section { max-width: 980px; margin: 0 auto; padding: 14px; }
 .gtd-section-title { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-.gtd-section-title > span, .gtd-forecast-note { color: var(--dsw-alias-muted, #777); font-size: 11px; }
+.gtd-section-title > span, .gtd-forecast-note { color: var(--dsw-alias-label-secondary, #777); font-size: 11px; }
 .gtd-section-title > div { display: flex; flex-wrap: wrap; gap: 5px; }
 .gtd-capture-form, .gtd-clarify-form { display: flex; flex-direction: column; align-items: stretch; gap: 9px; margin-bottom: 14px; }
-.gtd-section label, .gtd-field-label { display: flex; flex-direction: column; gap: 4px; color: var(--dsw-alias-muted, #777); font-size: 11px; }
-.gtd-section input:not([type="checkbox"]), .gtd-section select, .gtd-section textarea { width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid var(--dsw-alias-border, #ddd); border-radius: 6px; background: var(--dsw-alias-surface, #fff); color: inherit; padding: 6px; }
+.gtd-section label, .gtd-field-label { display: flex; flex-direction: column; gap: 4px; color: var(--dsw-alias-label-secondary, #777); font-size: 11px; }
+.gtd-section input:not([type="checkbox"]), .gtd-section select, .gtd-section textarea { width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid var(--dsw-alias-border-l3, #ddd); border-radius: 6px; background: var(--dsw-alias-bg-layer-1, #fff); color: inherit; padding: 6px; }
 .gtd-capture-form button, .gtd-clarify-form > button { align-self: flex-start; }
 .gtd-list, .gtd-project > div { display: flex; flex-direction: column; gap: 7px; }
-.gtd-inbox-row, .gtd-action-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 9px; border: 1px solid var(--dsw-alias-border-soft, #eee); border-radius: 7px; background: var(--dsw-alias-surface, #fff); }
+.gtd-inbox-row, .gtd-action-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 9px; border: 1px solid var(--dsw-alias-border-l2, #eee); border-radius: 7px; background: var(--dsw-alias-bg-layer-1, #fff); }
 .gtd-inbox-row > div { flex: 1; min-width: 180px; }
 .gtd-inbox-row p { margin: 4px 0; white-space: pre-wrap; }
-.gtd-inbox-row small, .gtd-action-meta, .gtd-project header span { display: block; color: var(--dsw-alias-muted, #777); font-size: 10px; }
-.gtd-clarify-form fieldset { min-width: 0; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--dsw-alias-border-soft, #eee); border-radius: 7px; }
+.gtd-inbox-row small, .gtd-action-meta, .gtd-project header span { display: block; color: var(--dsw-alias-label-secondary, #777); font-size: 10px; }
+.gtd-clarify-form fieldset { min-width: 0; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--dsw-alias-border-l2, #eee); border-radius: 7px; }
 .gtd-tag-choices { display: flex; flex-wrap: wrap; gap: 5px 10px; }
 .gtd-tag-choices label { flex-direction: row; align-items: center; min-width: 0; }
 .gtd-date-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -811,7 +875,7 @@ const styles = `
   .time-toolbar, .date-strip { flex-wrap: wrap; padding-inline: 7px; }
   .date-spacer { display: none; }
   .actual-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 190px; }
-  .tag-shelf { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; border-left: 0; border-top: 1px solid var(--dsw-alias-border, #ddd); }
+  .tag-shelf { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; border-left: 0; border-top: 1px solid var(--dsw-alias-border-l3, #ddd); }
   .shelf-title { grid-column: 1 / -1; }
   .hour-row { grid-template-columns: 42px minmax(0, 1fr); }
   .actual-status { padding-inline: 7px; }

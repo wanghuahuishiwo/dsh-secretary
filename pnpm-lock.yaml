@@ -78,11 +78,11 @@ importers:
         version: link:../time-block
     devDependencies:
       '@deepseek-ai/dsh-storage':
-        specifier: 0.2.1-rc.3
-        version: 0.2.1-rc.3(@deepseek-ai/cordis@4.0.5)
+        specifier: 0.2.1-rc.5
+        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
       '@deepseek-ai/dsh-storage-sqlite':
-        specifier: 0.2.1-rc.3
-        version: 0.2.1-rc.3(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-storage@0.2.1-rc.3(@deepseek-ai/cordis@4.0.5))
+        specifier: 0.2.1-rc.5
+        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-storage@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5))
       esbuild:
         specifier: ^0.25.10
         version: 0.25.12
@@ -90,33 +90,17 @@ importers:
         specifier: 1.62.1
         version: 1.62.1
 
-  packages/statistics:
-    dependencies:
-      '@deepseek-ai/cordis':
-        specifier: 4.0.5
-        version: 4.0.5
-      dsh-secretary-core:
-        specifier: workspace:*
-        version: link:../core
-      dsh-secretary-time-block:
-        specifier: workspace:*
-        version: link:../time-block
-    devDependencies:
-      esbuild:
-        specifier: ^0.25.10
-        version: 0.25.12
-
   packages/storage:
     dependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.5
         version: 4.0.5
       '@deepseek-ai/dsh-storage':
-        specifier: 0.2.1-rc.3
-        version: 0.2.1-rc.3(@deepseek-ai/cordis@4.0.5)
+        specifier: 0.2.1-rc.5
+        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
       '@deepseek-ai/dsh-storage-domain':
-        specifier: 0.2.1-rc.3
-        version: 0.2.1-rc.3(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-storage@0.2.1-rc.3(@deepseek-ai/cordis@4.0.5))
+        specifier: 0.2.1-rc.5
+        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-storage@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5))
       dsh-secretary-core:
         specifier: workspace:*
         version: link:../core
@@ -171,20 +155,20 @@ packages:
   '@deepseek-ai/cosmokit@1.8.6':
     resolution: {integrity: sha512-ZSD/fN52L498LBIOYwjIOlaLv5veY6ZEwI2yzvZUKQtctn0QAPqu8tKdJ+OF5+Tv6NBq1U+wJWH+QI6OGy5EvQ==}
 
-  '@deepseek-ai/dsh-storage-domain@0.2.1-rc.3':
-    resolution: {integrity: sha512-otwdF0xDZSK/knuIDH8xP5Wf5L+vEsXVT5oOwIjNEc2vY4kvyCzSyflLIW1d+LkWqfgrr0j0CMnmDlk5AMeUJg==}
+  '@deepseek-ai/dsh-storage-domain@0.2.1-rc.5':
+    resolution: {integrity: sha512-WDLoNrJqD+UTZ4jZTs0XmsvaHmHplMgOfLAUfZFLhw5Tbrwx/yXG6cKgwZez66dn/6Wl7uCaHxAZZ+Mk7O+LEw==}
     peerDependencies:
       '@deepseek-ai/cordis': ~4.0.5
-      '@deepseek-ai/dsh-storage': 0.2.1-rc.3
+      '@deepseek-ai/dsh-storage': 0.2.1-rc.5
 
-  '@deepseek-ai/dsh-storage-sqlite@0.2.1-rc.3':
-    resolution: {integrity: sha512-xxxLtShpOlf2mz6R2fvEp0C8An2YNK9bHGBqOav/8lGk5TdEfClJ9HoniiUiVaj7N4Q6hRtyHCmuHx8tZ+I1EQ==}
+  '@deepseek-ai/dsh-storage-sqlite@0.2.1-rc.5':
+    resolution: {integrity: sha512-aRF+IzNNALf/ylnP0t52HV7mDXFJTv50Wy9i/2oEzIQ0/tThH27ylk4s36zkac0UIQlxkGXettSm3mKNrwNO/A==}
     peerDependencies:
       '@deepseek-ai/cordis': ~4.0.5
-      '@deepseek-ai/dsh-storage': 0.2.1-rc.3
+      '@deepseek-ai/dsh-storage': 0.2.1-rc.5
 
-  '@deepseek-ai/dsh-storage@0.2.1-rc.3':
-    resolution: {integrity: sha512-fcbbqbRnCbGFfDrh4e8Ewrt/kP7ulO1YbtANIT5PAcslJiXPriDeD3JUNOmorSgYSMVJwsSnaV5FqCu8+eTgxQ==}
+  '@deepseek-ai/dsh-storage@0.2.1-rc.5':
+    resolution: {integrity: sha512-WagoL0nV2rjUjopMN7grFMJ1nuOYwZDMV9JzM9C8bWtfmLUOUlj/MfDdwgBMywACsa41yW4rBTRJ61+FkoQCew==}
     peerDependencies:
       '@deepseek-ai/cordis': ~4.0.5
 
@@ -382,20 +366,20 @@ snapshots:
 
   '@deepseek-ai/cosmokit@1.8.6': {}
 
-  '@deepseek-ai/dsh-storage-domain@0.2.1-rc.3(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-storage@0.2.1-rc.3(@deepseek-ai/cordis@4.0.5))':
+  '@deepseek-ai/dsh-storage-domain@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-storage@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5))':
     dependencies:
       '@deepseek-ai/cordis': 4.0.5
-      '@deepseek-ai/dsh-storage': 0.2.1-rc.3(@deepseek-ai/cordis@4.0.5)
+      '@deepseek-ai/dsh-storage': 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
       '@deepseek-ai/schemastery': 3.18.5
       zod: 4.4.3
 
-  '@deepseek-ai/dsh-storage-sqlite@0.2.1-rc.3(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-storage@0.2.1-rc.3(@deepseek-ai/cordis@4.0.5))':
+  '@deepseek-ai/dsh-storage-sqlite@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-storage@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5))':
     dependencies:
       '@deepseek-ai/cordis': 4.0.5
-      '@deepseek-ai/dsh-storage': 0.2.1-rc.3(@deepseek-ai/cordis@4.0.5)
+      '@deepseek-ai/dsh-storage': 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
       '@deepseek-ai/schemastery': 3.18.5
 
-  '@deepseek-ai/dsh-storage@0.2.1-rc.3(@deepseek-ai/cordis@4.0.5)':
+  '@deepseek-ai/dsh-storage@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)':
     dependencies:
       '@deepseek-ai/cordis': 4.0.5
 

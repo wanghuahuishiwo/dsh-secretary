@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
-import { execFileSync, spawn } from 'node:child_process'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { spawn } from 'node:child_process'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -48,6 +48,17 @@ async function boot(home, overlay) {
   }
 }
 
+function collectPageErrors(page, errors, allowNavigationErrors = false) {
+  page.on('pageerror', error => errors.push(error))
+  page.on('console', message => {
+    if (message.type() !== 'error') return
+    const text = message.text()
+    const navigationError = /ERR_INCOMPLETE_CHUNKED_ENCODING|ERR_CONNECTION_REFUSED/.test(text)
+    if (allowNavigationErrors && navigationError) return
+    errors.push(new Error(`console.error: ${text}`))
+  })
+}
+
 async function clearDialogs(page) {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const dialog = page.getByRole('dialog').last()
@@ -79,6 +90,19 @@ async function openPanel(page, url) {
   }
   await entry.click()
   await page.getByLabel('时间标签架').waitFor({ timeout: 30_000 })
+}
+
+async function setHostTheme(page, theme) {
+  const account = page.getByRole('button', { name: /^(Account menu|账户菜单)$/ }).first()
+  await account.waitFor({ timeout: 30_000 })
+  await account.click()
+  const settings = page.getByRole('menuitem', { name: /^(Settings|设置)$/ }).first()
+  await settings.waitFor({ timeout: 30_000 })
+  await settings.click()
+  const option = page.getByRole('button', { name: theme === 'dark' ? /^(深色|Dark)$/ : /^(浅色|Light)$/ }).last()
+  await option.waitFor({ timeout: 30_000 })
+  await option.click()
+  await page.waitForFunction(theme => document.body.hasAttribute('data-ds-dark-theme') === (theme === 'dark'), theme)
 }
 
 async function createTag(page, name, parent) {
@@ -143,11 +167,6 @@ test('real Chromium client covers Plan/Template/date navigation and restores all
   ].join('\n'))
 
   const browser = await chromium.launch({ headless: true })
-  const dshVersion = execFileSync('dsh', ['--version'], { encoding: 'utf8' }).trim()
-  execFileSync('dsh', [
-    'plugin', '--profile', 'web', 'allow-version', '@deepseek-ai/dsh-storage-sqlite@0.2.1-rc.3',
-    '--dsh-version', dshVersion, '--accept-risk',
-  ], { env: { ...process.env, DSH_HOME: home }, stdio: 'pipe' })
   let server
   const pageErrors = []
   t.after(async () => {
@@ -159,7 +178,7 @@ test('real Chromium client covers Plan/Template/date navigation and restores all
   server = await boot(home, overlay)
   let context = await browser.newContext({ viewport: { width: 1280, height: 900 } })
   let page = await context.newPage()
-  page.on('pageerror', error => pageErrors.push(error))
+  collectPageErrors(page, pageErrors, true)
   await openPanel(page, server.url).catch(error => { console.error('DSH output:', server.output()); throw error })
 
   await createTag(page, '工作')
@@ -208,7 +227,7 @@ test('real Chromium client covers Plan/Template/date navigation and restores all
   await context.close()
   context = await browser.newContext({ viewport: { width: 390, height: 844 } })
   page = await context.newPage()
-  page.on('pageerror', error => pageErrors.push(error))
+  collectPageErrors(page, pageErrors, true)
   await openPanel(page, server.url).catch(error => { console.error('DSH output:', server.output()); throw error })
   await chooseDate(page, '2026-11-02')
   await page.getByText('浏览器真实实录', { exact: true }).waitFor()
@@ -260,7 +279,7 @@ test('real Chromium client covers Plan/Template/date navigation and restores all
   await context.close()
   context = await browser.newContext({ viewport: { width: 1280, height: 900 } })
   page = await context.newPage()
-  page.on('pageerror', error => pageErrors.push(error))
+  collectPageErrors(page, pageErrors, true)
   await openPanel(page, server.url)
   await page.getByRole('tab', { name: '计划', exact: true }).click()
   await chooseDate(page, '2026-11-02')
@@ -326,11 +345,6 @@ test('real Chromium Plan and Actual erase gestures keep the starting Tag fixed a
   ].join('\n'))
 
   const browser = await chromium.launch({ headless: true })
-  const dshVersion = execFileSync('dsh', ['--version'], { encoding: 'utf8' }).trim()
-  execFileSync('dsh', [
-    'plugin', '--profile', 'web', 'allow-version', '@deepseek-ai/dsh-storage-sqlite@0.2.1-rc.3',
-    '--dsh-version', dshVersion, '--accept-risk',
-  ], { env: { ...process.env, DSH_HOME: home }, stdio: 'pipe' })
   let server
   const pageErrors = []
   t.after(async () => {
@@ -342,7 +356,7 @@ test('real Chromium Plan and Actual erase gestures keep the starting Tag fixed a
   server = await boot(home, overlay)
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, timezoneId: 'Asia/Shanghai' })
   const page = await context.newPage()
-  page.on('pageerror', error => pageErrors.push(error))
+  collectPageErrors(page, pageErrors)
   await openPanel(page, server.url)
   for (const name of ['甲', '乙', '丙', '丁']) await createTag(page, name)
   await chooseDate(page, '2026-11-02')
@@ -452,11 +466,6 @@ test('real Chromium Plan and Actual keep parallel layout, cross-hour titles, edi
   ].join('\n'))
 
   const browser = await chromium.launch({ headless: true })
-  const dshVersion = execFileSync('dsh', ['--version'], { encoding: 'utf8' }).trim()
-  execFileSync('dsh', [
-    'plugin', '--profile', 'web', 'allow-version', '@deepseek-ai/dsh-storage-sqlite@0.2.1-rc.3',
-    '--dsh-version', dshVersion, '--accept-risk',
-  ], { env: { ...process.env, DSH_HOME: home }, stdio: 'pipe' })
   let server
   const pageErrors = []
   t.after(async () => {
@@ -468,7 +477,7 @@ test('real Chromium Plan and Actual keep parallel layout, cross-hour titles, edi
   server = await boot(home, overlay)
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, timezoneId: 'Asia/Shanghai' })
   const page = await context.newPage()
-  page.on('pageerror', error => pageErrors.push(error))
+  collectPageErrors(page, pageErrors)
   await openPanel(page, server.url)
   for (const name of ['甲', '乙', '丙', '丁', '跨时']) await createTag(page, name)
   await chooseDate(page, '2026-11-02')
@@ -621,11 +630,6 @@ test('real Chromium deep-time grid supports high-only use, fixed-operation point
   ].join('\n'))
 
   const browser = await chromium.launch({ headless: true })
-  const dshVersion = execFileSync('dsh', ['--version'], { encoding: 'utf8' }).trim()
-  execFileSync('dsh', [
-    'plugin', '--profile', 'web', 'allow-version', '@deepseek-ai/dsh-storage-sqlite@0.2.1-rc.3',
-    '--dsh-version', dshVersion, '--accept-risk',
-  ], { env: { ...process.env, DSH_HOME: home }, stdio: 'pipe' })
   let server
   const pageErrors = []
   t.after(async () => {
@@ -637,7 +641,7 @@ test('real Chromium deep-time grid supports high-only use, fixed-operation point
   server = await boot(home, overlay)
   let context = await browser.newContext({ viewport: { width: 1280, height: 900 } })
   let page = await context.newPage()
-  page.on('pageerror', error => pageErrors.push(error))
+  collectPageErrors(page, pageErrors, true)
   const openDeep = async () => {
     await openPanel(page, server.url)
     await page.getByRole('tab', { name: '深度时间', exact: true }).click()
@@ -690,7 +694,7 @@ test('real Chromium deep-time grid supports high-only use, fixed-operation point
   await context.close()
   context = await browser.newContext({ viewport: { width: 1280, height: 900 } })
   page = await context.newPage()
-  page.on('pageerror', error => pageErrors.push(error))
+  collectPageErrors(page, pageErrors, true)
   await openDeep()
   await level(1, 9, 'high')
   assert.equal(await page.locator('[data-deep-cell][data-level="high"]').count(), 1)
@@ -769,11 +773,6 @@ test('real Chromium GTD flow uses the product shell and survives a full isolated
   ].join('\n'))
 
   const browser = await chromium.launch({ headless: true })
-  const dshVersion = execFileSync('dsh', ['--version'], { encoding: 'utf8' }).trim()
-  execFileSync('dsh', [
-    'plugin', '--profile', 'web', 'allow-version', '@deepseek-ai/dsh-storage-sqlite@0.2.1-rc.3',
-    '--dsh-version', dshVersion, '--accept-risk',
-  ], { env: { ...process.env, DSH_HOME: home }, stdio: 'pipe' })
   let server
   const pageErrors = []
   t.after(async () => {
@@ -785,7 +784,7 @@ test('real Chromium GTD flow uses the product shell and survives a full isolated
   server = await boot(home, overlay)
   let context = await browser.newContext({ viewport: { width: 1280, height: 900 } })
   let page = await context.newPage()
-  page.on('pageerror', error => pageErrors.push(error))
+  collectPageErrors(page, pageErrors, true)
   await openPanel(page, server.url)
   await createTag(page, '工作')
   await page.getByRole('button', { name: '管理标签', exact: true }).click()
@@ -834,7 +833,7 @@ test('real Chromium GTD flow uses the product shell and survives a full isolated
   await context.close()
   context = await browser.newContext({ viewport: { width: 390, height: 844 } })
   page = await context.newPage()
-  page.on('pageerror', error => pageErrors.push(error))
+  collectPageErrors(page, pageErrors, true)
   await openPanel(page, server.url)
   await page.getByRole('button', { name: 'GTD', exact: true }).click()
   await page.getByRole('tab', { name: 'Projects', exact: true }).click()
@@ -847,5 +846,331 @@ test('real Chromium GTD flow uses the product shell and survives a full isolated
   await page.getByLabel('Forecast 日期').fill('2026-11-04')
   await page.getByText('浏览器下一步', { exact: true }).waitFor()
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), '390px GTD layout has horizontal overflow')
+  assert.deepEqual(pageErrors, [])
+})
+
+test('real Chromium undo remaps recreated IDs through edits and whole erase drags', { timeout: 360_000 }, async (t) => {
+  const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-undo-browser-'))
+  const overlay = join(home, 'overlay.yml')
+  await writeFile(overlay, [
+    '- id: ui-settings-general',
+    '  config:',
+    "    welcomeNoticeVersion: '2026-09-28.1'",
+    '- id: ui-settings-account',
+    '  config:',
+    '    version: 1',
+    '    step: done',
+    '    usage: detailed',
+    '    developerTools: true',
+    '    purpose: null',
+    '    process: standard',
+    '    completion: api-key',
+    '- insert:',
+    "    - id: secretary-browser-sqlite",
+    `      name: 'file://${join(ROOT, 'packages/secretary/node_modules/@deepseek-ai/dsh-storage-sqlite/lib/index.js')}'`,
+    '      config:',
+    `        path: ${join(home, 'secretary.sqlite')}`,
+    '        journalMode: delete',
+    "    - id: secretary-browser-storage",
+    `      name: 'file://${join(ROOT, 'packages/storage/lib/index.js')}'`,
+    "    - id: secretary-browser-tag",
+    `      name: 'file://${join(ROOT, 'packages/tag/lib/index.js')}'`,
+    "    - id: secretary-browser-gtd",
+    `      name: 'file://${join(ROOT, 'packages/gtd/lib/index.js')}'`,
+    "    - id: secretary-browser-time",
+    `      name: 'file://${join(ROOT, 'packages/time-block/lib/index.js')}'`,
+    "    - id: secretary-browser-panel",
+    `      name: 'file://${join(ROOT, 'packages/panel/lib/index.js')}'`,
+    '',
+  ].join('\n'))
+
+  const browser = await chromium.launch({ headless: true })
+  let server
+  const pageErrors = []
+  t.after(async () => {
+    if (server) await server.stop()
+    await browser.close()
+    await rm(home, { recursive: true, force: true })
+  })
+
+  server = await boot(home, overlay)
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, timezoneId: 'Asia/Shanghai' })
+  const page = await context.newPage()
+  collectPageErrors(page, pageErrors)
+  await openPanel(page, server.url)
+  await createTag(page, '工作')
+  await chooseDate(page, '2026-11-02')
+
+  for (const view of ['actual', 'plan']) {
+    const kind = view === 'actual' ? '实录' : '计划'
+    if (view === 'plan') await page.getByRole('tab', { name: '计划', exact: true }).click()
+    const fragment = slot => page.locator(`[data-slot="${slot}"] .time-fragment[aria-label="${kind} 工作 ${slot}"]`)
+    await page.getByRole('button', { name: '工作', exact: true }).click()
+    await page.getByRole('button', { name: '2026-11-02 09:00 时间格', exact: true }).click()
+    await fragment('09:00').waitFor()
+    const originalId = Number(await fragment('09:00').getAttribute('data-block-id'))
+    await fragment('09:00').click({ modifiers: ['Shift'] })
+    await page.getByLabel(`${kind}备注`).fill(`${kind}编辑后`)
+    await page.getByRole('button', { name: `保存${kind}`, exact: true }).click()
+    await page.getByText(`${kind}编辑后`, { exact: true }).waitFor()
+
+    await page.getByRole('button', { name: '工作', exact: true }).dblclick()
+    await fragment('09:00').click()
+    await fragment('09:00').waitFor({ state: 'detached' })
+    await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+    await fragment('09:00').waitFor()
+    const recreatedId = Number(await fragment('09:00').getAttribute('data-block-id'))
+    assert.notEqual(recreatedId, originalId, `${kind} restore should allocate a new ID`)
+    await page.getByRole('button', { name: '工作', exact: true }).click()
+    await page.getByRole('button', { name: '撤销编辑', exact: true }).click()
+    await page.getByText(`${kind}编辑后`, { exact: true }).waitFor({ state: 'detached' })
+    assert.equal(Number(await fragment('09:00').getAttribute('data-block-id')), recreatedId)
+    await page.getByRole('button', { name: '撤销添加', exact: true }).click()
+    await fragment('09:00').waitFor({ state: 'detached' })
+
+    for (const slot of ['10:00', '10:10', '10:20']) {
+      await page.getByRole('button', { name: `2026-11-02 ${slot} 时间格`, exact: true }).click()
+      await fragment(slot).waitFor()
+    }
+    const beforeEraseIds = await Promise.all(['10:00', '10:10', '10:20'].map(async slot =>
+      Number(await fragment(slot).getAttribute('data-block-id'))))
+    await page.getByRole('button', { name: '工作', exact: true }).dblclick()
+    const boxes = []
+    for (const slot of ['10:00', '10:10', '10:20']) {
+      const box = await fragment(slot).boundingBox()
+      assert.ok(box)
+      boxes.push(box)
+    }
+    await page.mouse.move(boxes[0].x + boxes[0].width / 2, boxes[0].y + boxes[0].height / 2)
+    await page.mouse.down()
+    for (const box of boxes.slice(1)) await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 6 })
+    await page.mouse.up()
+    for (const slot of ['10:00', '10:10', '10:20']) await fragment(slot).waitFor({ state: 'detached' })
+    await page.getByRole('button', { name: '撤销消除', exact: true }).click()
+    for (const slot of ['10:00', '10:10', '10:20']) await fragment(slot).waitFor()
+    const restoredIds = await Promise.all(['10:00', '10:10', '10:20'].map(async slot =>
+      Number(await fragment(slot).getAttribute('data-block-id'))))
+    assert.equal(new Set(restoredIds).size, 3)
+    assert.ok(restoredIds.every(id => !beforeEraseIds.includes(id)), `${kind} drag restore must allocate new IDs`)
+    await page.getByRole('button', { name: '工作', exact: true }).click()
+    for (const slot of ['10:20', '10:10', '10:00']) {
+      await page.getByRole('button', { name: '撤销添加', exact: true }).click()
+      await fragment(slot).waitFor({ state: 'detached' })
+    }
+  }
+  assert.deepEqual(pageErrors, [])
+})
+
+test('real Chromium Tag entry kinds and desktop HTML5 hierarchy drops persist for time and context', { timeout: 360_000 }, async (t) => {
+  const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-tags-browser-'))
+  const overlay = join(home, 'overlay.yml')
+  await writeFile(overlay, [
+    '- id: ui-settings-general',
+    '  config:',
+    "    welcomeNoticeVersion: '2026-09-28.1'",
+    '- id: ui-settings-account',
+    '  config:',
+    '    version: 1',
+    '    step: done',
+    '    usage: detailed',
+    '    developerTools: true',
+    '    purpose: null',
+    '    process: standard',
+    '    completion: api-key',
+    '- insert:',
+    "    - id: secretary-browser-sqlite",
+    `      name: 'file://${join(ROOT, 'packages/secretary/node_modules/@deepseek-ai/dsh-storage-sqlite/lib/index.js')}'`,
+    '      config:',
+    `        path: ${join(home, 'secretary.sqlite')}`,
+    '        journalMode: delete',
+    "    - id: secretary-browser-storage",
+    `      name: 'file://${join(ROOT, 'packages/storage/lib/index.js')}'`,
+    "    - id: secretary-browser-tag",
+    `      name: 'file://${join(ROOT, 'packages/tag/lib/index.js')}'`,
+    "    - id: secretary-browser-gtd",
+    `      name: 'file://${join(ROOT, 'packages/gtd/lib/index.js')}'`,
+    "    - id: secretary-browser-time",
+    `      name: 'file://${join(ROOT, 'packages/time-block/lib/index.js')}'`,
+    "    - id: secretary-browser-panel",
+    `      name: 'file://${join(ROOT, 'packages/panel/lib/index.js')}'`,
+    '',
+  ].join('\n'))
+
+  const browser = await chromium.launch({ headless: true })
+  let server
+  const pageErrors = []
+  t.after(async () => {
+    if (server) await server.stop()
+    await browser.close()
+    await rm(home, { recursive: true, force: true })
+  })
+
+  server = await boot(home, overlay)
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, timezoneId: 'Asia/Shanghai' })
+  const page = await context.newPage()
+  collectPageErrors(page, pageErrors)
+  await openPanel(page, server.url)
+
+  const kind = page.getByLabel('标签类型', { exact: true })
+  const addManagedTag = async name => {
+    await page.getByLabel('标签名称').fill(name)
+    await page.getByRole('button', { name: '新建标签', exact: true }).click()
+    await page.locator('.managed-tag').filter({ hasText: name }).waitFor()
+  }
+  const row = name => page.locator('.managed-tag').filter({ hasText: name })
+  const storedTags = async () => page.evaluate(async () => {
+    const response = await fetch('/api/secretary.state?date=2026-11-02&timeZone=Asia%2FShanghai')
+    return (await response.json()).tags
+  })
+  const drop = async (child, parent) => {
+    const before = await storedTags()
+    const childId = before.find(tag => tag.name === child).id
+    const parentId = parent === null ? null : before.find(tag => tag.name === parent).id
+    const response = page.waitForResponse(response => response.url().includes('/api/secretary.command')
+      && response.request().method() === 'POST', { timeout: 5_000 })
+    if (parent === null) await row(child).dragTo(page.getByLabel('根标签放置区', { exact: true }))
+    else await row(child).dragTo(row(parent))
+    assert.equal((await response).status(), 200)
+    await page.waitForFunction(({ childId, parentId }) => {
+      const target = document.querySelector(`.managed-tag[data-tag-id="${childId}"]`)
+      return target?.getAttribute('data-parent-id') === (parentId === null ? '' : String(parentId))
+    }, { childId, parentId })
+    const after = await storedTags()
+    assert.equal(after.find(tag => tag.id === childId).parentId, parentId ?? undefined)
+  }
+
+  await page.getByRole('button', { name: '管理标签', exact: true }).click()
+  assert.equal(await kind.inputValue(), 'time')
+  await page.getByRole('button', { name: '情境标签', exact: true }).click()
+  await page.getByRole('button', { name: '返回实录', exact: true }).click()
+  await page.getByRole('button', { name: 'GTD', exact: true }).click()
+  await page.getByRole('button', { name: 'Tags', exact: true }).click()
+  assert.equal(await kind.inputValue(), 'context')
+  await page.getByRole('button', { name: '返回实录', exact: true }).click()
+  await page.getByRole('button', { name: 'Tags', exact: true }).click()
+  assert.equal(await kind.inputValue(), 'time', 'Time must not retain the previous context manager kind')
+
+  await addManagedTag('工作')
+  await addManagedTag('专注')
+  await drop('专注', '工作')
+  await page.getByRole('button', { name: '返回实录', exact: true }).click()
+  assert.equal(await page.locator('.tag-shelf > button').filter({ hasText: '专注' }).evaluate(element => element.style.getPropertyValue('--depth')), '1')
+  await page.getByRole('button', { name: '管理标签', exact: true }).click()
+  await drop('专注', null)
+  await page.getByRole('button', { name: '返回实录', exact: true }).click()
+  assert.equal(await page.locator('.tag-shelf > button').filter({ hasText: '专注' }).evaluate(element => element.style.getPropertyValue('--depth')), '0')
+
+  await page.getByRole('button', { name: 'GTD', exact: true }).click()
+  await page.getByRole('button', { name: 'Tags', exact: true }).click()
+  assert.equal(await kind.inputValue(), 'context')
+  await addManagedTag('地点')
+  await addManagedTag('电脑')
+  await drop('电脑', '地点')
+  await drop('电脑', null)
+  assert.deepEqual(pageErrors, [])
+})
+
+test('real Chromium host light/dark themes drive readable tokens and 390px layouts without page errors', { timeout: 360_000 }, async (t) => {
+  const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-theme-browser-'))
+  const overlay = join(home, 'overlay.yml')
+  await writeFile(overlay, [
+    '- id: ui-settings-general',
+    '  config:',
+    "    welcomeNoticeVersion: '2026-09-28.1'",
+    '- id: ui-settings-account',
+    '  config:',
+    '    version: 1',
+    '    step: done',
+    '    usage: detailed',
+    '    developerTools: true',
+    '    purpose: null',
+    '    process: standard',
+    '    completion: api-key',
+    '- insert:',
+    "    - id: secretary-browser-sqlite",
+    `      name: 'file://${join(ROOT, 'packages/secretary/node_modules/@deepseek-ai/dsh-storage-sqlite/lib/index.js')}'`,
+    '      config:',
+    `        path: ${join(home, 'secretary.sqlite')}`,
+    '        journalMode: delete',
+    "    - id: secretary-browser-storage",
+    `      name: 'file://${join(ROOT, 'packages/storage/lib/index.js')}'`,
+    "    - id: secretary-browser-tag",
+    `      name: 'file://${join(ROOT, 'packages/tag/lib/index.js')}'`,
+    "    - id: secretary-browser-gtd",
+    `      name: 'file://${join(ROOT, 'packages/gtd/lib/index.js')}'`,
+    "    - id: secretary-browser-time",
+    `      name: 'file://${join(ROOT, 'packages/time-block/lib/index.js')}'`,
+    "    - id: secretary-browser-panel",
+    `      name: 'file://${join(ROOT, 'packages/panel/lib/index.js')}'`,
+    '',
+  ].join('\n'))
+
+  const browser = await chromium.launch({ headless: true })
+  let server
+  const pageErrors = []
+  t.after(async () => {
+    if (server) await server.stop()
+    await browser.close()
+    await rm(home, { recursive: true, force: true })
+  })
+  const screenshotDirectory = process.env.SECRETARY_SCREENSHOT_DIR
+  if (screenshotDirectory) await mkdir(screenshotDirectory, { recursive: true })
+
+  server = await boot(home, overlay)
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, timezoneId: 'Asia/Shanghai' })
+  const page = await context.newPage()
+  collectPageErrors(page, pageErrors)
+  await openPanel(page, server.url)
+  await createTag(page, '工作')
+  await chooseDate(page, '2026-11-02')
+  await page.getByRole('button', { name: '2026-11-02 09:00 时间格', exact: true }).click()
+  await page.getByRole('button', { name: /实录 工作 09:00/ }).waitFor()
+
+  const observed = {}
+  for (const theme of ['light', 'dark']) {
+    await setHostTheme(page, theme)
+    await openPanel(page, server.url)
+    await chooseDate(page, '2026-11-02')
+    await page.getByRole('button', { name: /实录 工作 09:00/ }).waitFor()
+    observed[theme] = await page.evaluate(() => {
+      const panel = document.querySelector('.secretary-time-panel')
+      const header = document.querySelector('.product-header')
+      const probe = document.createElement('div')
+      probe.style.cssText = 'position:fixed;visibility:hidden;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)'
+      document.body.appendChild(probe)
+      const panelStyle = getComputedStyle(panel)
+      const tokenStyle = getComputedStyle(probe)
+      const values = {
+        background: panelStyle.backgroundColor,
+        color: panelStyle.color,
+        tokenBackground: tokenStyle.backgroundColor,
+        tokenColor: tokenStyle.color,
+        headerBackground: getComputedStyle(header).backgroundColor,
+        dark: document.body.hasAttribute('data-ds-dark-theme'),
+      }
+      probe.remove()
+      return values
+    })
+    const current = observed[theme]
+    assert.equal(current.dark, theme === 'dark')
+    assert.equal(current.background, current.tokenBackground, `${theme} panel must use the host background token`)
+    assert.equal(current.color, current.tokenColor, `${theme} panel must use the host text token`)
+    const luminance = color => {
+      const channels = color.match(/[\d.]+/g).slice(0, 3).map(Number).map(value => {
+        const channel = value / 255
+        return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+      })
+      return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722
+    }
+    const contrast = (luminance(current.color) + 0.05) / (luminance(current.background) + 0.05)
+    const ratio = contrast >= 1 ? contrast : 1 / contrast
+    assert.ok(ratio >= 4.5, `${theme} text/background contrast ${ratio} must be at least 4.5:1`)
+    if (screenshotDirectory) await page.screenshot({ path: join(screenshotDirectory, `time-tag-${theme}.png`), fullPage: true })
+    await page.setViewportSize({ width: 390, height: 844 })
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `390px ${theme} page has horizontal overflow`)
+    await page.setViewportSize({ width: 1280, height: 900 })
+  }
+  assert.notEqual(observed.light.background, observed.dark.background)
+  assert.notEqual(observed.light.color, observed.dark.color)
   assert.deepEqual(pageErrors, [])
 })

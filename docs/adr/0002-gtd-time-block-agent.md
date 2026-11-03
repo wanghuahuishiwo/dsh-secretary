@@ -1,8 +1,11 @@
 # 0002 · 以 GTD + TimeBlock + Agent 取代 Action-only 模型
 
-- 状态：已接受
-- 日期：2026-10-28
+- 状态：已被取代（2026-11-03）
+- 原决策日期：2026-10-28
 - 取代：[0001 · 以 Action 承载事项、安排与执行](0001-action-centric-model.md)
+- 被取代：[2026-11-03 产品基线](../specs/2026-11-03-secretary-product-foundation.md)、[数据模型](../data-model.md)、[产品架构](../product-architecture.md)
+
+> 本文件仅保留历史决策。其中 TimeBlock 直接关联 Action、planned／actual 同记录、Statistics Projection 等规则已废止，不得作为当前实现依据。
 
 ## 背景
 
