@@ -1,7 +1,7 @@
 {
   "name": "dsh-secretary-panel",
   "version": "0.1.0",
-  "description": "Web GUI panel for dsh-secretary: the weekly hour grid where deep time is marked.",
+  "description": "Web GUI panel for dsh-secretary: a real date-based ActualBlock canvas and Tag shelf.",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
@@ -27,6 +27,15 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "4.0.5"
+  },
+  "dependencies": {
+    "dsh-secretary-tag": "workspace:*",
+    "dsh-secretary-time-block": "workspace:*"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch",
+    "prepare": "node build.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.25.10"

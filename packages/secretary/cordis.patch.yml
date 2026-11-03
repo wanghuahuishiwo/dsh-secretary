@@ -16,10 +16,13 @@
     - id: secretary-gtd
       name: 'dsh-secretary-gtd'
 
+    - id: secretary-tag
+      name: 'dsh-secretary-tag'
+
     - id: secretary-time-block
       name: 'dsh-secretary-time-block'
 
-    # Web GUI 面板：一周 168 小时网格，标出深度时间。Browser 面由 package.json 的 dsh.client 声明。
+    # Web GUI：真实日期实录画布与右侧时间标签架；Browser 面由 dsh.client 声明。
     - id: secretary-panel
       name: 'dsh-secretary-panel'
 
@@ -156,10 +159,10 @@
             disabled: true
           - id: secretary-gtd-tools
             name: 'dsh-secretary-gtd/tools'
+          - id: secretary-tag-tools
+            name: 'dsh-secretary-tag/tools'
           - id: secretary-time-block-tools
             name: 'dsh-secretary-time-block/tools'
-          - id: secretary-statistics
-            name: 'dsh-secretary-statistics'
           - id: secretary-gtd-agent
             name: 'dsh-secretary-gtd/agent'
           - id: secretary-agent
