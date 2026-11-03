@@ -1,7 +1,7 @@
 {
   "name": "dsh-secretary",
   "version": "0.1.0",
-  "description": "Personal Secretary Agent for DSH: GTD, unified Tags, ActualBlocks, proactive preparation, and follow-through.",
+  "description": "Personal Secretary Agent for DSH: GTD, unified Tags, date Plans, PlanTemplates, ActualBlocks, and proactive follow-through.",
   "license": "MIT",
   "keywords": [
     "dsh",

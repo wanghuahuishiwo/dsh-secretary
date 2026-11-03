@@ -1,7 +1,7 @@
 {
   "name": "dsh-secretary-time-block",
   "version": "0.1.0",
-  "description": "Time domain for dsh-secretary: independent, Tag-classified ActualBlocks.",
+  "description": "Time domain for dsh-secretary: independent Tag-classified date Plans, weekday PlanTemplates, and ActualBlocks.",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",

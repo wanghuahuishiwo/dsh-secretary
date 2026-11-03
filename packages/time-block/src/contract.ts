@@ -14,6 +14,68 @@ export interface TimeBlockContent {
   readonly note?: string
 }
 
+export interface PlanTemplateBlock extends TimeBlockContent {
+  readonly id: number
+  readonly weekday: number
+  readonly startTime: string
+  readonly endTime: string
+}
+
+export interface CreatePlanTemplateInput extends TimeBlockContent {
+  readonly weekday: number
+  readonly startTime: string
+  readonly endTime: string
+}
+
+export interface UpdatePlanTemplateInput {
+  readonly timeTagId?: number
+  readonly note?: string | null
+  readonly weekday?: number
+  readonly startTime?: string
+  readonly endTime?: string
+}
+
+export interface ListPlanTemplateQuery {
+  readonly weekday?: number
+}
+
+export interface ApplyPlanTemplateInput {
+  readonly weekday: number
+  readonly targetDate: string
+  readonly timeZone: string
+}
+
+export interface UndoPlanTemplateInput {
+  readonly targetDate: string
+  readonly timeZone: string
+}
+
+export interface PlanBlock extends TimeBlockContent {
+  readonly id: number
+  readonly startAt: string
+  readonly endAt: string
+}
+
+export interface CreatePlanInput extends TimeBlockContent {
+  readonly date: string
+  readonly timeZone: string
+  readonly startAt: string
+  readonly endAt: string
+}
+
+export interface UpdatePlanInput {
+  readonly timeTagId?: number
+  readonly note?: string | null
+  readonly startAt?: string
+  readonly endAt?: string
+}
+
+export interface ListPlanQuery {
+  readonly date?: string
+  readonly timeZone?: string
+  readonly timeTagId?: number
+}
+
 export interface ActualBlock extends TimeBlockContent {
   readonly id: number
   readonly startAt: string
@@ -57,6 +119,18 @@ export abstract class TimeService extends Service {
     super(ctx, 'time')
   }
 
+  abstract createPlanTemplate(input: CreatePlanTemplateInput): Promise<PlanTemplateBlock>
+  abstract listPlanTemplate(query?: ListPlanTemplateQuery): Promise<PlanTemplateBlock[]>
+  abstract updatePlanTemplate(id: number, input: UpdatePlanTemplateInput): Promise<PlanTemplateBlock>
+  abstract deletePlanTemplate(id: number): Promise<PlanTemplateBlock>
+  abstract applyPlanTemplate(input: ApplyPlanTemplateInput): Promise<PlanBlock[]>
+  abstract undoPlanTemplate(input: UndoPlanTemplateInput): Promise<PlanBlock[]>
+  abstract canUndoPlanTemplate(input: UndoPlanTemplateInput): Promise<boolean>
+  abstract createPlan(input: CreatePlanInput): Promise<PlanBlock>
+  abstract getPlan(id: number): Promise<PlanBlock>
+  abstract listPlan(query?: ListPlanQuery): Promise<PlanBlock[]>
+  abstract updatePlan(id: number, input: UpdatePlanInput): Promise<PlanBlock>
+  abstract deletePlan(id: number): Promise<PlanBlock>
   abstract createActual(input: CreateActualInput): Promise<ActualBlock>
   abstract getActual(id: number): Promise<ActualBlock>
   abstract listActual(query?: ListActualQuery): Promise<ActualBlock[]>

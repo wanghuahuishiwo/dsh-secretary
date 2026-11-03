@@ -1,7 +1,7 @@
 {
   "name": "dsh-secretary-panel",
   "version": "0.1.0",
-  "description": "Web GUI panel for dsh-secretary: a real date-based ActualBlock canvas and Tag shelf.",
+  "description": "Web GUI panel for dsh-secretary: date Plan/Actual canvases, PlanTemplates, calendar navigation, and Tag shelf.",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",

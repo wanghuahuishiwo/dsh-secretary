@@ -90,7 +90,24 @@ async function createTag(page, name, parent) {
   await page.getByRole('button', { name, exact: true }).waitFor()
 }
 
-test('real Chromium client uses Services and restores Tag/Actual after a full dsh restart', { timeout: 240_000 }, async (t) => {
+async function chooseDate(page, target) {
+  await page.getByRole('button', { name: '打开日历选择日期', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '选择日期', exact: true })
+  await dialog.waitFor()
+  for (let attempt = 0; attempt < 240; attempt += 1) {
+    const targetButton = dialog.getByRole('button', { name: target, exact: true })
+    if (await targetButton.count() > 0) {
+      await targetButton.click()
+      return
+    }
+    const first = await dialog.locator('.calendar-day').first().getAttribute('aria-label')
+    const direction = target.slice(0, 7) < first.slice(0, 7) ? '上一月' : '下一月'
+    await dialog.getByRole('button', { name: direction, exact: true }).click()
+  }
+  throw new Error(`calendar did not reach ${target}`)
+}
+
+test('real Chromium client covers Plan/Template/date navigation and restores all Time facts after full dsh restarts', { timeout: 360_000 }, async (t) => {
   const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-browser-'))
   const overlay = join(home, 'overlay.yml')
   await writeFile(overlay, [
@@ -146,7 +163,7 @@ test('real Chromium client uses Services and restores Tag/Actual after a full ds
   await createTag(page, '工作')
   await createTag(page, '专注工作', '工作')
   await createTag(page, '听播客', '工作')
-  await page.getByLabel('实录日期').fill('2026-11-02')
+  await chooseDate(page, '2026-11-02')
   await page.getByRole('button', { name: '专注工作', exact: true }).click()
   const slot = page.getByRole('button', { name: '2026-11-02 09:00 时间格', exact: true })
   await slot.click()
@@ -163,7 +180,7 @@ test('real Chromium client uses Services and restores Tag/Actual after a full ds
   await page.getByText('浏览器真实实录', { exact: true }).waitFor()
 
   await openPanel(page, server.url).catch(error => { console.error('DSH output:', server.output()); throw error })
-  await page.getByLabel('实录日期').fill('2026-11-02')
+  await chooseDate(page, '2026-11-02')
   await page.getByText('浏览器真实实录', { exact: true }).waitFor()
 
   await server.stop()
@@ -173,9 +190,82 @@ test('real Chromium client uses Services and restores Tag/Actual after a full ds
   page = await context.newPage()
   page.on('pageerror', error => pageErrors.push(error))
   await openPanel(page, server.url).catch(error => { console.error('DSH output:', server.output()); throw error })
-  await page.getByLabel('实录日期').fill('2026-11-02')
+  await chooseDate(page, '2026-11-02')
   await page.getByText('浏览器真实实录', { exact: true }).waitFor()
   assert.equal(await page.locator('[data-slot="09:00"] .actual-fragment').count(), 2)
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), '390px layout has horizontal overflow')
+
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.getByRole('tab', { name: '计划', exact: true }).click()
+  await chooseDate(page, '2026-11-02')
+  await page.getByRole('button', { name: '专注工作', exact: true }).click()
+  await page.getByRole('button', { name: '2026-11-02 09:00 时间格', exact: true }).click()
+  const originalPlan = page.getByRole('button', { name: /计划 专注工作 09:00/ })
+  await originalPlan.waitFor()
+  await page.getByRole('button', { name: '15 分钟', exact: true }).click()
+  await originalPlan.waitFor()
+  await page.getByRole('button', { name: '30 分钟', exact: true }).click()
+  await originalPlan.waitFor()
+  await page.getByRole('button', { name: '10 分钟', exact: true }).click()
+  await originalPlan.waitFor()
+
+  await page.getByRole('button', { name: '计划模板', exact: true }).click()
+  await page.getByRole('button', { name: '周一', exact: true }).click()
+  await page.getByLabel('模板开始时间').fill('10:00')
+  await page.getByLabel('模板结束时间').fill('11:00')
+  await page.getByLabel('模板备注').fill('浏览器模板计划')
+  await page.getByRole('button', { name: '新增模板', exact: true }).click()
+  await page.getByRole('button', { name: '应用到 2026-11-02', exact: true }).click()
+  const appliedPlan = page.getByRole('button', { name: /计划 专注工作 10:00/ }).first()
+  await appliedPlan.waitFor()
+  assert.equal(await originalPlan.count(), 0)
+
+  await page.getByRole('tab', { name: '实录', exact: true }).click()
+  await page.getByText('浏览器真实实录', { exact: true }).waitFor()
+  assert.equal(await page.locator('[data-slot="09:00"] .actual-fragment').count(), 2)
+
+  await openPanel(page, server.url)
+  await page.getByRole('tab', { name: '计划', exact: true }).click()
+  await chooseDate(page, '2026-11-02')
+  await appliedPlan.waitFor()
+  await page.getByRole('button', { name: '撤销模板应用', exact: true }).click()
+  await originalPlan.waitFor()
+  assert.equal(await appliedPlan.count(), 0)
+
+  await page.getByRole('button', { name: '计划模板', exact: true }).click()
+  await page.getByRole('button', { name: '应用到 2026-11-02', exact: true }).click()
+  await appliedPlan.waitFor()
+  await server.stop()
+  server = await boot(home, overlay)
+  await context.close()
+  context = await browser.newContext({ viewport: { width: 1280, height: 900 } })
+  page = await context.newPage()
+  page.on('pageerror', error => pageErrors.push(error))
+  await openPanel(page, server.url)
+  await page.getByRole('tab', { name: '计划', exact: true }).click()
+  await chooseDate(page, '2026-11-02')
+  await page.getByRole('button', { name: /计划 专注工作 10:00/ }).first().waitFor()
+  await page.getByRole('button', { name: '撤销模板应用', exact: true }).click()
+  await page.getByRole('button', { name: /计划 专注工作 09:00/ }).waitFor()
+
+  await chooseDate(page, '2026-10-31')
+  await page.getByRole('button', { name: '后一天', exact: true }).click()
+  await page.getByText(/2026 年 11 月 1 日/).waitFor()
+  await page.getByRole('button', { name: '前一天', exact: true }).click()
+  await page.getByText(/2026 年 10 月 31 日/).waitFor()
+  await chooseDate(page, '2026-12-15')
+  await page.getByText(/2026 年 12 月 15 日/).waitFor()
+  const today = await page.evaluate(() => {
+    const value = new Date()
+    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`
+  })
+  await page.getByRole('button', { name: '今天', exact: true }).click()
+  await page.getByRole('button', { name: '打开日历选择日期', exact: true }).click()
+  const calendar = page.getByRole('dialog', { name: '选择日期', exact: true })
+  assert.equal(await calendar.locator('.calendar-day.is-today').getAttribute('aria-label'), today)
+  await calendar.getByRole('button', { name: '回到今天', exact: true }).click()
+  await page.getByRole('tab', { name: '实录', exact: true }).click()
+  await chooseDate(page, '2026-11-02')
+  await page.getByText('浏览器真实实录', { exact: true }).waitFor()
   assert.deepEqual(pageErrors, [])
 })

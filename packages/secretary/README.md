@@ -1,6 +1,6 @@
 # dsh-secretary
 
-可安装到 DeepSeek Harness 的私人 Secretary Agent bundle。当前产品切片包含既有 GTD、独立 Tag、具体日期 ActualBlock 与真实 Web 实录面板；各领域共用同一 SQLite，但不互相伪造事实。
+可安装到 DeepSeek Harness 的私人 Secretary Agent bundle。当前产品切片包含既有 GTD、独立 Tag、具体日期 PlanBlock／ActualBlock、独立 PlanTemplateBlock 与真实 Web Time 面板；各领域共用同一 SQLite，计划、模板和实录互不伪造或回写事实。
 
 ## 构建与验证
 
@@ -12,8 +12,8 @@ pnpm test
 
 `pnpm test` 包含：
 
-- 真实 Cordis 公共 tools + 临时 SQLite：Tag 树、Actual CRUD/start/stop、父级去重查询、引用保护、GTD 独立性和完整重开。
-- 真实 `dsh web` + Chromium：生产 client 的标签架、并行实录、Shift 编辑、页面重载、完整进程重开及 390px 布局。
+- 真实 Cordis 公共 tools + 临时 SQLite：Tag 树、Plan CRUD、Template CRUD/apply/undo、Actual CRUD/start/stop、日期／时区／跨日、计划与实录隔离、引用保护、写失败回滚、GTD 独立性和完整重开。
+- 真实 `dsh web` + Chromium：生产 client 的产品壳、月历跨月/今天、标签架、并行实录、Shift 编辑、计划模板应用/撤销、粒度切换、页面重载、完整进程重开及 390px 布局。
 
 浏览器测试需要 `dsh` 在 PATH 和 Playwright Chromium。可用 `pnpm --filter dsh-secretary test:browser` 单独运行。测试使用临时 `DSH_HOME`，不会连接正在使用的 GUI 或真实 Secretary 数据。
 
@@ -45,4 +45,4 @@ desktop profile 通过 `link:` 使用 `packages/secretary` 的构建产物。改
 dsh plugin --profile <name> add /绝对路径/dsh-secretary/packages/secretary
 ```
 
-运行 profile 必须组合 DSH base/web 与本 bundle。当前切片不包含日期计划、计划模板、深度时间、GTD 新标签继承或统计。
+运行 profile 必须组合 DSH base/web 与本 bundle。当前切片不包含深度时间、GTD 新标签继承或统计；深度时间在 Time 中只保留明确未实现入口。

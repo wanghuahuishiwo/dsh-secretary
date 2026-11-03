@@ -1,9 +1,12 @@
 import type { Tag } from 'dsh-secretary-tag/contract'
-import type { ActualBlock } from 'dsh-secretary-time-block/contract'
+import type { ActualBlock, PlanBlock, PlanTemplateBlock } from 'dsh-secretary-time-block/contract'
 
 export interface PanelState {
   readonly tags: Tag[]
   readonly blocks: ActualBlock[]
+  readonly plans: PlanBlock[]
+  readonly templates: PlanTemplateBlock[]
+  readonly templateUndo: boolean
 }
 
 export type PanelCommand = Record<string, unknown> & {

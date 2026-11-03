@@ -9,8 +9,8 @@ DeepSeek Harness 的私人 Secretary Agent：以 GTD 管理事项、以 TimeBloc
 | 能力 | 干什么 | 入口 |
 |---|---|---|
 | 事项管理（GTD） | Inbox 捕获与澄清、Project 与 Action、完成与 Availability 派生 | `secretary_gtd` 工具 |
-| 时间安排（TimeBlock） | 为 Action 安排 planned 区间、记录 actual 实际区间、协商改期 | `secretary_time_block` 工具 |
-| 统计（Statistics） | 按范围汇总 actual 时间，只读投影，不另存事实 | `secretary_statistics` 工具 |
+| 时间安排（Time） | 具体日期 PlanBlock 与 ActualBlock、weekday 计划模板及持久化 apply/undo；计划与实录独立 | `secretary_time` 工具 |
+| 统一标签（Tag） | 维护 time/context 两棵标签树，为时间块提供唯一分类主体 | `secretary_tag` 工具 |
 | 主动工作 | Schedule 定时唤醒 → 读取事项 → 准备实际材料 → 保存引用 → 带着成果联系你 | DSH Schedule + `secretary` 技能 |
 
 **通用执行能力（全部复用 DSH 官方插件，与 standard preset 对齐）**
