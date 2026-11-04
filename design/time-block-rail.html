@@ -476,7 +476,10 @@ const DAY_LIST = [];
 for (let off = -2; off <= 4; off++) DAY_LIST.push(dayKey(off));
 
 let seq = 500;
-const mk = (day, start, end, tagId, layer = 'actual', note = '') => ({ id: ++seq, day, start, end, tagId, layer, note });
+const snapDown = m => Math.floor(m / RN) * RN;
+const snapUp = m => Math.ceil(m / RN) * RN;
+const mk = (day, start, end, tagId, layer = 'actual', note = '') =>
+  ({ id: ++seq, day, start: snapDown(start), end: snapUp(end), tagId, layer, note });
 
 const state = {
   view: 'time', layer: 'actual', tagId: 5,
@@ -577,7 +580,8 @@ function renderBlocks(layer) {
     if (!dayEl) return;
     const host = dayEl.querySelector('.blocks');
     let first = true;
-    for (let m = r.start; m < r.end; m += RN) {
+    const from = snapDown(r.start), to = snapUp(r.end);
+    for (let m = from; m < to; m += RN) {
       const h = Math.floor(m / 60), q = (m % 60) / RN;
       const el = document.createElement('div');
       el.className = 'blk';
@@ -758,7 +762,7 @@ function assign(tagId) {
     const cur = recordIn(day, min, layer);
     if (cur && cur.tagId === tagId) return;
     if (cur) removeSlot(cur, min);
-    state.records.push({ id: ++seq, day, start: min, end: min + RN, tagId, layer, note: '' });
+    state.records.push({ id: ++seq, day, start: snapDown(min), end: snapUp(min) + RN - RN, tagId, layer, note: '' });
   });
   merge(layer);
   state.selected = new Set();
@@ -904,11 +908,11 @@ function openSheet(id) {
 }
 $('#stepStart').addEventListener('click', () => {
   const r = state.records.find(x => x.id === state.sheetId);
-  if (r && r.end - r.start > RN) { r.start += RN; openSheet(r.id); refresh(); }
+  if (r && r.end - r.start > RN) { r.start = snapDown(r.start + RN); openSheet(r.id); refresh(); }
 });
 $('#stepEnd').addEventListener('click', () => {
   const r = state.records.find(x => x.id === state.sheetId);
-  if (r && r.end + RN <= 1440) { r.end += RN; openSheet(r.id); refresh(); }
+  if (r && r.end + RN <= 1440) { r.end = snapUp(r.end + RN); openSheet(r.id); refresh(); }
 });
 $('#sheetNote').addEventListener('input', e => {
   const r = state.records.find(x => x.id === state.sheetId);
