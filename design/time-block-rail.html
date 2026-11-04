@@ -1003,7 +1003,8 @@ function assign(tagId) {
     const cur = recordIn(day, min, layer);
     if (cur && cur.tagId === tagId) return;
     if (cur) removeSlot(cur, min);
-    state.records.push({ id: ++seq, day, start: snapDown(min), end: snapUp(min) + RN - RN, tagId, layer, note: '' });
+    state.records.push({ id: ++seq, day, start: snapDown(min), end: snapDown(min) + RN, tagId, layer, note: '' });
+
   });
   merge(layer);
   state.selected = new Set();
