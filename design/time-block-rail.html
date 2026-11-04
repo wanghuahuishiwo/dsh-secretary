@@ -151,7 +151,7 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
 .blocks{position:absolute;inset:0;pointer-events:none;z-index:2}
 .blk{position:absolute;z-index:3;border-radius:0;overflow:hidden;display:flex;align-items:center;
   padding:0 4px;font-size:10.5px;font-weight:600;letter-spacing:.1px;color:#fff;white-space:nowrap}
-.blk span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.blk span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;letter-spacing:-.1px}
 .blk span.short{letter-spacing:-.2px}
 .selbox{position:absolute;z-index:4;border-radius:0;pointer-events:none;
   box-shadow:inset 0 0 0 2px var(--sel-ring)}
@@ -180,7 +180,7 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);transition:filter .12s,transform .06s}
 .cat:hover{filter:brightness(1.07)}
 .cat:active{transform:scale(.985)}
-.cat.on{box-shadow:inset 0 0 0 2px #fff,0 0 0 2px var(--accent)}
+.cat.on{box-shadow:none}
 .cat.sub{height:28px;font-size:11px;margin-left:7px}
 .cat .caret{margin-left:auto;width:10px;height:10px;opacity:.65;transition:transform .15s}
 .cat[aria-expanded="true"] .caret{transform:rotate(90deg)}
@@ -828,8 +828,7 @@ function renderBlocks(layer) {
       el.style.width = `calc(${100 / PER_HOUR}% - 1px)`;
       el.style.top = `${h * ROW_H + 0.5}px`;
       el.style.height = `${ROW_H - 1}px`;
-      if (r.note || first) el.innerHTML = `<span>${r.note || nameOf(r.tagId)}</span>`;
-      first = false;
+      el.innerHTML = `<span>${r.note || nameOf(r.tagId)}</span>`;
       host.appendChild(el);
     }
   });
@@ -1030,7 +1029,7 @@ function renderShelf(layer) {
   c.list.innerHTML = '';
   TAGS.forEach(t => {
     const b = document.createElement('button');
-    b.className = 'cat' + (state.tagId === t.id ? ' on' : '');
+    b.className = 'cat';
     b.style.background = t.color;
     b.dataset.tag = t.id;
     b.innerHTML = `<span>${t.name}</span>` + (t.kids
@@ -1043,7 +1042,7 @@ function renderShelf(layer) {
     c.list.appendChild(b);
     if (t.kids && state.expanded[t.id]) t.kids.forEach(k => {
       const s = document.createElement('button');
-      s.className = 'cat sub' + (state.tagId === k.id ? ' on' : '');
+      s.className = 'cat sub';
       s.style.background = k.color;
       s.dataset.tag = k.id;
       s.innerHTML = `<span>${k.name}</span>`;
