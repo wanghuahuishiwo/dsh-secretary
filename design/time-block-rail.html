@@ -327,6 +327,7 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
           <span id="statusText"></span>
           <span class="grow"></span>
           <button class="sb" id="noteBtn" hidden>备注</button>
+          <button class="sb" id="clearBtn">不选</button>
           <button class="sb erase" id="eraseBtn">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5.5 3h7v9h-7l-3.5-4.5z"/><path d="M8 6l3 3M11 6l-3 3"/></svg>
             橡皮
@@ -355,6 +356,7 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
           <span id="statusTextPlan"></span>
           <span class="grow"></span>
           <button class="sb" id="noteBtnPlan" hidden>备注</button>
+          <button class="sb" id="clearBtnPlan">不选</button>
           <button class="sb erase" id="eraseBtnPlan">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5.5 3h7v9h-7l-3.5-4.5z"/><path d="M8 6l3 3M11 6l-3 3"/></svg>
             橡皮
@@ -656,37 +658,49 @@ function rangeSlots(day, a, b) {
 }
 function bindCanvas(layer) {
   const c = canvases[layer];
+  const same = (a, b) => a.size === b.size && [...a].every(k => b.has(k));
+
   c.days.addEventListener('pointerdown', e => {
     const pos = cellPos(e);
     if (!pos) return;
     const r = recordIn(pos.day, pos.min, layer);
-    drag = { base: new Set(state.selected), day: pos.day, anchor: pos.min, moved: false, record: r };
-    state.selected = r ? new Set(slotsOf(r)) : new Set([slotKey(pos.day, pos.min)]);
+    const hit = r ? new Set(slotsOf(r)) : new Set([slotKey(pos.day, pos.min)]);
+    const already = same(state.selected, hit) || state.selected.has(slotKey(pos.day, pos.min));
+
+    // 按下时：拖 = 从这一格重新拉一段；点 = 到 pointerup 再决定（选中 / 取消）
+    drag = { day: pos.day, anchor: pos.min, moved: false, record: r, startedSelected: already };
+    if (!already) state.selected = r ? hit : new Set([slotKey(pos.day, pos.min)]);
     refresh(); e.preventDefault();
   });
+
   window.addEventListener('pointermove', e => {
     if (!drag || layer !== state.layer) return;
     const pos = cellPos(e);
     if (!pos || pos.day !== drag.day) return;
-    drag.moved = true;
-    const next = new Set(drag.base);
-    rangeSlots(drag.day, drag.anchor, pos.min).forEach(k => next.add(k));
-    state.selected = next;
+    if (!drag.moved && pos.min === drag.anchor) return;
+    drag.moved = true;                        // 一旦拖动，选区就是这一段，不再叠加旧选区
+    state.selected = new Set(rangeSlots(drag.day, drag.anchor, pos.min));
     refresh();
   });
+
   window.addEventListener('pointerup', () => {
     if (!drag || layer !== state.layer) return;
     if (!drag.moved) {
-      if (drag.record) state.selected = new Set(slotsOf(drag.record));
-      else {
-        const k = slotKey(drag.day, drag.anchor);
-        const next = new Set(drag.base);
-        next.has(k) ? next.delete(k) : next.add(k);
-        state.selected = next;
+      if (drag.startedSelected) state.selected = new Set();                 // 点已选的块 = 取消
+      else if (drag.record) state.selected = new Set(slotsOf(drag.record)); // 点没选的块 = 选中整条
+      else if (state.selected.size && !state.selected.has(slotKey(drag.day, drag.anchor))) {
+        state.selected = new Set([slotKey(drag.day, drag.anchor)]);         // 点另一格 = 换成这一格
       }
     }
     drag = null; refresh();
   });
+}
+
+/** 清空选区（底栏「不选」/ Esc / 点空白） */
+function clearSelection() {
+  if (!state.selected.size) return;
+  state.selected = new Set();
+  refresh();
 }
 function snapshot() {
   state.undo.push(JSON.stringify(state.records));
@@ -910,12 +924,21 @@ $('#undoBtn').addEventListener('click', () => {
 });
 $('#shelfMore').addEventListener('click', () => { module = 'tags'; closeDrawer(); syncView(); });
 $('#eraseBtn').addEventListener('click', eraser);
+$('#clearBtn').addEventListener('click', clearSelection);
+$('#clearBtnPlan').addEventListener('click', clearSelection);
 $('#eraseBtnPlan').addEventListener('click', eraser);
 $('#noteBtn').addEventListener('click', () => state.sheetId && openSheet(state.sheetId));
 $('#noteBtnPlan').addEventListener('click', () => state.sheetId && openSheet(state.sheetId));
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  closeDrawer(); closeSubMenu(); $('#sheet').classList.remove('on');
+  if ($('#sheet').classList.contains('on')) { $('#sheet').classList.remove('on'); return; }
+  if ($('#subMenu').classList.contains('on')) { closeSubMenu(); return; }
+  if ($('#drawer').classList.contains('on')) { closeDrawer(); return; }
+  clearSelection();
+});
+document.addEventListener('pointerdown', e => {
+  if (e.target.closest('.cell') || e.target.closest('.status') || e.target.closest('.shelf')) return;
+  clearSelection();
 });
 
 /* 滚动：回到今天 */
