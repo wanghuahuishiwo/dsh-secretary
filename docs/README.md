@@ -21,6 +21,7 @@
 
 - [research/timeblock-app.md](research/timeblock-app.md) — iPhone App「时间块」概念模型调研。
 - [research/omnifocus.md](research/omnifocus.md) — OmniFocus 核心模型、日期与状态语义。
+- [research/omnifocus-mac.md](research/omnifocus-mac.md) — OmniFocus 4 for Mac 官方交互、UI 结构、视觉证据与截图索引。
 - [research/dsh-plugin-development.md](research/dsh-plugin-development.md) — DSH 插件依赖、bundle 装配、Host／Client 边界与 tracer bullet 开发约束。
 - [research/plan-actual-comparison.md](research/plan-actual-comparison.md) — 计划与实录对照研究，供后续专题使用；不代表现行统计能力。
 - [personal-profile.md](personal-profile.md) — 深度时间背景资料的工作副本，权威仍在个人知识库。
