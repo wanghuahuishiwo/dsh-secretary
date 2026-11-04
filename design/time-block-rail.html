@@ -452,6 +452,20 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
 .deep-levels .lv.on{opacity:1;box-shadow:inset 0 0 0 2px #fff,0 0 0 2px var(--accent)}
 .deep-levels .note{margin-top:auto;font-size:10.5px;color:var(--txt-4);line-height:1.6;padding:0 2px}
 
+
+/* 深度时间：和时间块同一套骨架（左刻度 + 格阵 + 右侧画笔列 + 底栏） */
+.view[data-view="deep"]{flex-direction:column}
+.deep-head{flex:none;height:26px;display:flex;padding-left:30px;border-bottom:1px solid var(--line-2)}
+.deep-head .d{flex:1;display:grid;place-items:center;font-size:10.5px;color:var(--txt-3)}
+.deep-head .d.today{color:var(--accent);font-weight:600}
+.deep-body{flex:1;min-height:0;display:flex;overflow:hidden}
+.deep-hours{width:30px;flex:none;position:relative}
+.deep-hours span{position:absolute;right:6px;font-size:9.5px;color:var(--txt-4);font-variant-numeric:tabular-nums}
+.deep-cols{flex:1;display:flex;min-width:0;position:relative}
+.deep-col{flex:1;min-width:0;position:relative}
+.hc{position:absolute;left:0;right:0;border:0;background:var(--cell);cursor:crosshair}
+.hc.filled{background:var(--deep-c)}
+
 </style>
 </head>
 <body><div class="stage">
@@ -568,9 +582,27 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
 
         <!-- 深度时间：7×24 周模板 -->
         <section class="view" data-view="deep">
-          <div class="deep">
-            <div class="deep-grid" id="deepGrid"></div>
-            <aside class="deep-levels" id="deepLevels"></aside>
+          <div class="tb">
+            <div class="tb-main">
+              <div class="deep-head" id="deepHead"></div>
+              <div class="deep-body" id="deepBody"></div>
+            </div>
+            <aside class="shelf" id="deepShelf">
+              <button class="shelf-head" id="deepShelfHead">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5.2L6 2.4l3 2.8M3 9.5L6 6.7l3 2.8"/></svg>
+                <span>合上所有内容</span>
+              </button>
+              <div class="shelf-list" id="deepLevels"></div>
+            </aside>
+          </div>
+          <div class="status" id="deepStatus">
+            <span id="deepStatusText"></span>
+            <span class="grow"></span>
+            <button class="sb" id="deepClear">不选</button>
+            <button class="sb erase" id="deepErase">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5.5 3h7v9h-7l-3.5-4.5z"/><path d="M8 6l3 3M11 6l-3 3"/></svg>
+              橡皮
+            </button>
           </div>
         </section>
 
@@ -1247,15 +1279,13 @@ function renderInsp() {
 
 
 
-/* ============================ 深度时间：7×24 周模板 ============================ */
+/* ============================ 深度时间：和时间块完全同一套交互 ============================ */
 const LEVELS = [
-  { id: 'H', name: 'high', color: '#6fbf73' },
-  { id: 'M', name: 'medium', color: '#e0c04a' },
-  { id: 'L', name: 'low', color: '#9aa0ac' },
+  { id: 'H', name: 'high', color: '#5aa86a' },
+  { id: 'M', name: 'medium', color: '#b99530' },
+  { id: 'L', name: 'low', color: '#79808c' },
 ];
-const DEEP_ROW = 30;
 const deep = new Map();
-// 预置一个还算像样的基础周
 [[1, 9, 'H'], [1, 10, 'H'], [1, 11, 'H'], [1, 14, 'M'], [1, 20, 'L'],
  [2, 9, 'H'], [2, 10, 'H'], [2, 14, 'M'], [2, 20, 'L'],
  [3, 9, 'H'], [3, 10, 'H'], [3, 11, 'H'], [3, 15, 'M'], [3, 20, 'M'],
@@ -1265,84 +1295,136 @@ const deep = new Map();
  [7, 10, 'L'], [7, 16, 'M'], [7, 21, 'L']].forEach(([d, h, v]) => deep.set(`${d}-${h}`, v));
 
 let deepLevel = 'H';
+let deepRowH = 30;
+const deepSel = new Set();
 let deepDrag = null;
 
+function deepColor(id) { return (LEVELS.find(l => l.id === id) || {}).color || 'transparent'; }
+
 function renderDeep() {
-  const host = $('#deepGrid');
-  if (!host) return;
-  document.documentElement.style.setProperty('--deep-row', `${DEEP_ROW}px`);
+  const headHost = $('#deepHead'), bodyHost = $('#deepBody');
+  if (!headHost || !bodyHost) return;
   const todayCol = new Date().getDay() === 0 ? 7 : new Date().getDay();
-  host.innerHTML = `<div class="deep-head">${['一', '二', '三', '四', '五', '六', '日']
-    .map((n, i) => `<div class="d${i + 1 === todayCol ? ' today' : ''}">${n}</div>`).join('')}</div>`;
-  const body = document.createElement('div');
-  body.className = 'deep-body';
-  const hours = document.createElement('div');
-  hours.className = 'deep-hours';
-  for (let h = 0; h < 24; h++) {
-    const s = document.createElement('span');
-    s.style.top = `${h * DEEP_ROW + 3}px`;
-    s.textContent = h % 2 === 0 ? `${h}` : '';
-    hours.appendChild(s);
-  }
-  const cols = document.createElement('div');
-  cols.className = 'deep-cols';
-  for (let d = 1; d <= 7; d++) {
-    const col = document.createElement('div');
-    col.className = 'deep-col';
-    for (let h = 0; h < 24; h++) {
-      const cell = document.createElement('div');
-      cell.className = 'hc ' + (deep.get(`${d}-${h}`) || '');
-      cell.dataset.k = `${d}-${h}`;
-      col.appendChild(cell);
-    }
-    cols.appendChild(col);
-  }
-  body.append(hours, cols);
-  host.appendChild(body);
-  renderLevels();
+  headHost.innerHTML = ['一', '二', '三', '四', '五', '六', '日']
+    .map((n, i) => `<div class="d${i + 1 === todayCol ? ' today' : ''}">${n}</div>`).join('');
+
+  const available = bodyHost.clientHeight - 2;
+  deepRowH = Math.max(16, Math.min(44, available / 24));
+
+  const hours = `<div class="deep-hours">${Array.from({ length: 24 }, (_, h) =>
+    `<span style="top:${h * deepRowH + 3}px">${h % 2 === 0 ? h : ''}</span>`).join('')}</div>`;
+  const cols = Array.from({ length: 7 }, (_, ci) => {
+    const d = ci + 1;
+    const cells = Array.from({ length: 24 }, (_, h) => {
+      const level = deep.get(`${d}-${h}`);
+      const top = h * deepRowH + 0.5, height = deepRowH - 1;
+      const style = `top:${top}px;height:${height}px;left:0.5px;right:0.5px;` +
+        (level ? `background:${deepColor(level)};` : '');
+      return `<div class="hc${level ? ' filled' : ''}" data-k="${d}-${h}" style="${style}"></div>`;
+    }).join('');
+    return `<div class="deep-col" data-d="${d}">${cells}</div>`;
+  }).join('');
+  bodyHost.innerHTML = hours + `<div class="deep-cols">${cols}</div>`;
+  renderDeepLevels();
+  renderDeepSelection();
+  renderDeepStatus();
 }
 
-function renderLevels() {
+function renderDeepLevels() {
   const host = $('#deepLevels');
   if (!host) return;
   host.innerHTML = '';
   LEVELS.forEach(l => {
     const b = document.createElement('button');
-    b.className = 'lv' + (deepLevel === l.id ? ' on' : '');
+    b.className = 'cat' + (deepLevel === l.id ? ' on' : '');
     b.style.background = l.color;
     b.textContent = l.name;
-    b.addEventListener('click', () => { deepLevel = l.id; renderLevels(); });
+    b.addEventListener('click', () => { deepLevel = l.id; assignDeep(); });
     host.appendChild(b);
   });
-
 }
 
-function paintDeep(k, level) {
-  const cur = deep.get(k);
-  const next = cur === level ? null : level;
-  if (next) deep.set(k, next); else deep.delete(k);
-  const cell = document.querySelector(`.deep-col .hc[data-k="${k}"]`);
-  if (cell) cell.className = 'hc ' + (next || '');
+function renderDeepSelection() {
+  document.querySelectorAll('.deep-body .selbox').forEach(el => el.remove());
+  deepSel.forEach(k => {
+    const [d, h] = k.split('-').map(Number);
+    const col = document.querySelector(`.deep-col[data-d="${d}"]`);
+    if (!col) return;
+    const box = document.createElement('div');
+    box.className = 'selbox';
+    box.style.left = '0.5px';
+    box.style.right = '0.5px';
+    box.style.top = `${h * deepRowH + 0.5}px`;
+    box.style.height = `${deepRowH - 1}px`;
+    box.innerHTML = '<i style="left:0;width:100%"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M2.5 6.4l2.3 2.3L9.5 3.7"/></svg></i>';
+    col.appendChild(box);
+  });
 }
+
+function renderDeepStatus() {
+  const bar = $('#deepStatus');
+  if (!bar) return;
+  if (!deepSel.size) { bar.classList.remove('on'); return; }
+  bar.classList.add('on');
+  $('#deepStatusText').innerHTML = `选择了 <b>${deepSel.size}</b> 格`;
+}
+
+function assignDeep() {
+  if (!deepSel.size) { say('先在格子上选一段，再点档位'); return; }
+  deepSel.forEach(k => deep.set(k, deepLevel));
+  deepSel.clear();
+  renderDeep();
+  say(`已记 ${deepLevel}`);
+}
+function eraseDeep() {
+  if (!deepSel.size) return;
+  deepSel.forEach(k => deep.delete(k));
+  deepSel.clear();
+  renderDeep();
+}
+
 function bindDeep() {
-  const host = $('#deepGrid');
+  const host = $('#deepBody');
   if (!host) return;
   host.addEventListener('pointerdown', e => {
     const cell = e.target.closest('.hc');
     if (!cell) return;
-    deepDrag = { start: deep.get(cell.dataset.k), level: deepLevel, active: true };
-    paintDeep(cell.dataset.k, deepDrag.level);
+    const k = cell.dataset.k;
+    deepDrag = { start: k, moved: false, was: deepSel.has(k) };
+    deepSel.add(k);
+    renderDeepSelection(); renderDeepStatus();
     e.preventDefault();
   });
-  host.addEventListener('pointerover', e => {
+  window.addEventListener('pointermove', e => {
     if (!deepDrag) return;
     const cell = e.target.closest('.hc');
-    if (cell) paintDeep(cell.dataset.k, deepDrag.level);
+    if (!cell) return;
+    deepDrag.moved = true;
+    const [d1, h1] = deepDrag.start.split('-').map(Number);
+    const [d2, h2] = cell.dataset.k.split('-').map(Number);
+    if (d1 !== d2) return;
+    deepSel.clear();
+    for (let h = Math.min(h1, h2); h <= Math.max(h1, h2); h++) deepSel.add(`${d1}-${h}`);
+    renderDeepSelection(); renderDeepStatus();
   });
-  window.addEventListener('pointerup', () => { deepDrag = null; });
+  window.addEventListener('pointerup', () => {
+    if (!deepDrag) return;
+    if (!deepDrag.moved && deepDrag.was) {
+      deepSel.delete(deepDrag.start);
+      renderDeepSelection(); renderDeepStatus();
+    }
+    deepDrag = null;
+  });
 }
 bindDeep();
-
+$('#deepClear')?.addEventListener('click', () => { deepSel.clear(); renderDeepSelection(); renderDeepStatus(); });
+$('#deepErase')?.addEventListener('click', eraseDeep);
+$('#deepShelfHead')?.addEventListener('click', () => {
+  $('#deepShelf')?.classList.toggle('mini');
+});
+window.addEventListener('resize', () => {
+  if (document.querySelector('.view[data-view="deep"]')?.classList.contains('on')) renderDeep();
+});
 /* ============================ 编辑浮层 ============================ */
 function openSheet(id) {
   const r = state.records.find(x => x.id === id);
