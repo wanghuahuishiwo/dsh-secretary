@@ -401,6 +401,16 @@ test('深度时间 paints one week, the next week inherits it, and editing that 
     await page.getByRole('button', { name: '上一周' }).click()
     await page.waitForFunction(() => document.querySelectorAll('.sec-hc.H').length === 4, undefined, { timeout: 20_000 })
 
+    // The header week control jumps to any week by date, and an untouched week starts empty.
+    await page.locator('.sec-week-input').evaluate((element, value) => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+      setter.call(element, value)
+      element.dispatchEvent(new Event('input', { bubbles: true }))
+    }, '2026-10-14')
+    await page.waitForFunction(() => document.querySelectorAll('.sec-hc.H').length === 0, undefined, { timeout: 20_000 })
+    assert.match(await page.locator('.sec-week').innerText(), /10月12日\s*–\s*10月18日/, 'the header names the week it shows')
+    await page.screenshot({ path: join(tmpdir(), 'secretary-deep-week.png') })
+
     await server.stop()
     server = await boot(home, overlay)
     await openProduct(page, server.url)

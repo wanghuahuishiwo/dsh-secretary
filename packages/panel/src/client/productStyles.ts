@@ -206,13 +206,12 @@ export const productStyles = `.sec-shell {
 .sec-placeholder .ph-d { font-size: 12px; color: var(--txt-4); line-height: 1.7; max-width: 250px; }
 
 /* ---------- 深度时间 ---------- */
-.sec-weekbar { flex: none; height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-bottom: 1px solid var(--line-2); }
-.sec-weekbar .wk { width: 22px; height: 22px; border-radius: 5px; color: var(--txt-3); display: grid; place-items: center; padding: 0; }
-.sec-weekbar .wk:hover { background: var(--rail-3); color: var(--txt); }
-.sec-weekbar .wk svg { width: 12px; height: 12px; }
-.sec-weekbar .range { font-size: 12px; color: var(--txt-2); font-variant-numeric: tabular-nums; }
-.sec-weekbar .now { height: 22px; border-radius: 5px; color: var(--txt-3); font-size: 11.5px; padding: 0 8px; margin-left: auto; }
-.sec-weekbar .now:hover { background: var(--rail-3); color: var(--txt); }
+.sec-week { height: 24px; padding: 0 8px; border-radius: 6px; color: var(--txt-2); font-size: 12px;
+  font-variant-numeric: tabular-nums; }
+.sec-week:hover { background: var(--rail-3); color: var(--txt); }
+.sec-week-now { height: 24px; padding: 0 8px; border-radius: 6px; color: var(--txt-3); font-size: 11.5px; }
+.sec-week-now:hover { background: var(--rail-3); color: var(--txt); }
+.sec-week-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
 .sec-deep { flex: 1; min-height: 0; display: flex; }
 .sec-deep-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
 .sec-deep-head { flex: none; height: 26px; display: flex; padding-left: 30px; border-bottom: 1px solid var(--line-2); }

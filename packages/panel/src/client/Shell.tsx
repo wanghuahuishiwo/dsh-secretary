@@ -41,6 +41,13 @@ const PLACEHOLDERS: Partial<Record<Module, { title: string; body: string }>> = {
   settings: { title: '设置', body: '这里将来放默认时区、每格时长和主题。' },
 }
 
+/** `11月2日 – 11月8日` for one week starting on `weekStart`. */
+function weekLabel(weekStart: string): string {
+  const start = new Date(`${weekStart}T12:00:00`)
+  const end = new Date(`${addDays(weekStart, 6)}T12:00:00`)
+  return `${start.getMonth() + 1}月${start.getDate()}日 – ${end.getMonth() + 1}月${end.getDate()}日`
+}
+
 function timeZoneOf(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Shanghai'
 }
@@ -65,6 +72,7 @@ export function SecretaryProduct() {
   const [error, setError] = useState('')
   const toastTimer = useRef<number>(0)
   const titleRef = useRef<HTMLButtonElement | null>(null)
+  const weekInput = useRef<HTMLInputElement | null>(null)
   const shellRef = useRef<HTMLDivElement | null>(null)
 
   const say = useCallback((message: string) => {
@@ -185,6 +193,14 @@ export function SecretaryProduct() {
     if (ok) { setSheet(undefined); say('已删除') }
   }, [run, say])
 
+  /** Pick any day and land on that week; the native picker keeps the calendar familiar. */
+  const openWeekPicker = () => {
+    const element = weekInput.current
+    if (element === null) return
+    if (typeof element.showPicker === 'function') element.showPicker()
+    else element.click()
+  }
+
   const titleSub = module === 'time' ? (timeView === 'plan' ? '计划' : '实录') : ''
   const warnings: PanelWarning[] = state?.warnings ?? []
 
@@ -210,12 +226,36 @@ export function SecretaryProduct() {
           <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M2.5 4.5L6 8l3.5-3.5" /></svg>
         </button>
         <span className="grow" />
+        {module === 'time' && (
+          <input
+            className="sec-date"
+            type="date"
+            aria-label="跳到某一天"
+            value={topDate}
+            onChange={event => { if (event.target.value !== '') jumpTo(event.target.value) }}
+          />
+        )}
+        {module === 'deep' && (
+          <>
+            <button className="sec-hbtn" type="button" title="上一周" aria-label="上一周" onClick={() => setWeekStart(addDays(weekStart, -7))}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M9.5 4L5.5 8l4 4" /></svg>
+            </button>
+            <button className="sec-week" type="button" aria-label="跳到某一周" onClick={() => openWeekPicker()}>
+              {weekLabel(weekStart)}
+            </button>
+            <button className="sec-hbtn" type="button" title="下一周" aria-label="下一周" onClick={() => setWeekStart(addDays(weekStart, 7))}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M6.5 4l4 4-4 4" /></svg>
+            </button>
+            <button className="sec-week-now" type="button" onClick={() => setWeekStart(weekStartOf(localDate()))}>本周</button>
+          </>
+        )}
         <input
-          className="sec-date"
+          ref={weekInput}
+          className="sec-week-input"
           type="date"
-          aria-label="跳到某一天"
-          value={topDate}
-          onChange={event => { if (event.target.value !== '') jumpTo(event.target.value) }}
+          aria-label="按日期选周"
+          value={weekStart}
+          onChange={event => { if (event.target.value !== '') setWeekStart(weekStartOf(event.target.value)) }}
         />
         <button className="sec-hbtn" type="button" title="撤销" disabled={undoStack.length === 0 || busy} onClick={() => void undo()}>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M3 7h6.5a3.5 3.5 0 010 7H6" /><path d="M5.5 4L2.5 7l3 3" /></svg>
@@ -269,7 +309,6 @@ export function SecretaryProduct() {
             weekStart={weekStart}
             today={state?.today ?? localDate()}
             busy={busy}
-            onWeekChange={setWeekStart}
             onPaint={(rects, level) => void paintDeep(rects, level)}
           />}
         </section>

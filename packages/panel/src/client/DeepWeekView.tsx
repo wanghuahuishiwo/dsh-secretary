@@ -7,7 +7,6 @@ interface Props {
   readonly weekStart: string
   readonly today: string
   readonly busy: boolean
-  readonly onWeekChange: (weekStart: string) => void
   readonly onPaint: (rects: readonly DeepRect[], level: DeepLevel | null) => void
 }
 
@@ -59,7 +58,7 @@ function rectsOf(selection: ReadonlySet<string>): DeepRect[] {
 }
 
 /** The 深度时间 week grid: seven days by twenty-four hours, painted by level. */
-export function DeepWeekView({ week, weekStart, today, busy, onWeekChange, onPaint }: Props) {
+export function DeepWeekView({ week, weekStart, today, busy, onPaint }: Props) {
   const bodyRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef<{ key: string; moved: boolean; wasSelected: boolean } | null>(null)
   const selectionRef = useRef<Set<string>>(new Set())
@@ -164,16 +163,6 @@ export function DeepWeekView({ week, weekStart, today, busy, onWeekChange, onPai
 
   return (
     <>
-      <div className="sec-weekbar">
-        <button className="wk" type="button" aria-label="上一周" onClick={() => onWeekChange(addDays(weekStart, -7))}>
-          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M7.5 2.5L4 6l3.5 3.5" /></svg>
-        </button>
-        <span className="range">{rangeLabel}</span>
-        <button className="wk" type="button" aria-label="下一周" onClick={() => onWeekChange(addDays(weekStart, 7))}>
-          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M4.5 2.5L8 6l-3.5 3.5" /></svg>
-        </button>
-        <button className="now" type="button" onClick={() => onWeekChange(weekStartOf(today))}>本周</button>
-      </div>
       <div className="sec-deep">
         <div className="sec-deep-main">
           <div className="sec-deep-head">
