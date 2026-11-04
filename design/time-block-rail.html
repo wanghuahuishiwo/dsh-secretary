@@ -544,10 +544,8 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
         <!-- 事项：三栏 -->
         <section class="view" data-view="gtd">
           <div class="gtd" id="gtd" data-w="narrow">
-            <div class="gtd-persp" id="gtdPersp"></div>
             <div class="gtd-main">
               <div class="gtd-head">
-                <span class="t" id="gtdTitle">今天</span>
                 <span class="c" id="gtdCount"></span>
                 <span class="grow"></span>
                 <button class="sb" id="gtdAdd">＋</button>
@@ -559,7 +557,7 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
 
         <section class="view" data-view="tags"><div class="placeholder"><div class="ph-t">标签</div><div class="ph-d">时间标签 / 情境标签的增删改，下一步做。</div></div></section>
         <section class="view" data-view="settings"><div class="placeholder"><div class="ph-t">设置</div><div class="ph-d">原型里只有主题。</div><button class="btn" id="themeBtn" style="max-width:160px;margin-top:6px">切换明暗</button></div></section>
-        <section class="view" data-view="data"><div class="placeholder"><div class="ph-t">数据</div><div class="ph-d">SQLite 只读浏览（secretary.db 的表与行），将来排查问题用。</div></div></section>
+        
       </div>
 
       <div class="sheet" id="sheet">
@@ -586,7 +584,7 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
         <button class="mrow" data-go="gtd"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4.5l1.6 1.6L7.5 3"/><path d="M3 11.5l1.6 1.6L7.5 10"/><path d="M9.5 4.8h4M9.5 11.8h4"/></svg>事项</button>
         <div class="dsep"></div>
         <button class="mrow" data-go="tags"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7.5 2H13v5.5L7.8 12.7a1.4 1.4 0 01-2 0L3.3 10.2a1.4 1.4 0 010-2z"/><circle cx="10.8" cy="5.2" r=".9"/></svg>标签</button>
-        <button class="mrow" data-go="data"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><ellipse cx="8" cy="4.6" rx="5" ry="2.1"/><path d="M3 4.6v6.8c0 1.2 2.2 2.1 5 2.1s5-.9 5-2.1V4.6"/><path d="M3 8c0 1.2 2.2 2.1 5 2.1s5-.9 5-2.1"/></svg>数据</button>
+
         <div class="dsep"></div>
         <button class="mrow" data-go="settings"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1"/></svg>设置</button>
       </nav>
@@ -972,7 +970,6 @@ const MODULES = {
   time: { name: '时间块', subs: [{ id: 'actual', name: '实录' }, { id: 'plan', name: '计划' }] },
   gtd: { name: '事项', subs: [] },
   tags: { name: '标签', subs: [] },
-  data: { name: '数据', subs: [] },
   settings: { name: '设置', subs: [] },
 };
 
@@ -981,7 +978,12 @@ function syncView() {
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.dataset.view === view));
   document.querySelectorAll('.mrow').forEach(b => b.classList.toggle('on', b.dataset.go === module));
   $('#titleText').textContent = MODULES[module].name;
-  $('#titleSub').textContent = module === 'time' && subView === 'plan' ? '计划' : '';
+  const cur = module === 'time'
+    ? (subView === 'plan' ? '计划' : '实录')
+    : module === 'gtd'
+      ? (GTD.persp.find(p => p.id === GTD.cur) || {}).name || ''
+      : '';
+  $('#titleSub').textContent = cur;
 }
 function openDrawer() { $('#drawer').classList.add('on'); $('#scrim').classList.add('on'); }
 function closeDrawer() { $('#drawer').classList.remove('on'); $('#scrim').classList.remove('on'); }
@@ -990,10 +992,16 @@ $('#menuBtn').addEventListener('click', () => {
 });
 $('#scrim').addEventListener('click', closeDrawer);
 
+function subItems() {
+  if (module === 'time') return [{ id: 'actual', name: '实录' }, { id: 'plan', name: '计划' }].map(
+    x => ({ ...x, on: subView === x.id }));
+  if (module === 'gtd') return GTD.persp.map(p => ({ id: p.id, name: `${p.name}`, on: GTD.cur === p.id }));
+  return [];
+}
 function buildSubMenu() {
   const el = $('#subMenu');
-  const subs = MODULES[module].subs;
-  el.innerHTML = subs.length ? subs.map(x => `<button data-sub="${x.id}" class="${subView === x.id ? 'on' : ''}">
+  const items = subItems();
+  el.innerHTML = items.length ? items.map(x => `<button data-sub="${x.id}" class="${x.on ? 'on' : ''}">
       <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2.5 6.2l2.4 2.4L9.5 4"/></svg>${x.name}</button>`).join('') : '';
 }
 function openSubMenu() {
@@ -1007,11 +1015,17 @@ function openSubMenu() {
   el.classList.add('on');
   $('#titleBtn').setAttribute('aria-expanded', 'true');
   el.querySelectorAll('[data-sub]').forEach(b => b.addEventListener('click', () => {
-    subView = b.dataset.sub;
-    state.layer = subView === 'plan' ? 'plan' : 'actual';
-    state.selected = new Set();
-    closeSubMenu(); syncView(); renderShelf(state.layer); refresh();
-    requestAnimationFrame(() => scrollToNow(canvases[state.layer], false));
+    const id = b.dataset.sub;
+    if (module === 'time') {
+      subView = id;
+      state.layer = id === 'plan' ? 'plan' : 'actual';
+      state.selected = new Set();
+      closeSubMenu(); syncView(); renderShelf(state.layer); refresh();
+      requestAnimationFrame(() => scrollToNow(canvases[state.layer], false));
+    } else if (module === 'gtd') {
+      GTD.cur = id;
+      closeSubMenu(); syncView(); renderGtd();
+    }
   }));
 }
 function closeSubMenu() {
@@ -1029,7 +1043,7 @@ document.querySelectorAll('.mrow').forEach(b => b.addEventListener('click', () =
   module = b.dataset.go;
   subView = module === 'time' ? 'actual' : '';
   closeDrawer(); syncView();
-  if (module === 'gtd') renderGtd();
+  if (module === 'gtd') { syncView(); renderGtd(); }
   if (module === 'time') { renderShelf(state.layer); refresh(); }
 }));
 $('#themeBtn')?.addEventListener('click', () => {
@@ -1117,8 +1131,7 @@ function renderGtd() {
   const host = $('#gtdOutline');
   if (!host) return;
   renderGtdSide();
-  const name = (GTD.projects.find(p => p.id === GTD.cur) || GTD.persp.find(p => p.id === GTD.cur) || {}).name || '今天';
-  $('#gtdTitle').textContent = name;
+
   const list = gtdVisible();
   $('#gtdCount').textContent = `${list.filter(a => !GTD.done.has(a.id)).length} 个未完成`;
   host.innerHTML = '';
@@ -1310,6 +1323,7 @@ bindScroll(canvases.actual);
 bindScroll(canvases.plan);
 renderShelf('actual');
 renderShelf('plan');
+syncView();
 refresh();
 requestAnimationFrame(() => { scrollToNow(canvases.actual, false); });
 </script>
