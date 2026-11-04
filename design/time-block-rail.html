@@ -315,7 +315,7 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
 .status{width:100%;max-width:600px;margin:0 auto}
 
 /* ===== 事项：宽屏三栏（OmniFocus 桌面版手感） ===== */
-.gtd{flex:1;min-height:0;display:flex;background:var(--rail)}
+.gtd{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--rail)}
 .gtd-side{width:228px;flex:none;border-right:1px solid var(--line);overflow-y:auto;padding:10px 8px}
 .gtd-side h4{margin:6px 6px 6px;font-size:10.5px;font-weight:600;color:var(--txt-4);letter-spacing:.4px}
 .prow{height:30px;display:flex;align-items:center;gap:7px;padding:0 8px;border-radius:6px;font-size:12.5px;color:var(--txt-2);cursor:pointer}
@@ -362,6 +362,71 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
 .gtd[data-w="mid"] .gtd-insp{width:250px}
 .gtd[data-w="narrow"] .gtd-side,.gtd[data-w="narrow"] .gtd-insp{display:none}
 
+
+/* ===== 去框线：画布、栏位之间只留极淡的分隔，不做卡片 ===== */
+.tb{border:0;border-radius:0;overflow:hidden}
+.tb-wrap{padding:0 10px}
+.shelf{border-left:0}
+.status{border-top:1px solid var(--line-2)}
+.pane-product{background:var(--rail)}
+
+/* ===== 事项：照 OmniFocus 桌面版（密、轻、无框） ===== */
+.gtd{background:var(--rail)}
+.gtd-side{width:236px;border-right:0;background:var(--rail-2);padding:8px 8px}
+.gtd-side h4{margin:14px 8px 4px;font-size:10.5px;font-weight:600;color:var(--txt-4)}
+.gtd-side h4:first-child{margin-top:4px}
+.prow{height:26px;gap:8px;padding:0 8px;border-radius:6px;font-size:13px;color:var(--txt-2)}
+.prow.on{background:var(--accent);color:#fff}
+.prow.on svg{color:#fff;opacity:.9}
+.prow .n{font-size:11px;color:var(--txt-4)}
+.prow.on .n{color:rgba(255,255,255,.8)}
+.gtd-head{height:34px;border-bottom:1px solid var(--line-2);padding:0 14px}
+.gtd-head .t{font-size:12.5px;font-weight:600}
+.gtd-head .c{font-size:11px;color:var(--txt-4)}
+.gtd-head .sb{height:22px;padding:0 8px;border-radius:5px;border:0;background:none;color:var(--txt-3);font:inherit;font-size:11.5px;cursor:pointer}
+.gtd-head .sb:hover{background:var(--rail-3);color:var(--txt)}
+.outline{padding:6px 0 24px}
+.orow{align-items:center;padding:5px 14px;border-bottom:0;height:30px;gap:9px}
+.orow:hover{background:color-mix(in srgb,var(--rail-3) 55%,transparent)}
+.orow.on{background:var(--accent);color:#fff}
+.orow.on .t{color:#fff}
+.orow.on .meta,.orow.on .meta .due{color:rgba(255,255,255,.78)}
+.orow.on .ring{border-color:rgba(255,255,255,.85)}
+.orow .ring{width:13px;height:13px;margin-top:0}
+.orow .t{font-size:13px;line-height:1.2}
+.orow .meta{margin-top:0;font-size:11px;color:var(--txt-4);gap:10px;justify-content:flex-end;flex:none}
+.orow .main{display:flex;align-items:center;gap:10px}
+.orow .main .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.orow.proj{padding-left:8px}
+.orow.proj .dis{margin-top:0}
+.orow .cnt{font-size:11px;color:var(--txt-4)}
+.gtd-insp{width:296px;border-left:0;background:var(--rail-2);padding:14px 16px}
+.gtd-insp .cap{font-size:10.5px;color:var(--txt-4);margin-bottom:10px}
+.gtd-insp input.ti{height:28px;border:0;border-bottom:1px solid var(--line-2);border-radius:0;background:none;font-size:14px;
+  font-weight:600;padding:0;margin-bottom:16px}
+.gtd-insp input.ti:focus{outline:none;border-bottom-color:var(--accent)}
+.frow{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:12.5px;color:var(--txt-2)}
+.frow b{min-width:32px;font-weight:400;color:var(--txt-4)}
+.fchip{border:0;background:none;padding:0;color:var(--txt-2);font-size:12.5px;border-radius:0}
+.fchip.add{color:var(--txt-4)}
+.fchip:hover{color:var(--txt)}
+.gtd-insp textarea{height:110px;border:0;border-radius:0;background:none;padding:0;font-size:12.5px;color:var(--txt-2)}
+.gtd-insp textarea:focus{outline:none}
+
+
+/* ===== 产品栏回到窄栏（右栏宽度）：时间块是手机 UI，不该被拉宽 ===== */
+.pane-chat{flex:1 1 auto;min-width:420px;max-width:none}
+.pane-product{flex:0 0 var(--product-w, 560px);width:var(--product-w,560px);min-width:0;border-left:1px solid var(--line)}
+.tb-wrap{padding:0}
+.tb{max-width:none}
+.status{max-width:none}
+/* 事项：手机版单列（OmniFocus iOS） */
+.gtd-side,.gtd-insp{display:none !important}
+.gtd-persp{flex:none;width:100%;display:flex;gap:2px;padding:6px 8px;overflow-x:auto;border-bottom:1px solid var(--line-2)}
+.gtd-persp button{flex:none;height:26px;padding:0 10px;border:0;border-radius:6px;background:none;color:var(--txt-3);
+  font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+.gtd-persp button.on{background:var(--rail-3);color:var(--txt);font-weight:600}
+
 </style>
 </head>
 <body><div class="stage">
@@ -402,36 +467,20 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
 
     <!-- 右栏：产品（一级模块＝tab） -->
     <section class="pane-product">
-      <div class="tabs">
-        <button class="tab on" data-tab="time">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2" width="12" height="12" rx="3"/><path d="M2 6h12M6 6v8"/></svg>时间块
-        </button>
-        <button class="tab" data-tab="gtd">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4.5l1.6 1.6L7.5 3"/><path d="M3 11.5l1.6 1.6L7.5 10"/><path d="M9.5 4.8h4M9.5 11.8h4"/></svg>事项
-        </button>
-        <button class="tab" data-tab="tags">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7.5 2H13v5.5L7.8 12.7a1.4 1.4 0 01-2 0L3.3 10.2a1.4 1.4 0 010-2z"/><circle cx="10.8" cy="5.2" r=".9"/></svg>标签
-        </button>
-        <button class="tab" data-tab="data">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><ellipse cx="8" cy="4.6" rx="5" ry="2.1"/><path d="M3 4.6v6.8c0 1.2 2.2 2.1 5 2.1s5-.9 5-2.1V4.6"/><path d="M3 8c0 1.2 2.2 2.1 5 2.1s5-.9 5-2.1"/></svg>数据
+      <header class="head">
+        <button class="hbtn" id="menuBtn" aria-label="一级模块"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/></svg></button>
+        <button class="title" id="titleBtn" aria-expanded="false">
+          <span id="titleText">时间块</span><span class="tsub" id="titleSub"></span>
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2.5 4.5L6 8l3.5-3.5"/></svg>
         </button>
         <span class="grow"></span>
-        <button class="sbtn" title="分栏"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M8 3v10"/></svg></button>
-        <button class="sbtn" title="全屏"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6 2H2v4M10 14h4v-4M14 6V2h-4M2 10v4h4"/></svg></button>
-      </div>
+        <button class="hbtn" id="undoBtn" title="撤销" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 7h6.5a3.5 3.5 0 010 7H6"/><path d="M5.5 4L2.5 7l3 3"/></svg></button>
+      </header>
 
       <div class="views">
         <!-- 时间块 · 实录 -->
         <section class="view on" data-view="time">
           <div class="tb-wrap">
-            <div class="tb-bar">
-              <div class="seg" role="group" aria-label="图层">
-                <button data-layer="actual" class="on">实录</button>
-                <button data-layer="plan">计划</button>
-              </div>
-              <span class="grow"></span>
-              <button class="hbtn" id="undoBtn" title="撤销" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 7h6.5a3.5 3.5 0 010 7H6"/><path d="M5.5 4L2.5 7l3 3"/></svg></button>
-            </div>
             <div class="tb">
               <div class="tb-main">
                 <div class="scroll" id="scroll">
@@ -464,13 +513,6 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
         <!-- 时间块 · 计划 -->
         <section class="view" data-view="plan">
           <div class="tb-wrap">
-            <div class="tb-bar">
-              <div class="seg" role="group" aria-label="图层">
-                <button data-layer="actual">实录</button>
-                <button data-layer="plan" class="on">计划</button>
-              </div>
-              <span class="grow"></span>
-            </div>
             <div class="tb">
               <div class="tb-main">
                 <div class="scroll" id="scrollPlan">
@@ -501,22 +543,22 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
 
         <!-- 事项：三栏 -->
         <section class="view" data-view="gtd">
-          <div class="gtd" id="gtd">
-            <nav class="gtd-side" id="gtdSide"></nav>
+          <div class="gtd" id="gtd" data-w="narrow">
+            <div class="gtd-persp" id="gtdPersp"></div>
             <div class="gtd-main">
               <div class="gtd-head">
                 <span class="t" id="gtdTitle">今天</span>
                 <span class="c" id="gtdCount"></span>
                 <span class="grow"></span>
-                <button class="sb" id="gtdAdd">＋ 新事项</button>
+                <button class="sb" id="gtdAdd">＋</button>
               </div>
               <div class="outline" id="gtdOutline"></div>
             </div>
-            <aside class="gtd-insp" id="gtdInsp"></aside>
           </div>
         </section>
 
         <section class="view" data-view="tags"><div class="placeholder"><div class="ph-t">标签</div><div class="ph-d">时间标签 / 情境标签的增删改，下一步做。</div></div></section>
+        <section class="view" data-view="settings"><div class="placeholder"><div class="ph-t">设置</div><div class="ph-d">原型里只有主题。</div><button class="btn" id="themeBtn" style="max-width:160px;margin-top:6px">切换明暗</button></div></section>
         <section class="view" data-view="data"><div class="placeholder"><div class="ph-t">数据</div><div class="ph-d">SQLite 只读浏览（secretary.db 的表与行），将来排查问题用。</div></div></section>
       </div>
 
@@ -536,6 +578,19 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
           <button class="btn primary" id="sheetDone">完成</button>
         </div>
       </div>
+      <div class="smenu" id="subMenu"></div>
+      <div class="scrim" id="scrim"></div>
+      <nav class="drawer" id="drawer">
+        <div class="cap">小秘书</div>
+        <button class="mrow on" data-go="time"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2" width="12" height="12" rx="3"/><path d="M2 6h12M6 6v8"/></svg>时间块</button>
+        <button class="mrow" data-go="gtd"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4.5l1.6 1.6L7.5 3"/><path d="M3 11.5l1.6 1.6L7.5 10"/><path d="M9.5 4.8h4M9.5 11.8h4"/></svg>事项</button>
+        <div class="dsep"></div>
+        <button class="mrow" data-go="tags"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7.5 2H13v5.5L7.8 12.7a1.4 1.4 0 01-2 0L3.3 10.2a1.4 1.4 0 010-2z"/><circle cx="10.8" cy="5.2" r=".9"/></svg>标签</button>
+        <button class="mrow" data-go="data"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><ellipse cx="8" cy="4.6" rx="5" ry="2.1"/><path d="M3 4.6v6.8c0 1.2 2.2 2.1 5 2.1s5-.9 5-2.1V4.6"/><path d="M3 8c0 1.2 2.2 2.1 5 2.1s5-.9 5-2.1"/></svg>数据</button>
+        <div class="dsep"></div>
+        <button class="mrow" data-go="settings"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1"/></svg>设置</button>
+      </nav>
+
       <div class="toast" id="toast"></div>
     </section>
   </div>
@@ -582,8 +637,9 @@ const snapUp = m => Math.ceil(m / RN) * RN;
 const mk = (day, start, end, tagId, layer = 'actual', note = '') =>
   ({ id: ++seq, day, start: snapDown(start), end: snapUp(end), tagId, layer, note });
 
+let module = 'time', subView = 'actual';
 const state = {
-  tab: 'time', layer: 'actual', tagId: 5,
+  layer: 'actual', tagId: 5,
   expanded: { 2: true, 5: true }, shelfMini: false,
   selected: new Set(), records: [], undo: [], sheetId: null,
   sub: null,
@@ -911,27 +967,85 @@ function renderShelf(layer) {
   if (dot) dot.style.background = colorOf(state.tagId);
 }
 
-/* ============================ 一级模块＝tab ============================ */
+/* ============================ 一级模块（☰ 抽屉） / 二级（标题） ============================ */
+const MODULES = {
+  time: { name: '时间块', subs: [{ id: 'actual', name: '实录' }, { id: 'plan', name: '计划' }] },
+  gtd: { name: '事项', subs: [] },
+  tags: { name: '标签', subs: [] },
+  data: { name: '数据', subs: [] },
+  settings: { name: '设置', subs: [] },
+};
+
 function syncView() {
-  const view = state.tab === 'time' ? (state.layer === 'plan' ? 'plan' : 'time') : state.tab;
+  const view = module === 'time' ? (subView === 'plan' ? 'plan' : 'time') : module;
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.dataset.view === view));
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === state.tab));
-  document.querySelectorAll('.tb-bar .seg button').forEach(b => b.classList.toggle('on', b.dataset.layer === state.layer));
+  document.querySelectorAll('.mrow').forEach(b => b.classList.toggle('on', b.dataset.go === module));
+  $('#titleText').textContent = MODULES[module].name;
+  $('#titleSub').textContent = module === 'time' && subView === 'plan' ? '计划' : '';
 }
-document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
-  state.tab = t.dataset.tab;
-  state.selected = new Set();
-  syncView();
-  if (state.tab === 'gtd') renderGtd();
-  if (state.tab === 'time') { renderShelf(state.layer); refresh(); }
+function openDrawer() { $('#drawer').classList.add('on'); $('#scrim').classList.add('on'); }
+function closeDrawer() { $('#drawer').classList.remove('on'); $('#scrim').classList.remove('on'); }
+$('#menuBtn').addEventListener('click', () => {
+  $('#drawer').classList.contains('on') ? closeDrawer() : openDrawer();
+});
+$('#scrim').addEventListener('click', closeDrawer);
+
+function buildSubMenu() {
+  const el = $('#subMenu');
+  const subs = MODULES[module].subs;
+  el.innerHTML = subs.length ? subs.map(x => `<button data-sub="${x.id}" class="${subView === x.id ? 'on' : ''}">
+      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2.5 6.2l2.4 2.4L9.5 4"/></svg>${x.name}</button>`).join('') : '';
+}
+function openSubMenu() {
+  const el = $('#subMenu');
+  buildSubMenu();
+  if (!el.innerHTML) { openDrawer(); return; }
+  const r = $('.pane-product').getBoundingClientRect();
+  const t = $('#titleBtn').getBoundingClientRect();
+  el.style.left = `${t.left - r.left}px`;
+  el.style.top = `${t.bottom - r.top + 4}px`;
+  el.classList.add('on');
+  $('#titleBtn').setAttribute('aria-expanded', 'true');
+  el.querySelectorAll('[data-sub]').forEach(b => b.addEventListener('click', () => {
+    subView = b.dataset.sub;
+    state.layer = subView === 'plan' ? 'plan' : 'actual';
+    state.selected = new Set();
+    closeSubMenu(); syncView(); renderShelf(state.layer); refresh();
+    requestAnimationFrame(() => scrollToNow(canvases[state.layer], false));
+  }));
+}
+function closeSubMenu() {
+  $('#subMenu').classList.remove('on');
+  $('#titleBtn').setAttribute('aria-expanded', 'false');
+}
+$('#titleBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  $('#subMenu').classList.contains('on') ? closeSubMenu() : openSubMenu();
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('#subMenu') && !e.target.closest('#titleBtn')) closeSubMenu();
+});
+document.querySelectorAll('.mrow').forEach(b => b.addEventListener('click', () => {
+  module = b.dataset.go;
+  subView = module === 'time' ? 'actual' : '';
+  closeDrawer(); syncView();
+  if (module === 'gtd') renderGtd();
+  if (module === 'time') { renderShelf(state.layer); refresh(); }
 }));
-/* 时间块的「实录 / 计划」：同一块 UI，只换图层 */
-document.querySelectorAll('.tb-bar .seg button').forEach(b => b.addEventListener('click', () => {
-  state.layer = b.dataset.layer;
-  state.selected = new Set();
-  syncView(); renderShelf(state.layer); refresh();
-  requestAnimationFrame(() => scrollToNow(canvases[state.layer], false));
-}));
+$('#themeBtn')?.addEventListener('click', () => {
+  const root = document.documentElement;
+  root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+/* 窄了就把侧栏/检查器收起来 */
+function fitGtdWidth() {
+  const el = $('#gtd');
+  if (!el || !el.clientWidth) return;
+  const w = el.clientWidth;
+  el.dataset.w = w < 720 ? 'narrow' : w < 980 ? 'mid' : 'wide';
+}
+const gtdObserver = new ResizeObserver(() => fitGtdWidth());
+requestAnimationFrame(() => { const el = $('#gtd'); if (el) gtdObserver.observe(el); fitGtdWidth(); });
+$('#gtdAdd').addEventListener('click', () => say('新建事项下一步做'));
 
 /* ============================ 事项：三栏（OmniFocus 桌面手感） ============================ */
 const GTD = {
@@ -977,28 +1091,14 @@ function gtdIcon(name) {
 }
 
 function renderGtdSide() {
-  const host = $('#gtdSide');
-  host.innerHTML = `<h4>透视</h4>`;
+  const host = $('#gtdPersp');
+  if (!host) return;
+  host.innerHTML = '';
   GTD.persp.forEach(p => {
-    const b = document.createElement('div');
-    b.className = 'prow' + (GTD.cur === p.id ? ' on' : '');
-    b.innerHTML = `${gtdIcon(p.icon)}<span>${p.name}</span><span class="n">${p.n}</span>`;
+    const b = document.createElement('button');
+    b.className = GTD.cur === p.id ? 'on' : '';
+    b.textContent = `${p.name} ${p.n}`;
     b.addEventListener('click', () => { GTD.cur = p.id; renderGtd(); });
-    host.appendChild(b);
-  });
-  host.insertAdjacentHTML('beforeend', '<h4 style="margin-top:14px">项目</h4>');
-  GTD.projects.forEach(p => {
-    const b = document.createElement('div');
-    b.className = 'prow';
-    b.innerHTML = `${gtdIcon('folder')}<span>${p.name}</span><span class="n">${p.n}</span>`;
-    b.addEventListener('click', () => { GTD.cur = p.id; renderGtd(); });
-    host.appendChild(b);
-  });
-  host.insertAdjacentHTML('beforeend', '<h4 style="margin-top:14px">标签</h4>');
-  ['@电脑', '@外出', '@电话', '深度'].forEach(t => {
-    const b = document.createElement('div');
-    b.className = 'prow';
-    b.innerHTML = `${gtdIcon('flag')}<span>${t}</span>`;
     host.appendChild(b);
   });
 }
@@ -1057,7 +1157,6 @@ function renderGtd() {
     list.forEach(a => renderAction(a, false));
     if (!list.length) host.innerHTML = '<div class="placeholder"><div class="ph-t">这里是空的</div><div class="ph-d">换个透视看看。</div></div>';
   }
-  renderInsp();
 }
 
 function renderInsp() {
@@ -1083,15 +1182,7 @@ function renderInsp() {
 }
 
 /* 窄了就把侧栏/检查器收起来 */
-function fitGtdWidth() {
-  const el = $('#gtd');
-  if (!el || !el.clientWidth) return;
-  const w = el.clientWidth;
-  el.dataset.w = w < 860 ? 'narrow' : w < 1060 ? 'mid' : 'wide';
-}
-const gtdObserver = new ResizeObserver(() => fitGtdWidth());
-requestAnimationFrame(() => { const el = $('#gtd'); if (el) gtdObserver.observe(el); fitGtdWidth(); });
-$('#gtdAdd').addEventListener('click', () => say('新建事项下一步做'));
+
 
 /* ============================ 编辑浮层 ============================ */
 function openSheet(id) {
@@ -1148,7 +1239,7 @@ $('#undoBtn').addEventListener('click', () => {
 [['#shelfHead', '#shelf'], ['#shelfHeadPlan', '#shelfPlan']].forEach(([h]) => {
   $(h).addEventListener('click', () => { state.shelfMini = !state.shelfMini; renderShelf(state.layer); });
 });
-$('#shelfMore').addEventListener('click', () => { state.tab = 'tags'; syncView(); });
+$('#shelfMore').addEventListener('click', () => { module = 'tags'; closeDrawer(); syncView(); });
 $('#eraseBtn').addEventListener('click', eraser);
 $('#clearBtn').addEventListener('click', clearSelection);
 $('#clearBtnPlan').addEventListener('click', clearSelection);
@@ -1158,6 +1249,8 @@ $('#noteBtnPlan').addEventListener('click', () => state.sheetId && openSheet(sta
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if ($('#sheet').classList.contains('on')) { $('#sheet').classList.remove('on'); return; }
+  if ($('#subMenu').classList.contains('on')) { closeSubMenu(); return; }
+  if ($('#drawer').classList.contains('on')) { closeDrawer(); return; }
   clearSelection();
 });
 document.addEventListener('pointerdown', e => {
