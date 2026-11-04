@@ -281,164 +281,265 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
 /* ---------- footer note ---------- */
 .foot{position:fixed;left:14px;bottom:12px;z-index:40;max-width:520px;font-size:11px;line-height:1.6;color:var(--txt-4)}
 .foot b{color:var(--txt-3);font-weight:600}
+
+/* ===== 两栏：会话 1/3 ｜ 产品 2/3（左栏 session 列表默认收起） ===== */
+.body{flex:1;min-height:0;display:flex}
+.pane-chat{flex:1 1 33%;min-width:340px;max-width:560px;display:flex;flex-direction:column;background:var(--conv);
+  border-right:1px solid var(--line)}
+.pane-product{flex:2 1 67%;min-width:600px;display:flex;flex-direction:column;position:relative;overflow:hidden}
+
+/* 产品的 tab strip（一级模块） */
+.tabs{height:36px;flex:none;display:flex;align-items:center;gap:2px;padding:0 6px;border-bottom:1px solid var(--line)}
+.tab{height:26px;padding:0 10px;border:0;border-radius:6px;background:none;color:var(--txt-3);font:inherit;font-size:12.5px;
+  cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.tab:hover{background:var(--rail-3);color:var(--txt-2)}
+.tab.on{background:var(--rail-3);color:var(--txt);font-weight:600}
+.tab svg{width:13px;height:13px;opacity:.8}
+.tabs .grow{flex:1}
+.tabs .sbtn{width:24px;height:24px;border:0;background:none;border-radius:6px;color:var(--txt-3);display:grid;place-items:center;padding:0;cursor:pointer}
+.tabs .sbtn:hover{background:var(--rail-3);color:var(--txt-2)}
+.tabs .sbtn svg{width:14px;height:14px}
+
+/* 时间块：居中 + 最大宽度 */
+.tb-wrap{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;padding:0 16px}
+.tb-bar{width:100%;max-width:600px;height:34px;flex:none;display:flex;align-items:center;gap:6px}
+.tb-bar .seg{display:flex;background:var(--rail-3);border-radius:6px;padding:2px;gap:2px}
+.tb-bar .seg button{height:22px;padding:0 10px;border:0;border-radius:4px;background:none;color:var(--txt-3);font:inherit;font-size:11.5px;cursor:pointer}
+.tb-bar .seg button.on{background:var(--bg-panel);color:var(--txt);box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.tb-bar .grow{flex:1}
+.tb-bar .hbtn{width:26px;height:26px;border:0;border-radius:6px;background:none;color:var(--txt-3);display:grid;place-items:center;padding:0;cursor:pointer}
+.tb-bar .hbtn:hover{background:var(--rail-3);color:var(--txt)}
+.tb-bar .hbtn svg{width:15px;height:15px}
+.tb-bar .hbtn:disabled{opacity:.28}
+.tb{width:100%;max-width:600px;flex:1;min-height:0;display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.status{width:100%;max-width:600px;margin:0 auto}
+
+/* ===== 事项：宽屏三栏（OmniFocus 桌面版手感） ===== */
+.gtd{flex:1;min-height:0;display:flex;background:var(--rail)}
+.gtd-side{width:228px;flex:none;border-right:1px solid var(--line);overflow-y:auto;padding:10px 8px}
+.gtd-side h4{margin:6px 6px 6px;font-size:10.5px;font-weight:600;color:var(--txt-4);letter-spacing:.4px}
+.prow{height:30px;display:flex;align-items:center;gap:7px;padding:0 8px;border-radius:6px;font-size:12.5px;color:var(--txt-2);cursor:pointer}
+.prow:hover{background:var(--rail-3)}
+.prow.on{background:var(--accent-soft);color:var(--txt)}
+.prow .n{margin-left:auto;font-size:11px;color:var(--txt-4);font-variant-numeric:tabular-nums}
+.prow svg{width:14px;height:14px;color:var(--txt-3);flex:none}
+.prow.on svg{color:var(--accent)}
+.gtd-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.gtd-head{height:38px;flex:none;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--line)}
+.gtd-head .t{font-size:13.5px;font-weight:600}
+.gtd-head .c{font-size:11.5px;color:var(--txt-3)}
+.gtd-head .grow{flex:1}
+.outline{flex:1;min-height:0;overflow-y:auto;padding:4px 0 20px}
+.orow{display:flex;align-items:flex-start;gap:8px;padding:7px 14px;cursor:default;border-bottom:1px solid var(--line-2)}
+.orow:hover{background:color-mix(in srgb,var(--rail-3) 60%,transparent)}
+.orow.on{background:var(--accent-soft)}
+.orow .ring{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--line-2);flex:none;margin-top:2px;cursor:pointer}
+.orow .ring:hover{border-color:var(--accent)}
+.orow.done .ring{background:var(--accent);border-color:var(--accent)}
+.orow.done .t{color:var(--txt-3);text-decoration:line-through}
+.orow .main{flex:1;min-width:0;cursor:pointer}
+.orow .t{display:block;font-size:13px;line-height:1.4;color:var(--txt)}
+.orow .meta{display:flex;gap:8px;margin-top:1px;font-size:11px;color:var(--txt-3)}
+.orow .meta .due{color:#c8813a}
+.orow.proj{padding-left:10px}
+.orow.proj .t{font-weight:600}
+.orow.proj .dis{width:13px;height:13px;flex:none;margin-top:4px;color:var(--txt-3);transition:transform .15s;cursor:pointer}
+.orow.proj.open .dis{transform:rotate(90deg)}
+.orow .cnt{margin-left:auto;font-size:11px;color:var(--txt-4);font-variant-numeric:tabular-nums}
+.gtd-insp{width:300px;flex:none;border-left:1px solid var(--line);overflow-y:auto;padding:14px}
+.gtd-insp .cap{font-size:10.5px;color:var(--txt-4);letter-spacing:.4px;margin-bottom:8px}
+.gtd-insp input.ti{width:100%;height:32px;border:1px solid var(--line-2);border-radius:7px;background:var(--rail-2);color:var(--txt);
+  font:inherit;font-size:13px;padding:0 9px;margin-bottom:12px}
+.frow{display:flex;align-items:center;gap:6px;margin-bottom:9px;font-size:12px;color:var(--txt-3)}
+.frow b{min-width:36px;font-weight:500;color:var(--txt-4)}
+.fchip{height:22px;padding:0 8px;border-radius:5px;background:var(--rail-2);border:1px solid var(--line-2);color:var(--txt-2);
+  font-size:11.5px;display:inline-flex;align-items:center;gap:4px;cursor:pointer}
+.fchip.add{color:var(--txt-4);border-style:dashed}
+.gtd-insp textarea{width:100%;height:88px;border:1px solid var(--line-2);border-radius:7px;background:var(--rail-2);color:var(--txt);
+  font:inherit;font-size:12.5px;padding:8px 9px;resize:none;margin-bottom:12px}
+/* 窄一点时：侧栏与检查器让位 */
+.gtd[data-w="mid"] .gtd-side{width:190px}
+.gtd[data-w="mid"] .gtd-insp{width:250px}
+.gtd[data-w="narrow"] .gtd-side,.gtd[data-w="narrow"] .gtd-insp{display:none}
+
 </style>
 </head>
-<body>
-<div class="stage">
+<body><div class="stage">
   <div class="appbar">
     <span class="brand"><i></i>小秘书</span>
     <span class="whint">工作区 ~/.dsh/secretary</span>
     <span class="grow"></span>
-    <span class="whint">原型 · 数据在内存 · ☰ 一级模块 · 「时间块 ⌄」二级</span>
+    <span class="whint">左栏（session 列表）默认收起 · 会话 1/3 ｜ 产品 2/3</span>
   </div>
   <div class="body">
-  <section class="pane-product">
-  <!-- ======================= 右边栏 ======================= -->
 
-    <!-- 一行头：☰ ｜ 二级标题 ｜ 动作 -->
-    <header class="head">
-      <button class="hbtn" id="menuBtn" aria-label="一级模块"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/></svg></button>
-      <button class="title" id="titleBtn" aria-expanded="false">
-        <span id="titleText">时间块</span><span class="tsub" id="titleSub"></span>
-        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2.5 4.5L6 8l3.5-3.5"/></svg>
-      </button>
-      <span class="grow"></span>
-      <button class="hbtn" id="undoBtn" title="撤销" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 7h6.5a3.5 3.5 0 010 7H6"/><path d="M5.5 4L2.5 7l3 3"/></svg></button>
-    </header>
-
-    <div class="views">
-      <!-- 时间块 -->
-      <section class="view on" data-view="time">
-        <div class="tb">
-          <div class="tb-main">
-            <div class="scroll" id="scroll">
-              <div class="days" id="days"></div>
-              <button class="jump" id="jump">回到今天</button>
-            </div>
-          </div>
-          <aside class="shelf" id="shelf">
-            <button class="shelf-head" id="shelfHead">
-              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5.2L6 2.4l3 2.8M3 9.5L6 6.7l3 2.8"/></svg>
-              <span>合上所有内容</span>
-            </button>
-            <div class="shelf-list" id="shelfList"></div>
-            <button class="shelf-more" id="shelfMore">更多事件类别</button>
-          </aside>
-        </div>
-        <div class="status" id="status">
-          <span id="statusText"></span>
-          <span class="grow"></span>
-          <button class="sb" id="noteBtn" hidden>备注</button>
-          <button class="sb" id="clearBtn">不选</button>
-          <button class="sb erase" id="eraseBtn">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5.5 3h7v9h-7l-3.5-4.5z"/><path d="M8 6l3 3M11 6l-3 3"/></svg>
-            橡皮
-          </button>
-        </div>
-      </section>
-
-      <!-- 计划（同构，换图层） -->
-      <section class="view" data-view="plan">
-        <div class="tb">
-          <div class="tb-main">
-            <div class="scroll" id="scrollPlan">
-              <div class="days" id="daysPlan"></div>
-            </div>
-          </div>
-          <aside class="shelf" id="shelfPlan">
-            <button class="shelf-head" id="shelfHeadPlan">
-              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5.2L6 2.4l3 2.8M3 9.5L6 6.7l3 2.8"/></svg>
-              <span>合上所有内容</span>
-            </button>
-            <div class="shelf-list" id="shelfListPlan"></div>
-            <button class="shelf-more">更多事件类别</button>
-          </aside>
-        </div>
-        <div class="status" id="statusPlan">
-          <span id="statusTextPlan"></span>
-          <span class="grow"></span>
-          <button class="sb" id="noteBtnPlan" hidden>备注</button>
-          <button class="sb" id="clearBtnPlan">不选</button>
-          <button class="sb erase" id="eraseBtnPlan">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5.5 3h7v9h-7l-3.5-4.5z"/><path d="M8 6l3 3M11 6l-3 3"/></svg>
-            橡皮
-          </button>
-        </div>
-      </section>
-
-      <section class="view" data-view="deep"><div class="placeholder"><div class="ph-t">深度时间</div><div class="ph-d">周模板（7×24 档位）下一步再做，这一版先只把时间块对齐。</div></div></section>
-      <section class="view" data-view="gtd"><div class="placeholder"><div class="ph-t">事项</div><div class="ph-d">结构你还没定；按 OmniFocus 4 手机端的「大纲即主页」也放得进这条窄栏，等你点头再画。</div></div></section>
-      <section class="view" data-view="goal"><div class="placeholder"><div class="ph-t">目标</div><div class="ph-d">还没开始。</div></div></section>
-      <section class="view" data-view="tags"><div class="placeholder"><div class="ph-t">标签</div><div class="ph-d">时间标签 / 情境标签的增删改下一步再做。</div></div></section>
-      <section class="view" data-view="stat"><div class="placeholder"><div class="ph-t">统计</div><div class="ph-d">还没开始。</div></div></section>
-      <section class="view" data-view="settings"><div class="placeholder"><div class="ph-t">设置</div><div class="ph-d">原型里只有主题：点一下切明暗。</div><button class="btn" id="themeBtn" style="max-width:160px;margin-top:6px">切换明暗</button></div></section>
-    </div>
-
-    <!-- 二级菜单 -->
-    <div class="smenu" id="subMenu"></div>
-    <!-- 抽屉 -->
-    <div class="scrim" id="scrim"></div>
-    <nav class="drawer" id="drawer">
-      <div class="cap">小秘书</div>
-      <button class="mrow on" data-go="time"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2" width="12" height="12" rx="3"/><path d="M2 6h12M6 6v8"/></svg>时间块</button>
-      <button class="mrow" data-go="deep"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 12l3.5-5 3 3.5L12 4"/><path d="M2 14h12"/></svg>深度时间</button>
-      <button class="mrow" data-go="gtd"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4.5l1.6 1.6L7.5 3"/><path d="M3 11.5l1.6 1.6L7.5 10"/><path d="M9.5 4.8h4M9.5 11.8h4"/></svg>事项<span class="tagx">待定</span></button>
-      <button class="mrow" data-go="goal"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="2.2"/></svg>目标<span class="tagx">未做</span></button>
-      <div class="dsep"></div>
-      <button class="mrow" data-go="tags"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7.5 2H13v5.5L7.8 12.7a1.4 1.4 0 01-2 0L3.3 10.2a1.4 1.4 0 010-2z"/><circle cx="10.8" cy="5.2" r=".9"/></svg>标签</button>
-      <button class="mrow" data-go="stat"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 13.5V9M6.5 13.5V4M10.5 13.5V7M14 13.5V2.5"/></svg>统计<span class="tagx">未做</span></button>
-      <div class="dsep"></div>
-      <button class="mrow" data-go="settings"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1"/></svg>设置</button>
-    </nav>
-
-    <!-- 编辑浮层 -->
-    <div class="sheet" id="sheet">
-      <div class="grab"></div>
-      <div class="row">
-        <span class="time" id="sheetTime">08:20 – 12:00</span>
-        <span class="dur" id="sheetDur">3 小时 40 分</span>
+    <!-- 中栏：原生会话（原型里是假数据） -->
+    <aside class="pane-chat">
+      <header class="chat-head">
+        <button class="sbtn" title="会话列表"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/></svg></button>
+        <span class="t">小秘书</span>
+        <span class="s">今天 · 第 1 次</span>
         <span class="grow"></span>
-        <button class="step" id="stepStart">−</button>
-        <button class="step" id="stepEnd">＋</button>
+        <button class="sbtn" title="新会话"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 3v10M3 8h10"/></svg></button>
+      </header>
+      <div class="chat-body">
+        <div class="msg me"><div class="who">你</div><div class="bub">晚上那段帮我改成阅读，白天的工作块不动。</div></div>
+        <div class="msg"><div class="who">小秘书</div><div class="bub">改好了：21:00–22:00 记成阅读，20:40–21:00 的空档我留着了。要不要顺手把明天上午的深度工作也排上？</div></div>
+        <div class="msg me"><div class="who">你</div><div class="bub">先不用。今天下午那两小时是开会吗？我记不清了。</div></div>
+        <div class="msg"><div class="who">小秘书</div><div class="bub">14:00–16:00 是空的，13:40 之后一直记到 17:00 都是工作。要我把 14:00–16:00 拆成「会议」吗？</div></div>
       </div>
-      <div class="picks" id="sheetPicks"></div>
-      <input class="note" id="sheetNote" placeholder="备注（可空）">
-      <div class="acts">
-        <button class="btn danger" id="sheetDelete">删除</button>
-        <button class="btn primary" id="sheetDone">完成</button>
-      </div>
-    </div>
-
-    <div class="toast" id="toast"></div>
-  </section>
-
-  <aside class="pane-chat">
-    <header class="chat-head">
-      <span class="t">小秘书</span>
-      <span class="s">今天 · 第 1 次会话</span>
-      <span class="grow"></span>
-      <button class="sbtn" title="新会话"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 3v10M3 8h10"/></svg></button>
-    </header>
-    <div class="chat-body">
-      <div class="msg me"><div class="who">你</div><div class="bub">晚上那段帮我改成阅读，白天的工作块不动。</div></div>
-      <div class="msg"><div class="who">小秘书</div><div class="bub">改好了：21:00–22:00 记成阅读，20:40–21:00 的空档我留着了。要不要顺手把明天上午的深度工作也排上？</div></div>
-      <div class="msg me"><div class="who">你</div><div class="bub">先不用。今天下午那两小时是开会吗？我记不清了。</div></div>
-      <div class="msg"><div class="who">小秘书</div><div class="bub">14:00–16:00 是空的，13:40 之后一直记到 17:00 都是工作。要我把 14:00–16:00 拆成「会议」吗？</div></div>
-    </div>
-    <div class="chat-foot">
-      <div class="composer">
-        <div class="ph">跟小秘书说点什么…</div>
-        <div class="row">
-          <span class="pill">@ 时间块</span>
-          <span class="grow"></span>
-          <span class="send"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" style="width:13px;height:13px"><path d="M8 12.5V4M4.5 7.5L8 4l3.5 3.5"/></svg></span>
+      <div class="chat-foot">
+        <div class="composer">
+          <div class="ph">跟小秘书说点什么…</div>
+          <div class="row">
+            <span class="pill">@ 时间块</span>
+            <span class="grow"></span>
+            <span class="send"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" style="width:13px;height:13px"><path d="M8 12.5V4M4.5 7.5L8 4l3.5 3.5"/></svg></span>
+          </div>
         </div>
       </div>
-    </div>
-  </aside>
+    </aside>
+
+    <!-- 右栏：产品（一级模块＝tab） -->
+    <section class="pane-product">
+      <div class="tabs">
+        <button class="tab on" data-tab="time">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2" width="12" height="12" rx="3"/><path d="M2 6h12M6 6v8"/></svg>时间块
+        </button>
+        <button class="tab" data-tab="gtd">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4.5l1.6 1.6L7.5 3"/><path d="M3 11.5l1.6 1.6L7.5 10"/><path d="M9.5 4.8h4M9.5 11.8h4"/></svg>事项
+        </button>
+        <button class="tab" data-tab="tags">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7.5 2H13v5.5L7.8 12.7a1.4 1.4 0 01-2 0L3.3 10.2a1.4 1.4 0 010-2z"/><circle cx="10.8" cy="5.2" r=".9"/></svg>标签
+        </button>
+        <button class="tab" data-tab="data">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><ellipse cx="8" cy="4.6" rx="5" ry="2.1"/><path d="M3 4.6v6.8c0 1.2 2.2 2.1 5 2.1s5-.9 5-2.1V4.6"/><path d="M3 8c0 1.2 2.2 2.1 5 2.1s5-.9 5-2.1"/></svg>数据
+        </button>
+        <span class="grow"></span>
+        <button class="sbtn" title="分栏"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M8 3v10"/></svg></button>
+        <button class="sbtn" title="全屏"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6 2H2v4M10 14h4v-4M14 6V2h-4M2 10v4h4"/></svg></button>
+      </div>
+
+      <div class="views">
+        <!-- 时间块 · 实录 -->
+        <section class="view on" data-view="time">
+          <div class="tb-wrap">
+            <div class="tb-bar">
+              <div class="seg" role="group" aria-label="图层">
+                <button data-layer="actual" class="on">实录</button>
+                <button data-layer="plan">计划</button>
+              </div>
+              <span class="grow"></span>
+              <button class="hbtn" id="undoBtn" title="撤销" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 7h6.5a3.5 3.5 0 010 7H6"/><path d="M5.5 4L2.5 7l3 3"/></svg></button>
+            </div>
+            <div class="tb">
+              <div class="tb-main">
+                <div class="scroll" id="scroll">
+                  <div class="days" id="days"></div>
+                  <button class="jump" id="jump">回到今天</button>
+                </div>
+              </div>
+              <aside class="shelf" id="shelf">
+                <button class="shelf-head" id="shelfHead">
+                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5.2L6 2.4l3 2.8M3 9.5L6 6.7l3 2.8"/></svg>
+                  <span>合上所有内容</span>
+                </button>
+                <div class="shelf-list" id="shelfList"></div>
+                <button class="shelf-more" id="shelfMore">更多事件类别</button>
+              </aside>
+            </div>
+            <div class="status" id="status">
+              <span id="statusText"></span>
+              <span class="grow"></span>
+              <button class="sb" id="noteBtn" hidden>备注</button>
+              <button class="sb" id="clearBtn">不选</button>
+              <button class="sb erase" id="eraseBtn">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5.5 3h7v9h-7l-3.5-4.5z"/><path d="M8 6l3 3M11 6l-3 3"/></svg>
+                橡皮
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 时间块 · 计划 -->
+        <section class="view" data-view="plan">
+          <div class="tb-wrap">
+            <div class="tb-bar">
+              <div class="seg" role="group" aria-label="图层">
+                <button data-layer="actual">实录</button>
+                <button data-layer="plan" class="on">计划</button>
+              </div>
+              <span class="grow"></span>
+            </div>
+            <div class="tb">
+              <div class="tb-main">
+                <div class="scroll" id="scrollPlan">
+                  <div class="days" id="daysPlan"></div>
+                </div>
+              </div>
+              <aside class="shelf" id="shelfPlan">
+                <button class="shelf-head" id="shelfHeadPlan">
+                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5.2L6 2.4l3 2.8M3 9.5L6 6.7l3 2.8"/></svg>
+                  <span>合上所有内容</span>
+                </button>
+                <div class="shelf-list" id="shelfListPlan"></div>
+                <button class="shelf-more">更多事件类别</button>
+              </aside>
+            </div>
+            <div class="status" id="statusPlan">
+              <span id="statusTextPlan"></span>
+              <span class="grow"></span>
+              <button class="sb" id="noteBtnPlan" hidden>备注</button>
+              <button class="sb" id="clearBtnPlan">不选</button>
+              <button class="sb erase" id="eraseBtnPlan">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5.5 3h7v9h-7l-3.5-4.5z"/><path d="M8 6l3 3M11 6l-3 3"/></svg>
+                橡皮
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 事项：三栏 -->
+        <section class="view" data-view="gtd">
+          <div class="gtd" id="gtd">
+            <nav class="gtd-side" id="gtdSide"></nav>
+            <div class="gtd-main">
+              <div class="gtd-head">
+                <span class="t" id="gtdTitle">今天</span>
+                <span class="c" id="gtdCount"></span>
+                <span class="grow"></span>
+                <button class="sb" id="gtdAdd">＋ 新事项</button>
+              </div>
+              <div class="outline" id="gtdOutline"></div>
+            </div>
+            <aside class="gtd-insp" id="gtdInsp"></aside>
+          </div>
+        </section>
+
+        <section class="view" data-view="tags"><div class="placeholder"><div class="ph-t">标签</div><div class="ph-d">时间标签 / 情境标签的增删改，下一步做。</div></div></section>
+        <section class="view" data-view="data"><div class="placeholder"><div class="ph-t">数据</div><div class="ph-d">SQLite 只读浏览（secretary.db 的表与行），将来排查问题用。</div></div></section>
+      </div>
+
+      <div class="sheet" id="sheet">
+        <div class="grab"></div>
+        <div class="row">
+          <span class="time" id="sheetTime">08:20 – 12:00</span>
+          <span class="dur" id="sheetDur">3 小时 40 分</span>
+          <span class="grow"></span>
+          <button class="step" id="stepStart">−</button>
+          <button class="step" id="stepEnd">＋</button>
+        </div>
+        <div class="picks" id="sheetPicks"></div>
+        <input class="note" id="sheetNote" placeholder="备注（可空）">
+        <div class="acts">
+          <button class="btn danger" id="sheetDelete">删除</button>
+          <button class="btn primary" id="sheetDone">完成</button>
+        </div>
+      </div>
+      <div class="toast" id="toast"></div>
+    </section>
   </div>
 </div>
-
 <script>
 /* ============================ 数据 ============================ */
 const RN = 10;                       // 一格 = 10 分钟
@@ -482,7 +583,7 @@ const mk = (day, start, end, tagId, layer = 'actual', note = '') =>
   ({ id: ++seq, day, start: snapDown(start), end: snapUp(end), tagId, layer, note });
 
 const state = {
-  view: 'time', layer: 'actual', tagId: 5,
+  tab: 'time', layer: 'actual', tagId: 5,
   expanded: { 2: true, 5: true }, shelfMini: false,
   selected: new Set(), records: [], undo: [], sheetId: null,
   sub: null,
@@ -513,16 +614,7 @@ seed();
 
 /* ============================ 视图 ============================ */
 const $ = s => document.querySelector(s);
-const modules = {
-  time: { name: '时间块', subs: [{ id: 'actual', name: '实录' }, { id: 'plan', name: '计划' }] },
-  deep: { name: '深度时间', subs: [] },
-  gtd: { name: '事项', subs: [] },
-  goal: { name: '目标', subs: [] },
-  tags: { name: '标签', subs: [] },
-  stat: { name: '统计', subs: [] },
-  settings: { name: '设置', subs: [] },
-};
-let module = 'time', subView = 'actual';
+let TAB = 'time';
 
 /* 两份画布共用同一套渲染，只是图层不同 */
 const canvases = {
@@ -819,73 +911,187 @@ function renderShelf(layer) {
   if (dot) dot.style.background = colorOf(state.tagId);
 }
 
-/* ============================ 一级 / 二级 ============================ */
-function openDrawer() { $('#drawer').classList.add('on'); $('#scrim').classList.add('on'); }
-function closeDrawer() { $('#drawer').classList.remove('on'); $('#scrim').classList.remove('on'); }
-$('#menuBtn').addEventListener('click', openDrawer);
-$('#scrim').addEventListener('click', closeDrawer);
-
-function buildSubMenu() {
-  const m = modules[module];
-  const el = $('#subMenu');
-  if (!m.subs.length) { el.innerHTML = ''; return; }
-  el.innerHTML = m.subs.map(s => `<button data-sub="${s.id}" class="${subView === s.id ? 'on' : ''}">
-      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2.5 6.2l2.4 2.4L9.5 4"/></svg>${s.name}</button>`).join('');
-  el.querySelectorAll('[data-sub]').forEach(b => b.addEventListener('click', () => {
-    subView = b.dataset.sub;
-    state.layer = subView === 'plan' ? 'plan' : 'actual';
-    state.selected = new Set();
-    $('#titleText').textContent = module === 'time' ? '时间块' : modules[module].name;
-    $('#titleSub').textContent = module === 'time' ? (modules.time.subs.find(x => x.id === subView) || {}).name : '';
-    closeSubMenu();
-    syncView(); refresh(); renderShelf(state.layer);
-  }));
-}
-function openSubMenu() {
-  const t = $('#titleBtn').getBoundingClientRect();
-  const r = $('.pane-product').getBoundingClientRect();
-  const el = $('#subMenu');
-  el.style.left = `${t.left - r.left}px`;
-  el.style.top = `${t.bottom - r.top + 4}px`;
-  buildSubMenu();
-  if (!el.innerHTML) { openDrawer(); return; }
-  el.classList.add('on');
-  $('#titleBtn').setAttribute('aria-expanded', 'true');
-}
-function closeSubMenu() {
-  $('#subMenu').classList.remove('on');
-  $('#titleBtn').setAttribute('aria-expanded', 'false');
-}
-$('#titleBtn').addEventListener('click', e => {
-  e.stopPropagation();
-  $('#subMenu').classList.contains('on') ? closeSubMenu() : openSubMenu();
-});
-document.addEventListener('click', e => {
-  if (!e.target.closest('#subMenu') && !e.target.closest('#titleBtn')) closeSubMenu();
-});
-
+/* ============================ 一级模块＝tab ============================ */
 function syncView() {
-  const view = module === 'time' ? (subView === 'plan' ? 'plan' : 'time') : module;
+  const view = state.tab === 'time' ? (state.layer === 'plan' ? 'plan' : 'time') : state.tab;
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.dataset.view === view));
-  document.querySelectorAll('.mrow').forEach(b => b.classList.toggle('on', b.dataset.go === module));
-  if (module === 'time') {
-    state.layer = subView === 'plan' ? 'plan' : 'actual';
-    renderShelf(state.layer);
-    $('#titleText').textContent = '时间块';
-    $('#titleSub').textContent = subView === 'plan' ? '计划' : '';
-  } else {
-    $('#titleText').textContent = modules[module].name;
-  }
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === state.tab));
+  document.querySelectorAll('.tb-bar .seg button').forEach(b => b.classList.toggle('on', b.dataset.layer === state.layer));
 }
-document.querySelectorAll('.mrow').forEach(b => b.addEventListener('click', () => {
-  module = b.dataset.go;
-  subView = module === 'time' ? 'actual' : '';
-  closeDrawer(); syncView(); refresh();
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  state.tab = t.dataset.tab;
+  state.selected = new Set();
+  syncView();
+  if (state.tab === 'gtd') renderGtd();
+  if (state.tab === 'time') { renderShelf(state.layer); refresh(); }
 }));
-$('#themeBtn').addEventListener('click', () => {
-  const root = document.documentElement;
-  root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
-});
+/* 时间块的「实录 / 计划」：同一块 UI，只换图层 */
+document.querySelectorAll('.tb-bar .seg button').forEach(b => b.addEventListener('click', () => {
+  state.layer = b.dataset.layer;
+  state.selected = new Set();
+  syncView(); renderShelf(state.layer); refresh();
+  requestAnimationFrame(() => scrollToNow(canvases[state.layer], false));
+}));
+
+/* ============================ 事项：三栏（OmniFocus 桌面手感） ============================ */
+const GTD = {
+  persp: [
+    { id: 'today', name: '今天', icon: 'circle', n: 4 },
+    { id: 'inbox', name: '收件箱', icon: 'tray', n: 3 },
+    { id: 'proj', name: '项目', icon: 'folder', n: 7 },
+    { id: 'forecast', name: '预测', icon: 'clock', n: 2 },
+    { id: 'flagged', name: '已标注', icon: 'flag', n: 1 },
+    { id: 'review', name: '回顾', icon: 'refresh', n: 2 },
+  ],
+  projects: [
+    { id: 'p1', name: '个人知识系统', n: 4, open: true },
+    { id: 'p2', name: '搬家收尾', n: 2, open: false },
+    { id: 'p3', name: '时间与精力工作台', n: 5, open: true },
+  ],
+  actions: [
+    { id: 'a1', p: 'p1', t: '把 Time 与 Tag 的设计定稿', meta: ['今天', '17:00'], due: true },
+    { id: 'a2', p: 'p1', t: '写 GTD 的交互稿', meta: ['明天'] },
+    { id: 'a3', p: 'p1', t: '整理 OmniFocus 调研笔记', meta: ['本周'] },
+    { id: 'a4', p: 'p1', t: '备份 secretary.db', meta: ['维护'] },
+    { id: 'a5', p: 'p3', t: '时间块只画整格', meta: ['今天'] },
+    { id: 'a6', p: 'p3', t: '选中态改成整段描边', meta: ['今天'] },
+    { id: 'a7', p: 'p3', t: '行高按一屏 24 行算', meta: ['已完成'] },
+    { id: 'a8', p: 'p2', t: '退租前拍水电表', meta: ['搬家'] },
+    { id: 'a9', p: 'p2', t: '注销旧宽带', meta: ['今天'], due: true },
+    { id: 'b1', t: '回复体检预约短信', meta: ['收件箱'] },
+    { id: 'b2', t: '看一下 DSH 0.2.2 的变更', meta: ['收件箱'] },
+  ],
+  done: new Set(['a7']), cur: 'today', sel: null,
+};
+
+function gtdIcon(name) {
+  const paths = {
+    circle: '<circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="2"/>',
+    tray: '<path d="M2.5 9.5h3l1 2h3l1-2h3"/><path d="M2.5 9.5l1.6-6h7.8l1.6 6v3.5h-11z"/>',
+    folder: '<path d="M2.5 4.5h4l1.5 2h5.5v6h-11z"/>',
+    clock: '<circle cx="8" cy="8" r="5.5"/><path d="M8 4.5V8l2.5 1.5"/>',
+    flag: '<path d="M5 13.5V2.8c2-1 4 -1 6 0v6c-2-1-4-1-6 0"/>',
+    refresh: '<path d="M13 8a5 5 0 11-1.6-3.7"/><path d="M13.4 2.6v3h-3"/>',
+  };
+  return `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">${paths[name] || ''}</svg>`;
+}
+
+function renderGtdSide() {
+  const host = $('#gtdSide');
+  host.innerHTML = `<h4>透视</h4>`;
+  GTD.persp.forEach(p => {
+    const b = document.createElement('div');
+    b.className = 'prow' + (GTD.cur === p.id ? ' on' : '');
+    b.innerHTML = `${gtdIcon(p.icon)}<span>${p.name}</span><span class="n">${p.n}</span>`;
+    b.addEventListener('click', () => { GTD.cur = p.id; renderGtd(); });
+    host.appendChild(b);
+  });
+  host.insertAdjacentHTML('beforeend', '<h4 style="margin-top:14px">项目</h4>');
+  GTD.projects.forEach(p => {
+    const b = document.createElement('div');
+    b.className = 'prow';
+    b.innerHTML = `${gtdIcon('folder')}<span>${p.name}</span><span class="n">${p.n}</span>`;
+    b.addEventListener('click', () => { GTD.cur = p.id; renderGtd(); });
+    host.appendChild(b);
+  });
+  host.insertAdjacentHTML('beforeend', '<h4 style="margin-top:14px">标签</h4>');
+  ['@电脑', '@外出', '@电话', '深度'].forEach(t => {
+    const b = document.createElement('div');
+    b.className = 'prow';
+    b.innerHTML = `${gtdIcon('flag')}<span>${t}</span>`;
+    host.appendChild(b);
+  });
+}
+
+function gtdVisible() {
+  if (GTD.cur === 'today') return GTD.actions.filter(a => !GTD.done.has(a.id) && (a.meta || []).includes('今天'));
+  if (GTD.cur === 'inbox') return GTD.actions.filter(a => !a.p);
+  if (GTD.cur === 'proj' || GTD.projects.some(p => p.id === GTD.cur)) {
+    const pid = GTD.cur === 'proj' ? null : GTD.cur;
+    return GTD.actions.filter(a => (pid ? a.p === pid : !!a.p));
+  }
+  return GTD.actions.filter(a => !GTD.done.has(a.id));
+}
+
+function renderGtd() {
+  const host = $('#gtdOutline');
+  if (!host) return;
+  renderGtdSide();
+  const name = (GTD.projects.find(p => p.id === GTD.cur) || GTD.persp.find(p => p.id === GTD.cur) || {}).name || '今天';
+  $('#gtdTitle').textContent = name;
+  const list = gtdVisible();
+  $('#gtdCount').textContent = `${list.filter(a => !GTD.done.has(a.id)).length} 个未完成`;
+  host.innerHTML = '';
+  const byProject = GTD.cur === 'proj';
+  const groupOrder = byProject ? GTD.projects.map(p => p.id) : [];
+  const renderAction = (a, child) => {
+    const row = document.createElement('div');
+    row.className = 'orow' + (child ? '' : '') + (GTD.done.has(a.id) ? ' done' : '') + (GTD.sel === a.id ? ' on' : '');
+    if (child) row.style.paddingLeft = '30px';
+    row.innerHTML = `<span class="ring"></span>
+      <span class="main"><span class="t">${a.t}</span>
+      <span class="meta">${(a.meta || []).map(m => `<span class="${a.due && m === a.meta[a.meta.length - 1] ? 'due' : ''}">${m}</span>`).join('')}</span></span>`;
+    row.querySelector('.ring').addEventListener('click', e => {
+      e.stopPropagation();
+      GTD.done.has(a.id) ? GTD.done.delete(a.id) : GTD.done.add(a.id);
+      renderGtd();
+      say(GTD.done.has(a.id) ? '已完成，再点圆圈可恢复' : '已恢复');
+    });
+    row.addEventListener('click', () => { GTD.sel = a.id; renderGtd(); });
+    host.appendChild(row);
+  };
+  if (byProject) {
+    groupOrder.forEach(pid => {
+      const p = GTD.projects.find(x => x.id === pid);
+      const kids = list.filter(a => a.p === pid);
+      if (!kids.length) return;
+      const row = document.createElement('div');
+      row.className = 'orow proj' + (p.open ? ' open' : '');
+      row.innerHTML = `<svg class="dis" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4.5 2.5L8 6l-3.5 3.5"/></svg>
+        <span class="main"><span class="t">${p.name}</span></span><span class="cnt">${p.n}</span>`;
+      row.addEventListener('click', () => { p.open = !p.open; renderGtd(); });
+      host.appendChild(row);
+      if (p.open) kids.forEach(a => renderAction(a, true));
+    });
+  } else {
+    list.forEach(a => renderAction(a, false));
+    if (!list.length) host.innerHTML = '<div class="placeholder"><div class="ph-t">这里是空的</div><div class="ph-d">换个透视看看。</div></div>';
+  }
+  renderInsp();
+}
+
+function renderInsp() {
+  const host = $('#gtdInsp');
+  const a = GTD.actions.find(x => x.id === GTD.sel);
+  if (!a) {
+    host.innerHTML = '<div class="cap">检查器</div><div class="ph-d" style="color:var(--txt-4);font-size:12px;line-height:1.7">选一条事项，这里显示它的项目、标签、时间与备注。</div>';
+    return;
+  }
+  const proj = (GTD.projects.find(p => p.id === a.p) || {}).name || '收件箱';
+  host.innerHTML = `
+    <div class="cap">检查器</div>
+    <input class="ti" value="${a.t}" />
+    <div class="frow"><b>项目</b><span class="fchip">${proj}</span><span class="fchip add">移出</span></div>
+    <div class="frow"><b>标签</b><span class="fchip">@电脑</span><span class="fchip add">+ 标签</span></div>
+    <div class="frow"><b>时间</b><span class="fchip">${(a.meta || [])[0] || '未安排'}</span><span class="fchip add">+ 推迟 / 到期</span></div>
+    <div class="frow"><b>重复</b><span class="fchip add">+ 重复</span></div>
+    <textarea placeholder="备注">${a.note || ''}</textarea>
+    <div class="acts"><button class="btn danger" id="inspDrop">放弃</button><button class="btn primary" id="inspDone">完成</button></div>`;
+  host.querySelector('.ti').addEventListener('input', e => { a.t = e.target.value; });
+  host.querySelector('#inspDone').addEventListener('click', () => { GTD.done.add(a.id); GTD.sel = null; renderGtd(); });
+  host.querySelector('#inspDrop').addEventListener('click', () => { GTD.done.add(a.id); GTD.sel = null; renderGtd(); });
+}
+
+/* 窄了就把侧栏/检查器收起来 */
+function fitGtdWidth() {
+  const el = $('#gtd');
+  if (!el || !el.clientWidth) return;
+  const w = el.clientWidth;
+  el.dataset.w = w < 860 ? 'narrow' : w < 1060 ? 'mid' : 'wide';
+}
+const gtdObserver = new ResizeObserver(() => fitGtdWidth());
+requestAnimationFrame(() => { const el = $('#gtd'); if (el) gtdObserver.observe(el); fitGtdWidth(); });
+$('#gtdAdd').addEventListener('click', () => say('新建事项下一步做'));
 
 /* ============================ 编辑浮层 ============================ */
 function openSheet(id) {
@@ -942,7 +1148,7 @@ $('#undoBtn').addEventListener('click', () => {
 [['#shelfHead', '#shelf'], ['#shelfHeadPlan', '#shelfPlan']].forEach(([h]) => {
   $(h).addEventListener('click', () => { state.shelfMini = !state.shelfMini; renderShelf(state.layer); });
 });
-$('#shelfMore').addEventListener('click', () => { module = 'tags'; closeDrawer(); syncView(); });
+$('#shelfMore').addEventListener('click', () => { state.tab = 'tags'; syncView(); });
 $('#eraseBtn').addEventListener('click', eraser);
 $('#clearBtn').addEventListener('click', clearSelection);
 $('#clearBtnPlan').addEventListener('click', clearSelection);
@@ -952,8 +1158,6 @@ $('#noteBtnPlan').addEventListener('click', () => state.sheetId && openSheet(sta
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if ($('#sheet').classList.contains('on')) { $('#sheet').classList.remove('on'); return; }
-  if ($('#subMenu').classList.contains('on')) { closeSubMenu(); return; }
-  if ($('#drawer').classList.contains('on')) { closeDrawer(); return; }
   clearSelection();
 });
 document.addEventListener('pointerdown', e => {
