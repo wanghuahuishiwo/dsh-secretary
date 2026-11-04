@@ -466,6 +466,16 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
 .hc{position:absolute;left:0;right:0;border:0;background:var(--cell);cursor:crosshair}
 .hc.filled{background:var(--deep-c)}
 
+
+/* 深度时间：周视图 + 周切换 */
+.deep-weekbar{flex:none;height:30px;display:flex;align-items:center;gap:6px;padding:0 8px;border-bottom:1px solid var(--line-2)}
+.deep-weekbar .wk{width:22px;height:22px;border:0;border-radius:5px;background:none;color:var(--txt-3);display:grid;place-items:center;cursor:pointer;padding:0}
+.deep-weekbar .wk:hover{background:var(--rail-3);color:var(--txt)}
+.deep-weekbar .wk svg{width:12px;height:12px}
+.deep-weekbar .wk-range{font-size:12px;color:var(--txt-2);font-variant-numeric:tabular-nums}
+.deep-weekbar .wk-now{height:22px;border:0;border-radius:5px;background:none;color:var(--txt-3);font:inherit;font-size:11.5px;cursor:pointer;padding:0 8px;margin-left:auto}
+.deep-weekbar .wk-now:hover{background:var(--rail-3);color:var(--txt)}
+
 </style>
 </head>
 <body><div class="stage">
@@ -582,17 +592,23 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
 
         <!-- 深度时间：7×24 周模板 -->
         <section class="view" data-view="deep">
+          <div class="deep-weekbar">
+            <button class="wk" id="wkPrev" aria-label="上一周"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7.5 2.5L4 6l3.5 3.5"/></svg></button>
+            <span class="wk-range" id="wkRange">11月3日 – 11月9日</span>
+            <button class="wk" id="wkNext" aria-label="下一周"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4.5 2.5L8 6l-3.5 3.5"/></svg></button>
+            <button class="wk-now" id="wkNow">本周</button>
+          </div>
           <div class="tb">
             <div class="tb-main">
               <div class="deep-head" id="deepHead"></div>
               <div class="deep-body" id="deepBody"></div>
             </div>
-            <aside class="shelf" id="deepShelf">
-              <button class="shelf-head" id="deepShelfHead">
+            <aside class="shelf" id="shelfDeep">
+              <button class="shelf-head" id="shelfHeadDeep">
                 <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5.2L6 2.4l3 2.8M3 9.5L6 6.7l3 2.8"/></svg>
                 <span>合上所有内容</span>
               </button>
-              <div class="shelf-list" id="deepLevels"></div>
+              <div class="shelf-list" id="shelfListDeep"></div>
             </aside>
           </div>
           <div class="status" id="deepStatus">
@@ -654,6 +670,7 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
       <nav class="drawer" id="drawer">
         <div class="cap">小秘书</div>
         <button class="mrow on" data-go="time"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2" width="12" height="12" rx="3"/><path d="M2 6h12M6 6v8"/></svg>时间块</button>
+
         <button class="mrow" data-go="deep"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 12l3.5-5 3 3.5L12 4"/><path d="M2 14h12"/></svg>深度时间</button>
         <button class="mrow" data-go="gtd"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4.5l1.6 1.6L7.5 3"/><path d="M3 11.5l1.6 1.6L7.5 10"/><path d="M9.5 4.8h4M9.5 11.8h4"/></svg>事项</button>
         <button class="mrow" data-go="goal"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="2.2"/></svg>目标</button>
@@ -1279,59 +1296,103 @@ function renderInsp() {
 
 
 
-/* ============================ 深度时间：和时间块完全同一套交互 ============================ */
+/* ============================ 深度时间：周视图（默认继承上一周，可单独改） ============================ */
 const LEVELS = [
   { id: 'H', name: 'high', color: '#5aa86a' },
   { id: 'M', name: 'medium', color: '#b99530' },
   { id: 'L', name: 'low', color: '#79808c' },
 ];
-const deep = new Map();
-[[1, 9, 'H'], [1, 10, 'H'], [1, 11, 'H'], [1, 14, 'M'], [1, 20, 'L'],
- [2, 9, 'H'], [2, 10, 'H'], [2, 14, 'M'], [2, 20, 'L'],
- [3, 9, 'H'], [3, 10, 'H'], [3, 11, 'H'], [3, 15, 'M'], [3, 20, 'M'],
- [4, 9, 'H'], [4, 10, 'H'], [4, 14, 'L'], [4, 20, 'L'],
- [5, 9, 'M'], [5, 10, 'M'], [5, 16, 'L'],
- [6, 10, 'H'], [6, 11, 'M'], [6, 15, 'M'],
- [7, 10, 'L'], [7, 16, 'M'], [7, 21, 'L']].forEach(([d, h, v]) => deep.set(`${d}-${h}`, v));
-
+const colorOfLevel = id => (LEVELS.find(l => l.id === id) || {}).color || 'transparent';
+const deepWeeks = new Map();      // '2026-11-03'(周一) → Map('1-9'→'H')
+let weekOffset = 0;
 let deepLevel = 'H';
-let deepRowH = 30;
+let deepRowH = 32;
 const deepSel = new Set();
 let deepDrag = null;
 
-function deepColor(id) { return (LEVELS.find(l => l.id === id) || {}).color || 'transparent'; }
+const BASE_WEEK = {
+  1: [[9, 12, 'H'], [14, 16, 'M'], [20, 22, 'L']],
+  2: [[9, 12, 'H'], [14, 16, 'M'], [20, 22, 'L']],
+  3: [[9, 12, 'H'], [14, 17, 'M'], [20, 21, 'L']],
+  4: [[9, 12, 'H'], [14, 16, 'L'], [20, 22, 'L']],
+  5: [[9, 11, 'M'], [14, 16, 'M'], [20, 21, 'L']],
+  6: [[10, 12, 'H'], [15, 17, 'M']],
+  7: [[10, 11, 'L'], [16, 18, 'M']],
+};
+function weekStartOf(date) {
+  const d = new Date(date); const dow = d.getDay() === 0 ? 7 : d.getDay();
+  d.setDate(d.getDate() - (dow - 1));
+  return d;
+}
+function weekKey(date) {
+  const d = weekStartOf(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function weekOf(offset) {
+  const start = weekStartOf(new Date());
+  const d = new Date(start); d.setDate(d.getDate() + offset * 7);
+  const day = new Date(d);
+  for (let i = 0; i < 7; i++) {
+    // 铺满整周：每小时一格（深度时间按小时，不按 10 分钟）
+  }
+  return d;
+}
+function deepFor(offset) {
+  const start = weekOf(offset);
+  const key = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+  if (deepWeeks.has(key)) return deepWeeks.get(key);
+  // 新的一周：默认复制上一周；没有上一周就用基础周
+  const prev = new Date(start); prev.setDate(prev.getDate() - 7);
+  const prevKey = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`;
+  const map = new Map();
+  if (deepWeeks.has(prevKey)) {
+    deepWeeks.get(prevKey).forEach((v, k) => map.set(k, v));
+  } else {
+    for (let d = 1; d <= 7; d++) (BASE_WEEK[d] || []).forEach(([from, to, lv]) => {
+      for (let h = from; h < to; h++) map.set(`${d}-${h}`, lv);
+    });
+  }
+  deepWeeks.set(key, map);
+  return map;
+}
 
 function renderDeep() {
   const headHost = $('#deepHead'), bodyHost = $('#deepBody');
   if (!headHost || !bodyHost) return;
-  const todayCol = new Date().getDay() === 0 ? 7 : new Date().getDay();
-  headHost.innerHTML = ['一', '二', '三', '四', '五', '六', '日']
-    .map((n, i) => `<div class="d${i + 1 === todayCol ? ' today' : ''}">${n}</div>`).join('');
+  const start = weekOf(weekOffset);
+  const end = new Date(start); end.setDate(end.getDate() + 6);
+  $('#wkRange').textContent = `${start.getMonth() + 1}月${start.getDate()}日 – ${end.getMonth() + 1}月${end.getDate()}日`;
+  const data = deepFor(weekOffset);
+  const todayIdx = (() => {
+    const now = new Date();
+    const diff = Math.floor((new Date(now.toDateString()) - new Date(start.toDateString())) / 86400000);
+    return diff >= 0 && diff < 7 ? diff : -1;
+  })();
+  headHost.innerHTML = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start); d.setDate(d.getDate() + i);
+    return `<div class="d${i === todayIdx ? ' today' : ''}">${d.getMonth() + 1}/${d.getDate()} 周${'一二三四五六日'[i]}</div>`;
+  }).join('');
 
   const available = bodyHost.clientHeight - 2;
   deepRowH = Math.max(16, Math.min(44, available / 24));
-
   const hours = `<div class="deep-hours">${Array.from({ length: 24 }, (_, h) =>
     `<span style="top:${h * deepRowH + 3}px">${h % 2 === 0 ? h : ''}</span>`).join('')}</div>`;
   const cols = Array.from({ length: 7 }, (_, ci) => {
     const d = ci + 1;
     const cells = Array.from({ length: 24 }, (_, h) => {
-      const level = deep.get(`${d}-${h}`);
-      const top = h * deepRowH + 0.5, height = deepRowH - 1;
-      const style = `top:${top}px;height:${height}px;left:0.5px;right:0.5px;` +
-        (level ? `background:${deepColor(level)};` : '');
+      const level = data.get(`${d}-${h}`);
+      const style = `top:${h * deepRowH + 0.5}px;height:${deepRowH - 1}px;left:0.5px;right:0.5px;` +
+        (level ? `background:${colorOfLevel(level)};` : '');
       return `<div class="hc${level ? ' filled' : ''}" data-k="${d}-${h}" style="${style}"></div>`;
     }).join('');
     return `<div class="deep-col" data-d="${d}">${cells}</div>`;
   }).join('');
   bodyHost.innerHTML = hours + `<div class="deep-cols">${cols}</div>`;
-  renderDeepLevels();
-  renderDeepSelection();
-  renderDeepStatus();
+  renderDeepLevels(); renderDeepSelection(); renderDeepStatus();
 }
 
 function renderDeepLevels() {
-  const host = $('#deepLevels');
+  const host = $('#shelfListDeep');
   if (!host) return;
   host.innerHTML = '';
   LEVELS.forEach(l => {
@@ -1352,15 +1413,13 @@ function renderDeepSelection() {
     if (!col) return;
     const box = document.createElement('div');
     box.className = 'selbox';
-    box.style.left = '0.5px';
-    box.style.right = '0.5px';
+    box.style.left = '0.5px'; box.style.right = '0.5px';
     box.style.top = `${h * deepRowH + 0.5}px`;
     box.style.height = `${deepRowH - 1}px`;
     box.innerHTML = '<i style="left:0;width:100%"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M2.5 6.4l2.3 2.3L9.5 3.7"/></svg></i>';
     col.appendChild(box);
   });
 }
-
 function renderDeepStatus() {
   const bar = $('#deepStatus');
   if (!bar) return;
@@ -1368,19 +1427,17 @@ function renderDeepStatus() {
   bar.classList.add('on');
   $('#deepStatusText').innerHTML = `选择了 <b>${deepSel.size}</b> 格`;
 }
-
 function assignDeep() {
   if (!deepSel.size) { say('先在格子上选一段，再点档位'); return; }
-  deepSel.forEach(k => deep.set(k, deepLevel));
-  deepSel.clear();
-  renderDeep();
-  say(`已记 ${deepLevel}`);
+  const data = deepFor(weekOffset);
+  deepSel.forEach(k => data.set(k, deepLevel));
+  deepSel.clear(); renderDeep(); say(`已记 ${deepLevel}`);
 }
 function eraseDeep() {
   if (!deepSel.size) return;
-  deepSel.forEach(k => deep.delete(k));
-  deepSel.clear();
-  renderDeep();
+  const data = deepFor(weekOffset);
+  deepSel.forEach(k => data.delete(k));
+  deepSel.clear(); renderDeep();
 }
 
 function bindDeep() {
@@ -1391,7 +1448,7 @@ function bindDeep() {
     if (!cell) return;
     const k = cell.dataset.k;
     deepDrag = { start: k, moved: false, was: deepSel.has(k) };
-    deepSel.add(k);
+    deepSel.add(k);                       // 单击未选中＝追加
     renderDeepSelection(); renderDeepStatus();
     e.preventDefault();
   });
@@ -1399,32 +1456,29 @@ function bindDeep() {
     if (!deepDrag) return;
     const cell = e.target.closest('.hc');
     if (!cell) return;
-    deepDrag.moved = true;
     const [d1, h1] = deepDrag.start.split('-').map(Number);
     const [d2, h2] = cell.dataset.k.split('-').map(Number);
     if (d1 !== d2) return;
-    deepSel.clear();
+    if (!deepDrag.moved && h1 === h2) return;
+    deepDrag.moved = true;
+    deepSel.clear();                       // 按住拖＝重新拉一段
     for (let h = Math.min(h1, h2); h <= Math.max(h1, h2); h++) deepSel.add(`${d1}-${h}`);
     renderDeepSelection(); renderDeepStatus();
   });
   window.addEventListener('pointerup', () => {
     if (!deepDrag) return;
-    if (!deepDrag.moved && deepDrag.was) {
-      deepSel.delete(deepDrag.start);
-      renderDeepSelection(); renderDeepStatus();
-    }
+    if (!deepDrag.moved && deepDrag.was) deepSel.delete(deepDrag.start);  // 单击已选中＝取消
     deepDrag = null;
+    renderDeepSelection(); renderDeepStatus();
   });
+  $('#wkPrev')?.addEventListener('click', () => { weekOffset--; deepSel.clear(); renderDeep(); });
+  $('#wkNext')?.addEventListener('click', () => { weekOffset++; deepSel.clear(); renderDeep(); });
+  $('#wkNow')?.addEventListener('click', () => { weekOffset = 0; deepSel.clear(); renderDeep(); });
 }
 bindDeep();
 $('#deepClear')?.addEventListener('click', () => { deepSel.clear(); renderDeepSelection(); renderDeepStatus(); });
 $('#deepErase')?.addEventListener('click', eraseDeep);
-$('#deepShelfHead')?.addEventListener('click', () => {
-  $('#deepShelf')?.classList.toggle('mini');
-});
-window.addEventListener('resize', () => {
-  if (document.querySelector('.view[data-view="deep"]')?.classList.contains('on')) renderDeep();
-});
+$('#shelfHeadDeep')?.addEventListener('click', () => $('#shelfDeep')?.classList.toggle('mini'));
 /* ============================ 编辑浮层 ============================ */
 function openSheet(id) {
   const r = state.records.find(x => x.id === id);
