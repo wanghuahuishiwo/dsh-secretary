@@ -37,6 +37,7 @@
   "dependencies": {
     "@deepseek-ai/cordis": "4.0.5",
     "dsh-secretary-core": "workspace:*",
+    "dsh-secretary-goal": "workspace:*",
     "dsh-secretary-gtd": "workspace:*",
     "dsh-secretary-panel": "workspace:*",
     "dsh-secretary-storage": "workspace:*",

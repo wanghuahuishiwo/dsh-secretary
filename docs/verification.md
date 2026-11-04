@@ -84,3 +84,17 @@ git diff --check
 - Storage 无跨 record 事务，不能声称所有故障下绝对原子。单点写入失败且补偿成功已逐项覆盖；另已覆盖主写入与补偿删除连续失败，服务显式报错，部分事实在重开后仍存在。持续介质不可用、其他二次失败组合及进程在多条写入之间崩溃仍不保证自动恢复。
 - DeepTime 一次指针手势仍逐格串行提交，中途失败可能保留部分格子的修改，这是本轮未扩大的既有边界。
 - 浏览器测试使用 `DEEPSEEK_API_KEY=browser-test-no-model`，不评价真实模型的语义判断或 Agent 工作流。
+
+## 6. 2026-11-04 Goal 上游依赖曳光弹
+
+本轮只增加空 Goal Provider 与真实依赖验证，不改变产品 UI 或 Goal 业务模型。
+
+实际运行结果：
+
+- `pnpm install --offline --ignore-scripts --frozen-lockfile` 成功，workspace 为 9 个项目，lockfile 被 pnpm 判定为 up to date。
+- `pnpm build` 成功构建 8 个包，包括 `dsh-secretary-goal`。
+- `packages/secretary/tests/tracer.mjs`：**51/51** 通过。新增用例在 Goal 缺失时确认 Time／GTD／面板未激活，提供空 Goal 后全部激活，Provider 卸载后 services 与 Host routes 均清理。
+- `packages/secretary/tests/browser.mjs`：**7/7** 通过。每个用例均在隔离 `DSH_HOME` 中通过真实 `dsh web`、构建后的插件产物与 Chromium 冷启动，覆盖 Goal 已加入 bundle 后的现有画布、事项与主题行为。
+- `pnpm pack` 成功；打包后的 manifest 保留 `dsh.bundle.patch`，`dsh-secretary-goal` 的 `workspace:*` 被转换为 `0.1.0`，`engines.dsh` 仍为 `>=0.2.1-rc.5 <0.3.0`。
+
+空 Goal 的通过不代表 Goal 实体、关联、工具或 UI 已交付；这些仍未规划。

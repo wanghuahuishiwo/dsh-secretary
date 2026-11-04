@@ -1,6 +1,6 @@
 # dsh-secretary
 
-可安装到 DeepSeek Harness 的私人 Secretary Agent bundle。当前集中验收只覆盖 **Time + Tag**；#6 GTD Review／Repeat／OmniFocus UI 与全产品 #8 暂停，现有 GTD UI 不是终稿。包内仍保留已实现的 GTD 基础切片、独立 Tag、具体日期 PlanBlock／ActualBlock、PlanTemplateBlock、DeepTime 基础周模板和真实 Web 产品壳；各领域共用同一 SQLite，GTD Completed、计划、模板、实录与深度时间互不伪造或回写事实。Goal、统计、预算与对账不在本轮。
+可安装到 DeepSeek Harness 的私人 Secretary Agent bundle。当前集中验收覆盖 **Time + Tag 与空 Goal Provider**；#6 GTD Review／Repeat／OmniFocus UI 与全产品 #8 暂停，现有 GTD UI 不是终稿。包内仍保留已实现的 GTD 基础切片、独立 Tag、具体日期 PlanBlock／ActualBlock、PlanTemplateBlock、DeepTime 基础周模板和真实 Web 产品壳；各领域共用同一 SQLite，GTD Completed、计划、模板、实录与深度时间互不伪造或回写事实。Goal 只建立上游空 service，不实现目标模型、UI、统计、预算与对账。
 
 ## 构建与验证
 
@@ -19,9 +19,9 @@ pnpm test
 
 ## 装配
 
-- 根层：`storage-sqlite`、`secretary-storage`、`secretary-gtd`、`secretary-tag`、`secretary-time-block`、`secretary-panel`。
+- 根层：`storage-sqlite`、`secretary-storage`、`secretary-goal`、`secretary-gtd`、`secretary-tag`、`secretary-time-block`、`secretary-panel`。行序仅用于阅读，启动与重载由 Cordis `inject` 驱动。
 - Secretary preset：公共工具 `secretary_gtd`、`secretary_tag`、`secretary_time`，以及既有 GTD/Secretary skills。
-- Goal 与统计不实现；旧 `secretary_time_block`、Action 关联 planned/actual 模型及独立 Statistics 包均已移除，不保留兼容层。
+- Goal 只有上游空 Provider；Goal 业务模型与统计不实现。旧 `secretary_time_block`、Action 关联 planned/actual 模型及独立 Statistics 包均已移除，不保留兼容层。
 
 `secretary_gtd`、`secretary_tag`、`secretary_time` 经 `secretaryStorageDomain` 默认路由到：
 
@@ -37,7 +37,7 @@ UI 的 Host routes 和 Agent 公共 tools 都调用 `ctx.gtd` / `ctx.tags` / `ct
 pnpm dev
 ```
 
-desktop profile 通过 `link:` 使用 `packages/secretary` 的构建产物。改动 `cordis.patch.yml` 后用 `/dsh-reload`，再新开会话验证；改动任何包 `src/` 后先构建。bundle patch 按名字引用的包必须是运行 profile 的直接依赖，包括 `dsh-secretary-storage/gtd/tag/time-block/panel` 与 `@deepseek-ai/dsh-storage-sqlite`。
+desktop profile 通过 `link:` 使用 `packages/secretary` 的构建产物。改动 `cordis.patch.yml` 后用 `/dsh-reload`，再新开会话验证；改动任何包 `src/` 后先构建。bundle patch 按名字引用的包必须是运行 profile 的直接依赖，包括 `dsh-secretary-storage/goal/gtd/tag/time-block/panel` 与 `@deepseek-ai/dsh-storage-sqlite`。
 
 正式安装可先构建，再使用 `plugin_manager` 安装本包，或：
 

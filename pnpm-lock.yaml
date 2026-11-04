@@ -18,6 +18,16 @@ importers:
         specifier: ^0.25.10
         version: 0.25.12
 
+  packages/goal:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5
+    devDependencies:
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
+
   packages/gtd:
     dependencies:
       '@deepseek-ai/cordis':
@@ -61,6 +71,9 @@ importers:
       dsh-secretary-core:
         specifier: workspace:*
         version: link:../core
+      dsh-secretary-goal:
+        specifier: workspace:*
+        version: link:../goal
       dsh-secretary-gtd:
         specifier: workspace:*
         version: link:../gtd

@@ -174,6 +174,8 @@ async function writeOverlay(home) {
     '      journalMode: delete',
     "    - id: secretary-browser-storage",
     `      name: 'file://${join(ROOT, 'packages/storage/lib/index.js')}'`,
+    "    - id: secretary-browser-goal",
+    `      name: 'file://${join(ROOT, 'packages/goal/lib/index.js')}'`,
     "    - id: secretary-browser-tag",
     `      name: 'file://${join(ROOT, 'packages/tag/lib/index.js')}'`,
     "    - id: secretary-browser-gtd",

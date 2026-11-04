@@ -27,7 +27,7 @@ GTD 包保存 Inbox、Project 与 Action 的唯一事项事实，提供捕获／
 
 | 入口 | 作用 | `inject` |
 |---|---|---|
-| `dsh-secretary-gtd` | 注册 `ctx.gtd`、GTD 持久化与 Tag 引用 inspector | `secretaryStorageDomain`、`tags`、`tagReferences` |
+| `dsh-secretary-gtd` | 注册 `ctx.gtd`、GTD 持久化与 Tag 引用 inspector | `secretaryStorageDomain`、`tags`、`tagReferences`、`goals` |
 | `dsh-secretary-gtd/tools` | 注册 `secretary_gtd` | `tools`、`gtd` |
 | `dsh-secretary-gtd/agent` | 注册两个 user-only GTD Skills | `skills` |
 

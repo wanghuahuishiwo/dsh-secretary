@@ -3,7 +3,7 @@
 ## 现行基线
 
 - [specs/2026-11-03-secretary-product-foundation.md](specs/2026-11-03-secretary-product-foundation.md) — GTD、Time、Tag 一期产品基线与测试 seam。
-- [product-architecture.md](product-architecture.md) — 一级模块、Time 内部工作区、Tags 入口与阶段边界。
+- [product-architecture.md](product-architecture.md) — 产品模块清单、依赖关系、Time 内部工作区与阶段边界。
 - [data-model.md](data-model.md) — 领域事实、标签关联、日期区间和持久化语义。
 - [architecture.md](architecture.md) — 当前 bundle、Services、SQLite 表所有权与补偿写入架构。
 - [prd.md](prd.md) — 现行需求导航，不另存重复规格。
@@ -21,5 +21,6 @@
 
 - [research/timeblock-app.md](research/timeblock-app.md) — iPhone App「时间块」概念模型调研。
 - [research/omnifocus.md](research/omnifocus.md) — OmniFocus 核心模型、日期与状态语义。
+- [research/dsh-plugin-development.md](research/dsh-plugin-development.md) — DSH 插件依赖、bundle 装配、Host／Client 边界与 tracer bullet 开发约束。
 - [research/plan-actual-comparison.md](research/plan-actual-comparison.md) — 计划与实录对照研究，供后续专题使用；不代表现行统计能力。
 - [personal-profile.md](personal-profile.md) — 深度时间背景资料的工作副本，权威仍在个人知识库。

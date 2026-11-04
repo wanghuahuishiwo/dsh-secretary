@@ -13,6 +13,11 @@
     - id: secretary-storage
       name: 'dsh-secretary-storage'
 
+    # 上游共享 Goal Provider；当前为空，只建立 service seam。
+    # 本列表行序仅用于阅读，启动与重载由 Cordis inject 驱动。
+    - id: secretary-goal
+      name: 'dsh-secretary-goal'
+
     - id: secretary-gtd
       name: 'dsh-secretary-gtd'
 

@@ -817,7 +817,7 @@ export class SQLiteTimeService extends TimeService {
 }
 
 export const name = 'dsh-secretary-time-block'
-export const inject = ['secretaryStorageDomain', 'tags', 'tagReferences']
+export const inject = ['secretaryStorageDomain', 'tags', 'tagReferences', 'goals']
 export function apply(ctx: Context, config: Config = {}): void {
   ctx.plugin(SQLiteTimeService, config)
 }

@@ -14,6 +14,7 @@ await writeFile(overlay, [
   '- insert:',
   "    - id: secretary-browser-sqlite", `      name: 'file://${join(ROOT, 'packages/secretary/node_modules/@deepseek-ai/dsh-storage-sqlite/lib/index.js')}'`, '      config:', `        path: ${join(home, 's.sqlite')}`, '      journalMode: delete',
   "    - id: secretary-browser-storage", `      name: 'file://${join(ROOT, 'packages/storage/lib/index.js')}'`,
+  "    - id: secretary-browser-goal", `      name: 'file://${join(ROOT, 'packages/goal/lib/index.js')}'`,
   "    - id: secretary-browser-tag", `      name: 'file://${join(ROOT, 'packages/tag/lib/index.js')}'`,
   "    - id: secretary-browser-gtd", `      name: 'file://${join(ROOT, 'packages/gtd/lib/index.js')}'`,
   "    - id: secretary-browser-time", `      name: 'file://${join(ROOT, 'packages/time-block/lib/index.js')}'`,

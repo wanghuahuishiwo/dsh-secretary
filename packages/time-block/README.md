@@ -6,7 +6,7 @@
 
 | 入口 | 作用 | `inject` | `Config` |
 |---|---|---|---|
-| `dsh-secretary-time-block` | 注册 `ctx.time`（`TimeService`）及持久化 | `secretaryStorageDomain`、`tags`、`tagReferences` | `{ domain?: string }` |
+| `dsh-secretary-time-block` | 注册 `ctx.time`（`TimeService`）及持久化 | `secretaryStorageDomain`、`tags`、`tagReferences`、`goals` | `{ domain?: string }` |
 | `dsh-secretary-time-block/tools` | 注册公共工具 `secretary_time` | `tools`、`time` | 无配置字段 |
 
 工具操作：

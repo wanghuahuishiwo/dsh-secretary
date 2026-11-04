@@ -531,7 +531,7 @@ export class SQLiteGtdService extends GtdService {
 }
 
 export const name = 'dsh-secretary-gtd'
-export const inject = ['secretaryStorageDomain', 'tags', 'tagReferences']
+export const inject = ['secretaryStorageDomain', 'tags', 'tagReferences', 'goals']
 
 export function apply(ctx: Context, config: Config = {}): void {
   ctx.plugin(SQLiteGtdService, config)

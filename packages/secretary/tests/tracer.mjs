@@ -6,11 +6,12 @@ import { test } from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import Storage, { storageBackendServiceKey } from '@deepseek-ai/dsh-storage'
 import { SqliteStorageBackend } from '@deepseek-ai/dsh-storage-sqlite'
+import { GoalService } from 'dsh-secretary-goal/contract'
 import { GtdService } from 'dsh-secretary-gtd/contract'
 import { TagService } from 'dsh-secretary-tag/contract'
 import { TimeService } from 'dsh-secretary-time-block/contract'
 
-async function sqliteHarness(t, databasePath, failOn, beforePlugins) {
+async function sqliteHarness(t, databasePath, failOn, beforePlugins, includeGoal = true) {
   const directory = databasePath === undefined ? await mkdtemp(join(tmpdir(), 'dsh-secretary-tracer-')) : undefined
   const resolvedDatabasePath = databasePath ?? join(directory, 'secretary.sqlite')
   const ctx = new Context()
@@ -79,8 +80,12 @@ async function sqliteHarness(t, databasePath, failOn, beforePlugins) {
     import('dsh-secretary-time-block'),
     import('dsh-secretary-time-block/tools'),
     import('dsh-secretary-panel'),
+    ...(includeGoal ? [import('dsh-secretary-goal')] : []),
   ])
-  for (const module of modules) await ctx.plugin(module)
+  // Create every module before awaiting them, as the real Loader does. Cordis
+  // service readiness, not this list's order, determines who can activate.
+  const pending = modules.map(module => ctx.plugin(module))
+  if (includeGoal) await Promise.all(pending)
 
   let closed = false
   const close = async () => {
@@ -98,6 +103,13 @@ async function sqliteHarness(t, databasePath, failOn, beforePlugins) {
     ctx, tools, skills, routes, databasePath: resolvedDatabasePath, close, failOn,
     failNextWrite(table, index = 1) { nextFailure = { table, indexes: new Set([index]), count: 0 } },
     failWriteSequence(table, indexes) { nextFailure = { table, indexes: new Set(indexes), count: 0 } },
+    async provideGoal() {
+      if (includeGoal) throw new Error('secretary: test harness already includes Goal')
+      const goal = await import('dsh-secretary-goal')
+      const provider = await ctx.plugin(goal)
+      await Promise.all(pending)
+      return provider
+    },
   }
 }
 
@@ -105,6 +117,20 @@ function execute(harness, name, args) {
   const tool = harness.tools.get(name)
   assert.ok(tool, `missing public tool ${name}`)
   return tool.execute(args)
+}
+
+async function eventually(assertion) {
+  let lastError
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    try {
+      assertion()
+      return
+    } catch (error) {
+      lastError = error
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+  }
+  throw lastError
 }
 
 test('Tag public tools create and list a unified time/context tree with numeric ids', async (t) => {
@@ -1374,6 +1400,30 @@ test('panel Host GTD routes and public tools share capture, clarification, Next,
   assert.deepEqual((await state()).nextActions, [])
 })
 
+test('Goal is an upstream Provider: Time, GTD and the panel wait for it and unload with it', async (t) => {
+  const harness = await sqliteHarness(t, undefined, undefined, undefined, false)
+  await eventually(() => assert.ok(harness.ctx.get('tags') instanceof TagService))
+  assert.equal(harness.ctx.get('goals'), undefined)
+  assert.equal(harness.ctx.get('gtd'), undefined)
+  assert.equal(harness.ctx.get('time'), undefined)
+  assert.equal(harness.routes.size, 0)
+
+  const provider = await harness.provideGoal()
+  assert.ok(harness.ctx.get('goals') instanceof GoalService)
+  assert.ok(harness.ctx.get('gtd') instanceof GtdService)
+  assert.ok(harness.ctx.get('time') instanceof TimeService)
+  assert.ok(harness.routes.has('/api/secretary.state'))
+  assert.ok(harness.routes.has('/api/secretary.command'))
+
+  await provider.dispose()
+  await eventually(() => {
+    assert.equal(harness.ctx.get('goals'), undefined)
+    assert.equal(harness.ctx.get('gtd'), undefined)
+    assert.equal(harness.ctx.get('time'), undefined)
+    assert.equal(harness.routes.size, 0)
+  })
+})
+
 test('Secretary composition registers one coherent assistant and user-only GTD skills over SQLite services', async (t) => {
   const harness = await sqliteHarness(t)
   const gtdAgent = await import('dsh-secretary-gtd/agent')
@@ -1388,6 +1438,7 @@ test('Secretary composition registers one coherent assistant and user-only GTD s
   assert.equal(harness.skills.get('secretary').invocation.modelInvocable, true)
   assert.equal(harness.skills.get('secretary').invocation.userInvocable, true)
   assert.ok(harness.ctx.gtd instanceof GtdService)
+  assert.ok(harness.ctx.goals instanceof GoalService)
   assert.ok(harness.ctx.tags instanceof TagService)
   assert.ok(harness.ctx.time instanceof TimeService)
   for (const name of ['secretary_gtd', 'secretary_tag', 'secretary_time']) {
@@ -1403,6 +1454,7 @@ test('Secretary composition registers one coherent assistant and user-only GTD s
   for (const row of [
     "name: '@deepseek-ai/dsh-storage-sqlite'",
     "name: 'dsh-secretary-storage'",
+    "name: 'dsh-secretary-goal'",
     "name: 'dsh-secretary-gtd'",
     "name: 'dsh-secretary-tag'",
     "name: 'dsh-secretary-time-block'",
