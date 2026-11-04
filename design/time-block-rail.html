@@ -1542,6 +1542,12 @@ $('#eraseBtnPlan').addEventListener('click', eraser);
 $('#noteBtn').addEventListener('click', () => state.sheetId && openSheet(state.sheetId));
 $('#noteBtnPlan').addEventListener('click', () => state.sheetId && openSheet(state.sheetId));
 document.addEventListener('keydown', e => {
+  const typing = e.target instanceof HTMLElement &&
+    (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable);
+  if ((e.key === 'Delete' || e.key === 'Backspace') && !typing) {
+    if (module === 'time' && state.selected.size) { e.preventDefault(); eraser(); return; }
+    if (module === 'deep' && deepSel.size) { e.preventDefault(); eraseDeep(); return; }
+  }
   if (e.key !== 'Escape') return;
   if ($('#sheet').classList.contains('on')) { $('#sheet').classList.remove('on'); return; }
   if ($('#subMenu').classList.contains('on')) { closeSubMenu(); return; }
