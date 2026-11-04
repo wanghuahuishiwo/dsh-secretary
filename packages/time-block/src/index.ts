@@ -15,6 +15,8 @@ import {
   type DeepLevel,
   type DeepRange,
   type DeepWeek,
+  type DeepWeekQuery,
+  type DeepWeekSource,
   type FocusLevel,
   type ListActualQuery,
   type ListPlanQuery,
@@ -44,10 +46,18 @@ interface TemplateUndo {
   readonly after: readonly PlanBlock[]
 }
 
-interface DeepTemplate {
+interface DeepBaseTemplate {
   readonly scope: 'base'
   readonly levels: readonly DeepCellLevel[]
 }
+
+interface DeepWeekTemplate {
+  readonly scope: 'week'
+  readonly weekStart: string
+  readonly levels: readonly DeepCellLevel[]
+}
+
+type DeepTemplate = DeepBaseTemplate | DeepWeekTemplate
 
 interface StorageDomain {
   readonly global: { get(): number; set(value: number): Promise<void> }
@@ -247,13 +257,40 @@ function parseDeepLevel(raw: unknown): DeepLevel {
   return raw
 }
 
+function parseDeepWeekStart(raw: unknown): string {
+  if (typeof raw !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    throw new Error('secretary: weekStart must be YYYY-MM-DD')
+  }
+  const date = new Date(`${raw}T00:00:00Z`)
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== raw) {
+    throw new Error('secretary: invalid weekStart date')
+  }
+  date.setUTCDate(date.getUTCDate() - (date.getUTCDay() + 6) % 7)
+  return date.toISOString().slice(0, 10)
+}
+
+function shiftDeepWeek(weekStart: string, weeks: number): string {
+  const date = new Date(`${weekStart}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + weeks * 7)
+  return date.toISOString().slice(0, 10)
+}
+
 function parseDeepTemplate(raw: unknown): DeepTemplate {
   const template = objectOf(raw, 'deep template') as unknown as DeepTemplate
-  if (template.scope !== 'base' || !Array.isArray(template.levels) || template.levels.length !== 168
+  if (!Array.isArray(template.levels) || template.levels.length !== 168
     || template.levels.some(level => !DEEP_CELL_LEVELS.includes(level))) {
-    throw new Error('secretary: invalid stored deep base template')
+    throw new Error('secretary: invalid stored deep template')
   }
-  return template
+  if (template.scope === 'base') return template
+  if (template.scope === 'week') {
+    try {
+      if (parseDeepWeekStart(template.weekStart) !== template.weekStart) throw new Error('not a Monday')
+    } catch {
+      throw new Error('secretary: invalid stored deep week template')
+    }
+    return template
+  }
+  throw new Error('secretary: invalid stored deep template scope')
 }
 
 function parseHour(raw: unknown): number {
@@ -263,9 +300,14 @@ function parseHour(raw: unknown): number {
   return raw as number
 }
 
-function deepWeek(levels: readonly DeepCellLevel[] = Array.from({ length: 168 }, () => 'unset')): DeepWeek {
+function deepWeek(
+  weekStart: string,
+  source: DeepWeekSource,
+  levels: readonly DeepCellLevel[] = Array.from({ length: 168 }, () => 'unset'),
+): DeepWeek {
   return {
-    scope: 'base',
+    weekStart,
+    source,
     cells: levels.map((level, index) => ({
       weekday: Math.floor(index / 24) + 1,
       hour: index % 24,
@@ -699,65 +741,77 @@ export class SQLiteTimeService extends TimeService {
     })
   }
 
-  async getDeepWeek(): Promise<DeepWeek> {
+  private resolveDeepWeek(domain: StorageDomain, weekStart: string): DeepWeek {
+    const templates = domain.table('deep_templates')
+    const own = templates.get(`week:${weekStart}`)
+    if (own !== undefined) return deepWeek(weekStart, 'own', own.levels)
+    let earlier = weekStart
+    for (let count = 0; count < 52; count += 1) {
+      earlier = shiftDeepWeek(earlier, -1)
+      const inherited = templates.get(`week:${earlier}`)
+      if (inherited !== undefined) return deepWeek(weekStart, 'inherited', inherited.levels)
+    }
+    return deepWeek(weekStart, 'seed', templates.get('base')?.levels)
+  }
+
+  private async writeDeepWeek(
+    rawWeekStart: string,
+    change: (levels: DeepCellLevel[]) => void,
+  ): Promise<DeepWeek> {
+    const weekStart = parseDeepWeekStart(rawWeekStart)
+    return this.mutate(async () => {
+      const domain = await this.ready
+      const current = this.resolveDeepWeek(domain, weekStart)
+      const levels = current.cells.map(cell => cell.level)
+      change(levels)
+      await domain.table('deep_templates').put(`week:${weekStart}`, { scope: 'week', weekStart, levels })
+      return deepWeek(weekStart, 'own', levels)
+    })
+  }
+
+  async getDeepWeek(query: DeepWeekQuery): Promise<DeepWeek> {
+    const weekStart = parseDeepWeekStart(query.weekStart)
     const domain = await this.ready
-    return deepWeek(domain.table('deep_templates').get('base')?.levels)
+    return this.resolveDeepWeek(domain, weekStart)
   }
 
   async setDeepCell(input: SetDeepCellInput): Promise<DeepWeek> {
-    return this.mutate(async () => {
-      const weekday = parseWeekday(input.weekday)
-      const hour = parseHour(input.hour)
-      const level = parseDeepLevel(input.level)
-      const domain = await this.ready
-      const levels = [...(domain.table('deep_templates').get('base')?.levels ?? Array.from({ length: 168 }, () => 'unset' as const))]
-      levels[(weekday - 1) * 24 + hour] = level
-      await domain.table('deep_templates').put('base', { scope: 'base', levels })
-      return deepWeek(levels)
-    })
+    const weekday = parseWeekday(input.weekday)
+    const hour = parseHour(input.hour)
+    const level = parseDeepLevel(input.level)
+    return this.writeDeepWeek(input.weekStart, levels => { levels[(weekday - 1) * 24 + hour] = level })
   }
+
   async clearDeepCell(input: DeepCellPosition): Promise<DeepWeek> {
-    return this.mutate(async () => {
-      const weekday = parseWeekday(input.weekday)
-      const hour = parseHour(input.hour)
-      const domain = await this.ready
-      const levels = [...(domain.table('deep_templates').get('base')?.levels ?? Array.from({ length: 168 }, () => 'unset' as const))]
-      levels[(weekday - 1) * 24 + hour] = 'unset'
-      await domain.table('deep_templates').put('base', { scope: 'base', levels })
-      return deepWeek(levels)
-    })
+    const weekday = parseWeekday(input.weekday)
+    const hour = parseHour(input.hour)
+    return this.writeDeepWeek(input.weekStart, levels => { levels[(weekday - 1) * 24 + hour] = 'unset' })
   }
+
   async setDeepRange(input: SetDeepRangeInput): Promise<DeepWeek> {
-    return this.mutate(async () => {
-      const startWeekday = parseWeekday(input.startWeekday)
-      const startHour = parseHour(input.startHour)
-      const endWeekday = parseWeekday(input.endWeekday)
-      const endHour = parseHour(input.endHour)
-      if (startWeekday > endWeekday || startHour > endHour) throw new Error('secretary: deep range must run from start to end')
-      const level = parseDeepLevel(input.level)
-      const domain = await this.ready
-      const levels = [...(domain.table('deep_templates').get('base')?.levels ?? Array.from({ length: 168 }, () => 'unset' as const))]
+    const startWeekday = parseWeekday(input.startWeekday)
+    const startHour = parseHour(input.startHour)
+    const endWeekday = parseWeekday(input.endWeekday)
+    const endHour = parseHour(input.endHour)
+    if (startWeekday > endWeekday || startHour > endHour) throw new Error('secretary: deep range must run from start to end')
+    const level = parseDeepLevel(input.level)
+    return this.writeDeepWeek(input.weekStart, levels => {
       for (let weekday = startWeekday; weekday <= endWeekday; weekday += 1) {
         for (let hour = startHour; hour <= endHour; hour += 1) levels[(weekday - 1) * 24 + hour] = level
       }
-      await domain.table('deep_templates').put('base', { scope: 'base', levels })
-      return deepWeek(levels)
     })
   }
+
   async clearDeepRange(input: DeepRange): Promise<DeepWeek> {
-    return this.mutate(async () => {
-      const startWeekday = parseWeekday(input.startWeekday)
-      const startHour = parseHour(input.startHour)
-      const endWeekday = parseWeekday(input.endWeekday)
-      const endHour = parseHour(input.endHour)
-      if (startWeekday > endWeekday || startHour > endHour) throw new Error('secretary: deep range must run from start to end')
-      const domain = await this.ready
-      const levels = [...(domain.table('deep_templates').get('base')?.levels ?? Array.from({ length: 168 }, () => 'unset' as const))]
+    const startWeekday = parseWeekday(input.startWeekday)
+    const startHour = parseHour(input.startHour)
+    const endWeekday = parseWeekday(input.endWeekday)
+    const endHour = parseHour(input.endHour)
+    if (startWeekday > endWeekday || startHour > endHour) throw new Error('secretary: deep range must run from start to end')
+    return this.writeDeepWeek(input.weekStart, levels => {
       for (let weekday = startWeekday; weekday <= endWeekday; weekday += 1) {
         for (let hour = startHour; hour <= endHour; hour += 1) levels[(weekday - 1) * 24 + hour] = 'unset'
       }
-      await domain.table('deep_templates').put('base', { scope: 'base', levels })
-      return deepWeek(levels)
     })
   }
 }

@@ -82,3 +82,16 @@
 1. **日期位置**：你提到「日期是在右边」，但两张参考图里日期块都在左侧日期列。这一版按参考图放在左上、紧贴格阵。如果你说的是「放到右边」，我把它挪到格阵右侧。
 2. **并行**：现在一格只允许一条记录，赋值即覆盖。以后要并行的话，是「同格上下分栏」还是「第二条记录用斜线/半透明」？
 3. **二级模块的边界**：现在「时间块」下只有「实录 / 计划」；深度时间我暂时留在抽屉做一级。要不要并进「时间块」当第三级？
+
+## 第九轮：原型落进真实产品（右栏 tab）
+
+原型定稿后不再改视觉，开始把它做成真的：
+
+- **载体**：`packages/panel` 从「全局主面板 + 左侧栏入口」改成**右栏 tab**（`ctx.sidebarRightTabs.register({ id, kind: 'secretary', priority: 'builtin', title: '小秘书' })` + `sidebar.right.pane.tab` body）。聊天留在中栏，产品在右栏窄列，和原型布局一致；入口是右栏 guide 里的「小秘书」胶囊。
+- **砍掉的东西**（按原型）：粒度切换 10/15/30、开始/停止计时、计划模板 apply/undo、并行记录分栏、右键菜单式编辑、标签管理器。这些 Service 能力保留给 agent，UI 不再暴露。
+- **时间块画布**：`TimeCanvas` 用 10 分钟格铺 7 天，`rowH = clamp(22, 64, 可视高度 / 24)`，一格一天正好一屏；方块无圆角、每格带字；选区描边按小时断开，✓ 逐格；`不选`/`Esc`/点空白清空，`橡皮`/`Delete` 擦除；底栏高度常驻，避免选区出现时画布重排把指针下的格子挪走（原型里踩过）。
+- **上色语义**：`time.paint` 在 Host 侧把选中的 run 从所有重叠记录里切出来（跨午夜也按绝对时间算），再落新块，最后合并同色相邻块。撤销＝`time.replace` 整日回写快照，绕开 ID 重映射。
+- **深度时间**：数据层从单一 base 周模板改成按周（`DeepWeek = { weekStart, source: 'own' | 'inherited' | 'seed', cells }`），没画过的周继承最近更早的周，写入只落本周；UI 是 7×24 小时格 + 周切换 + 矩形拖选 + 三档画笔。
+- **主题**：全部走 `--dsw-alias-*`，不再自带调色板（原型里的 dark/light 变量只用于自证）。
+- **验收**：`packages/secretary/tests/tracer.mjs`（50 条，含 Host route 同源与按周隔离）＋ `packages/secretary/tests/browser.mjs`（6 条真 Chromium：骨架、拖选上色/不选/Delete/撤销/reload、备注浮层、实录与计划互不影响、深度时间画一周+继承+只改本周+重启存续、事项捕获、明暗主题无页面错误）。
+- 截图：`design/product-time-dark.png`、`design/product-select.png`、`design/product-deep.png`。

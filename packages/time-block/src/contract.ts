@@ -18,12 +18,19 @@ export interface DeepCell {
   readonly level: DeepCellLevel
 }
 
+export type DeepWeekSource = 'own' | 'inherited' | 'seed'
 export interface DeepWeek {
-  readonly scope: 'base'
+  readonly weekStart: string
+  readonly source: DeepWeekSource
   readonly cells: readonly DeepCell[]
 }
 
+export interface DeepWeekQuery {
+  readonly weekStart: string
+}
+
 export interface DeepCellPosition {
+  readonly weekStart: string
   readonly weekday: number
   readonly hour: number
 }
@@ -33,6 +40,7 @@ export interface SetDeepCellInput extends DeepCellPosition {
 }
 
 export interface DeepRange {
+  readonly weekStart: string
   readonly startWeekday: number
   readonly startHour: number
   readonly endWeekday: number
@@ -172,7 +180,7 @@ export abstract class TimeService extends Service {
   abstract deleteActual(id: number): Promise<ActualBlock>
   abstract startActual(input: StartActualInput): Promise<ActualBlock>
   abstract stopActual(id: number, endAt?: string): Promise<ActualBlock>
-  abstract getDeepWeek(): Promise<DeepWeek>
+  abstract getDeepWeek(query: DeepWeekQuery): Promise<DeepWeek>
   abstract setDeepCell(input: SetDeepCellInput): Promise<DeepWeek>
   abstract clearDeepCell(input: DeepCellPosition): Promise<DeepWeek>
   abstract setDeepRange(input: SetDeepRangeInput): Promise<DeepWeek>

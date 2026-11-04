@@ -14,7 +14,7 @@ export function apply(ctx: Context): void {
   const time = () => (ctx as Context & { time: TimeService }).time
   registerTool(ctx, {
     name: 'secretary_time',
-    description: `Manage independent date Plans, weekday PlanTemplates, ActualBlocks, and the reusable base DeepTime week, all through one TimeService. Use plan.list/get/create/update/delete, template.list/create/update/delete/apply/undo, actual.list/get/create/update/delete/start/stop, and deep.getWeek/setCell/clearCell/setRange/clearRange. template.apply requires weekday, targetDate, and timeZone; template.undo restores the persistent pre-apply day. Deep ranges are inclusive weekday-by-hour rectangles; deep.setCell/setRange accept only high/medium/low, while clear operations restore the independent unset value. DeepTime never derives from or rewrites Actual. Plans and actuals may overlap and never rewrite each other or complete GTD Actions. focus is a closed enum: ${FOCUS_LIST}.`,
+    description: `Manage independent date Plans, weekday PlanTemplates, ActualBlocks, and weekly DeepTime schedules, all through one TimeService. Use plan.list/get/create/update/delete, template.list/create/update/delete/apply/undo, actual.list/get/create/update/delete/start/stop, and deep.getWeek/setCell/clearCell/setRange/clearRange. template.apply requires weekday, targetDate, and timeZone; template.undo restores the persistent pre-apply day. Every DeepTime operation requires weekStart: any real YYYY-MM-DD is normalized to its Monday. Unwritten weeks inherit the nearest earlier own week (up to 52 weeks); base is only the initial seed. Deep ranges are inclusive weekday-by-hour rectangles; deep.setCell/setRange accept only high/medium/low, while clear operations restore the independent unset value. DeepTime never derives from or rewrites Actual. Plans and actuals may overlap and never rewrite each other or complete GTD Actions. focus is a closed enum: ${FOCUS_LIST}.`,
     parameters: {
       type: 'object', additionalProperties: false,
       properties: {
@@ -33,6 +33,7 @@ export function apply(ctx: Context): void {
         focus: nullable({ type: 'string', enum: [...FOCUS_LEVELS] }),
         date: { type: 'string' },
         targetDate: { type: 'string' },
+        weekStart: { type: 'string' },
         timeZone: { type: 'string' },
         weekday: { type: 'integer', minimum: 1, maximum: 7 },
         hour: { type: 'integer', minimum: 0, maximum: 23 },
@@ -70,7 +71,7 @@ export function apply(ctx: Context): void {
         case 'actual.delete': return { block: await time().deleteActual(args.id) }
         case 'actual.start': return { block: await time().startActual(args) }
         case 'actual.stop': return { block: await time().stopActual(args.id, args.endAt) }
-        case 'deep.getWeek': return { week: await time().getDeepWeek() }
+        case 'deep.getWeek': return { week: await time().getDeepWeek(args) }
         case 'deep.setCell': return { week: await time().setDeepCell(args) }
         case 'deep.clearCell': return { week: await time().clearDeepCell(args) }
         case 'deep.setRange': return { week: await time().setDeepRange(args) }

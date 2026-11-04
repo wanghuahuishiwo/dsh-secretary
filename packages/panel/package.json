@@ -1,7 +1,7 @@
 {
   "name": "dsh-secretary-panel",
   "version": "0.1.0",
-  "description": "Web GUI panel for dsh-secretary: date Plan/Actual canvases, PlanTemplates, calendar navigation, and Tag shelf.",
+  "description": "Right-Sidebar product tab for dsh-secretary: the 时间块 ten-minute canvas, the 深度时间 week grid, and the 事项 list.",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
