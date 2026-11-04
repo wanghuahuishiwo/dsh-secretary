@@ -20,7 +20,7 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
   text-rendering:optimizeLegibility}
 
 /* ---------- tokens ---------- */
-:root{--row-h:40px}
+:root{--row-h:40px;--min-day:528px}
 :root[data-theme="dark"]{
   --stage:#0a0a0b;--nav:#111113;--conv:#151517;
   --rail:#141416;--rail-2:#1b1b1e;--rail-3:#212125;
@@ -123,6 +123,7 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
 /* ---------- 时间块 canvas ---------- */
 .tb{flex:1;min-height:0;display:flex}
 .tb-main{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
+.scroll{min-height:calc(var(--min-day, 528px))}
 .scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
 .scroll::-webkit-scrollbar{width:9px}
 .scroll::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:5px;border:3px solid var(--rail)}
@@ -442,7 +443,9 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
 /* ============================ 数据 ============================ */
 const RN = 10;                       // 一格 = 10 分钟
 const PER_HOUR = 60 / RN;            // 每小时 6 格
-const ROW_H = 40;                    // 每小时行高
+const MIN_ROW_H = 22;                // 低于这个行高就不再压，画布改为滚动
+const MAX_ROW_H = 64;
+let ROW_H = 40;                      // 每小时行高：由 fitRowHeight() 按可视高度算
 const pad = n => String(n).padStart(2, '0');
 const key = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const fmt = m => `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`;
@@ -959,21 +962,45 @@ function bindScroll(c) {
   c.scroll.addEventListener('scroll', () => {
     const todayEl = c.days.querySelector(`.day[data-day="${TODAY}"]`);
     if (!todayEl) return;
-    const nowY = todayEl.offsetTop + (NOW_MIN / 60) * ROW_H;
-    const off = nowY < c.scroll.scrollTop + 40 || nowY > c.scroll.scrollTop + c.scroll.clientHeight - 30;
+    const off = Math.abs(c.scroll.scrollTop - todayEl.offsetTop) > 12;
     const jump = $('#jump');
     jump.classList.toggle('on', off && c.scroll === canvases.actual.scroll);
   });
 }
 function scrollToNow(c, smooth) {
+  // 一天正好一屏：把「今天」的 0:00 对齐到画布顶部，整天都在视野里
   const todayEl = c.days.querySelector(`.day[data-day="${TODAY}"]`);
   if (!todayEl) return;
-  const top = todayEl.offsetTop + (NOW_MIN / 60) * ROW_H - c.scroll.clientHeight * 0.34;
-  c.scroll.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' });
+  c.scroll.scrollTo({ top: todayEl.offsetTop, behavior: smooth ? 'smooth' : 'auto' });
 }
 $('#jump').addEventListener('click', () => scrollToNow(canvases[state.layer], true));
 
+/** 让「一天 24 小时」正好铺满可视区；窗口太矮时退回最小行高并允许滚动 */
+function fitRowHeight(scrollEl) {
+  const h = scrollEl.clientHeight;
+  if (!h) return false;
+  const next = Math.min(MAX_ROW_H, Math.max(MIN_ROW_H, h / 24));
+  if (Math.abs(next - ROW_H) < 0.2) return false;
+  ROW_H = next;
+  document.documentElement.style.setProperty('--row-h', `${next}px`);
+  return true;
+}
+function relayout() {
+  const c = canvases[state.layer];
+  if (!fitRowHeight(c.scroll)) return;
+  const keep = c.scroll.scrollTop;
+  buildCanvas('actual'); buildCanvas('plan');
+  renderBlocks(state.layer); renderSelection(state.layer);
+  c.scroll.scrollTop = keep;
+}
+let resizeTimer = 0;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(relayout, 120);
+});
+
 /* ============================ 启动 ============================ */
+fitRowHeight(canvases.actual.scroll);
 buildCanvas('actual');
 buildCanvas('plan');
 bindCanvas('actual');
