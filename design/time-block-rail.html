@@ -461,7 +461,7 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
 .deep-body{flex:1;min-height:0;display:flex;overflow:hidden}
 .deep-hours{width:30px;flex:none;position:relative}
 .deep-hours span{position:absolute;right:6px;font-size:9.5px;color:var(--txt-4);font-variant-numeric:tabular-nums}
-.deep-cols{flex:1;display:flex;min-width:0;position:relative}
+.deep-cols{flex:1;display:flex;min-width:0;position:relative;touch-action:none}
 .deep-col{flex:1;min-width:0;position:relative}
 .hc{position:absolute;left:0;right:0;border:0;background:var(--cell);cursor:crosshair}
 .hc.filled{background:var(--deep-c)}
@@ -1458,11 +1458,11 @@ function bindDeep() {
     if (!cell) return;
     const [d1, h1] = deepDrag.start.split('-').map(Number);
     const [d2, h2] = cell.dataset.k.split('-').map(Number);
-    if (d1 !== d2) return;
-    if (!deepDrag.moved && h1 === h2) return;
+    if (!deepDrag.moved && d1 === d2 && h1 === h2) return;
     deepDrag.moved = true;
-    deepSel.clear();                       // 按住拖＝重新拉一段
-    for (let h = Math.min(h1, h2); h <= Math.max(h1, h2); h++) deepSel.add(`${d1}-${h}`);
+    deepSel.clear();                       // 按住拖＝重新拉一块（可以跨列跨行）
+    for (let d = Math.min(d1, d2); d <= Math.max(d1, d2); d++)
+      for (let h = Math.min(h1, h2); h <= Math.max(h1, h2); h++) deepSel.add(`${d}-${h}`);
     renderDeepSelection(); renderDeepStatus();
   });
   window.addEventListener('pointerup', () => {
