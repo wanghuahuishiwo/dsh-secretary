@@ -126,6 +126,20 @@ async function dragCells(page, day, from, to) {
   await page.mouse.up()
 }
 
+/** Open the header calendar and pick one date, walking months when it is not on screen. */
+async function pickDay(page, iso) {
+  await page.locator('.sec-daylabel').click()
+  const target = iso.slice(0, 7)
+  for (let attempt = 0; attempt < 36; attempt += 1) {
+    const title = await page.locator('.sec-picker-title').innerText()
+    const digits = title.replace(/[^0-9]/g, '')
+    const current = `${digits.slice(0, 4)}-${digits.slice(4, 6).padStart(2, '0')}`
+    if (current === target) break
+    await page.locator(`.sec-picker-nav[aria-label="${current < target ? '下一月' : '上一月'}"]`).click()
+  }
+  await page.locator(`.sec-picker-day[data-day="${iso}"]`).click()
+}
+
 async function openModule(page, name) {
   await page.getByRole('button', { name: '一级模块' }).click()
   await page.getByRole('button', { name, exact: true }).click()
@@ -242,7 +256,7 @@ test('the day list keeps scrolling instead of stopping at a week, and the date f
 
     await page.mouse.wheel(0, -30_000)
     await page.waitForTimeout(1_200)
-    const anchored = await page.locator('.sec-date').inputValue()
+    const anchored = await page.locator('.sec-daylabel').innerText()
     const topDay = await page.evaluate(() => {
       const scroll = document.querySelector('.sec-scroll')
       const columns = [...document.querySelectorAll('.sec-day')]
@@ -253,10 +267,11 @@ test('the day list keeps scrolling instead of stopping at a week, and the date f
       }
       return top
     })
-    assert.equal(anchored, topDay, 'the header date always names the day at the top edge')
-    assert.ok(anchored !== localDate(), 'scrolling away from today moves that date')
+    const [year, month, day] = topDay.split('-').map(Number)
+    assert.ok(anchored.includes(`${month}月${day}日`), `the header names the day at the top edge, got ${anchored} for ${topDay}`)
+    assert.ok(topDay !== localDate(), 'scrolling away from today moves that label')
 
-    await page.locator('.sec-date').fill('2026-01-15')
+    await pickDay(page, '2026-01-15')
     await page.locator('.sec-day[data-day="2026-01-15"]').waitFor({ timeout: 20_000 })
     const target = await page.locator('.sec-day[data-day="2026-01-15"]').boundingBox()
     const frame = await canvas.boundingBox()
@@ -401,14 +416,10 @@ test('深度时间 paints one week, the next week inherits it, and editing that 
     await page.getByRole('button', { name: '上一周' }).click()
     await page.waitForFunction(() => document.querySelectorAll('.sec-hc.H').length === 4, undefined, { timeout: 20_000 })
 
-    // The header week control jumps to any week by date, and an untouched week starts empty.
-    await page.locator('.sec-week-input').evaluate((element, value) => {
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
-      setter.call(element, value)
-      element.dispatchEvent(new Event('input', { bubbles: true }))
-    }, '2026-10-14')
+    // The header week control jumps to any week, and an untouched week starts empty.
+    await pickDay(page, '2026-10-14')
     await page.waitForFunction(() => document.querySelectorAll('.sec-hc.H').length === 0, undefined, { timeout: 20_000 })
-    assert.match(await page.locator('.sec-week').innerText(), /10月12日\s*–\s*10月18日/, 'the header names the week it shows')
+    assert.match(await page.locator('.sec-daylabel').innerText(), /10月12日\s*–\s*10月18日/, 'the header names the week it shows')
     await page.screenshot({ path: join(tmpdir(), 'secretary-deep-week.png') })
 
     await server.stop()

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Tag } from 'dsh-secretary-tag/contract'
 import type { DeepLevel } from 'dsh-secretary-time-block/contract'
 import { fetchState, sendCommand, type PanelCommand, type PanelState, type PanelWarning } from './api.ts'
+import { DatePicker } from './DatePicker.tsx'
 import { DeepWeekView, type DeepRect } from './DeepWeekView.tsx'
 import { GtdWorkspace } from './GtdWorkspace.tsx'
 import {
@@ -41,6 +42,12 @@ const PLACEHOLDERS: Partial<Record<Module, { title: string; body: string }>> = {
   settings: { title: '设置', body: '这里将来放默认时区、每格时长和主题。' },
 }
 
+/** `11月4日 周三` for one day. */
+function dayLabel(date: string): string {
+  const value = new Date(`${date}T12:00:00`)
+  return `${value.getMonth() + 1}月${value.getDate()}日 ${['周日', '周一', '周二', '周三', '周四', '周五', '周六'][value.getDay()]}`
+}
+
 /** `11月2日 – 11月8日` for one week starting on `weekStart`. */
 function weekLabel(weekStart: string): string {
   const start = new Date(`${weekStart}T12:00:00`)
@@ -72,7 +79,7 @@ export function SecretaryProduct() {
   const [error, setError] = useState('')
   const toastTimer = useRef<number>(0)
   const titleRef = useRef<HTMLButtonElement | null>(null)
-  const weekInput = useRef<HTMLInputElement | null>(null)
+  const [picker, setPicker] = useState<'time' | 'deep' | null>(null)
   const shellRef = useRef<HTMLDivElement | null>(null)
 
   const say = useCallback((message: string) => {
@@ -193,13 +200,14 @@ export function SecretaryProduct() {
     if (ok) { setSheet(undefined); say('已删除') }
   }, [run, say])
 
-  /** Pick any day and land on that week; the native picker keeps the calendar familiar. */
-  const openWeekPicker = () => {
-    const element = weekInput.current
-    if (element === null) return
-    if (typeof element.showPicker === 'function') element.showPicker()
-    else element.click()
-  }
+  /** Move the canvas by days or weeks; zero means "back to today / this week". */
+  const step = useCallback((amount: number) => {
+    if (module === 'deep') {
+      setWeekStart(amount === 0 ? weekStartOf(localDate()) : addDays(weekStart, amount))
+      return
+    }
+    jumpTo(amount === 0 ? localDate() : addDays(topDate, amount))
+  }, [jumpTo, module, topDate, weekStart])
 
   const titleSub = module === 'time' ? (timeView === 'plan' ? '计划' : '实录') : ''
   const warnings: PanelWarning[] = state?.warnings ?? []
@@ -226,37 +234,36 @@ export function SecretaryProduct() {
           <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M2.5 4.5L6 8l3.5-3.5" /></svg>
         </button>
         <span className="grow" />
-        {module === 'time' && (
-          <input
-            className="sec-date"
-            type="date"
-            aria-label="跳到某一天"
-            value={topDate}
-            onChange={event => { if (event.target.value !== '') jumpTo(event.target.value) }}
-          />
-        )}
-        {module === 'deep' && (
+        {(module === 'time' || module === 'deep') && (
           <>
-            <button className="sec-hbtn" type="button" title="上一周" aria-label="上一周" onClick={() => setWeekStart(addDays(weekStart, -7))}>
+            <button
+              className="sec-hbtn"
+              type="button"
+              aria-label={module === 'deep' ? '上一周' : '上一天'}
+              onClick={() => step(module === 'deep' ? -7 : -1)}
+            >
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M9.5 4L5.5 8l4 4" /></svg>
             </button>
-            <button className="sec-week" type="button" aria-label="跳到某一周" onClick={() => openWeekPicker()}>
-              {weekLabel(weekStart)}
+            <button
+              className="sec-daylabel"
+              type="button"
+              aria-label={module === 'deep' ? '选择一周' : '选择日期'}
+              aria-expanded={picker !== null}
+              onClick={() => setPicker(picker === null ? module : null)}
+            >
+              {module === 'deep' ? weekLabel(weekStart) : dayLabel(topDate)}
             </button>
-            <button className="sec-hbtn" type="button" title="下一周" aria-label="下一周" onClick={() => setWeekStart(addDays(weekStart, 7))}>
+            <button
+              className="sec-hbtn"
+              type="button"
+              aria-label={module === 'deep' ? '下一周' : '下一天'}
+              onClick={() => step(module === 'deep' ? 7 : 1)}
+            >
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M6.5 4l4 4-4 4" /></svg>
             </button>
-            <button className="sec-week-now" type="button" onClick={() => setWeekStart(weekStartOf(localDate()))}>本周</button>
+            <button className="sec-now" type="button" onClick={() => step(0)}>{module === 'deep' ? '本周' : '今天'}</button>
           </>
         )}
-        <input
-          ref={weekInput}
-          className="sec-week-input"
-          type="date"
-          aria-label="按日期选周"
-          value={weekStart}
-          onChange={event => { if (event.target.value !== '') setWeekStart(weekStartOf(event.target.value)) }}
-        />
         <button className="sec-hbtn" type="button" title="撤销" disabled={undoStack.length === 0 || busy} onClick={() => void undo()}>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M3 7h6.5a3.5 3.5 0 010 7H6" /><path d="M5.5 4L2.5 7l3 3" /></svg>
         </button>
@@ -341,6 +348,20 @@ export function SecretaryProduct() {
         ))}
       </div>
 
+      {picker !== null && (
+        <DatePicker
+          mode={picker === 'deep' ? 'week' : 'day'}
+          value={picker === 'deep' ? weekStart : topDate}
+          today={today}
+          onPick={date => {
+            if (picker === 'deep') setWeekStart(weekStartOf(date))
+            else jumpTo(date)
+            setPicker(null)
+          }}
+          onClose={() => setPicker(null)}
+        />
+      )}
+
       {error !== '' && <div className="sec-toast on" style={{ bottom: 52 }}>{error}</div>}
       {warnings.length > 0 && module === 'gtd' && <div className="sec-toast on" style={{ bottom: 52 }}>事项读取失败：{warnings[0].message}</div>}
 
@@ -368,7 +389,7 @@ export function SecretaryProduct() {
             key={item.id}
             className={`sec-mrow${module === item.id ? ' on' : ''}`}
             type="button"
-            onClick={() => { setModule(item.id); setDrawer(false) }}
+            onClick={() => { setModule(item.id); setDrawer(false); setPicker(null) }}
           >
             {item.icon}
             {item.name}

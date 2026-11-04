@@ -52,10 +52,37 @@ export const productStyles = `.sec-shell {
 .sec-title:hover { background: var(--rail-3); }
 .sec-title .tsub { font-weight: 500; font-size: 12.5px; color: var(--txt-3); }
 .sec-title .tsub:not(:empty)::before { content: "· "; }
-.sec-date { height: 24px; border: 1px solid transparent; border-radius: 6px; background: none; color: var(--txt-3);
-  font-size: 11.5px; font-variant-numeric: tabular-nums; padding: 0 6px; }
-.sec-date:hover { background: var(--rail-3); color: var(--txt-2); }
-.sec-date::-webkit-calendar-picker-indicator { opacity: .45; cursor: pointer; }
+.sec-daylabel { height: 24px; padding: 0 8px; border-radius: 6px; color: var(--txt); font-size: 12.5px;
+  font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sec-daylabel:hover { background: var(--rail-3); }
+.sec-now { height: 24px; padding: 0 8px; border-radius: 6px; color: var(--txt-3); font-size: 11.5px; }
+.sec-now:hover { background: var(--rail-3); color: var(--txt); }
+
+/* ---------- 自绘日历（时间块选天 / 深度时间选周） ---------- */
+.sec-picker { position: absolute; right: 2px; top: 44px; z-index: 24; width: 258px; padding: 8px;
+  border-radius: 10px; background: var(--rail-2); border: 1px solid var(--line-2); box-shadow: var(--shadow); }
+.sec-picker-head { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+.sec-picker-title { flex: 1; text-align: center; font-size: 12.5px; font-weight: 600; color: var(--txt); }
+.sec-picker-nav { width: 24px; height: 24px; border-radius: 6px; color: var(--txt-3); display: grid; place-items: center; padding: 0; }
+.sec-picker-nav:hover { background: var(--rail-3); color: var(--txt); }
+.sec-picker-nav svg { width: 12px; height: 12px; }
+.sec-picker-weekdays, .sec-picker-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.sec-picker-weekdays { margin-bottom: 2px; }
+.sec-picker-weekdays span { text-align: center; font-size: 10px; color: var(--txt-4); padding: 3px 0; }
+.sec-picker-grid button { height: 28px; border-radius: 5px; color: var(--txt-2); font-size: 12px;
+  font-variant-numeric: tabular-nums; }
+.sec-picker-grid button:hover { background: var(--rail-3); color: var(--txt); }
+.sec-picker-grid button.out { color: var(--txt-4); opacity: .5; }
+.sec-picker-grid button.today { color: var(--accent); font-weight: 700; }
+.sec-picker-grid button.on { background: var(--accent); color: #fff; font-weight: 600; }
+.sec-picker-grid button.on.today { color: #fff; }
+.sec-picker-grid button.wstart { border-radius: 5px 0 0 5px; }
+.sec-picker-grid button.wend { border-radius: 0 5px 5px 0; }
+.sec-picker-grid button.wstart.wend { border-radius: 5px; }
+.sec-picker-foot { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding-top: 6px;
+  border-top: 1px solid var(--line); font-size: 10.5px; color: var(--txt-4); }
+.sec-picker-now { margin-left: auto; height: 22px; padding: 0 8px; border-radius: 5px; color: var(--accent); font-size: 11.5px; }
+.sec-picker-now:hover { background: var(--accent-soft); }
 .sec-title svg { width: 11px; height: 11px; color: var(--txt-3); transition: transform .16s; }
 .sec-title[aria-expanded="true"] svg { transform: rotate(180deg); }
 .sec-head .grow { flex: 1; }
@@ -206,12 +233,6 @@ export const productStyles = `.sec-shell {
 .sec-placeholder .ph-d { font-size: 12px; color: var(--txt-4); line-height: 1.7; max-width: 250px; }
 
 /* ---------- 深度时间 ---------- */
-.sec-week { height: 24px; padding: 0 8px; border-radius: 6px; color: var(--txt-2); font-size: 12px;
-  font-variant-numeric: tabular-nums; }
-.sec-week:hover { background: var(--rail-3); color: var(--txt); }
-.sec-week-now { height: 24px; padding: 0 8px; border-radius: 6px; color: var(--txt-3); font-size: 11.5px; }
-.sec-week-now:hover { background: var(--rail-3); color: var(--txt); }
-.sec-week-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
 .sec-deep { flex: 1; min-height: 0; display: flex; }
 .sec-deep-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
 .sec-deep-head { flex: none; height: 26px; display: flex; padding-left: 30px; border-bottom: 1px solid var(--line-2); }

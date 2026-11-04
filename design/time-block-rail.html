@@ -476,6 +476,39 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
 .deep-weekbar .wk-now{height:22px;border:0;border-radius:5px;background:none;color:var(--txt-3);font:inherit;font-size:11.5px;cursor:pointer;padding:0 8px;margin-left:auto}
 .deep-weekbar .wk-now:hover{background:var(--rail-3);color:var(--txt)}
 
+/* ===== 日期 / 周切换：标题栏右侧 + 自绘日历弹层 ===== */
+.dlabel{height:24px;padding:0 8px;border:0;border-radius:6px;background:none;color:var(--txt);font:inherit;
+  font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;cursor:pointer;white-space:nowrap}
+.dlabel:hover{background:var(--rail-3)}
+.dnow{height:24px;padding:0 8px;border:0;border-radius:6px;background:none;color:var(--txt-3);font:inherit;
+  font-size:11.5px;cursor:pointer}
+.dnow:hover{background:var(--rail-3);color:var(--txt)}
+.dpick{position:absolute;right:2px;top:44px;z-index:24;width:258px;padding:8px;border-radius:10px;
+  background:var(--rail-2);border:1px solid var(--line-2);box-shadow:var(--shadow);opacity:0;
+  transform:translateY(-4px);pointer-events:none;transition:opacity .14s,transform .14s}
+.dpick.on{opacity:1;transform:none;pointer-events:auto}
+.dpick-head{display:flex;align-items:center;gap:4px;margin-bottom:6px}
+.dpick-title{flex:1;text-align:center;font-size:12.5px;font-weight:600;color:var(--txt)}
+.dpick-nav{width:24px;height:24px;border:0;border-radius:6px;background:none;color:var(--txt-3);
+  display:grid;place-items:center;padding:0;cursor:pointer}
+.dpick-nav:hover{background:var(--rail-3);color:var(--txt)}
+.dpick-nav svg{width:12px;height:12px}
+.dpick-week,.dpick-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+.dpick-week span{text-align:center;font-size:10px;color:var(--txt-4);padding:3px 0}
+.dpick-grid button{height:28px;border:0;border-radius:5px;background:none;color:var(--txt-2);font:inherit;
+  font-size:12px;font-variant-numeric:tabular-nums;cursor:pointer}
+.dpick-grid button:hover{background:var(--rail-3);color:var(--txt)}
+.dpick-grid button.out{color:var(--txt-4);opacity:.5}
+.dpick-grid button.today{color:var(--accent);font-weight:700}
+.dpick-grid button.on{background:var(--accent);color:#fff;font-weight:600}
+.dpick-grid button.wstart{border-radius:5px 0 0 5px}
+.dpick-grid button.wend{border-radius:0 5px 5px 0}
+.dpick-grid button.wstart.wend{border-radius:5px}
+.dpick-foot{display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;
+  border-top:1px solid var(--line);font-size:10.5px;color:var(--txt-4)}
+.dpick-now{margin-left:auto;height:22px;padding:0 8px;border:0;border-radius:5px;background:none;
+  color:var(--accent);font:inherit;font-size:11.5px;cursor:pointer}
+.dpick-now:hover{background:var(--accent-soft)}
 </style>
 </head>
 <body><div class="stage">
@@ -523,6 +556,10 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
           <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2.5 4.5L6 8l3.5-3.5"/></svg>
         </button>
         <span class="grow"></span>
+        <button class="hbtn" id="datePrev" aria-label="上一天"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9.5 4L5.5 8l4 4"/></svg></button>
+        <button class="dlabel" id="dateLabel" aria-expanded="false">11月4日 周三</button>
+        <button class="hbtn" id="dateNext" aria-label="下一天"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6.5 4l4 4-4 4"/></svg></button>
+        <button class="dnow" id="dateNow">今天</button>
         <button class="hbtn" id="undoBtn" title="撤销" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 7h6.5a3.5 3.5 0 010 7H6"/><path d="M5.5 4L2.5 7l3 3"/></svg></button>
       </header>
 
@@ -592,12 +629,6 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
 
         <!-- 深度时间：7×24 周模板 -->
         <section class="view" data-view="deep">
-          <div class="deep-weekbar">
-            <button class="wk" id="wkPrev" aria-label="上一周"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7.5 2.5L4 6l3.5 3.5"/></svg></button>
-            <span class="wk-range" id="wkRange">11月3日 – 11月9日</span>
-            <button class="wk" id="wkNext" aria-label="下一周"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4.5 2.5L8 6l-3.5 3.5"/></svg></button>
-            <button class="wk-now" id="wkNow">本周</button>
-          </div>
           <div class="tb">
             <div class="tb-main">
               <div class="deep-head" id="deepHead"></div>
@@ -681,6 +712,7 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
         <button class="mrow" data-go="settings"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1"/></svg>设置</button>
       </nav>
 
+      <div class="dpick" id="datePick" role="dialog"></div>
       <div class="toast" id="toast"></div>
     </section>
   </div>
@@ -718,8 +750,17 @@ const now = new Date();
 const TODAY = key(now);
 const NOW_MIN = now.getHours() * 60 + now.getMinutes();
 const dayKey = off => { const d = new Date(); d.setDate(d.getDate() + off); return key(d); };
-const DAY_LIST = [];
-for (let off = -2; off <= 4; off++) DAY_LIST.push(dayKey(off));
+const shiftKey = (day, amount) => { const d = new Date(day + 'T12:00:00'); d.setDate(d.getDate() + amount); return key(d); };
+const weekStartKey = day => { const d = new Date(day + 'T12:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return key(d); };
+const weekLabelOf = start => { const a = new Date(start + 'T12:00:00'); const b = new Date(a); b.setDate(b.getDate() + 6);
+  return `${a.getMonth() + 1}月${a.getDate()}日 – ${b.getMonth() + 1}月${b.getDate()}日`; };
+const dayLabelOf = day => { const d = new Date(day + 'T12:00:00');
+  return `${d.getMonth() + 1}月${d.getDate()}日 ${'日一二三四五六'[d.getDay()] === '日' ? '周日' : '周' + '日一二三四五六'[d.getDay()]}`; };
+
+let anchorDay = TODAY;
+let DAY_LIST = [];
+const buildDayList = anchor => { DAY_LIST = []; for (let off = -3; off <= 10; off++) DAY_LIST.push(shiftKey(anchor, off)); };
+buildDayList(TODAY);
 
 let seq = 500;
 const snapDown = m => Math.floor(m / RN) * RN;
@@ -1081,6 +1122,7 @@ function syncView() {
       ? (GTD.persp.find(p => p.id === GTD.cur) || {}).name || ''
       : '';
   $('#titleSub').textContent = cur;
+  if (typeof renderDateBar === 'function') renderDateBar();
 }
 function openDrawer() { $('#drawer').classList.add('on'); $('#scrim').classList.add('on'); }
 function closeDrawer() { $('#drawer').classList.remove('on'); $('#scrim').classList.remove('on'); }
@@ -1361,7 +1403,7 @@ function renderDeep() {
   if (!headHost || !bodyHost) return;
   const start = weekOf(weekOffset);
   const end = new Date(start); end.setDate(end.getDate() + 6);
-  $('#wkRange').textContent = `${start.getMonth() + 1}月${start.getDate()}日 – ${end.getMonth() + 1}月${end.getDate()}日`;
+  renderDateBar();
   const data = deepFor(weekOffset);
   const todayIdx = (() => {
     const now = new Date();
@@ -1471,9 +1513,6 @@ function bindDeep() {
     deepDrag = null;
     renderDeepSelection(); renderDeepStatus();
   });
-  $('#wkPrev')?.addEventListener('click', () => { weekOffset--; deepSel.clear(); renderDeep(); });
-  $('#wkNext')?.addEventListener('click', () => { weekOffset++; deepSel.clear(); renderDeep(); });
-  $('#wkNow')?.addEventListener('click', () => { weekOffset = 0; deepSel.clear(); renderDeep(); });
 }
 bindDeep();
 $('#deepClear')?.addEventListener('click', () => { deepSel.clear(); renderDeepSelection(); renderDeepStatus(); });
@@ -1599,6 +1638,121 @@ let resizeTimer = 0;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(relayout, 120);
+});
+
+/* ============================ 日期 / 周切换（标题栏右侧 + 自绘日历） ============================ */
+let pickerOpen = false;
+let pickerMonth = TODAY.slice(0, 7);
+
+function pickerMode() { return module === 'deep' ? 'week' : 'day'; }
+
+function dateBarLabel() {
+  if (module === 'deep') return weekLabelOf(key(weekOf(weekOffset)));
+  return dayLabelOf(anchorDay);
+}
+
+function renderDateBar() {
+  const deep = module === 'deep';
+  $('#dateLabel').textContent = dateBarLabel();
+  $('#dateNow').textContent = deep ? '本周' : '今天';
+  $('#datePrev').setAttribute('aria-label', deep ? '上一周' : '上一天');
+  $('#dateNext').setAttribute('aria-label', deep ? '下一周' : '下一天');
+  $('#dateNow').hidden = false;
+  renderPicker();
+}
+
+function renderPicker() {
+  const el = $('#datePick');
+  el.classList.toggle('on', pickerOpen);
+  $('#dateLabel').setAttribute('aria-expanded', String(pickerOpen));
+  if (!pickerOpen) return;
+  const mode = pickerMode();
+  const [year, month] = pickerMonth.split('-').map(Number);
+  const first = new Date(year, month - 1, 1, 12);
+  const start = new Date(first); start.setDate(start.getDate() - ((first.getDay() + 6) % 7));
+  const selectedDay = mode === 'day' ? anchorDay : key(weekOf(weekOffset));
+  const selectedWeek = weekStartKey(selectedDay);
+  const chevron = dir => `<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7"><path d="${dir < 0 ? 'M7.5 2.5L4 6l3.5 3.5' : 'M4.5 2.5L8 6l-3.5 3.5'}"/></svg>`;
+  let html = `<div class="dpick-head">
+      <button class="dpick-nav" data-month="-1" aria-label="上一月">${chevron(-1)}</button>
+      <span class="dpick-title">${year}年${month}月</span>
+      <button class="dpick-nav" data-month="1" aria-label="下一月">${chevron(1)}</button>
+    </div>
+    <div class="dpick-week">${['一', '二', '三', '四', '五', '六', '日'].map(d => `<span>${d}</span>`).join('')}</div>
+    <div class="dpick-grid">`;
+  for (let index = 0; index < 42; index++) {
+    const date = new Date(start); date.setDate(start.getDate() + index);
+    const day = key(date);
+    const outside = date.getMonth() !== month - 1;
+    const on = mode === 'week' ? weekStartKey(day) === selectedWeek : day === selectedDay;
+    const edge = on && mode === 'week' ? (day === selectedWeek ? 'wstart' : day === shiftKey(selectedWeek, 6) ? 'wend' : '') : '';
+    const classes = [outside ? 'out' : '', on ? 'on' : '', edge, day === TODAY ? 'today' : ''].filter(Boolean).join(' ');
+    html += `<button class="${classes}" data-day="${day}" aria-label="${date.getMonth() + 1}月${date.getDate()}日">${date.getDate()}</button>`;
+  }
+  html += `</div><div class="dpick-foot"><span>${mode === 'week' ? weekLabelOf(selectedWeek) : '点一天'}</span>
+      <button class="dpick-now" id="pickNow">${mode === 'week' ? '本周' : '今天'}</button></div>`;
+  el.innerHTML = html;
+  el.querySelectorAll('[data-month]').forEach(button => button.addEventListener('click', () => {
+    const step = Number(button.dataset.month);
+    const value = new Date(year, month - 1 + step, 1, 12);
+    pickerMonth = key(value).slice(0, 7);
+    renderPicker();
+  }));
+  el.querySelectorAll('[data-day]').forEach(button => button.addEventListener('click', () => chooseDay(button.dataset.day)));
+  $('#pickNow').addEventListener('click', () => chooseDay(TODAY));
+}
+
+function chooseDay(day) {
+  pickerOpen = false;
+  if (module === 'deep') {
+    const offsetMs = Date.parse(weekStartKey(day) + 'T00:00:00') - Date.parse(weekStartKey(TODAY) + 'T00:00:00');
+    weekOffset = Math.round(offsetMs / (7 * 86400000));
+    deepSel.clear();
+    renderDeep();
+    renderDateBar();
+    return;
+  }
+  anchorDay = day;
+  pickerMonth = day.slice(0, 7);
+  buildDayList(anchorDay);
+  buildCanvas('actual');
+  buildCanvas('plan');
+  refresh();
+  renderDateBar();
+  requestAnimationFrame(() => scrollToDay(canvases[state.layer], day, false));
+}
+
+function stepDate(amount) {
+  if (module === 'deep') {
+    weekOffset += amount;
+    deepSel.clear();
+    renderDeep();
+    renderDateBar();
+    return;
+  }
+  chooseDay(shiftKey(anchorDay, amount));
+}
+
+function scrollToDay(c, day, smooth) {
+  const element = c.days.querySelector(`.day[data-day="${day}"]`);
+  if (!element) return;
+  c.scroll.scrollTo({ top: element.offsetTop, behavior: smooth ? 'smooth' : 'auto' });
+}
+
+function togglePicker() {
+  pickerOpen = !pickerOpen;
+  if (pickerOpen) pickerMonth = (module === 'deep' ? key(weekOf(weekOffset)) : anchorDay).slice(0, 7);
+  renderPicker();
+}
+
+$('#datePrev').addEventListener('click', () => stepDate(-1));
+$('#dateNext').addEventListener('click', () => stepDate(1));
+$('#dateNow').addEventListener('click', () => chooseDay(TODAY));
+$('#dateLabel').addEventListener('click', event => { event.stopPropagation(); togglePicker(); });
+document.addEventListener('pointerdown', event => {
+  if (!pickerOpen) return;
+  if (event.target.closest('#datePick') || event.target.closest('#dateLabel')) return;
+  pickerOpen = false; renderPicker();
 });
 
 /* ============================ 启动 ============================ */

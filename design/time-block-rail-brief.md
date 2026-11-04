@@ -95,3 +95,12 @@
 - **主题**：全部走 `--dsw-alias-*`，不再自带调色板（原型里的 dark/light 变量只用于自证）。
 - **验收**：`packages/secretary/tests/tracer.mjs`（50 条，含 Host route 同源与按周隔离）＋ `packages/secretary/tests/browser.mjs`（6 条真 Chromium：骨架、拖选上色/不选/Delete/撤销/reload、备注浮层、实录与计划互不影响、深度时间画一周+继承+只改本周+重启存续、事项捕获、明暗主题无页面错误）。
 - 截图：`design/product-time-dark.png`、`design/product-select.png`、`design/product-deep.png`。
+
+## 第十轮：日期 / 周切换（先在原型里定）
+
+反馈：标题下面单独一行「‹ 11月2日 – 11月8日 ›」看着像控件却不是控件；原生 `input[type=date]` 的弹层不受主题控制，很丑。所以先在原型里做：
+
+- **标题栏右侧统一成一个控件**：`‹  11月4日 周三  ›  今天`（时间块）／`‹  11月2日 – 11月8日  ›  本周`（深度时间）。左右箭头步进一天／一周，中间是可点的标签，最右是回到今天／本周。
+- **自绘日历弹层**：月网格（周一起始）、上下月箭头、今天高亮、选中态；深度时间模式下整周高亮（两端圆角），底部显示该周范围；点任意一天即落到那一天／那一周。Esc 与点外部关闭。
+- 原型里同时把「时间块」的日期列表改成可跳转：选天会把画布重铺到该天并滚过去（真机是连续列表，见第十一轮）。
+- 截图：`design/picker-day-dark.png`、`design/picker-week-dark.png`、`picker-week-light.png`。
