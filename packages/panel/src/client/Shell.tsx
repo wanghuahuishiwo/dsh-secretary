@@ -200,6 +200,12 @@ export function SecretaryProduct() {
     if (ok) { setSheet(undefined); say('已删除') }
   }, [run, say])
 
+  /** Switching layers keeps the day you were reading: 实录 and 计划 are the same moment. */
+  const switchTimeView = useCallback((next: TimeView) => {
+    setTimeView(next)
+    setFocus(previous => ({ date: topDate, token: previous.token + 1 }))
+  }, [topDate])
+
   /** Move the canvas by days or weeks; zero means "back to today / this week". */
   const step = useCallback((amount: number) => {
     if (module === 'deep') {
@@ -208,6 +214,25 @@ export function SecretaryProduct() {
     }
     jumpTo(amount === 0 ? localDate() : addDays(topDate, amount))
   }, [jumpTo, module, topDate, weekStart])
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target !== null && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
+      if (module !== 'time' && module !== 'deep') return
+      const unit = module === 'deep' ? 7 : 1
+      const map: Record<string, number> = {
+        ArrowLeft: -unit, ArrowRight: unit,
+        PageUp: -7, PageDown: 7,
+      }
+      const amount = map[event.key]
+      if (amount === undefined) return
+      event.preventDefault()
+      step(amount)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => { window.removeEventListener('keydown', onKey) }
+  }, [module, step])
 
   const titleSub = module === 'time' ? (timeView === 'plan' ? '计划' : '实录') : ''
   const warnings: PanelWarning[] = state?.warnings ?? []
@@ -372,7 +397,7 @@ export function SecretaryProduct() {
               key={item.id}
               type="button"
               className={timeView === item.id ? 'on' : ''}
-              onClick={() => { setTimeView(item.id); setSubMenu(false) }}
+              onClick={() => { switchTimeView(item.id); setSubMenu(false) }}
             >
               <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M2.5 6.2l2.4 2.4L9.5 4" /></svg>
               {item.name}

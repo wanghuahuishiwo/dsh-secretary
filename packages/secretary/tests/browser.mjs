@@ -271,6 +271,20 @@ test('the day list keeps scrolling instead of stopping at a week, and the date f
     assert.ok(anchored.includes(`${month}月${day}日`), `the header names the day at the top edge, got ${anchored} for ${topDay}`)
     assert.ok(topDay !== localDate(), 'scrolling away from today moves that label')
 
+    // Arrow keys step one day, PageUp / PageDown step a week, and 计划 opens on the same day.
+    const before = await page.locator('.sec-daylabel').innerText()
+    await page.keyboard.press('ArrowRight')
+    await page.waitForTimeout(600)
+    assert.notEqual(await page.locator('.sec-daylabel').innerText(), before, '→ moves the canvas one day')
+    await page.keyboard.press('PageDown')
+    await page.waitForTimeout(600)
+    await chooseTimeView(page, '计划')
+    await page.waitForTimeout(600)
+    const planTop = await page.locator('.sec-daylabel').innerText()
+    await chooseTimeView(page, '实录')
+    await page.waitForTimeout(600)
+    assert.equal(await page.locator('.sec-daylabel').innerText(), planTop, '计划 opens on the day 实录 was reading')
+
     await pickDay(page, '2026-01-15')
     await page.locator('.sec-day[data-day="2026-01-15"]').waitFor({ timeout: 20_000 })
     const target = await page.locator('.sec-day[data-day="2026-01-15"]').boundingBox()
