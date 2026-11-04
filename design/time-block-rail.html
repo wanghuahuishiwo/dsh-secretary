@@ -27,7 +27,7 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
   --cell:#2b2b31;--cell-2:#1f1f23;--line:#34343a;--line-2:#3d3d44;--dash:#4f4f57;
   --txt:#ececef;--txt-2:#a2a2aa;--txt-3:#71717a;--txt-4:#55555d;
   --accent:#5b8def;--accent-soft:#1d2b44;
-  --sel-face:#3a3a41;--sel-hatch:rgba(255,255,255,.10);--sel-line:rgba(255,255,255,.9);
+  --sel-ring:rgba(255,255,255,.95);--sel-wash:rgba(255,255,255,0);--sel-ink:#fff;--sel-halo:rgba(0,0,0,.6);
   --danger:#e0554b;
   --shadow:0 14px 38px rgba(0,0,0,.6);--shadow-sm:0 6px 18px rgba(0,0,0,.45);
 }
@@ -37,7 +37,7 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
   --cell:#efeff2;--cell-2:#f7f7f9;--line:#e2e2e7;--line-2:#d2d2d9;--dash:#b9b9c2;
   --txt:#17171b;--txt-2:#5f5f68;--txt-3:#8b8b94;--txt-4:#a8a8b0;
   --accent:#2f6fd0;--accent-soft:#e6eefb;
-  --sel-face:#dcdce2;--sel-hatch:rgba(0,0,0,.07);--sel-line:rgba(0,0,0,.7);
+  --sel-ring:rgba(16,16,20,.9);--sel-wash:rgba(255,255,255,0);--sel-ink:#101014;--sel-halo:rgba(255,255,255,.9);
   --danger:#cf3f35;
   --shadow:0 14px 38px rgba(20,20,30,.16);--shadow-sm:0 6px 18px rgba(20,20,30,.12);
 }
@@ -152,16 +152,15 @@ body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",
   padding:0 4px;font-size:10.5px;font-weight:600;letter-spacing:.1px;color:#fff;white-space:nowrap}
 .blk span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .blk span.short{letter-spacing:-.2px}
-.selbox{position:absolute;z-index:4;border-radius:2.5px;pointer-events:none;display:grid;place-items:center;
-  background-color:var(--sel-face);
-  background-image:repeating-linear-gradient(45deg,var(--sel-hatch) 0 2px,transparent 2px 6px);
-  box-shadow:inset 0 0 0 1.5px var(--sel-line)}
-.selbox svg{width:12px;height:12px;stroke-width:2.4;color:var(--sel-line)}
+.selbox{position:absolute;z-index:4;border-radius:3px;pointer-events:none;
+  box-shadow:inset 0 0 0 2px var(--sel-ring)}
+.selbox i{position:absolute;top:0;bottom:0;display:grid;place-items:center}
+.selbox i svg{width:12px;height:12px;color:var(--sel-ink);filter:drop-shadow(0 0 1.5px var(--sel-halo))}
 .nowline{position:absolute;left:0;right:0;height:1px;background:var(--txt-3);opacity:.55;z-index:5;pointer-events:none}
 .nowline::before{content:"";position:absolute;left:0;top:-2px;width:5px;height:5px;border-radius:50%;background:var(--txt-2)}
 
 /* 回到今天 */
-.jump{position:absolute;right:10px;bottom:10px;z-index:6;height:27px;padding:0 11px;border-radius:14px;
+.jump{position:absolute;right:12px;bottom:46px;z-index:6;height:27px;padding:0 11px;border-radius:14px;
   border:1px solid var(--line-2);background:var(--rail-2);color:var(--txt-2);font:inherit;font-size:11.5px;
   cursor:pointer;box-shadow:var(--shadow-sm);opacity:0;pointer-events:none;transition:opacity .16s}
 .jump.on{opacity:1;pointer-events:auto}
@@ -600,19 +599,40 @@ function renderBlocks(layer) {
 function renderSelection(layer) {
   const c = canvases[layer];
   c.days.querySelectorAll('.selbox').forEach(el => el.remove());
+  const byDay = {};
   state.selected.forEach(k => {
-    const [day, m] = k.split(':'); const min = Number(m);
+    const [day, m] = k.split(':');
+    (byDay[day] = byDay[day] || []).push(Number(m));
+  });
+  Object.entries(byDay).forEach(([day, mins]) => {
     const grid = c.days.querySelector(`.grid[data-day="${day}"]`);
     if (!grid) return;
-    const h = Math.floor(min / 60), q = (min % 60) / RN;
-    const box = document.createElement('div');
-    box.className = 'selbox';
-    box.style.left = `calc(${(q / PER_HOUR) * 100}% + 1.5px)`;
-    box.style.width = `calc(${100 / PER_HOUR}% - 3px)`;
-    box.style.top = `${h * ROW_H + 1.5}px`;
-    box.style.height = `${ROW_H - 3}px`;
-    box.innerHTML = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.5 6.4l2.3 2.3L9.5 3.7"/></svg>';
-    grid.appendChild(box);
+    mins.sort((a, b) => a - b);
+    // 同一小时里连续选中的格子合成一个框；跨整点自动断开
+    const runs = [];
+    let run = null;
+    mins.forEach(m => {
+      const h = Math.floor(m / 60);
+      if (run && run.hour === h && run.last + RN === m) { run.last = m; run.slots.push(m); return; }
+      run = { hour: h, first: m, last: m, slots: [m] };
+      runs.push(run);
+    });
+    runs.forEach(r => {
+      const q1 = (r.first % 60) / RN, q2 = (r.last % 60) / RN;
+      const box = document.createElement('div');
+      box.className = 'selbox';
+      box.style.left = `calc(${(q1 / PER_HOUR) * 100}% + 1.5px)`;
+      box.style.width = `calc(${((q2 - q1 + 1) / PER_HOUR) * 100}% - 3px)`;
+      box.style.top = `${r.hour * ROW_H + 1.5}px`;
+      box.style.height = `${ROW_H - 3}px`;
+      box.innerHTML = r.slots.map((m, i) => {
+        const q = (m % 60) / RN;
+        const left = ((q - q1) / (q2 - q1 + 1)) * 100;
+        const width = 100 / (q2 - q1 + 1);
+        return `<i style="left:${left}%;width:${width}%"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M2.5 6.4l2.3 2.3L9.5 3.7"/></svg></i>`;
+      }).join('');
+      grid.appendChild(box);
+    });
   });
 }
 function renderStatus(layer) {
@@ -667,7 +687,7 @@ function bindCanvas(layer) {
     const key = slotKey(pos.day, pos.min);
     const wasSelected = state.selected.has(key);
     drag = { day: pos.day, anchor: pos.min, moved: false, wasSelected };
-    if (!wasSelected) state.selected.add(key);          // 按下即选中，像直接刷一样有反馈
+    if (!wasSelected) state.selected.add(key);   // 单击未选中的格 = 追加一个
     refresh(); e.preventDefault();
   });
 
@@ -677,15 +697,14 @@ function bindCanvas(layer) {
     if (!pos || pos.day !== drag.day) return;
     if (!drag.moved && pos.min === drag.anchor) return;
     drag.moved = true;
-    rangeSlots(drag.day, drag.anchor, pos.min).forEach(k => state.selected.add(k));  // 拖 = 并入这段
+    // 按住拖选：取消之前所有选中，只留拖过的这一段
+    state.selected = new Set(rangeSlots(drag.day, drag.anchor, pos.min));
     refresh();
   });
 
   window.addEventListener('pointerup', () => {
     if (!drag || layer !== state.layer) return;
-    if (!drag.moved && drag.wasSelected) {              // 点已选中的格子 = 只取消这一格
-      state.selected.delete(slotKey(drag.day, drag.anchor));
-    }
+    if (!drag.moved && drag.wasSelected) state.selected.delete(slotKey(drag.day, drag.anchor));
     drag = null; refresh();
   });
 }
