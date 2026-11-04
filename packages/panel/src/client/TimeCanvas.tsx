@@ -12,6 +12,9 @@ interface Props {
   readonly today: string
   readonly nowMs: number
   readonly timeZone: string
+  readonly focus: { readonly date: string; readonly token: number }
+  readonly onExtend: (side: 'before' | 'after') => void
+  readonly onTopDateChange: (date: string) => void
   readonly blocks: readonly BlockLike[]
   readonly tags: readonly Tag[]
   readonly busy: boolean
@@ -161,7 +164,7 @@ const DayColumn = memo(function DayColumn({
 })
 
 export function TimeCanvas(props: Props) {
-  const { layer, days, today, nowMs, timeZone, blocks, tags, busy, onAssign, onEdit, onOpenTags } = props
+  const { layer, days, today, nowMs, timeZone, focus, onExtend, onTopDateChange, blocks, tags, busy, onAssign, onEdit, onOpenTags } = props
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef<DragState | null>(null)
   const selectedRef = useRef<Map<string, Set<number>>>(new Map())
@@ -200,21 +203,86 @@ export function TimeCanvas(props: Props) {
     return () => { observer.disconnect() }
   }, [])
 
-  const scrollToToday = useCallback((smooth: boolean) => {
+  const scrollToDate = useCallback((date: string, smooth: boolean) => {
     const element = scrollRef.current
-    const day = element?.querySelector<HTMLElement>(`.sec-day[data-day="${today}"]`)
+    const day = element?.querySelector<HTMLElement>(`.sec-day[data-day="${date}"]`)
     if (element === null || day === null || day === undefined) return
     element.scrollTo({ top: day.offsetTop, behavior: smooth ? 'smooth' : 'auto' })
-  }, [today])
+  }, [])
 
-  useEffect(() => { scrollToToday(false) }, [scrollToToday, rowH])
+  // Scroll to a requested day once it is actually on the canvas: the window may
+  // still be loading the days around it, so retry as days and row height arrive.
+  const appliedFocus = useRef(0)
+  const focusedDay = useRef(focus.date)
+  /** The day under the top edge, kept so growing the window cannot scroll the view. */
+  const anchor = useRef<{ date: string; offset: number } | null>(null)
+  useEffect(() => {
+    if (appliedFocus.current === focus.token) return
+    const element = scrollRef.current
+    const day = element?.querySelector<HTMLElement>(`.sec-day[data-day="${focus.date}"]`)
+    if (element === null || day === null || day === undefined) return
+    appliedFocus.current = focus.token
+    focusedDay.current = focus.date
+    anchor.current = null
+    element.scrollTo({ top: day.offsetTop, behavior: 'auto' })
+  }, [focus, days, rowH])
 
+  // The window grows and trims as you scroll; hold the day you were reading in place.
+  useEffect(() => {
+    const held = anchor.current
+    const element = scrollRef.current
+    if (held === null || element === null) return
+    const day = element.querySelector<HTMLElement>(`.sec-day[data-day="${held.date}"]`)
+    if (day === null || day === undefined) return
+    element.scrollTop = day.offsetTop + held.offset
+  }, [days])
+
+  // Row height settles after the first paint; the focused day has to stay put through it.
+  useEffect(() => {
+    const element = scrollRef.current
+    const day = element?.querySelector<HTMLElement>(`.sec-day[data-day="${focusedDay.current}"]`)
+    if (element === null || day === null || day === undefined) return
+    element.scrollTo({ top: day.offsetTop, behavior: 'auto' })
+  }, [rowH])
+
+  const edgeRef = useRef<'before' | 'after' | null>(null)
+  useEffect(() => { edgeRef.current = null }, [days])
+
+  const reportedTop = useRef('')
   const onScroll = useCallback(() => {
     const element = scrollRef.current
-    const day = element?.querySelector<HTMLElement>(`.sec-day[data-day="${today}"]`)
-    if (element === null || day === null || day === undefined) return
-    setJumpVisible(Math.abs(element.scrollTop - day.offsetTop) > 12)
-  }, [today])
+    if (element === null) return
+    const day = element.querySelector<HTMLElement>(`.sec-day[data-day="${today}"]`)
+    if (day !== null && day !== undefined) setJumpVisible(Math.abs(element.scrollTop - day.offsetTop) > 12)
+    // The header date follows the day under the top edge, so it always says where you are.
+    const columns = element.querySelectorAll<HTMLElement>('.sec-day')
+    let top = ''
+    let topOffset = 0
+    for (const column of columns) {
+      if (column.offsetTop <= element.scrollTop + 1) {
+        top = column.dataset.day ?? top
+        topOffset = column.offsetTop
+      } else break
+    }
+    if (top !== '') {
+      anchor.current = { date: top, offset: element.scrollTop - topOffset }
+      if (top !== reportedTop.current) {
+        reportedTop.current = top
+        onTopDateChange(top)
+      }
+    }
+    const threshold = element.clientHeight * 0.75
+    const side = element.scrollTop < threshold
+      ? 'before'
+      : element.scrollTop + element.clientHeight > element.scrollHeight - threshold ? 'after' : null
+    if (side === null) {
+      edgeRef.current = null
+      return
+    }
+    if (edgeRef.current === side) return
+    edgeRef.current = side
+    onExtend(side)
+  }, [onExtend, onTopDateChange, today])
 
   const writeSelection = useCallback((next: Map<string, Set<number>>) => {
     selectedRef.current = next
@@ -351,7 +419,7 @@ export function TimeCanvas(props: Props) {
                 />
               ))}
             </div>
-            <button className={`sec-jump${jumpVisible ? ' on' : ''}`} type="button" onClick={() => scrollToToday(true)}>回到今天</button>
+            <button className={`sec-jump${jumpVisible ? ' on' : ''}`} type="button" onClick={() => scrollToDate(today, true)}>回到今天</button>
           </div>
         </div>
         <aside className={`sec-shelf${shelfMini ? ' mini' : ''}`} aria-label="时间标签架">

@@ -52,6 +52,10 @@ export const productStyles = `.sec-shell {
 .sec-title:hover { background: var(--rail-3); }
 .sec-title .tsub { font-weight: 500; font-size: 12.5px; color: var(--txt-3); }
 .sec-title .tsub:not(:empty)::before { content: "· "; }
+.sec-date { height: 24px; border: 1px solid transparent; border-radius: 6px; background: none; color: var(--txt-3);
+  font-size: 11.5px; font-variant-numeric: tabular-nums; padding: 0 6px; }
+.sec-date:hover { background: var(--rail-3); color: var(--txt-2); }
+.sec-date::-webkit-calendar-picker-indicator { opacity: .45; cursor: pointer; }
 .sec-title svg { width: 11px; height: 11px; color: var(--txt-3); transition: transform .16s; }
 .sec-title[aria-expanded="true"] svg { transform: rotate(180deg); }
 .sec-head .grow { flex: 1; }
@@ -64,7 +68,7 @@ export const productStyles = `.sec-shell {
 /* ---------- 时间块 ---------- */
 .sec-tb { flex: 1; min-height: 0; display: flex; }
 .sec-tb-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
-.sec-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; }
+.sec-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; overflow-anchor: auto; }
 .sec-scroll::-webkit-scrollbar { width: 9px; }
 .sec-scroll::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 5px; border: 3px solid var(--rail); }
 .sec-days { position: relative; }

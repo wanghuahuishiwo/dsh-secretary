@@ -5,7 +5,7 @@ import { fetchState, sendCommand, type PanelCommand, type PanelState, type Panel
 import { DeepWeekView, type DeepRect } from './DeepWeekView.tsx'
 import { GtdWorkspace } from './GtdWorkspace.tsx'
 import {
-  CELL, atMinute, clock, durationLabel, localDate, recordsOfDay, weekStartOf,
+  CELL, addDays, atMinute, clock, durationLabel, localDate, recordsOfDay, weekStartOf,
   type DayRecord, type Run,
 } from './model.ts'
 import { gtdStyles } from './gtdStyles.ts'
@@ -49,7 +49,11 @@ export function SecretaryProduct() {
   const timeZone = useMemo(timeZoneOf, [])
   const [module, setModule] = useState<Module>('time')
   const [timeView, setTimeView] = useState<TimeView>('actual')
-  const [anchor, setAnchor] = useState(() => localDate())
+  const [today] = useState(() => localDate())
+  const [forecastDate, setForecastDate] = useState(() => localDate())
+  const [range, setRange] = useState(() => ({ from: addDays(localDate(), -3), to: addDays(localDate(), 10) }))
+  const [focus, setFocus] = useState(() => ({ date: localDate(), token: 1 }))
+  const [topDate, setTopDate] = useState(() => localDate())
   const [weekStart, setWeekStart] = useState(() => weekStartOf(localDate()))
   const [state, setState] = useState<PanelState>()
   const [drawer, setDrawer] = useState(false)
@@ -71,7 +75,7 @@ export function SecretaryProduct() {
 
   const load = useCallback(async (): Promise<PanelState | undefined> => {
     try {
-      const next = await fetchState(anchor, timeZone, weekStart)
+      const next = await fetchState(today, timeZone, weekStart, range.from, range.to)
       setState(next)
       setError('')
       return next
@@ -79,9 +83,28 @@ export function SecretaryProduct() {
       setError(reason instanceof Error ? reason.message : String(reason))
       return undefined
     }
-  }, [anchor, timeZone, weekStart])
+  }, [today, timeZone, weekStart, range])
 
   useEffect(() => { void load() }, [load])
+
+  /** Grow the canvas window by a week at one end, trimming the other end once it is long enough. */
+  const extendRange = useCallback((side: 'before' | 'after') => {
+    setRange(previous => {
+      const next = side === 'before'
+        ? { from: addDays(previous.from, -7), to: previous.to }
+        : { from: previous.from, to: addDays(previous.to, 7) }
+      const span = (Date.parse(`${next.to}T00:00:00`) - Date.parse(`${next.from}T00:00:00`)) / 86_400_000 + 1
+      if (span <= 63) return next
+      return side === 'before' ? { from: next.from, to: addDays(next.to, -7) } : { from: addDays(next.from, 7), to: next.to }
+    })
+  }, [])
+
+  /** Jump the canvas to one date and keep a little before it in view. */
+  const jumpTo = useCallback((date: string) => {
+    setRange({ from: addDays(date, -3), to: addDays(date, 10) })
+    setTopDate(date)
+    setFocus(previous => ({ date, token: previous.token + 1 }))
+  }, [])
 
   const run = useCallback(async (command: PanelCommand): Promise<boolean> => {
     setBusy(true)
@@ -187,6 +210,13 @@ export function SecretaryProduct() {
           <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M2.5 4.5L6 8l3.5-3.5" /></svg>
         </button>
         <span className="grow" />
+        <input
+          className="sec-date"
+          type="date"
+          aria-label="跳到某一天"
+          value={topDate}
+          onChange={event => { if (event.target.value !== '') jumpTo(event.target.value) }}
+        />
         <button className="sec-hbtn" type="button" title="撤销" disabled={undoStack.length === 0 || busy} onClick={() => void undo()}>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M3 7h6.5a3.5 3.5 0 010 7H6" /><path d="M5.5 4L2.5 7l3 3" /></svg>
         </button>
@@ -201,6 +231,9 @@ export function SecretaryProduct() {
               today={state.today}
               nowMs={state.nowMs}
               timeZone={timeZone}
+              focus={focus}
+              onExtend={extendRange}
+              onTopDateChange={setTopDate}
               blocks={state.actual}
               tags={state.tags}
               busy={busy}
@@ -218,6 +251,9 @@ export function SecretaryProduct() {
               today={state.today}
               nowMs={state.nowMs}
               timeZone={timeZone}
+              focus={focus}
+              onExtend={extendRange}
+              onTopDateChange={setTopDate}
               blocks={state.plan}
               tags={state.tags}
               busy={busy}
@@ -248,8 +284,8 @@ export function SecretaryProduct() {
                 actions={state.actions}
                 nextActions={state.nextActions}
                 forecast={state.forecast}
-                forecastDate={anchor}
-                onForecastDateChange={setAnchor}
+                forecastDate={forecastDate}
+                onForecastDateChange={setForecastDate}
                 busy={busy}
                 run={async (command) => run({ ...command, timeZone } as PanelCommand)}
               />

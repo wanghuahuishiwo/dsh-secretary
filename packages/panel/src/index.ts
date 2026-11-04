@@ -8,9 +8,11 @@ import type {
 export const STATE_PATH = '/api/secretary.state'
 export const COMMAND_PATH = '/api/secretary.command'
 
-/** Days the 时间块 canvas draws before and after its anchor day. */
-const WINDOW_BEFORE = 2
-const WINDOW_AFTER = 4
+/** Days the canvas draws around the anchor before the client asks for more. */
+const WINDOW_BEFORE = 3
+const WINDOW_AFTER = 10
+/** Widest window one state read may cover; the canvas asks for narrower slices. */
+const WINDOW_MAX = 120
 const MINUTE_MS = 60_000
 const DAY_MS = 24 * 60 * MINUTE_MS
 
@@ -141,8 +143,11 @@ function weekStartOf(date: string): string {
   return addDays(date, -weekday)
 }
 
-function windowDays(anchor: string): string[] {
-  return Array.from({ length: WINDOW_BEFORE + WINDOW_AFTER + 1 }, (_, index) => addDays(anchor, index - WINDOW_BEFORE))
+/** Every local date from `from` to `to`, both inclusive. */
+function rangeDays(from: string, to: string): string[] {
+  const days: string[] = []
+  for (let cursor = from; cursor <= to; cursor = addDays(cursor, 1)) days.push(cursor)
+  return days
 }
 
 function endOf(block: BlockLike, nowMs: number): number {
@@ -274,8 +279,15 @@ async function replaceDay(
   }
 }
 
-async function readState(ctx: PanelContext, anchor: string, timeZone: string, requestedWeek: string): Promise<Response> {
-  const days = windowDays(anchor)
+async function readState(
+  ctx: PanelContext, anchor: string, timeZone: string, requestedWeek: string,
+  fromDate: string | undefined, toDate: string | undefined,
+): Promise<Response> {
+  const from = fromDate ?? addDays(anchor, -WINDOW_BEFORE)
+  const to = toDate ?? addDays(anchor, WINDOW_AFTER)
+  if (from > to) throw new Error('secretary: panel state requires from <= to')
+  const days = rangeDays(from, to)
+  if (days.length > WINDOW_MAX) throw new Error(`secretary: panel state window is limited to ${WINDOW_MAX} days`)
   const weekStart = weekStartOf(requestedWeek)
   const nowMs = Date.now()
   const fromMs = zonedStart(days[0], timeZone)
@@ -298,7 +310,7 @@ async function readState(ctx: PanelContext, anchor: string, timeZone: string, re
   const message = gtd.map(result => result.warning).find((value): value is string => value !== undefined)
   if (message !== undefined) warnings.push({ domain: 'gtd', message })
   return json({
-    anchor, timeZone, today: localDateOf(nowMs, timeZone), nowMs, days, weekStart, tags, actual, plan, deep,
+    anchor, timeZone, today: localDateOf(nowMs, timeZone), nowMs, from, to, days, weekStart, tags, actual, plan, deep,
     inbox: inbox.value, projects: projects.value, actions: actions.value,
     nextActions: nextActions.value, forecast: forecast.value, warnings,
   })
@@ -414,7 +426,11 @@ export function apply(context: Context): void {
         const timeZone = url.searchParams.get('timeZone') ?? undefined
         if (anchor === undefined || timeZone === undefined) throw new Error('secretary: panel state requires anchor and timeZone')
         validDate(anchor, 'anchor')
-        return await readState(ctx, anchor, timeZone, url.searchParams.get('weekStart') ?? anchor)
+        const from = url.searchParams.get('from')
+        const to = url.searchParams.get('to')
+        if (from !== null) validDate(from, 'from')
+        if (to !== null) validDate(to, 'to')
+        return await readState(ctx, anchor, timeZone, url.searchParams.get('weekStart') ?? anchor, from ?? undefined, to ?? undefined)
       } catch (error) {
         return json({ error: errorMessage(error) }, 400)
       }

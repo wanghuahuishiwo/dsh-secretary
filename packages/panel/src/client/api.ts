@@ -10,6 +10,8 @@ export interface PanelWarning {
 export interface PanelState {
   readonly anchor: string
   readonly timeZone: string
+  readonly from: string
+  readonly to: string
   readonly today: string
   readonly nowMs: number
   readonly days: string[]
@@ -38,9 +40,11 @@ async function read(response: Response): Promise<any> {
   return body
 }
 
-/** Read one panel snapshot: the seven-day canvas window and the requested deep week. */
-export async function fetchState(anchor: string, timeZone: string, weekStart: string): Promise<PanelState> {
-  const query = new URLSearchParams({ anchor, timeZone, weekStart })
+/** Read one panel snapshot: a canvas date window and the requested deep week. */
+export async function fetchState(
+  anchor: string, timeZone: string, weekStart: string, from: string, to: string,
+): Promise<PanelState> {
+  const query = new URLSearchParams({ anchor, timeZone, weekStart, from, to })
   return read(await fetch(`/api/secretary.state?${query}`, { headers: { accept: 'application/json' } }))
 }
 

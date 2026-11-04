@@ -1188,7 +1188,10 @@ test('panel Host state returns the requested deep week and deep paint writes thr
   assert.equal(initial.weekStart, '2026-11-02')
   assert.equal(initial.deep.weekStart, '2026-11-02')
   assert.equal(initial.deep.source, 'seed')
-  assert.deepEqual(initial.days, ['2026-10-31', '2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06'])
+  assert.deepEqual(initial.days, [
+    '2026-10-30', '2026-10-31', '2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05',
+    '2026-11-06', '2026-11-07', '2026-11-08', '2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12',
+  ], 'the default window starts three days before the anchor and runs ten days after it')
 
   await command({
     domain: 'deep', op: 'paint', weekStart: '2026-11-02', level: 'medium',

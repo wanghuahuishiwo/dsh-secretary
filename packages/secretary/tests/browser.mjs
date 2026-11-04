@@ -189,8 +189,8 @@ test('the product is a right-Sidebar tab: one day per screen, the drawer as leve
     await openProduct(page, server.url)
 
     assert.equal(await page.locator('.sec-shell').count(), 1, 'the product is one panel')
-    assert.equal(await page.locator('.sec-day').count(), 7, 'the canvas draws seven days')
-    assert.equal(await page.locator('.sec-cell').count(), 7 * 144, 'each day is 24 hours of ten-minute cells')
+    assert.equal(await page.locator('.sec-day').count(), 14, 'the canvas opens with two weeks of days around today')
+    assert.equal(await page.locator('.sec-cell').count(), 14 * 144, 'each day is 24 hours of ten-minute cells')
     const box = await page.locator('.sec-shell').boundingBox()
     assert.ok(box.width < 900, `the product stays in the narrow right column, got ${box.width}`)
 
@@ -201,12 +201,66 @@ test('the product is a right-Sidebar tab: one day per screen, the drawer as leve
     await openModule(page, '深度时间')
     assert.equal(await page.locator('.sec-hc').count(), 7 * 24, '深度时间 draws seven days by twenty-four hours')
     await openModule(page, '时间块')
-    assert.equal(await page.locator('.sec-cell').count(), 7 * 144, 'the drawer returns to 时间块')
+    assert.equal(await page.locator('.sec-cell').count(), 14 * 144, 'the drawer returns to 时间块')
 
     await chooseTimeView(page, '计划')
     await page.locator('.sec-title .tsub', { hasText: '计划' }).waitFor()
     await chooseTimeView(page, '实录')
     await page.locator('.sec-title .tsub', { hasText: '实录' }).waitFor()
+
+    assert.deepEqual(errors, [])
+  } finally {
+    await browser.close()
+    await server.stop()
+  }
+})
+
+
+test('the day list keeps scrolling instead of stopping at a week, and the date field jumps anywhere', { timeout: 240_000 }, async (t) => {
+  const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-browser-'))
+  const overlay = await writeOverlay(home)
+  const server = await boot(home, overlay)
+  const browser = await chromium.launch()
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  const errors = []
+  collectPageErrors(page, errors)
+  t.after(async () => { await browser.close(); await server.stop() })
+  try {
+    await openProduct(page, server.url)
+    const canvas = page.locator('.sec-scroll')
+    const days = () => page.locator('.sec-day').count()
+    const opening = await days()
+
+    const box = await canvas.boundingBox()
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.mouse.wheel(0, -30_000)
+    await page.waitForFunction(count => document.querySelectorAll('.sec-day').length > count, opening, { timeout: 20_000 })
+
+    await page.mouse.wheel(0, 60_000)
+    const grown = await days()
+    await page.waitForFunction(count => document.querySelectorAll('.sec-day').length > count, grown, { timeout: 20_000 })
+
+    await page.mouse.wheel(0, -30_000)
+    await page.waitForTimeout(1_200)
+    const anchored = await page.locator('.sec-date').inputValue()
+    const topDay = await page.evaluate(() => {
+      const scroll = document.querySelector('.sec-scroll')
+      const columns = [...document.querySelectorAll('.sec-day')]
+      let top = ''
+      for (const column of columns) {
+        if (column.offsetTop <= scroll.scrollTop + 1) top = column.dataset.day
+        else break
+      }
+      return top
+    })
+    assert.equal(anchored, topDay, 'the header date always names the day at the top edge')
+    assert.ok(anchored !== localDate(), 'scrolling away from today moves that date')
+
+    await page.locator('.sec-date').fill('2026-01-15')
+    await page.locator('.sec-day[data-day="2026-01-15"]').waitFor({ timeout: 20_000 })
+    const target = await page.locator('.sec-day[data-day="2026-01-15"]').boundingBox()
+    const frame = await canvas.boundingBox()
+    assert.ok(target.y >= frame.y - 2 && target.y <= frame.y + frame.height, 'the jumped-to day lands on screen')
 
     assert.deepEqual(errors, [])
   } finally {
@@ -411,7 +465,7 @@ test('both host themes drive the canvas tokens and produce no page errors', { ti
     await page.locator('.sec-shell').waitFor()
     const dark = await read()
     assert.notEqual(light, dark, 'the shell follows the host theme instead of a fixed palette')
-    assert.equal(await page.locator('.sec-cell').count(), 7 * 144)
+    assert.equal(await page.locator('.sec-cell').count(), 14 * 144)
     assert.deepEqual(errors, [])
   } finally {
     await browser.close()

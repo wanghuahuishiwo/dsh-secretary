@@ -3,7 +3,7 @@
 真实 Web client 的产品壳：一个**右侧栏 tab**（kind `secretary`），左侧聊天不动，产品在右侧窄列里。
 
 - 一级模块走 ☰ 抽屉：时间块 / 深度时间 / 事项 / 目标 / 标签 / 设置；标题永远显示 `模块 · 子模块`，二级（实录 / 计划）在标题下拉里。
-- **时间块**：一格 10 分钟，一屏正好一天，7 天连续（今天 −2 … +4）。全是方格、无圆角、无并行记录；每个格子都带自己的标签名（有备注用备注）。交互固定为「先在格子上选，再点右侧类别」：拖选＝重新拉一段，单击已选格＝取消该格，`不选`／`Esc`／点空白清空，`橡皮`／`Delete`／`Backspace` 擦除。底栏只在有选中时可见，整段选中一条记录时显示类别与「备注」。
+- **时间块**：一格 10 分钟，一屏正好一天。日期是连续列表：打开时铺今天前 3 天到后 10 天，滚到任一端就再接过一周（最多同时 63 天，超出从另一端裁掉），视线按「顶部那一天」锚定，扩展不会把画面顶走。标题栏右侧的日期同时是「你在哪天」和跳转入口——点开日历选任意一天，画布会以那天为锚重铺并滚过去；滚离今天后右下角出现「回到今天」。全是方格、无圆角、无并行记录；每个格子都带自己的标签名（有备注用备注）。交互固定为「先在格子上选，再点右侧类别」：拖选＝重新拉一段，单击已选格＝取消该格，`不选`／`Esc`／点空白清空，`橡皮`／`Delete`／`Backspace` 擦除。底栏只在有选中时可见，整段选中一条记录时显示类别与「备注」。
 - **实录** 与 **计划** 是两张同构画布、不同图层（`actual_blocks` / `plan_blocks`），互不影响；标题下的撤销只覆盖上色/擦除，撤销用当日快照整段回写。
 - **深度时间**：7×24 周网格（小时格），按周存储。没画过的周继承最近一个更早的周，再没有就用 `base` 种子；写入只落在本周（`week:<周一>`）。右侧三档 high / medium / low 是画笔，拖矩形选中后点档位上色，橡皮擦回 unset。
 - 时间标签架读 `TagService` 的时间标签树：一级标签可展开子标签，点标签＝给当前选区上色；收起后只显示色块。
@@ -11,7 +11,7 @@
 
 Host 半通过 `ctx.connection.fetch.register` 注册两个精确、受宿主认证保护的 route：
 
-- `GET /api/secretary.state?anchor=YYYY-MM-DD&timeZone=…&weekStart=YYYY-MM-DD`：返回 7 天窗口的 `actual`/`plan`、`weekStart` 那周的 `deep`、`tags`，以及 GTD 的 Inbox／Projects／Actions／Next／Forecast。GTD 读取失败只降级为 `warnings`，不影响时间数据。
+- `GET /api/secretary.state?anchor=YYYY-MM-DD&timeZone=…&weekStart=YYYY-MM-DD&from=YYYY-MM-DD&to=YYYY-MM-DD`：返回 `from`–`to` 这几天窗口的 `actual`/`plan`（单次最多 120 天）、`weekStart` 那周的 `deep`、`tags`，以及 GTD 的 Inbox／Projects／Actions／Next／Forecast。`from`/`to` 省略时按 anchor 取今天 −3 … +10。GTD 读取失败只降级为 `warnings`，不影响时间数据。
 - `POST /api/secretary.command`：`time.paint`（把选中的 run 从旧记录里切出来再落新块并合并同色相邻块）、`time.replace`（整日回写，撤销用）、`time.update`、`time.delete`、`deep.paint`（一组矩形 set/clear）、以及 `tag.*` / `gtd.*` 原子能力。
 
 route 只调用 `ctx.tags`、`ctx.gtd` 与 `ctx.time`；浏览器不获得 Host Cordis Context，不直接访问 Domain／SQLite，也没有另一套浏览器领域 store。React state 只保存界面选择、浮层草稿和 Host 返回的读取结果。
