@@ -122,7 +122,7 @@ Tracker: [GitHub Issue #9](https://github.com/wanghuahuishiwo/dsh-secretary/issu
 9. Time 的 child UI 激活失败会同时撤销 Remote；产品卸载按“UI → Remote → 空 namespace”清理，进行中的调用被取消，stale method 被拒绝。重新挂载不出现重复 endpoint、残留 UI 或旧调用句柄。
 10. 非法日期、区间、Tag、level 与请求形状分别落入 `secretaryTime/invalid-input` 或 Gateway wire 校验；不存在的块返回 `secretaryTime/not-found`，持久化／补偿失败返回 `secretaryTime/write-failed` 且 details 携带安全的 operation，cause 只留 Host 日志。错误不被静默吞掉，校验失败不产生 SQLite 写入，非 owner Peer 不获得业务数据。
 11. Goal／Tag 上游依赖仍按真实 Cordis inject 等待与清理；不把 Goal 空 Provider 换成空 Remote API。
-12. 使用新临时 DSH_HOME、构建后的 bundle、真实 Loader 与空 SQLite 完成冷启动；第一次 Remote 调用即成功，不用固定 sleep 或手工重试掩盖 readiness。以错误类型输入证明 strict generated descriptor 生效：桌面端 `0.2.1-rc.5` 实测可返回 `gateway/arguments-invalid`，支持新词汇的官方版本可返回 `gateway/input-invalid`，两者都必须证明业务方法未调用并记录实际宿主版本与返回码，不伪造跨版本结果；Host descriptor 卸载后返回 `gateway/definition-unavailable`，不得降级到 SRC fallback。HMR 成功不能替代该证据。
+12. 使用新临时 DSH_HOME、构建后的 bundle、真实 Loader 与空 SQLite 完成冷启动；第一次 Remote 调用即成功，不用固定 sleep 或手工重试掩盖 readiness。以正确 `{ args: { input: ... } }` 包装的错误类型输入证明 strict generated descriptor 生效：返回 `gateway/input-invalid` 且业务方法未调用；Host descriptor 卸载后返回 `gateway/definition-unavailable`，不得降级到 SRC fallback。HMR 成功不能替代该证据。
 13. `pnpm install --frozen-lockfile`、`pnpm build`、`pnpm test`、`git diff --check` 和 `pnpm pack` 全部通过，pack 内容包含必需的 Remote 生成产物与产品 client bundles。
 14. 文档链接与当前实现一致，`verification` 只写入本次真实运行结果，不把本规格的目标提前记为完成。
 
