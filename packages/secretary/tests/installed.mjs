@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { execFile } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { access, mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
@@ -74,7 +75,8 @@ async function remoteCall(page, method, input) {
 async function packWorkspace(destination) {
   await mkdir(destination, { recursive: true })
   const directories = (await readdir(join(ROOT, 'packages'), { withFileTypes: true }))
-    .filter(entry => entry.isDirectory()).map(entry => entry.name).sort()
+    .filter(entry => entry.isDirectory() && existsSync(join(ROOT, 'packages', entry.name, 'package.json')))
+    .map(entry => entry.name).sort()
   const packs = []
   for (const directory of directories) {
     const cwd = join(ROOT, 'packages', directory)
