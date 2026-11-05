@@ -71,6 +71,7 @@ GTD 与 Time 不直接关联 Action。Plan／Actual／Template 只保存直接�
 
 - `packages/secretary/tests/tracer.mjs`：公开 tools、TimeProductService、真实临时 SQLite、故障注入、Goal 晚就绪与 Provider 卸载清理、完整关闭／重开；反向断言最终 bundle 不含旧聚合 panel 与 routes。
 - `packages/secretary/tests/browser.mjs`：临时 `DSH_HOME` 中真实 `dsh web` 与 Chromium，覆盖直接操作、Tags 拖拽、Undo 链、宿主明暗主题和 390px。
-- `pnpm pack` 检查 bundle 内容。真实安装包的新会话／desktop profile 验收由交付 lead 后续执行，不修改真实用户 profile。
+- `packages/secretary/tests/installed.mjs`：打包每个 workspace 包，经官方 `dsh plugin add` 与临时 profile file overrides 安装最终 tarballs；在全新 `DSH_HOME` 和空 SQLite 中以真实 `dsh web`＋Chromium 验证服务激活、两个产品、第一次 Remote 读取与 paint 重开持久化，不使用产品源码 overlay。
+- `pnpm pack` 检查 bundle 内容。真实 desktop profile 的人工新会话验收由交付 lead 后续执行，不修改真实用户 profile。
 
 只把已实际运行的结果写入 [verification.md](verification.md)；历史模型对话和旧 Action-TimeBlock 结论不属于本轮证据。

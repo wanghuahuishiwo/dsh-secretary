@@ -3,6 +3,9 @@
 # 影响所有 preset（含 standard），回滚 = 删除下面两行。
 - id: skill-office
   disabled: true
+# 宿主 Goal Service 与本项目的空 Provider 共用 goals key；保留后者及其工具语义。
+- id: goal
+  disabled: true
 - insert:
     - id: storage-sqlite
       name: '@deepseek-ai/dsh-storage-sqlite'

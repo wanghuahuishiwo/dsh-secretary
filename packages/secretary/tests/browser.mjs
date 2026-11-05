@@ -7,6 +7,7 @@ import { dirname, join, resolve } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
+import { clearDialogs, openTimeRemote } from './open-time-product.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 
@@ -64,24 +65,6 @@ function collectPageErrors(page, errors) {
     if (/Failed to load resource: the server responded with a status of 500/.test(message.text())) return
     errors.push(new Error(`console.error: ${message.text()}`))
   })
-}
-
-async function clearDialogs(page) {
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const dialog = page.getByRole('dialog').last()
-    if (await dialog.count() === 0 || !await dialog.isVisible()) return
-    let clicked = false
-    for (const label of ['继续', '知道了', '关闭', '已完成', '稍后', 'Continue', 'Got it', 'Close', 'Done', 'Later']) {
-      const button = dialog.getByRole('button', { name: label, exact: true })
-      if (await button.count() > 0 && await button.isVisible()) { await button.click(); clicked = true; break }
-    }
-    if (!clicked) return
-  }
-}
-
-/** Reach the independent Time product through its real generated Remote client. */
-async function openProduct(page, url) {
-  return openTimeRemote(page, url)
 }
 
 /** Purpose-specific test fixture backed by the real domain Services, never a production Remote. */
@@ -285,10 +268,10 @@ test('the product is a right-Sidebar tab: one day per screen, the drawer as leve
   collectPageErrors(page, errors)
   t.after(async () => { await browser.close(); await server.stop() })
   try {
-    await openProduct(page, server.url)
+    await openTimeRemote(page, server.url)
     await seedTags(page)
     await page.reload({ waitUntil: 'domcontentloaded' })
-    await openProduct(page, server.url)
+    await openTimeRemote(page, server.url)
 
     assert.equal(await page.locator('.sec-shell').count(), 1, 'the product is one panel')
     assert.equal(await page.locator('.sec-day').count(), 14, 'the canvas opens with two weeks of days around today')
@@ -328,7 +311,7 @@ test('the day list keeps scrolling instead of stopping at a week, and the date f
   collectPageErrors(page, errors)
   t.after(async () => { await browser.close(); await server.stop() })
   try {
-    await openProduct(page, server.url)
+    await openTimeRemote(page, server.url)
     const canvas = page.locator('.sec-scroll')
     const days = () => page.locator('.sec-day').count()
     const opening = await days()
@@ -397,10 +380,10 @@ test('selecting cells then a category paints them; 不选, Delete and 撤销 beh
   t.after(async () => { await browser.close(); await server.stop() })
   const today = localDate()
   try {
-    await openProduct(page, server.url)
+    await openTimeRemote(page, server.url)
     await seedTags(page)
     await page.reload({ waitUntil: 'domcontentloaded' })
-    await openProduct(page, server.url)
+    await openTimeRemote(page, server.url)
 
     await dragCells(page, today, 480, 530)
     assert.match(await page.locator('.sec-status').innerText(), /选择了\s*60\s*分钟/, 'dragging selects ten-minute cells')
@@ -411,7 +394,7 @@ test('selecting cells then a category paints them; 不选, Delete and 撤销 beh
     assert.equal(await page.locator('.sec-blk span').first().innerText(), '工作', 'every painted cell carries the label')
 
     await page.reload({ waitUntil: 'domcontentloaded' })
-    await openProduct(page, server.url)
+    await openTimeRemote(page, server.url)
     await page.waitForFunction(() => document.querySelectorAll('.sec-blk').length === 6, undefined, { timeout: 30_000 })
 
     await dragCells(page, today, 480, 530)
@@ -443,10 +426,10 @@ test('the 备注 sheet changes a record, and 计划 paints its own layer without
   t.after(async () => { await browser.close(); await server.stop() })
   const today = localDate()
   try {
-    await openProduct(page, server.url)
+    await openTimeRemote(page, server.url)
     await seedTags(page)
     await page.reload({ waitUntil: 'domcontentloaded' })
-    await openProduct(page, server.url)
+    await openTimeRemote(page, server.url)
 
     await dragCells(page, today, 480, 530)
     await page.locator('.sec-cat').filter({ hasText: '工作' }).first().click()
@@ -490,7 +473,7 @@ test('深度时间 paints one week, the next week inherits it, and editing that 
   collectPageErrors(page, errors)
   t.after(async () => { await browser.close(); await server.stop() })
   try {
-    await openProduct(page, server.url)
+    await openTimeRemote(page, server.url)
     await openModule(page, '深度时间')
     await page.locator('.sec-hc').first().waitFor()
     await page.waitForTimeout(500)
@@ -526,7 +509,7 @@ test('深度时间 paints one week, the next week inherits it, and editing that 
 
     await server.stop()
     server = await boot(home, overlay)
-    await openProduct(page, server.url)
+    await openTimeRemote(page, server.url)
     await openModule(page, '深度时间')
     await page.waitForFunction(() => document.querySelectorAll('.sec-hc.H').length === 4, undefined, { timeout: 30_000 })
     await page.getByRole('button', { name: '下一周' }).click()
@@ -549,7 +532,7 @@ test('事项 opens a blank global main from the left Sidebar and returns to the 
   collectPageErrors(page, errors)
   t.after(async () => { await browser.close(); await server.stop() })
   try {
-    await openProduct(page, server.url)
+    await openTimeRemote(page, server.url)
     const rightSession = page.locator('[data-sidebar-right-session]:has(.sec-shell)').first()
     const sessionId = await rightSession.getAttribute('data-sidebar-right-session')
     assert.ok(sessionId, 'the Conversation has a retained right-Sidebar session')
@@ -614,7 +597,7 @@ test('事项 product HMR unload and remount preserve Conversation, the Time prod
   const entry = page.getByRole('button', { name: '小秘书-事项', exact: true })
   const main = page.getByRole('main', { name: '小秘书-事项', exact: true })
   try {
-    await openProduct(page, server.url)
+    await openTimeRemote(page, server.url)
     await entry.click()
     await main.waitFor({ state: 'attached' })
     let navigations = 0
@@ -641,7 +624,7 @@ test('事项 product HMR unload and remount preserve Conversation, the Time prod
 
     await server.stop()
     server = await boot(home)
-    await openProduct(page, server.url)
+    await openTimeRemote(page, server.url)
     await entry.waitFor({ timeout: 30_000 })
     await entry.click()
     await main.waitFor({ state: 'attached' })
@@ -667,7 +650,7 @@ test('both host themes drive the canvas tokens and produce no page errors', { ti
   collectPageErrors(page, errors)
   t.after(async () => { await browser.close(); await server.stop() })
   try {
-    await openProduct(page, server.url)
+    await openTimeRemote(page, server.url)
     const read = () => page.locator('.sec-shell').evaluate(element => getComputedStyle(element).backgroundColor)
     const light = await read()
     await page.getByRole('button', { name: /^(Account menu|账户菜单)$/ }).first().click()
@@ -708,29 +691,6 @@ async function lifecycle(page, op) {
     if (!response.ok) throw new Error(`lifecycle ${op} failed (${response.status}): ${body}`)
     return JSON.parse(body)
   }, op)
-}
-
-/** Open only the new product; its first render must succeed without a retry or fixed sleep. */
-async function openTimeRemote(page, url) {
-  await page.goto(url, { waitUntil: 'domcontentloaded' })
-  await clearDialogs(page)
-  await page.getByText(/^(Default workspace|默认工作区)$/).first().waitFor({ timeout: 15_000 })
-  const newSession = page.getByRole('button', { name: /^(新建会话|New session|New Session)$/ }).first()
-  await newSession.waitFor({ timeout: 15_000 })
-  await newSession.click()
-  await page.waitForFunction(() => document.querySelector('[data-time-remote]') !== null
-    || [...document.querySelectorAll('button')].some(button => ['New tab', 'Open right sidebar', '打开右侧边栏'].includes(button.getAttribute('aria-label') ?? '')),
-    undefined, { timeout: 30_000 })
-  if (await page.locator('[data-time-remote]').count() === 0) {
-    const openSidebar = page.getByRole('button', { name: /^(Open right sidebar|打开右侧边栏)$/ })
-    if (await openSidebar.count() > 0) await openSidebar.click()
-    const tab = page.getByRole('button', { name: /^小秘书-时间块/ }).first()
-    const newTab = page.getByRole('button', { name: 'New tab', exact: true })
-    if (await tab.count() === 0 && await newTab.count() > 0) await newTab.click()
-    await tab.waitFor({ timeout: 15_000 })
-    await tab.click()
-  }
-  await page.locator('[data-time-remote][data-remote-state="ready"]').waitFor({ timeout: 30_000 })
 }
 
 test('Time Remote product covers cold-start real-canvas read/paint, strict errors, and Loader remount', { timeout: 180_000 }, async (t) => {

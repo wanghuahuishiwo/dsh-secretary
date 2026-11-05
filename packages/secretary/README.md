@@ -17,11 +17,13 @@ pnpm test
 
 浏览器测试需要 DSH `0.2.1-rc.5` 在 PATH 和 Playwright Chromium，不使用版本豁免。可用 `pnpm --filter dsh-secretary test:browser` 单独运行。测试使用临时 `DSH_HOME`，不会连接正在使用的 GUI、真实 desktop profile 或真实 Secretary 数据。
 
+最终 tarball 冷启动另行运行 `pnpm --filter dsh-secretary test:installed`：脚本打包每个 workspace 包，经官方 `dsh plugin add` 安装到带 file overrides 的全新临时 profile，再以真实 `dsh web` + Chromium 验证服务激活、两个产品、第一次 Remote 读取及 paint 重开持久化；不使用源码 overlay，也不读取真实 desktop profile。
+
 ## 装配
 
 - 根层：`storage-sqlite`、`secretary-storage`、`secretary-goal`、`secretary-gtd`、`secretary-tag`、`secretary-time-block`、完整 Remote 时间产品 `secretary-time-panel` 与独立事项 `secretary-gtd-panel`。行序仅用于阅读，启动与重载由 Cordis `inject` 驱动；旧聚合 `secretary-panel` 已删除。
 - Secretary preset：公共工具 `secretary_gtd`、`secretary_tag`、`secretary_time`，以及既有 GTD/Secretary skills。
-- Goal 只有上游空 Provider；Goal 业务模型与统计不实现。旧 `secretary_time_block`、Action 关联 planned/actual 模型及独立 Statistics 包均已移除，不保留兼容层。
+- Goal 只有上游空 Provider；patch 显式禁用宿主 `goal` Service entry，避免与项目 `goals` 重复注册。Goal 业务模型与统计不实现。旧 `secretary_time_block`、Action 关联 planned/actual 模型及独立 Statistics 包均已移除，不保留兼容层。
 
 `secretary_gtd`、`secretary_tag`、`secretary_time` 经 `secretaryStorageDomain` 默认路由到：
 

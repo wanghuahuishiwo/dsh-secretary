@@ -68,6 +68,11 @@ function validTimeZone(timeZone: string): string {
   return timeZone
 }
 
+function validLayer(layer: TimeLayer, operation: string): TimeLayer {
+  if (layer !== 'actual' && layer !== 'plan') throw new Error(`secretary: ${operation} layer must be actual or plan`)
+  return layer
+}
+
 function zoneOffset(utcMs: number, timeZone: string): number {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit',
@@ -126,6 +131,11 @@ async function blocksOfLayer(
 async function deleteBlock(ctx: TimeProductContext, layer: TimeLayer, id: number): Promise<void> {
   if (layer === 'actual') await ctx.time.deleteActual(id)
   else await ctx.time.deletePlan(id)
+}
+
+async function requireTimeTag(ctx: TimeProductContext, id: number): Promise<void> {
+  const tag = await ctx.tags.getTag(id)
+  if (tag.kind !== 'time') throw new Error('secretary: TimeBlock requires a time tag')
 }
 
 async function writeBlock(ctx: TimeProductContext, layer: TimeLayer, interval: Interval, timeZone: string): Promise<void> {
@@ -289,7 +299,7 @@ export class TimeProductService extends TypertRemoteService {
   @Remote('paint')
   async paint(input: PaintTimeBlocksRequest): Promise<PaintResult> {
     try {
-      if (input.layer !== 'actual' && input.layer !== 'plan') throw new Error('secretary: paint layer must be actual or plan')
+      const layer = validLayer(input.layer, 'paint')
       validTimeZone(input.timeZone)
       if (input.tagId !== null && (!Number.isSafeInteger(input.tagId) || input.tagId <= 0)) {
         throw new Error('secretary: paint tagId must be a positive integer or null')
@@ -301,7 +311,8 @@ export class TimeProductService extends TypertRemoteService {
           throw new Error('secretary: paint runs require 0 <= start < end <= 1440')
         }
       }
-      if (input.runs.length > 0) await paintRuns(this.productCtx, input.layer, input.tagId, input.runs, input.timeZone)
+      if (input.tagId !== null) await requireTimeTag(this.productCtx, input.tagId)
+      if (input.runs.length > 0) await paintRuns(this.productCtx, layer, input.tagId, input.runs, input.timeZone)
       return { ok: true }
     } catch (error) {
       productFailure(this.productCtx, error, 'paint')
@@ -340,10 +351,10 @@ export class TimeProductService extends TypertRemoteService {
   @Remote('updateBlock')
   async updateBlock(input: UpdateTimeBlockRequest): Promise<UpdateTimeBlockResult> {
     try {
-      if (input.layer !== 'actual' && input.layer !== 'plan') throw new Error('secretary: updateBlock layer must be actual or plan')
+      const layer = validLayer(input.layer, 'updateBlock')
       if (!Number.isSafeInteger(input.id) || input.id <= 0) throw new Error('secretary: updateBlock id must be a positive integer')
       const patch = { timeTagId: input.timeTagId, note: input.note, startAt: input.startAt, endAt: input.endAt }
-      const block = input.layer === 'actual'
+      const block = layer === 'actual'
         ? await this.productCtx.time.updateActual(input.id, patch)
         : await this.productCtx.time.updatePlan(input.id, patch)
       return { block }
@@ -356,9 +367,9 @@ export class TimeProductService extends TypertRemoteService {
   @Remote('deleteBlock')
   async deleteBlock(input: DeleteTimeBlockRequest): Promise<DeleteTimeBlockResult> {
     try {
-      if (input.layer !== 'actual' && input.layer !== 'plan') throw new Error('secretary: deleteBlock layer must be actual or plan')
+      const layer = validLayer(input.layer, 'deleteBlock')
       if (!Number.isSafeInteger(input.id) || input.id <= 0) throw new Error('secretary: deleteBlock id must be a positive integer')
-      const block = input.layer === 'actual'
+      const block = layer === 'actual'
         ? await this.productCtx.time.deleteActual(input.id)
         : await this.productCtx.time.deletePlan(input.id)
       return { ok: true, block }
@@ -371,7 +382,7 @@ export class TimeProductService extends TypertRemoteService {
   @Remote('replaceDay')
   async replaceDay(input: ReplaceTimeDayRequest): Promise<PaintResult> {
     try {
-      if (input.layer !== 'actual' && input.layer !== 'plan') throw new Error('secretary: replaceDay layer must be actual or plan')
+      const layer = validLayer(input.layer, 'replaceDay')
       const date = validDate(input.date, 'date')
       validTimeZone(input.timeZone)
       for (const interval of input.intervals) {
@@ -381,7 +392,8 @@ export class TimeProductService extends TypertRemoteService {
           throw new Error('secretary: replaceDay intervals require 0 <= start < end <= 1440 and a positive timeTagId')
         }
       }
-      await replaceDaySnapshot(this.productCtx, input.layer, date, input.intervals, input.timeZone)
+      for (const interval of input.intervals) await requireTimeTag(this.productCtx, interval.timeTagId)
+      await replaceDaySnapshot(this.productCtx, layer, date, input.intervals, input.timeZone)
       return { ok: true }
     } catch (error) {
       productFailure(this.productCtx, error, 'replaceDay')

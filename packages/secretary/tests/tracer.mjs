@@ -1229,6 +1229,47 @@ test('Time product paint writes one ActualBlock through TimeService into the sam
   assert.deepEqual(window.actual, fromTool.blocks)
 })
 
+test('Time product paint rejects missing and context Tags without deleting existing SQLite facts', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag: time } = await execute(harness, 'secretary_tag', { op: 'create', name: '时间', kind: 'time' })
+  const { tag: context } = await execute(harness, 'secretary_tag', { op: 'create', name: '地点', kind: 'context' })
+  const product = harness.ctx.get('timeProduct')
+  assert.ok(product)
+
+  for (const layer of ['actual', 'plan']) {
+    await product.paint({
+      layer, tagId: time.id, timeZone: 'Asia/Shanghai',
+      runs: [{ date: '2026-11-02', start: 480, end: 600 }],
+    })
+    const before = (await product.readWindow({
+      anchor: '2026-11-02', timeZone: 'Asia/Shanghai', from: '2026-11-02', to: '2026-11-02',
+    }))[layer]
+    assert.equal(before.length, 1)
+    for (const tagId of [999999, context.id]) {
+      await assert.rejects(product.paint({
+        layer, tagId, timeZone: 'Asia/Shanghai',
+        runs: [{ date: '2026-11-02', start: 500, end: 540 }],
+      }), error => {
+        assert.equal(error.code, 'secretaryTime/invalid-input')
+        assert.deepEqual(error.details, { operation: 'paint' })
+        return true
+      })
+      const read = await product.readWindow({
+        anchor: '2026-11-02', timeZone: 'Asia/Shanghai', from: '2026-11-02', to: '2026-11-02',
+      })
+      assert.deepEqual(read[layer], before, `${layer} paint with Tag ${tagId} must leave SQLite unchanged`)
+    }
+    await assert.rejects(product.paint({ layer, tagId: 999999, timeZone: 'Asia/Shanghai', runs: [] }), error => {
+      assert.equal(error.code, 'secretaryTime/invalid-input')
+      return true
+    })
+    const after = await product.readWindow({
+      anchor: '2026-11-02', timeZone: 'Asia/Shanghai', from: '2026-11-02', to: '2026-11-02',
+    })
+    assert.deepEqual(after[layer], before)
+  }
+})
+
 test('Time product paint cuts, overwrites, merges, erases, and keeps Plan independent from Actual', async (t) => {
   const harness = await sqliteHarness(t)
   const { tag: work } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
@@ -1398,6 +1439,42 @@ test('Time product replaceDay restores a clipped day snapshot without changing t
     op: 'plan.list', date: '2026-11-02', timeZone: 'Asia/Shanghai',
   })
   assert.equal(plan.blocks.length, 1, 'replaceDay only replaces its selected layer')
+})
+
+test('Time product replaceDay prevalidates every Tag before deleting existing SQLite facts', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag: time } = await execute(harness, 'secretary_tag', { op: 'create', name: '时间', kind: 'time' })
+  const { tag: context } = await execute(harness, 'secretary_tag', { op: 'create', name: '地点', kind: 'context' })
+  const product = harness.ctx.get('timeProduct')
+  assert.ok(product)
+
+  for (const layer of ['actual', 'plan']) {
+    await product.paint({
+      layer, tagId: time.id, timeZone: 'Asia/Shanghai',
+      runs: [{ date: '2026-11-02', start: 480, end: 600 }],
+    })
+    const before = (await product.readWindow({
+      anchor: '2026-11-02', timeZone: 'Asia/Shanghai', from: '2026-11-02', to: '2026-11-02',
+    }))[layer]
+    assert.equal(before.length, 1)
+    for (const tagId of [999999, context.id]) {
+      await assert.rejects(product.replaceDay({
+        layer, date: '2026-11-02', timeZone: 'Asia/Shanghai',
+        intervals: [
+          { start: 480, end: 540, timeTagId: time.id, note: '前置合法快照' },
+          { start: 540, end: 600, timeTagId: tagId, note: '非法引用不得写入' },
+        ],
+      }), error => {
+        assert.equal(error.code, 'secretaryTime/invalid-input')
+        assert.deepEqual(error.details, { operation: 'replaceDay' })
+        return true
+      })
+      const read = await product.readWindow({
+        anchor: '2026-11-02', timeZone: 'Asia/Shanghai', from: '2026-11-02', to: '2026-11-02',
+      })
+      assert.deepEqual(read[layer], before, `${layer} replaceDay with Tag ${tagId} must leave SQLite unchanged`)
+    }
+  }
 })
 
 test('Time product paint maps a real SQLite write failure to write-failed with only safe operation details', async (t) => {
