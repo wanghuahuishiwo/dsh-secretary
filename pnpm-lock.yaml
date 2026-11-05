@@ -44,6 +44,16 @@ importers:
         specifier: ^0.25.10
         version: 0.25.12
 
+  packages/gtd-panel:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5
+    devDependencies:
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
+
   packages/panel:
     dependencies:
       '@deepseek-ai/cordis':

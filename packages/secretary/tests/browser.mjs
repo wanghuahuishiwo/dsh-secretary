@@ -84,13 +84,13 @@ async function openProduct(page, url) {
   await clearDialogs(page)
   const newSession = page.getByRole('button', { name: /^(新建会话|New session|New Session)$/ }).first()
   if (await newSession.count() > 0) await newSession.click()
-  await page.waitForTimeout(1_200)
+  await page.locator('[data-composer-input][contenteditable="true"]').first().waitFor({ timeout: 30_000 })
   const shell = page.locator('.sec-shell')
   if (await shell.count() === 0) {
     const openSidebar = page.getByRole('button', { name: /^(Open right sidebar|打开右侧边栏)$/ })
     if (await openSidebar.count() > 0 && await openSidebar.isVisible()) await openSidebar.click()
     await page.waitForTimeout(700)
-    const capsule = page.getByRole('button', { name: /小秘书/ }).first()
+    const capsule = page.locator('[data-sidebar-right-guide-entry="secretary"]')
     if (await capsule.count() > 0) await capsule.click()
     await page.waitForTimeout(1_500)
   }
@@ -184,6 +184,8 @@ async function writeOverlay(home) {
     `      name: 'file://${join(ROOT, 'packages/time-block/lib/index.js')}'`,
     "    - id: secretary-browser-panel",
     `      name: 'file://${join(ROOT, 'packages/panel/lib/index.js')}'`,
+    "    - id: secretary-browser-gtd-panel",
+    `      name: 'file://${join(ROOT, 'packages/gtd-panel/lib/index.js')}'`,
     '',
   ].join('\n'))
   return overlay
@@ -447,6 +449,69 @@ test('深度时间 paints one week, the next week inherits it, and editing that 
     await page.waitForFunction(() => document.querySelectorAll('.sec-hc.H').length === 3, undefined, { timeout: 20_000 })
 
     assert.deepEqual(errors, [])
+  } finally {
+    await browser.close()
+    await server.stop()
+  }
+})
+
+test('事项 opens a blank global main from the left Sidebar and returns to the same Conversation and right Sidebar', { timeout: 240_000 }, async (t) => {
+  const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-gtd-browser-'))
+  const overlay = await writeOverlay(home)
+  const server = await boot(home, overlay)
+  const browser = await chromium.launch()
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  const errors = []
+  collectPageErrors(page, errors)
+  t.after(async () => { await browser.close(); await server.stop() })
+  try {
+    await openProduct(page, server.url)
+    const rightSession = page.locator('[data-sidebar-right-session]:has(.sec-shell)').first()
+    const sessionId = await rightSession.getAttribute('data-sidebar-right-session')
+    assert.ok(sessionId, 'the Conversation has a retained right-Sidebar session')
+
+    const entry = page.getByRole('button', { name: '小秘书-事项', exact: true })
+    await entry.waitFor({ timeout: 30_000 })
+    assert.equal(await entry.innerText(), '小秘书-事项', 'the expanded row shows its product label')
+    assert.equal(await entry.locator('svg').count(), 1, 'the expanded row shows its icon')
+    await entry.click()
+
+    const main = page.getByRole('main', { name: '小秘书-事项', exact: true })
+    await main.waitFor({ state: 'attached' })
+    assert.equal(await entry.getAttribute('aria-current'), 'page')
+    assert.equal(await entry.isVisible(), true, 'the DSH left Sidebar remains visible')
+    assert.equal(await main.innerText(), '', 'the product main is deliberately blank')
+    assert.equal(await main.locator('button, input, textarea, select, form, [role="region"]').count(), 0,
+      'the blank main has no legacy GTD or OmniFocus controls')
+    assert.equal(await page.locator('.sec-shell:visible').count(), 0, 'a global main hides the right Sidebar')
+
+    await page.locator(`[data-row-key="session:${sessionId}"]`).click()
+    await page.locator('[data-composer-input]').waitFor()
+    await page.locator('.sec-shell').waitFor()
+    assert.equal(await page.locator(`[data-row-key="session:${sessionId}"]`).getAttribute('aria-selected'), 'true',
+      'workspace navigation restores the same Session')
+    assert.equal(await page.getByRole('main', { name: '小秘书-事项', exact: true }).count(), 0)
+    assert.equal(await rightSession.isVisible(), true, 'returning restores the same right Sidebar')
+
+    await page.getByRole('button', { name: /^(收起侧边栏|Collapse sidebar)$/ }).click()
+    await page.waitForFunction(() => [...document.querySelectorAll('button[aria-label="小秘书-事项"]')]
+      .some(button => button.textContent === ''))
+    assert.equal(await entry.innerText(), '', 'the collapsed row hides the label')
+    assert.equal(await entry.locator('svg').count(), 1, 'the collapsed row retains the icon')
+    await entry.click()
+    await main.waitFor({ state: 'attached' })
+    assert.equal(await main.innerText(), '')
+    assert.deepEqual(errors, [])
+  } catch (error) {
+    t.diagnostic(server.output())
+    t.diagnostic(errors.map(item => String(item)).join('\n'))
+    t.diagnostic((await page.getByRole('button').allInnerTexts()).join(' | '))
+    t.diagnostic(await page.locator('body').evaluate(() => [...document.querySelectorAll('*')]
+      .flatMap(element => [...element.attributes]
+        .filter(attribute => /main|panel/.test(attribute.name))
+        .map(attribute => `${element.tagName} ${attribute.name}=${attribute.value}`)).slice(0, 100).join('\n')))
+    await page.screenshot({ path: join(tmpdir(), 'secretary-gtd-entry-failure.png'), fullPage: true })
+    throw error
   } finally {
     await browser.close()
     await server.stop()
