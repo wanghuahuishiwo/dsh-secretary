@@ -31,6 +31,10 @@
     - id: secretary-panel
       name: 'dsh-secretary-panel'
 
+    # 独立事项产品：左栏入口与空白 main；没有 GTD Remote/API。
+    - id: secretary-gtd-panel
+      name: 'dsh-secretary-gtd-panel'
+
     - id: preset-secretary
       name: '@deepseek-ai/dsh-agent-preset'
       config:

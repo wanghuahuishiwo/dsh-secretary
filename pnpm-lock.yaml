@@ -87,6 +87,9 @@ importers:
       dsh-secretary-gtd:
         specifier: workspace:*
         version: link:../gtd
+      dsh-secretary-gtd-panel:
+        specifier: workspace:*
+        version: link:../gtd-panel
       dsh-secretary-panel:
         specifier: workspace:*
         version: link:../panel

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -26,7 +26,9 @@ async function freePort() {
 
 async function boot(home, overlay) {
   const port = await freePort()
-  const child = spawn('dsh', ['web', '--patch', overlay, '--port', String(port), '--no-open'], {
+  const child = spawn('dsh', [
+    'web', ...(overlay === undefined ? [] : ['--patch', overlay]), '--port', String(port), '--no-open',
+  ], {
     env: { ...process.env, DSH_HOME: home, DEEPSEEK_API_KEY: 'browser-test-no-model' },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
@@ -151,9 +153,8 @@ async function chooseTimeView(page, name) {
   await page.locator('.sec-smenu button').filter({ hasText: name }).click()
 }
 
-async function writeOverlay(home) {
-  const overlay = join(home, 'overlay.yml')
-  await writeFile(overlay, [
+function overlaySource(home) {
+  return [
     '- id: ui-settings-general',
     '  config:',
     "    welcomeNoticeVersion: '2026-09-28.1'",
@@ -187,8 +188,21 @@ async function writeOverlay(home) {
     "    - id: secretary-browser-gtd-panel",
     `      name: 'file://${join(ROOT, 'packages/gtd-panel/lib/index.js')}'`,
     '',
-  ].join('\n'))
+  ].join('\n')
+}
+
+async function writeOverlay(home) {
+  const overlay = join(home, 'overlay.yml')
+  await writeFile(overlay, overlaySource(home))
   return overlay
+}
+
+/** Use the watched profile patch when a test exercises real configuration HMR. */
+async function writeProfile(home) {
+  const profile = join(home, 'profiles', 'web', 'cordis.patch.yml')
+  await mkdir(dirname(profile), { recursive: true })
+  await writeFile(profile, overlaySource(home))
+  return profile
 }
 
 test('the product is a right-Sidebar tab: one day per screen, the drawer as level one and the title as level two', { timeout: 240_000 }, async (t) => {
@@ -511,6 +525,63 @@ test('事项 opens a blank global main from the left Sidebar and returns to the 
         .filter(attribute => /main|panel/.test(attribute.name))
         .map(attribute => `${element.tagName} ${attribute.name}=${attribute.value}`)).slice(0, 100).join('\n')))
     await page.screenshot({ path: join(tmpdir(), 'secretary-gtd-entry-failure.png'), fullPage: true })
+    throw error
+  } finally {
+    await browser.close()
+    await server.stop()
+  }
+})
+
+test('事项 product HMR unload and remount preserve Conversation, legacy panels, and cold start', { timeout: 300_000 }, async (t) => {
+  const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-gtd-hmr-'))
+  const profile = await writeProfile(home)
+  let server = await boot(home)
+  const browser = await chromium.launch()
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  const errors = []
+  collectPageErrors(page, errors)
+  t.after(async () => { await browser.close(); await server.stop() })
+  const entry = page.getByRole('button', { name: '小秘书-事项', exact: true })
+  const main = page.getByRole('main', { name: '小秘书-事项', exact: true })
+  try {
+    await openProduct(page, server.url)
+    await entry.click()
+    await main.waitFor({ state: 'attached' })
+    let navigations = 0
+    page.on('framenavigated', () => { navigations += 1 })
+
+    await writeFile(profile, `${overlaySource(home)}\n- id: secretary-browser-gtd-panel\n  disabled: true\n`)
+    await entry.waitFor({ state: 'detached', timeout: 30_000 })
+    await main.waitFor({ state: 'detached' })
+    await page.locator('.sec-shell').waitFor()
+    assert.equal(await page.locator('[data-composer-input]').count(), 1,
+      'unloading the active main returns to the retained Conversation')
+    await openModule(page, '事项')
+    await page.getByRole('region', { name: 'GTD 工作区' }).waitFor()
+    await openModule(page, '时间块')
+    const captured = await command(page, {
+      domain: 'gtd', op: 'inbox.capture', title: 'GTD 产品卸载后仍捕获', raw: '领域能力独立', source: 'browser-test',
+    })
+    assert.equal(typeof captured.item.id, 'number', 'the existing GTD Host route still writes after product unload')
+
+    await writeFile(profile, overlaySource(home))
+    await entry.waitFor({ timeout: 30_000 })
+    assert.equal(await entry.count(), 1, 'remount restores exactly one launcher')
+    await entry.click()
+    await main.waitFor({ state: 'attached' })
+    assert.equal(navigations, 0, 'official client HMR does not reload the page')
+
+    await server.stop()
+    server = await boot(home)
+    await openProduct(page, server.url)
+    await entry.waitFor({ timeout: 30_000 })
+    await entry.click()
+    await main.waitFor({ state: 'attached' })
+    assert.equal(await main.innerText(), '')
+    assert.deepEqual(errors, [])
+  } catch (error) {
+    t.diagnostic(server.output())
+    t.diagnostic(errors.map(item => String(item)).join('\n'))
     throw error
   } finally {
     await browser.close()
