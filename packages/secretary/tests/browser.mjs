@@ -754,7 +754,7 @@ async function openTimeRemote(page, url) {
   await page.locator('[data-time-remote][data-remote-state="ready"]').waitFor({ timeout: 30_000 })
 }
 
-test('Time Remote tracer covers cold-start read/paint, strict errors, and Loader remount', { timeout: 180_000 }, async (t) => {
+test('Time Remote product covers cold-start real-canvas read/paint, strict errors, and Loader remount', { timeout: 180_000 }, async (t) => {
   const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-time-remote-'))
   const overlay = await writeOverlay(home, true)
   const server = await boot(home, overlay)
@@ -768,11 +768,13 @@ test('Time Remote tracer covers cold-start read/paint, strict errors, and Loader
     await clearDialogs(page)
     const { tag } = await command(page, { domain: 'tag', op: 'create', name: 'Remote 工作', kind: 'time' })
     await openTimeRemote(page, server.url)
-    const product = page.locator('[data-time-remote]')
-    assert.equal(await product.locator('[data-remote-module="actual"]').innerText(), '实录 0')
-    assert.equal(await product.locator('[data-remote-module="plan"]').innerText(), '计划 0')
-    assert.match(await product.locator('[data-remote-module="deep"]').innerText(), /^深度时间 168/)
-    assert.equal(await product.locator(`[data-remote-tag="${tag.id}"]`).innerText(), 'Remote 工作')
+    const product = page.locator('.sec-shell[data-time-remote]')
+    assert.equal(await product.locator('.sec-blk').count(), 0)
+    assert.equal(await product.locator('.sec-day').count(), 14)
+    await openModule(page, '深度时间')
+    assert.equal(await product.locator('.sec-hc').count(), 168)
+    await openModule(page, '时间块')
+    assert.equal(await product.locator('.sec-cat').filter({ hasText: 'Remote 工作' }).count(), 1)
     const wrongWireType = await remoteCall(page, 'secretaryTime/paint', {
       input: {
         layer: 'actual', tagId: String(tag.id), timeZone: 'Asia/Shanghai',
@@ -794,12 +796,15 @@ test('Time Remote tracer covers cold-start read/paint, strict errors, and Loader
     })
     assert.equal(empty.ok, true)
     assert.deepEqual(empty.value.actual, [], 'wire and domain refusals must not enter the business write path')
-    await product.getByRole('button', { name: '上色 09:00–09:10', exact: true }).click()
-    await product.locator('[data-remote-paint="written"]').waitFor()
-    assert.equal(await product.locator('[data-remote-module="actual"]').innerText(), '实录 1')
+    const today = localDate()
+    await dragCells(page, today, 540, 540)
+    await product.locator('.sec-cat').filter({ hasText: 'Remote 工作' }).click()
+    await product.locator('.sec-blk').waitFor()
+    assert.equal(await product.locator('.sec-blk').count(), 1)
+    assert.equal(await product.locator('.sec-blk span').innerText(), 'Remote 工作')
 
     await openTimeRemote(page, server.url)
-    assert.equal(await page.locator('[data-time-remote] [data-remote-module="actual"]').innerText(), '实录 1')
+    assert.equal(await page.locator('[data-time-remote] .sec-blk').count(), 1)
 
     const removed = await lifecycle(page, 'remove')
     assert.equal(removed.product, false)
@@ -818,9 +823,30 @@ test('Time Remote tracer covers cold-start read/paint, strict errors, and Loader
     assert.equal(mounted.time, true)
     assert.equal(mounted.tool, true)
     await page.locator('[data-time-remote][data-remote-state="ready"]').waitFor({ timeout: 30_000 })
-    assert.equal(await page.locator('[data-time-remote] [data-remote-module="actual"]').innerText(), '实录 1')
+    assert.equal(await page.locator('[data-time-remote] .sec-blk').count(), 1)
 
     assert.equal((await lifecycle(page, 'close-storage')).closed, true)
+    await dragCells(page, today, 560, 560)
+    await product.locator('.sec-cat').filter({ hasText: 'Remote 工作' }).click()
+    await product.locator('.sec-toast').filter({ hasText: 'Time paint could not be persisted' }).first().waitFor()
+    assert.equal(await product.locator('.sec-head button[title="撤销"]').isDisabled(), true, 'failed paint must not push Undo')
+    assert.equal(await product.locator('.sec-toast').filter({ hasText: '已上色' }).count(), 0, 'failed paint must not show success')
+    assert.equal(await product.locator('.sec-blk').count(), 1, 'failed paint leaves the last successful projection intact')
+
+    await dragCells(page, today, 540, 540)
+    await product.locator('.sec-sb').filter({ hasText: '备注' }).click()
+    const failedSheet = product.locator('.sec-sheet')
+    await failedSheet.locator('.sec-note').fill('失败时保留编辑')
+    await failedSheet.getByRole('button', { name: '完成' }).click()
+    await product.locator('.sec-toast').filter({ hasText: 'Time updateBlock could not be persisted' }).first().waitFor()
+    assert.equal(await failedSheet.count(), 1, 'failed update keeps the sheet open')
+    assert.equal(await failedSheet.locator('.sec-note').inputValue(), '失败时保留编辑')
+    await failedSheet.getByRole('button', { name: '删除' }).click()
+    await product.locator('.sec-toast').filter({ hasText: 'Time deleteBlock could not be persisted' }).first().waitFor()
+    assert.equal(await failedSheet.count(), 1, 'failed delete also keeps the sheet open')
+    assert.equal(await product.locator('.sec-toast').filter({ hasText: '已删除' }).count(), 0)
+    await failedSheet.getByRole('button', { name: '删除' }).waitFor()
+
     const writeFailed = await remoteCall(page, 'secretaryTime/paint', {
       input: {
         layer: 'actual', tagId: tag.id, timeZone: 'Asia/Shanghai',
@@ -835,6 +861,171 @@ test('Time Remote tracer covers cold-start read/paint, strict errors, and Loader
   } catch (error) {
     const browserErrors = errors.map(item => item.message).join('\n')
     throw new Error(`${error instanceof Error ? error.message : String(error)}\nBrowser errors:\n${browserErrors}\nHost output:\n${server.output()}`, { cause: error })
+  } finally {
+    await browser.close()
+    await server.stop()
+  }
+})
+
+test('Time Remote product preserves editing, multi-day Undo, date navigation, and Plan isolation', { timeout: 240_000 }, async (t) => {
+  const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-time-ui-'))
+  const overlay = await writeOverlay(home, true)
+  const server = await boot(home, overlay)
+  const browser = await chromium.launch()
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  const errors = []
+  collectPageErrors(page, errors)
+  t.after(async () => { await browser.close(); await server.stop() })
+  const today = localDate()
+  const tomorrow = localDate(new Date(Date.now() + 86_400_000))
+  try {
+    await page.goto(server.url, { waitUntil: 'domcontentloaded' })
+    await clearDialogs(page)
+    await seedTags(page)
+    await openTimeRemote(page, server.url)
+    const product = page.locator('.sec-shell[data-time-remote]')
+
+    const wrongWireType = await remoteCall(page, 'secretaryTime/updateBlock', {
+      input: { layer: 'actual', id: '1', note: 'wrong type' },
+    })
+    assert.equal(wrongWireType.ok, false)
+    assert.equal(wrongWireType.error.code, 'gateway/input-invalid')
+    const notFound = await remoteCall(page, 'secretaryTime/deleteBlock', { input: { layer: 'actual', id: 999999 } })
+    assert.equal(notFound.ok, false)
+    assert.equal(notFound.error.code, 'secretaryTime/not-found')
+    assert.deepEqual(notFound.error.details, { blockId: 999999 })
+    assert.equal('cause' in notFound.error, false)
+    const invalidDeep = await remoteCall(page, 'secretaryTime/paintDeep', {
+      input: { weekStart: '2026-11-02', level: 'high', rects: [{ startWeekday: 1, startHour: 10, endWeekday: 1, endHour: 9 }] },
+    })
+    assert.equal(invalidDeep.ok, false)
+    assert.equal(invalidDeep.error.code, 'secretaryTime/invalid-input')
+    assert.deepEqual(invalidDeep.error.details, { operation: 'paintDeep' })
+
+    await dragCells(page, today, 480, 530)
+    await product.locator('.sec-cat').filter({ hasText: '工作' }).first().click()
+    await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .sec-blk').length === 6)
+    await dragCells(page, today, 480, 530)
+    await product.locator('.sec-sb').filter({ hasText: '备注' }).click()
+    const sheet = product.locator('.sec-sheet')
+    await sheet.locator('.sec-step').nth(1).click()
+    await sheet.locator('.sec-picks button').filter({ hasText: '吃饭' }).click()
+    await sheet.locator('.sec-note').fill('Remote 午饭')
+    await sheet.getByRole('button', { name: '完成' }).click()
+    await sheet.waitFor({ state: 'detached' })
+    await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .sec-blk').length === 7)
+    assert.equal(await product.locator('.sec-blk span').first().innerText(), 'Remote 午饭')
+
+    await chooseTimeView(page, '计划')
+    await product.locator('.sec-title .tsub').filter({ hasText: '计划' }).waitFor()
+    assert.equal(await product.locator('.sec-blk').count(), 0)
+    await dragCells(page, today, 600, 650)
+    await product.locator('.sec-cat').filter({ hasText: '生活' }).first().click()
+    await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .sec-blk').length === 6)
+    await dragCells(page, today, 600, 650)
+    await product.locator('.sec-sb').filter({ hasText: '备注' }).click()
+    await sheet.getByRole('button', { name: '删除' }).click()
+    await sheet.waitFor({ state: 'detached' })
+    assert.equal(await product.locator('.sec-blk').count(), 0)
+    await chooseTimeView(page, '实录')
+    assert.equal(await product.locator('.sec-blk').count(), 7, 'Plan edit/delete leaves Actual untouched')
+
+    await product.locator(`.sec-cell[data-day="${today}"][data-min="620"]`).click()
+    await product.locator(`.sec-cell[data-day="${tomorrow}"][data-min="620"]`).click()
+    assert.match(await product.locator('.sec-status').innerText(), /选择了\s*20\s*分钟/)
+    await product.locator('.sec-cat').filter({ hasText: '工作' }).first().click()
+    await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .sec-blk').length === 9)
+    await product.locator(`.sec-cell[data-day="${today}"][data-min="620"]`).click()
+    await product.locator(`.sec-cell[data-day="${tomorrow}"][data-min="620"]`).click()
+    await page.keyboard.press('Delete')
+    await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .sec-blk').length === 7)
+    await product.locator('.sec-head button[title="撤销"]').click()
+    await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .sec-blk').length === 9)
+
+    const before = await product.locator('.sec-daylabel').innerText()
+    await page.keyboard.press('ArrowRight')
+    await page.waitForFunction(label => document.querySelector('[data-time-remote] .sec-daylabel')?.textContent !== label, before)
+    await page.keyboard.press('PageDown')
+    await pickDay(page, '2026-01-15')
+    await product.locator('.sec-day[data-day="2026-01-15"]').waitFor()
+
+    assert.equal((await lifecycle(page, 'close-storage')).closed, true)
+    await product.locator('.sec-head button[title="撤销"]').click()
+    await product.locator('.sec-toast').filter({ hasText: 'Time replaceDay could not be persisted' }).first().waitFor()
+    assert.equal(await product.locator('.sec-toast').filter({ hasText: '已撤销' }).count(), 0, 'failed multi-day Undo never reports success')
+    assert.deepEqual(errors, [])
+  } catch (error) {
+    t.diagnostic(server.output())
+    t.diagnostic(errors.map(item => String(item)).join('\n'))
+    throw error
+  } finally {
+    await browser.close()
+    await server.stop()
+  }
+})
+
+test('Time Remote product preserves DeepTime inheritance, restart, host themes, and narrow layout', { timeout: 300_000 }, async (t) => {
+  const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-time-deep-'))
+  const overlay = await writeOverlay(home, true)
+  let server = await boot(home, overlay)
+  const browser = await chromium.launch()
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  const errors = []
+  collectPageErrors(page, errors)
+  t.after(async () => { await browser.close(); await server.stop() })
+  try {
+    await openTimeRemote(page, server.url)
+    const product = page.locator('.sec-shell[data-time-remote]')
+    await openModule(page, '深度时间')
+    await product.locator('.sec-hc').first().waitFor()
+    const start = await product.locator('.sec-hc[data-k="1-9"]').boundingBox()
+    const end = await product.locator('.sec-hc[data-k="2-10"]').boundingBox()
+    await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, { steps: 6 })
+    await page.mouse.up()
+    assert.match(await product.locator('.sec-deep-status').innerText(), /选择了\s*4\s*格/)
+    await product.locator('.sec-cat').filter({ hasText: 'high' }).click()
+    await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .sec-hc.H').length === 4)
+    await product.getByRole('button', { name: '下一周' }).click()
+    await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .sec-hc.H').length === 4)
+    await product.locator('.sec-shelf').filter({ hasText: '继承自更早一周' }).waitFor()
+    assert.match(await product.locator('.sec-shelf').innerText(), /继承自更早一周/)
+    await product.locator('.sec-hc[data-k="1-9"]').click()
+    await product.locator('.sec-sb.erase').click()
+    await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .sec-hc.H').length === 3)
+    await product.getByRole('button', { name: '上一周' }).click()
+    await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .sec-hc.H').length === 4)
+    await pickDay(page, '2026-10-14')
+    await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .sec-hc.H').length === 0)
+
+    await server.stop()
+    server = await boot(home, overlay)
+    await openTimeRemote(page, server.url)
+    await openModule(page, '深度时间')
+    await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .sec-hc.H').length === 4)
+    await page.getByRole('button', { name: '下一周' }).click()
+    await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .sec-hc.H').length === 3)
+
+    await openModule(page, '时间块')
+    const read = () => product.evaluate(element => getComputedStyle(element).backgroundColor)
+    const light = await read()
+    await page.getByRole('button', { name: /^(Account menu|账户菜单)$/ }).first().click()
+    await page.getByRole('menuitem', { name: /^(Settings|设置)$/ }).first().click()
+    await page.getByRole('button', { name: /^(深色|Dark)$/ }).last().click()
+    await page.waitForFunction(() => document.body.hasAttribute('data-ds-dark-theme'))
+    const closer = page.getByRole('button', { name: /^(关闭|Close)/ }).last()
+    if (await closer.count() > 0) await closer.click()
+    await product.waitFor()
+    assert.notEqual(await read(), light)
+    await page.setViewportSize({ width: 720, height: 700 })
+    assert.ok((await product.boundingBox()).width < 720)
+    assert.equal(await product.locator('.sec-cell').count(), 14 * 144)
+    assert.deepEqual(errors, [])
+  } catch (error) {
+    t.diagnostic(server.output())
+    t.diagnostic(errors.map(item => String(item)).join('\n'))
+    throw error
   } finally {
     await browser.close()
     await server.stop()

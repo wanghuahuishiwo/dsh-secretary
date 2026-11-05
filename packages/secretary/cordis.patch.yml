@@ -31,7 +31,7 @@
     - id: secretary-panel
       name: 'dsh-secretary-panel'
 
-    # 独立 Time 产品曳光弹；与旧面板并存，Agent 领域 Service 仍独立挂载。
+    # 独立 Time 产品：完整实录、计划与深度时间 Remote UI；与旧面板并存，领域 Service 独立挂载。
     - id: secretary-time-panel
       name: 'dsh-secretary-time-panel'
 

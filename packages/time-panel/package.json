@@ -1,7 +1,7 @@
 {
   "name": "dsh-secretary-time-panel",
   "version": "0.1.0",
-  "description": "Independent TimeBlock product with a product-local Typert Remote tracer.",
+  "description": "Independent TimeBlock product with six product-local Typert Remote methods and the complete Time UI.",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",

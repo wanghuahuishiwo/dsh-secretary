@@ -19,7 +19,7 @@ pnpm test
 
 ## 装配
 
-- 根层：`storage-sqlite`、`secretary-storage`、`secretary-goal`、`secretary-gtd`、`secretary-tag`、`secretary-time-block`、旧聚合 `secretary-panel` 与独立事项 `secretary-gtd-panel`。行序仅用于阅读，启动与重载由 Cordis `inject` 驱动。
+- 根层：`storage-sqlite`、`secretary-storage`、`secretary-goal`、`secretary-gtd`、`secretary-tag`、`secretary-time-block`、旧聚合 `secretary-panel`、完整 Remote 时间产品 `secretary-time-panel` 与独立事项 `secretary-gtd-panel`。行序仅用于阅读，启动与重载由 Cordis `inject` 驱动。
 - Secretary preset：公共工具 `secretary_gtd`、`secretary_tag`、`secretary_time`，以及既有 GTD/Secretary skills。
 - Goal 只有上游空 Provider；Goal 业务模型与统计不实现。旧 `secretary_time_block`、Action 关联 planned/actual 模型及独立 Statistics 包均已移除，不保留兼容层。
 
@@ -37,7 +37,7 @@ UI 的 Host routes 和 Agent 公共 tools 都调用 `ctx.gtd` / `ctx.tags` / `ct
 pnpm dev
 ```
 
-desktop profile 通过 `link:` 使用 `packages/secretary` 的构建产物。改动 `cordis.patch.yml` 后用 `/dsh-reload`，再新开会话验证；改动任何包 `src/` 后先构建。bundle patch 按名字引用的包必须是运行 profile 的直接依赖，包括 `dsh-secretary-storage/goal/gtd/tag/time-block/panel/gtd-panel` 与 `@deepseek-ai/dsh-storage-sqlite`。
+desktop profile 通过 `link:` 使用 `packages/secretary` 的构建产物。改动 `cordis.patch.yml` 后用 `/dsh-reload`，再新开会话验证；改动任何包 `src/` 后先构建。bundle patch 按名字引用的包必须是运行 profile 的直接依赖，包括 `dsh-secretary-storage/goal/gtd/tag/time-block/panel/time-panel/gtd-panel` 与 `@deepseek-ai/dsh-storage-sqlite`。
 
 正式安装可先构建，再使用 `plugin_manager` 安装本包，或：
 

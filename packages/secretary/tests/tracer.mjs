@@ -1262,6 +1262,145 @@ test('Time product paint cuts, overwrites, merges, erases, and keeps Plan indepe
   assert.deepEqual(spans(both.plan), [['2026-11-03T01:00:00.000Z', '2026-11-03T02:00:00.000Z', work.id]])
 })
 
+test('Time product paintDeep preserves inclusive rectangles, ordered writes, and week inheritance', async (t) => {
+  const harness = await sqliteHarness(t)
+  await eventually(() => assert.ok(harness.ctx.get('timeProduct')))
+  const product = harness.ctx.get('timeProduct')
+  const painted = await product.paintDeep({
+    weekStart: '2026-11-03', level: 'medium',
+    rects: [
+      { startWeekday: 1, startHour: 9, endWeekday: 2, endHour: 10 },
+      { startWeekday: 4, startHour: 20, endWeekday: 4, endHour: 20 },
+    ],
+  })
+  assert.equal(painted.week.weekStart, '2026-11-02', 'a midweek request is normalized to Monday')
+  assert.equal(painted.week.source, 'own')
+  assert.equal(painted.week.cells.filter(cell => cell.level === 'medium').length, 5)
+  assert.equal(painted.week.cells.find(cell => cell.weekday === 1 && cell.hour === 9).level, 'medium')
+  assert.equal(painted.week.cells.find(cell => cell.weekday === 2 && cell.hour === 10).level, 'medium')
+  assert.equal(painted.week.cells.find(cell => cell.weekday === 4 && cell.hour === 20).level, 'medium')
+  const next = await product.readWindow({ anchor: '2026-11-09', weekStart: '2026-11-09', timeZone: 'Asia/Shanghai' })
+  assert.equal(next.deep.source, 'inherited')
+  assert.equal(next.deep.cells.filter(cell => cell.level === 'medium').length, 5)
+  const cleared = await product.paintDeep({
+    weekStart: '2026-11-02', level: null,
+    rects: [{ startWeekday: 2, startHour: 10, endWeekday: 2, endHour: 10 }],
+  })
+  assert.equal(cleared.week.cells.find(cell => cell.weekday === 2 && cell.hour === 10).level, 'unset')
+  assert.equal(cleared.week.cells.filter(cell => cell.level === 'medium').length, 4)
+})
+
+test('Time product rejects invalid replace, update, delete, and deep inputs before any SQLite write', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '校验', kind: 'time' })
+  const product = harness.ctx.get('timeProduct')
+  const cases = [
+    ['replaceDay', { layer: 'actual', date: '2026-11-02', timeZone: 'Asia/Shanghai', intervals: [{ start: 600, end: 600, timeTagId: tag.id }] }],
+    ['updateBlock', { layer: 'actual', id: 0, note: '不应写入' }],
+    ['deleteBlock', { layer: 'plan', id: -1 }],
+    ['paintDeep', { weekStart: '2026-11-02', level: 'high', rects: [{ startWeekday: 1, startHour: 10, endWeekday: 1, endHour: 9 }] }],
+  ]
+  for (const [method, input] of cases) {
+    await assert.rejects(product[method](input), error => {
+      assert.equal(error.code, 'secretaryTime/invalid-input', `${method}: ${error.message}`)
+      assert.deepEqual(error.details, { operation: method })
+      return true
+    })
+  }
+  assert.deepEqual((await execute(harness, 'secretary_time', { op: 'actual.list' })).blocks, [])
+  assert.deepEqual((await execute(harness, 'secretary_time', { op: 'plan.list' })).blocks, [])
+  const deep = await execute(harness, 'secretary_time', { op: 'deep.getWeek', weekStart: '2026-11-02' })
+  assert.equal(deep.week.source, 'seed')
+  assert.equal(deep.week.cells.filter(cell => cell.level !== 'unset').length, 0)
+})
+
+test('Time product deleteBlock deletes only the requested layer and reports missing ids', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
+  const actual = await execute(harness, 'secretary_time', {
+    op: 'actual.create', timeTagId: tag.id, actualSource: 'user_reported',
+    startAt: '2026-11-02T08:00:00+08:00', endAt: '2026-11-02T09:00:00+08:00',
+  })
+  const plan = await execute(harness, 'secretary_time', {
+    op: 'plan.create', date: '2026-11-02', timeZone: 'Asia/Shanghai', timeTagId: tag.id,
+    startAt: '2026-11-02T10:00:00+08:00', endAt: '2026-11-02T11:00:00+08:00',
+  })
+  const product = harness.ctx.get('timeProduct')
+  const deleted = await product.deleteBlock({ layer: 'actual', id: actual.block.id })
+  assert.equal(deleted.ok, true)
+  assert.equal(deleted.block.id, actual.block.id)
+  assert.equal((await execute(harness, 'secretary_time', { op: 'plan.get', id: plan.block.id })).block.id, plan.block.id)
+  await assert.rejects(product.deleteBlock({ layer: 'actual', id: actual.block.id }), error => {
+    assert.equal(error.code, 'secretaryTime/not-found')
+    assert.deepEqual(error.details, { blockId: actual.block.id })
+    return true
+  })
+  assert.equal((await product.deleteBlock({ layer: 'plan', id: plan.block.id })).block.id, plan.block.id)
+})
+
+test('Time product updateBlock edits Actual and Plan through their existing Service behavior', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag: work } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
+  const { tag: life } = await execute(harness, 'secretary_tag', { op: 'create', name: '生活', kind: 'time' })
+  const actual = await execute(harness, 'secretary_time', {
+    op: 'actual.create', timeTagId: work.id, actualSource: 'agent_observed', focus: 'deep', note: '原备注',
+    startAt: '2026-11-02T08:00:00+08:00', endAt: '2026-11-02T09:00:00+08:00',
+  })
+  const plan = await execute(harness, 'secretary_time', {
+    op: 'plan.create', date: '2026-11-02', timeZone: 'Asia/Shanghai', timeTagId: work.id, note: '计划备注',
+    startAt: '2026-11-02T10:00:00+08:00', endAt: '2026-11-02T11:00:00+08:00',
+  })
+  const product = harness.ctx.get('timeProduct')
+  const actualResult = await product.updateBlock({
+    layer: 'actual', id: actual.block.id, timeTagId: life.id, note: null,
+    startAt: '2026-11-02T08:10:00+08:00', endAt: '2026-11-02T09:20:00+08:00',
+  })
+  assert.equal(actualResult.block.timeTagId, life.id)
+  assert.equal(actualResult.block.note, undefined)
+  assert.equal(actualResult.block.actualSource, 'agent_observed')
+  assert.equal(actualResult.block.focus, 'deep')
+  assert.equal(actualResult.block.startAt, '2026-11-02T08:10:00+08:00')
+  assert.equal(actualResult.block.endAt, '2026-11-02T09:20:00+08:00')
+  const planResult = await product.updateBlock({ layer: 'plan', id: plan.block.id, note: null })
+  assert.equal(planResult.block.note, undefined)
+  assert.equal(planResult.block.timeTagId, work.id)
+  await assert.rejects(product.updateBlock({ layer: 'actual', id: 9999, note: '不存在' }), error => {
+    assert.equal(error.code, 'secretaryTime/not-found')
+    assert.deepEqual(error.details, { blockId: 9999 })
+    return true
+  })
+})
+
+test('Time product replaceDay restores a clipped day snapshot without changing the other layer', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag: work } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
+  const { tag: life } = await execute(harness, 'secretary_tag', { op: 'create', name: '生活', kind: 'time' })
+  const product = harness.ctx.get('timeProduct')
+  assert.ok(product)
+  await product.paint({
+    layer: 'actual', tagId: work.id, timeZone: 'Asia/Shanghai',
+    runs: [{ date: '2026-11-02', start: 480, end: 600 }],
+  })
+  await product.paint({
+    layer: 'plan', tagId: life.id, timeZone: 'Asia/Shanghai',
+    runs: [{ date: '2026-11-02', start: 540, end: 570 }],
+  })
+  assert.deepEqual(await product.replaceDay({
+    layer: 'actual', date: '2026-11-02', timeZone: 'Asia/Shanghai',
+    intervals: [{ start: 500, end: 550, timeTagId: life.id, note: '撤销快照' }],
+  }), { ok: true })
+  const actual = await execute(harness, 'secretary_time', {
+    op: 'actual.list', date: '2026-11-02', timeZone: 'Asia/Shanghai',
+  })
+  assert.deepEqual(actual.blocks.map(block => [block.startAt, block.endAt, block.timeTagId, block.note, block.actualSource]), [
+    ['2026-11-02T00:20:00.000Z', '2026-11-02T01:10:00.000Z', life.id, '撤销快照', 'user_reported'],
+  ])
+  const plan = await execute(harness, 'secretary_time', {
+    op: 'plan.list', date: '2026-11-02', timeZone: 'Asia/Shanghai',
+  })
+  assert.equal(plan.blocks.length, 1, 'replaceDay only replaces its selected layer')
+})
+
 test('Time product paint maps a real SQLite write failure to write-failed with only safe operation details', async (t) => {
   const harness = await sqliteHarness(t, undefined, {})
   const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '故障写入', kind: 'time' })
@@ -1299,6 +1438,52 @@ test('Time product paint preserves not-found when a concurrent erase wins the re
   assert.ok(missing, JSON.stringify(outcomes.map(outcome => outcome.status === 'rejected' ? outcome.reason : outcome.value)))
   assert.deepEqual(missing.reason.details, { blockId: 1 })
   assert.deepEqual((await execute(harness, 'secretary_time', { op: 'actual.list' })).blocks, [])
+})
+
+test('Time product replaceDay keeps legacy partial-write semantics and safe failure details', async (t) => {
+  const harness = await sqliteHarness(t, undefined, {})
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: 'Undo 故障', kind: 'time' })
+  await execute(harness, 'secretary_time', {
+    op: 'actual.create', timeTagId: tag.id, actualSource: 'user_reported',
+    startAt: '2026-11-02T08:00:00+08:00', endAt: '2026-11-02T09:00:00+08:00',
+  })
+  const product = harness.ctx.get('timeProduct')
+  harness.failNextWrite('actual_blocks', 2)
+  await assert.rejects(product.replaceDay({
+    layer: 'actual', date: '2026-11-02', timeZone: 'Asia/Shanghai',
+    intervals: [{ start: 480, end: 540, timeTagId: tag.id, note: '恢复快照' }],
+  }), error => {
+    assert.equal(error.code, 'secretaryTime/write-failed')
+    assert.deepEqual(error.details, { operation: 'replaceDay' })
+    assert.equal(error.message.includes('injected delete'), false)
+    assert.match(error.cause.message, /injected put failure/)
+    return true
+  })
+  assert.deepEqual((await execute(harness, 'secretary_time', { op: 'actual.list' })).blocks, [],
+    'the old multi-call delete then recreate flow has no new transaction guarantee')
+})
+
+test('Time product paintDeep maps an ordered mid-batch SQLite failure without hiding its cause in Host', async (t) => {
+  const harness = await sqliteHarness(t, undefined, {})
+  await eventually(() => assert.ok(harness.ctx.get('timeProduct')))
+  const product = harness.ctx.get('timeProduct')
+  harness.failNextWrite('deep_templates', 2)
+  await assert.rejects(product.paintDeep({
+    weekStart: '2026-11-02', level: 'low',
+    rects: [
+      { startWeekday: 1, startHour: 9, endWeekday: 1, endHour: 9 },
+      { startWeekday: 2, startHour: 10, endWeekday: 2, endHour: 10 },
+    ],
+  }), error => {
+    assert.equal(error.code, 'secretaryTime/write-failed')
+    assert.deepEqual(error.details, { operation: 'paintDeep' })
+    assert.equal(error.message.includes('injected put failure'), false)
+    assert.match(error.cause.message, /injected put failure on deep_templates/)
+    return true
+  })
+  const stored = await execute(harness, 'secretary_time', { op: 'deep.getWeek', weekStart: '2026-11-02' })
+  assert.equal(stored.week.cells.find(cell => cell.weekday === 1 && cell.hour === 9).level, 'low')
+  assert.equal(stored.week.cells.find(cell => cell.weekday === 2 && cell.hour === 10).level, 'unset')
 })
 
 test('panel Host state returns the requested deep week and deep paint writes through the same TimeService', async (t) => {

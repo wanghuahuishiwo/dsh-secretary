@@ -21,14 +21,65 @@ export interface PaintTimeBlocksRequest {
 
 export interface PaintResult { readonly ok: true }
 
+/** A complete local-day snapshot used to restore one canvas Undo entry. */
+export interface ReplaceTimeDayRequest {
+  readonly layer: TimeLayer
+  readonly date: string
+  readonly timeZone: string
+  readonly intervals: readonly {
+    readonly start: number
+    readonly end: number
+    readonly timeTagId: number
+    readonly note?: string
+  }[]
+}
+
+export interface UpdateTimeBlockRequest {
+  readonly layer: TimeLayer
+  readonly id: number
+  readonly timeTagId?: number
+  readonly note?: string | null
+  readonly startAt?: string
+  readonly endAt?: string
+}
+
+export interface DeleteTimeBlockRequest {
+  readonly layer: TimeLayer
+  readonly id: number
+}
+
+export interface PaintDeepRequest {
+  readonly weekStart: string
+  readonly level: 'high' | 'medium' | 'low' | null
+  readonly rects: readonly {
+    readonly startWeekday: number
+    readonly startHour: number
+    readonly endWeekday: number
+    readonly endHour: number
+  }[]
+}
+
+export interface UpdateTimeBlockResult {
+  readonly block: ActualBlock | PlanBlock
+}
+
+export interface DeleteTimeBlockResult {
+  readonly ok: true
+  readonly block: ActualBlock | PlanBlock
+}
+
+export interface PaintDeepResult {
+  readonly week: DeepWeek
+}
+
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface RemoteErrorDetailsMap {
     /** The Time product rejected an invalid request or a domain rule refused it. */
-    'secretaryTime/invalid-input': { readonly operation: 'readWindow' | 'paint' }
+    'secretaryTime/invalid-input': { readonly operation: 'readWindow' | 'paint' | 'replaceDay' | 'updateBlock' | 'deleteBlock' | 'paintDeep' }
     /** A block selected by an in-flight paint no longer exists. */
     'secretaryTime/not-found': { readonly blockId: number }
     /** A Time write or its compensation failed; the original cause stays in Host logs. */
-    'secretaryTime/write-failed': { readonly operation: 'paint' }
+    'secretaryTime/write-failed': { readonly operation: 'paint' | 'replaceDay' | 'updateBlock' | 'deleteBlock' | 'paintDeep' }
   }
 }
 
