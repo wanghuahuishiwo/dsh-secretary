@@ -48,8 +48,8 @@ Tracker: [GitHub Issue #9](https://github.com/wanghuahuishiwo/dsh-secretary/issu
 ### 产品包与入口
 
 - 将现有聚合 panel 重构为 **`dsh-secretary-time-panel`**，新增 **`dsh-secretary-gtd-panel`**；旧 `dsh-secretary-panel` 退出，不保留兼容壳，也不新增中央 `dsh-secretary-remotes`。
-- `dsh-secretary-time-panel` 注册独立右栏 tab，标题为“小秘书-时间块”。只保留实录、计划、深度时间及其内部计划模板能力；GTD、Goal、设置等旧抽屉条目不作为 Time 产品功能迁移。
-- `dsh-secretary-gtd-panel` 以稳定 panel id 注册 `sidebar.panellist` 和同 id/key 的 `main`，标签为“小秘书-事项”。页面保留 DSH AppFrame，中央内容为空，不放置伪造的 Mac window chrome、OmniFocus 控件、占位卡片或“即将推出”表单。
+- `dsh-secretary-time-panel` 注册独立右栏 tab，tab id 为 **`dsh-secretary-time-panel`**、kind 为 **`secretary-time-block`**，标题为“小秘书-时间块”。只保留实录、计划、深度时间及其内部计划模板能力；GTD、Goal、设置等旧抽屉条目不作为 Time 产品功能迁移。
+- `dsh-secretary-gtd-panel` 以稳定 panel id **`dsh-secretary-gtd`** 注册 `sidebar.panellist` 和同 id/key 的 `main`，标签为“小秘书-事项”。页面保留 DSH AppFrame，中央内容为空，不放置伪造的 Mac window chrome、OmniFocus 控件、占位卡片或“即将推出”表单。
 - 事项页面通过现有 DSH Conversation／workspace 导航返回，不新增 URL Router、iframe、独立 HTML 应用或页面服务器。
 - 两个产品根组件不互相 import，也不 import 旧 `SecretaryProduct`。
 
@@ -64,6 +64,8 @@ Tracker: [GitHub Issue #9](https://github.com/wanghuahuishiwo/dsh-secretary/issu
   - **updateBlock / deleteBlock**：保留 Plan／Actual 的现有编辑和删除行为。
   - **paintDeep**：保留当前 DeepTime 批量矩形设置与清除行为。
 - 不为当前浏览器没有调用的 Tag 写入、GTD 写入、开始／停止实录或计划模板操作额外发明 Remote 方法；已有领域能力与 Agent tools 不因未暴露 Remote 而被删除。
+- 浏览器安全 `types` 拥有并导出 `TimeWindowRequest`、`TimeWindowProjection`、`PaintTimeBlocksRequest`、`ReplaceTimeDayRequest`、`UpdateTimeBlockRequest`、`DeleteTimeBlockRequest`、`PaintDeepRequest`；Client 方法类型只从生成的 `/remote` 消费，不手写第二份。
+- 一元 Remote 方法返回 **`RemoteResult<T>`**。调用方先检查 `result.ok`，成功读取 `result.value`；Remote／载体失败走 `{ ok: false, error }` 而非 reject，按 `result.error.code` 分支，需要沿用异常流时显式 `throw result.error`。不得把业务值当作直接返回，也不得用防御性 catch 吞掉本地装配或代码缺陷。
 - Remote 方法自己执行产品 projection 或应用编排，不建立只转发旧 HTTP handler 的壳。方法参数、返回类型和失败词汇使用官方生成链，失败时不把异常静默吞掉。
 - 输入或领域规则拒绝使用 `secretaryTime/invalid-input`；不存在的块使用 `secretaryTime/not-found` 并携带块 ID；持久化或补偿失败使用 `secretaryTime/write-failed`，跨端 details 只携带安全的 operation，原始 cause 与 stack 留在 Host 日志，不承诺 cause 跨 wire。wire 校验、取消和未预期故障沿用 Gateway 内置词汇，不另造同义码。
 - 本规格只面向当前本机 owner Peer，不开放跨 Peer 共享或从 wire 参数选择调用方身份。
@@ -71,8 +73,8 @@ Tracker: [GitHub Issue #9](https://github.com/wanghuahuishiwo/dsh-secretary/issu
 
 ### Remote 生成与装配
 
-- 仓库增加 `pnpm generate:typert`，通过固定脚本调用官方 `WorkspaceTypertGenerator.generateContributors(['host'])` 与 `writeWorkspaceArtifacts`。脚本从模块位置确定仓库根，不依赖调用时 cwd；官方仓内脚本不是第三方发布 CLI，不复制整套官方根构建。
-- 根 Host aggregate TypeScript project 使用空 files 和显式 package references，只纳入当前 Remote 贡献包；共享 base config 使用 strict、composite、Bundler resolution 和指向本 workspace 源码的 paths。Time 的 Host project 排除浏览器代码，Client project 在生成后编译。
+- 仓库增加 `pnpm generate:typert`，通过固定脚本调用官方 `WorkspaceTypertGenerator.generateContributors(['host'])` 与 `writeWorkspaceArtifacts`。脚本从模块位置确定仓库根，不依赖调用时 cwd；generator 来自本 workspace 按 pnpm lockfile 安装的 npm 包，不读取参考 checkout 中可能过期的 `lib`。官方仓内脚本不是第三方发布 CLI，不复制整套官方根构建。
+- 根 Host aggregate TypeScript project 使用空 files 和显式 package references，只纳入当前 Remote 贡献包；参与 Remote 类型图的 workspace contracts 建立 composite declaration projects。共享 base config 使用 strict、composite、Bundler resolution 和指向本 workspace 源码的 paths。Time 的 Host project 排除浏览器代码，Client project 在生成后编译。
 - 根构建先执行 `generate:typert`，再构建各包。生成使用默认 diagnostics 并 `rejectBuildOutputs: true`，不读取旧 build output；现有 watch 不会自动感知 Remote 签名变化，签名、namespace、错误词汇或 exports 改变后必须显式重新生成。
 - 宿主兼容使用官方 SemVer 模式：Secretary bundle 的 `engines.dsh` 保持 `>=0.2.1-rc.5 <0.3.0`；需要与宿主共享的 protocol 在 peerDependencies 与 devDependencies 中声明兼容范围。Cordis 保持 4.0.5 兼容范围，zod 使用 4.4.3，TypeScript 使用生成器要求的 6.x。
 - generator 仅是根开发依赖，兼容范围与受支持 DSH 线一致，由 pnpm lockfile 固定本次实际生成版本；frozen lockfile 保证 CI 可重复。生成产物随插件发布，插件用户不运行 generator。当前真实验收以桌面端 rc.5 为准，宿主在兼容范围内升级后另行执行对应版本验收；发现不兼容时更新插件或收窄 engines，不使用版本豁免。
@@ -81,14 +83,14 @@ Tracker: [GitHub Issue #9](https://github.com/wanghuahuishiwo/dsh-secretary/issu
 - Host Typert Loader 从已挂载的 Time 产品包注册 `./typert`；Secretary 的 bundle patch 显式挂载 Time 与 GTD 产品，行序不承担启动语义。
 - Time 浏览器入口只声明 `remote`，先 `$mount()` 自己生成的 `/remote` contribution，再在 child Context 中等待 `remote.secretaryTime` 并注册 UI。子 UI 激活失败时撤销 child 与 Remote；产品卸载时先清理 UI，再撤销 Remote，随后卸载空 namespace。
 - 该 product-local assembly 只选择 Time 自己的贡献并管理生命周期，不包含业务方法、跨产品命令 union 或手写第二份 Client 方法类型。未来常驻共享 API 若确有多个产品消费者，再按其实际 Provider 生命周期单独评审装配归属。
-- Time 浏览器业务调用显式经过 `ctx.remote.secretaryTime`。package.json 的 `dsh.client.inject` 只表达包依赖，浏览器入口及 child Context 的 Cordis `inject` 才表达服务等待。
+- Time 浏览器业务调用显式经过 `ctx.remote.secretaryTime`。package.json 的 `dsh.client.inject` 只表达包依赖，必须包含实际提供 `ctx.remote` 的 **`@deepseek-ai/dsh-api-gateway`** 以及真实使用的 UI 包；浏览器入口及 child Context 的 Cordis `inject` 才表达服务等待。
 - 常规业务调用不注册新的手写 HTTP JSON routes。exact Fetch 仅保留给未来确有需要的流式或浏览器原生传输，本规格没有此类新 route。
 
 ### GTD 空页与领域边界
 
 - GTD 空页不创建 `GtdProductService`、Remote namespace、空 state/command API 或无消费者的 DTO。
 - 现有 GtdService、SQLite 表、公共 tools 与 Skills 保持可用；只移除旧浏览器工作区及其聚合 routes。
-- Time 与 GTD 仍共同依赖上游 Tag／Goal，彼此不直接依赖。Goal 仍为空 Provider，不新增方法、数据或 UI。
+- Time 与 GTD 仍共同依赖上游 Tag／Goal，彼此不直接依赖。Goal 仍为空 Provider，不新增方法、数据或 UI。TimeService／GtdService 是独立于产品 UI 的下游领域 Services，但并非天然常驻；其真实挂载由 bundle 组合与 Cordis 消费者决定，产品 panel 卸载不得带走仍供 Agent tools 使用的领域 Services。
 - 不修改现有数据库 schema、表所有权、ID、日期、Tags 继承或 Planned／Actual／Completed 语义，不增加数据迁移层。
 
 ### 文档与导航
@@ -120,8 +122,8 @@ Tracker: [GitHub Issue #9](https://github.com/wanghuahuishiwo/dsh-secretary/issu
 9. Time 的 child UI 激活失败会同时撤销 Remote；产品卸载按“UI → Remote → 空 namespace”清理，进行中的调用被取消，stale method 被拒绝。重新挂载不出现重复 endpoint、残留 UI 或旧调用句柄。
 10. 非法日期、区间、Tag、level 与请求形状分别落入 `secretaryTime/invalid-input` 或 Gateway wire 校验；不存在的块返回 `secretaryTime/not-found`，持久化／补偿失败返回 `secretaryTime/write-failed` 且 details 携带安全的 operation，cause 只留 Host 日志。错误不被静默吞掉，校验失败不产生 SQLite 写入，非 owner Peer 不获得业务数据。
 11. Goal／Tag 上游依赖仍按真实 Cordis inject 等待与清理；不把 Goal 空 Provider 换成空 Remote API。
-12. 使用新临时 DSH_HOME、构建后的 bundle、真实 Loader 与空 SQLite 完成冷启动；第一次 Remote 调用即成功，不用固定 sleep 或手工重试掩盖 readiness。以错误类型输入证明 strict generated descriptor 生效：返回 `gateway/input-invalid` 且业务方法未调用；Host descriptor 卸载后返回 `gateway/definition-unavailable`，不得降级到 SRC fallback。HMR 成功不能替代该证据。
-13. `pnpm build`、`pnpm test`、`git diff --check` 和 `pnpm pack` 全部通过，pack 内容包含必需的 Remote 生成产物与产品 client bundles。
+12. 使用新临时 DSH_HOME、构建后的 bundle、真实 Loader 与空 SQLite 完成冷启动；第一次 Remote 调用即成功，不用固定 sleep 或手工重试掩盖 readiness。以正确 `{ args: { input: ... } }` 包装的错误类型输入证明 strict generated descriptor 生效：返回 `gateway/input-invalid` 且业务方法未调用；Host descriptor 卸载后返回 `gateway/definition-unavailable`，不得降级到 SRC fallback。HMR 成功不能替代该证据。
+13. `pnpm install --frozen-lockfile`、`pnpm build`、`pnpm test`、`git diff --check` 和 `pnpm pack` 全部通过，pack 内容包含必需的 Remote 生成产物与产品 client bundles。
 14. 文档链接与当前实现一致，`verification` 只写入本次真实运行结果，不把本规格的目标提前记为完成。
 
 好测试验证用户可观察行为、Remote 公开输出、错误、生命周期和持久化，不依赖 React 私有状态、生成器内部函数或某个 DOM 实现细节。辅助单元测试可以覆盖日期窗口、paint/replace 和生成脚本，但不能替代上述高层 seam。

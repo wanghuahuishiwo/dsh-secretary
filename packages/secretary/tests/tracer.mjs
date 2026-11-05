@@ -1537,6 +1537,38 @@ test('Goal is an upstream Provider: Time, GTD and the panel wait for it and unlo
   })
 })
 
+test('GTD product composition and unload preserve domain Services, Agent tools, and the legacy panel', async (t) => {
+  const harness = await sqliteHarness(t)
+  const gtd = harness.ctx.get('gtd')
+  const time = harness.ctx.get('time')
+  const product = await harness.ctx.plugin(await import('dsh-secretary-gtd-panel'))
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '独立装卸', kind: 'time' })
+  const { action } = await execute(harness, 'secretary_gtd', { op: 'action.create', title: '装卸后继续存在', tagIds: [tag.id] })
+  const tools = [...harness.tools.keys()]
+  const routes = [...harness.routes.keys()]
+
+  await product.dispose()
+  assert.ok(harness.ctx.gtd instanceof GtdService)
+  assert.ok(harness.ctx.time instanceof TimeService)
+  assert.deepEqual([...harness.tools.keys()], tools)
+  assert.deepEqual([...harness.routes.keys()], routes)
+  assert.equal((await gtd.getAction(action.id)).title, '装卸后继续存在')
+  assert.equal((await execute(harness, 'secretary_gtd', { op: 'action.get', id: action.id })).action.title, '装卸后继续存在')
+  const actual = await execute(harness, 'secretary_time', {
+    op: 'actual.create', timeTagId: tag.id, startAt: '2026-11-02T09:00:00+08:00',
+    endAt: '2026-11-02T09:30:00+08:00', actualSource: 'user_reported',
+  })
+  assert.equal(actual.block.timeTagId, tag.id)
+  assert.equal((await time.getActual(actual.block.id)).timeTagId, tag.id)
+
+  await harness.ctx.plugin(await import('dsh-secretary-gtd-panel'))
+  assert.ok(harness.ctx.gtd instanceof GtdService)
+  assert.ok(harness.ctx.time instanceof TimeService)
+  const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
+  assert.ok(patch.includes("name: 'dsh-secretary-gtd-panel'"), 'the installable bundle mounts the independent GTD product')
+  assert.ok(patch.includes("name: 'dsh-secretary-panel'"), 'this slice retains the legacy aggregate panel')
+})
+
 test('Secretary composition registers one coherent assistant and user-only GTD skills over SQLite services', async (t) => {
   const harness = await sqliteHarness(t)
   const gtdAgent = await import('dsh-secretary-gtd/agent')
