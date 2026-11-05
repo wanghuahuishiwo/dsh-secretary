@@ -1,19 +1,15 @@
 # dsh-secretary
 
-DeepSeek Harness 的私人 Secretary Agent：以 GTD 管理事项，以独立 Tag 分类，以 Time 管理具体日期计划、实录、计划模板和深度时间。安装入口是 [packages/secretary](packages/secretary/README.md)。
+DeepSeek Harness 的私人 Secretary Agent：以 GTD 管理承诺，以独立 Tag 分类，以 TimeBlock 管理具体日期计划、实录、计划模板和深度时间。安装入口是 [packages/secretary](packages/secretary/README.md)。
 
-> 当前验收范围仅为 **Time + Tag**。#6 GTD Review／Repeat／OmniFocus UI 与全产品 #8 暂停；现有 GTD UI 不是终稿。Goal、统计、预算和对账不在本轮，也没有对应实现交付。
+## 产品形态
 
-## 当前能力
+- **小秘书-时间块**：DSH 右侧栏，保留当前实录、计划、深度时间三个模块的功能与交互。
+- **小秘书-事项**：DSH 左侧栏全局 panel 区，进入独立 `main` 页面；当前只规划空白入口页，完整 OmniFocus UI 继续原型评审。
+- **Tag／Goal**：上游共享模块，不是任一产品的子页面。Goal 当前只有空 Provider。
+- **Secretary Agent**：通过对话和原子 tools 操作同一批领域事实，没有独立产品 UI。
 
-| 能力 | 干什么 | 入口 |
-|---|---|---|
-| 时间安排（Time） | 具体日期 PlanBlock／ActualBlock、weekday 模板及持久化 apply/undo、DeepTime 7×24 基础周模板 | `secretary_time` 工具与 Time 面板 |
-| 统一标签（Tag） | `time`／`context` 两棵树、任意层级 CRUD／move／选色、桌面 HTML5 层级拖拽、父级后代查询与引用保护 | `secretary_tag` 工具与 Tags 面板 |
-| 事项管理（GTD，基础切片） | 数字 ID 的 Inbox／Project／Action、Next／Forecast、Availability 与跨层 Tags 继承 | `secretary_gtd` 工具与基础 GTD 视图 |
-| 主动工作 | Schedule 唤醒后读取同一批领域事实，准备材料并保存引用 | DSH Schedule + `secretary` 技能 |
-
-Shell、文件、搜索、后台任务、Schedule、技能、计划模式、委派、提问和交付卡片等通用能力复用 DSH 官方插件。完整装配见 [bundle README](packages/secretary/README.md)。
+当前重构目标是拆分旧聚合面板，并以 DSH 官方 Typert Remote 连接各产品 application service 与浏览器。上述目标不等于已经实现，真实证据与未覆盖项见 [verification.md](docs/verification.md)。
 
 ## 安装与验证
 
@@ -24,15 +20,17 @@ pnpm test
 dsh plugin --profile <name> add <本仓>/packages/secretary
 ```
 
-运行要求 DSH `0.2.1-rc.5` 或兼容的 `0.2.x`。新开会话选择 **Secretary** preset；默认业务数据在 `$DSH_HOME/storages/secretary.db`。真实 desktop profile 的安装与新会话验收由交付 lead 另行执行，本仓测试只使用临时 `DSH_HOME`。
+运行要求 DSH `0.2.1-rc.5` 或兼容的 `0.2.x`。默认业务数据在 `$DSH_HOME/storages/secretary.db`。本仓测试只使用临时 `DSH_HOME`，不修改真实用户 profile。
 
 ## 开发导航
 
 | 你要做什么 | 去哪 |
 |---|---|
 | 改代码（命令、包图、改动约束） | [AGENTS.md](AGENTS.md) |
-| 理解当前产品与交互边界 | [产品架构](docs/product-architecture.md)、[2026-11-03 产品基线](docs/specs/2026-11-03-secretary-product-foundation.md) |
-| 理解领域事实与数据所有权 | [数据模型](docs/data-model.md)、[运行架构](docs/architecture.md) |
+| 理解当前产品范围与交互边界 | [prd.md](docs/prd.md) |
+| 理解包、依赖、产品 API 与 Remote 终点 | [architecture.md](docs/architecture.md) |
+| 理解领域事实与数据所有权 | [data-model.md](docs/data-model.md) |
+| 查看当前 active 实施规格 | [product-delivery-remote-refactor.md](docs/specs/product-delivery-remote-refactor.md) |
 | 改某个包（exports、Config、限制） | 该包自己的 README |
-| 查看本轮真实证据与未覆盖项 | [verification.md](docs/verification.md) |
-| 追溯决策、术语、调研与进展 | [docs/](docs/README.md) |
+| 查看真实证据与未覆盖项 | [verification.md](docs/verification.md) |
+| 查看文档规则、ADR 与调研 | [docs/README.md](docs/README.md) |

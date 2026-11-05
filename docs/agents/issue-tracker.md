@@ -24,8 +24,8 @@ python3 ~/.team-skills/scripts/driver.py resolve --project-root <项目根> --na
 - 状态与阶段更新只修改映射集合，保留其他标签；认领和更新不构成原子锁。
 - 父子与阻塞使用真实 Issue URL 的正文／评论约定，不使用自动关闭语法，也不冒充 GitHub 原生强制依赖。
 
-## 当前规格与迁移来源
+## 当前规格与工单
 
-小秘书一期产品基线的权威正文位于 `docs/specs/2026-11-03-secretary-product-foundation.md`，远程工单为 [GitHub Issue #1](https://github.com/wanghuahuishiwo/dsh-secretary/issues/1)。迁移前的本地工单位于 `docs/tickets/secretary-product-foundation/spec.md`。
-
-迁移后在本地工单 Comments 追加真实 GitHub Issue URL，后续以远程 Issue 为工单权威入口；本地文件保留迁移证据，不自动删除。
+- 仓库只保留 active 规格，位于 `docs/specs/<稳定主题>.md`；产品规则的唯一权威仍是 `docs/prd.md`、`docs/data-model.md` 与 `docs/architecture.md`。
+- GitHub Issue 是工单状态、评论与交付过程的权威入口。发布规格时使用真实 Issue URL，后续需求变化同步更新同一规格与对应 Issue 正文，不创建日期副本或本地平行工单。
+- 规格完成或被取代后，把仍需保留的规则合并回 living docs，再移除旧规格；Issue 保留历史。本地迁移 ticket 不承载产品规则，核实远端后删除。

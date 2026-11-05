@@ -19,7 +19,7 @@
 | 快照 | 标识 | 状态与用途 |
 |---|---|---|
 | 当前 Desktop 运行包 | `/Applications/DeepSeek Harness.app/Contents/Resources/app.asar/dsh`，DSH **0.2.1-rc.5**，Cordis **4.0.5** | 本机实际运行机制的优先证据；版本见 [runtime package.json:2-13](</Applications/DeepSeek Harness.app/Contents/Resources/app.asar/dsh/package.json#L2-L13>)。 |
-| 官方 Harness 源码 checkout | `/Users/wanghuahui/workspace/deepseek-harness`，`master`，commit **ce7073d51254c26cd63b22a60835b8f948deb447**，包版本 **0.2.2-alpha.2** | 用于阅读未打包的 TypeScript 源码、测试与开发文档；版本和命令见 [package.json:1-29](/Users/wanghuahui/workspace/deepseek-harness/package.json#L1-L29)。该 checkout 比当前运行包新，不能把仅在新快照出现的细节倒推给 rc.5。 |
+| 官方 Harness 源码 checkout | `/Users/wanghuahui/workspace/deepseek-harness`，`master`，commit **fcc0ad4621**，包版本 **0.2.2-rc.1**（tag 后 811 个提交） | 用于阅读未打包的 TypeScript 源码、测试与开发文档；版本和命令见 [package.json:1-29](/Users/wanghuahui/workspace/deepseek-harness/package.json#L1-L29)。该 checkout 比当前运行包新，不能把仅在新快照出现的细节倒推给 rc.5，也不要求桌面端跟踪 master。 |
 | 本机插件模板 checkout | `/Users/wanghuahui/workspace/dsh-plugin-template`，`master`，commit **e89f882b3ca18ca3bcba5d32d46d15f9b0e5080b** | 用于确认树外插件的实际脚手架命令与产物格式。该本地仓没有配置 Git remote；本文只陈述这个快照，不声称它等于线上最新模板。 |
 
 官方将 DeepSeek Harness 定位为开源 **agent harness（智能体框架）**，采用“一切皆插件”的 Cordis 架构，并明确标注仍处于快速迭代的开发者预览阶段，见 [官方 README:5-15](/Users/wanghuahui/workspace/deepseek-harness/README.zh.md#L5-L15)。本轮主要研究 Agent Runtime 产品的宿主扩展机制，次要关注其开发基础设施；不展开模型路由或 Agent Loop。
@@ -174,6 +174,17 @@ Host 与 Client 的业务通信必须显式设计。Remote 路径要求 Host 方
 
 如果业务贡献依赖的是一个 Slot 的**声明**，而不是服务，官方要求用 `ctx.slots.inject(name, ...)` 等声明级机制，不要借助 `dsh.client.inject` 赌注册顺序；见 [Client 新包清单:149-150](/Users/wanghuahui/workspace/deepseek-harness/packages/client/AGENTS.md#L149-L150) 和 [ui-workspace 的实际注释:95-105](/Users/wanghuahui/workspace/deepseek-harness/packages/client/ui-workspace/src/client/index.ts#L95-L105)。
 
+### 5.3 左侧栏入口与独立主区页面
+
+**【官方事实】**左栏产品入口与主区页面是两个 Slot 贡献，不是右栏 tab 的变体：
+
+- `sidebar.panellist` 注册左栏入口，元数据包含稳定 `id`、`label`、`order` 和图标组件；宿主点击后调用 `layout.selectPanel(id)`。[SidebarRoot.tsx:54-93](/Users/wanghuahui/workspace/deepseek-harness/packages/client/ui-sidebar/src/client/SidebarRoot.tsx#L54-L93)
+- `main` 以相同 panel id 作为 `key` 注册独立页面。官方 Schedule 同时展示这两个注册：[ui-schedule/client/index.ts:216-243](/Users/wanghuahui/workspace/deepseek-harness/packages/client/ui-schedule/src/client/index.ts#L216-L243)。
+- 页面内部的二级导航由页面自己的 navigation store 管理；Plugin Manager 在 `main` 注册中提供 `store`，并在 panel 失活时重置视图，而不是另起一个 HTTP page route。[ui-plugin-manager/client/index.ts:129-163](/Users/wanghuahui/workspace/deepseek-harness/packages/client/ui-plugin-manager/src/client/index.ts#L129-L163)
+- `ctx.layout.selectPanel(null)` 返回 Conversation；选择已注册 panel 不会更换当前 Session。[layout/service.ts:18-36、71-78](/Users/wanghuahui/workspace/deepseek-harness/packages/client/ui-layout/src/client/service.ts#L18-L78)。主区只切换 keyed `main` outlet，[AppFrame.tsx:45-50](/Users/wanghuahui/workspace/deepseek-harness/packages/client/ui-layout/src/client/AppFrame.tsx#L45-L50)；右栏仅在没有全局 panel 时可见，[RightbarRoot.tsx:29-37](/Users/wanghuahui/workspace/deepseek-harness/packages/client/ui-sidebar-right/src/client/shell/RightbarRoot.tsx#L29-L37)。因此事项的 `main` 页面不与时间块右栏同时挤压显示。
+
+因此“小秘书-事项”的左栏入口应使用 `sidebar.panellist` + `main`，不存在需要套用的 `sidebarLeftTabs`。同一 Client bundle 可以同时贡献左、右入口，但是否为独立产品取决于根组件、Host adapter、数据读取和生命周期是否解耦，而不是 npm 包数量。后半句是【设计推断】，具体拆分见 [ADR 0007](../adr/0007-independent-product-entry-points.md)。
+
 ## 6. 官方推荐与实际可用的开发流程
 
 ### 6.1 Build：先明确自己位于模板、外部仓还是 Harness 源码仓
@@ -280,6 +291,6 @@ Desktop 文档确认它复用完整 Web 应用，并转发应用 HTTP 请求；�
 ## 8. 无法确认或本轮刻意不验证的点
 
 1. **当前 Desktop 的实机 HMR 验收未做**。源码和文档确认了 Web／Desktop 共用链路、外部包 watcher 与 Host／Client 两套重载机制，但本轮没有改写 `lib`、触发 profile 重组、刷新页面或观察 SSE，因此不对当前运行中的具体 bundle 作“已无刷新生效”的承诺。
-2. **本机源码仓不是当前 Desktop 的同一版本**。运行事实优先引用 `app.asar` 的 0.2.1-rc.5；0.2.2-alpha.2 checkout 用于更清晰的源码、类型和流程说明。升级后仍需重新核对相关文件。
+2. **本机源码仓不是当前 Desktop 的同一版本**。运行事实优先引用 `app.asar` 的 0.2.1-rc.5；当前 master 只用于阅读较清晰的源码、类型和流程说明。源码 tag 或 master 不等于桌面端发布通道中的可用更新，升级与兼容判断仍需分别核对。
 3. **模板线上新鲜度未核验**。本机模板没有配置 remote，本次网络获取也未成功；结论只绑定上述 commit。网络搜索结果没有用于支撑任何关键结论。
 4. **未运行任何构建、测试、安装、dump 或宿主命令**。除 `dsh --version` 与 `dsh --help` 外，本轮只读；所以本文提供的是机制证据与验证方案，不是 dsh-secretary 当前实现的新验收结果。

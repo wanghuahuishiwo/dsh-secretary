@@ -51,7 +51,7 @@ try {
   await page.waitForTimeout(1500)
   await page.locator('.sec-daylabel').click()
   await page.waitForTimeout(400)
-  await page.screenshot({ path: join(ROOT, 'design/picker-day.png') })
+  await page.screenshot({ path: join(ROOT, 'docs/assets/verification/picker-day.png') })
   console.log('day picker', await page.locator('.sec-picker').count())
   await page.keyboard.press('Escape')
   await page.waitForTimeout(300)
@@ -60,6 +60,6 @@ try {
   await page.waitForTimeout(800)
   await page.locator('.sec-daylabel').click()
   await page.waitForTimeout(400)
-  await page.screenshot({ path: join(ROOT, 'design/picker-week.png') })
+  await page.screenshot({ path: join(ROOT, 'docs/assets/verification/picker-week.png') })
   console.log('week picker', await page.locator('.sec-picker').count())
 } finally { await browser.close(); child.kill('SIGTERM') }

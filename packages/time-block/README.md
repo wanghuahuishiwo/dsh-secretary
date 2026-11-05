@@ -27,7 +27,7 @@
 
 ## 数据所有权与原子性
 
-默认 domain 为 `secretary_time`（schema version 1），拥有 `plan_blocks`、`actual_blocks`、`plan_template_blocks`、`plan_template_undos`、`deep_templates` 表和 next-id global。默认 bundle 中它经 `secretaryStorageDomain` 路由到 `$DSH_HOME/storages/secretary.db`。UI Host routes 与公共工具都调用 `TimeService`，不直接写 SQLite。旧 `plan_days` 聚合桶及 Action-TimeBlock 数据没有兼容层或自动迁移；既有 v1 Actual／Template／Deep 记录可直接重开，旧 Plan 数据按空数据处理。
+默认 domain 为 `secretary_time`（schema version 1），拥有 `plan_blocks`、`actual_blocks`、`plan_template_blocks`、`plan_template_undos`、`deep_templates` 表和 next-id global。默认 bundle 中它经 `secretaryStorageDomain` 路由到 `$DSH_HOME/storages/secretary.db`。产品 application service 与公共工具都调用 `TimeService`，不直接写 SQLite。旧 `plan_days` 聚合桶及 Action-TimeBlock 数据没有兼容层或自动迁移；既有 v1 Actual／Template／Deep 记录可直接重开，旧 Plan 数据按空数据处理。
 
 `deep_templates` 原样保留老 `base` key 与 `{ scope: base, levels }` record，作为所有无记录周的初始种子，不删除、不迁移。每周写入保存到 `week:<周一>`，value 为 `{ scope: week, weekStart, levels }`。每次单格或区间修改只写目标周的一个聚合 record。
 
