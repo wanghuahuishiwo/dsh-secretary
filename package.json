@@ -6,9 +6,15 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "pnpm -r build",
+    "generate:typert": "node scripts/generate-typert.mjs",
+    "build": "pnpm generate:typert && pnpm -r build",
     "dev": "pnpm -r --parallel dev",
     "test": "pnpm -r test",
     "clean": "pnpm -r exec rm -rf lib"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh-typert-generator": ">=0.2.1-rc.5 <0.3.0",
+    "@types/node": "^24.0.0",
+    "typescript": "^6.0.3"
   }
 }

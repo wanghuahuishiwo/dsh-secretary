@@ -43,7 +43,8 @@
     "dsh-secretary-panel": "workspace:*",
     "dsh-secretary-storage": "workspace:*",
     "dsh-secretary-tag": "workspace:*",
-    "dsh-secretary-time-block": "workspace:*"
+    "dsh-secretary-time-block": "workspace:*",
+    "dsh-secretary-time-panel": "workspace:*"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.5",

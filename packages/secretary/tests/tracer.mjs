@@ -80,6 +80,7 @@ async function sqliteHarness(t, databasePath, failOn, beforePlugins, includeGoal
     import('dsh-secretary-time-block'),
     import('dsh-secretary-time-block/tools'),
     import('dsh-secretary-panel'),
+    import('dsh-secretary-time-panel'),
     ...(includeGoal ? [import('dsh-secretary-goal')] : []),
   ])
   // Create every module before awaiting them, as the real Loader does. Cordis
@@ -1191,6 +1192,115 @@ test('Actual date and range queries include overnight intervals and reject inval
   )
 })
 
+test('Time product readWindow returns only the three Time modules and Tags from real SQLite', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
+  const product = harness.ctx.get('timeProduct')
+  assert.ok(product, 'TimeProductService must be registered as timeProduct')
+  const window = await product.readWindow({ anchor: '2026-11-02', timeZone: 'Asia/Shanghai' })
+  assert.equal(window.from, '2026-10-30')
+  assert.equal(window.to, '2026-11-12')
+  assert.equal(window.weekStart, '2026-11-02')
+  assert.equal(window.days.length, 14)
+  assert.deepEqual(window.tags.map(item => item.id), [tag.id])
+  assert.deepEqual(window.actual, [])
+  assert.deepEqual(window.plan, [])
+  assert.equal(window.deep.cells.length, 168)
+  for (const key of ['inbox', 'projects', 'actions', 'nextActions', 'forecast', 'warnings']) {
+    assert.equal(key in window, false, `Time window must not expose ${key}`)
+  }
+})
+
+test('Time product paint writes one ActualBlock through TimeService into the same SQLite facts', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: 'Remote 工作', kind: 'time' })
+  const product = harness.ctx.get('timeProduct')
+  assert.ok(product)
+  assert.deepEqual(await product.paint({
+    layer: 'actual', tagId: tag.id, timeZone: 'Asia/Shanghai',
+    runs: [{ date: '2026-11-02', start: 480, end: 540 }],
+  }), { ok: true })
+  const fromTool = await execute(harness, 'secretary_time', {
+    op: 'actual.list', date: '2026-11-02', timeZone: 'Asia/Shanghai',
+  })
+  assert.deepEqual(fromTool.blocks.map(block => [block.startAt, block.endAt, block.timeTagId]), [
+    ['2026-11-02T00:00:00.000Z', '2026-11-02T01:00:00.000Z', tag.id],
+  ])
+  const window = await product.readWindow({ anchor: '2026-11-02', timeZone: 'Asia/Shanghai' })
+  assert.deepEqual(window.actual, fromTool.blocks)
+})
+
+test('Time product paint cuts, overwrites, merges, erases, and keeps Plan independent from Actual', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag: work } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
+  const { tag: life } = await execute(harness, 'secretary_tag', { op: 'create', name: '生活', kind: 'time' })
+  const product = harness.ctx.get('timeProduct')
+  assert.ok(product)
+  const paint = (layer, tagId, runs) => product.paint({ layer, tagId, runs, timeZone: 'Asia/Shanghai' })
+  const read = () => product.readWindow({ anchor: '2026-11-02', timeZone: 'Asia/Shanghai', from: '2026-11-02', to: '2026-11-03' })
+  const spans = blocks => blocks.map(block => [block.startAt, block.endAt, block.timeTagId])
+
+  await paint('actual', work.id, [{ date: '2026-11-02', start: 480, end: 600 }])
+  await paint('actual', life.id, [{ date: '2026-11-02', start: 500, end: 510 }])
+  assert.deepEqual(spans((await read()).actual), [
+    ['2026-11-02T00:00:00.000Z', '2026-11-02T00:20:00.000Z', work.id],
+    ['2026-11-02T00:20:00.000Z', '2026-11-02T00:30:00.000Z', life.id],
+    ['2026-11-02T00:30:00.000Z', '2026-11-02T02:00:00.000Z', work.id],
+  ])
+  await paint('actual', work.id, [{ date: '2026-11-02', start: 500, end: 510 }])
+  assert.deepEqual(spans((await read()).actual), [
+    ['2026-11-02T00:00:00.000Z', '2026-11-02T02:00:00.000Z', work.id],
+  ], 'adjacent identical pieces merge back into one ActualBlock')
+  await paint('actual', null, [{ date: '2026-11-02', start: 540, end: 570 }])
+  assert.deepEqual(spans((await read()).actual), [
+    ['2026-11-02T00:00:00.000Z', '2026-11-02T01:00:00.000Z', work.id],
+    ['2026-11-02T01:30:00.000Z', '2026-11-02T02:00:00.000Z', work.id],
+  ])
+  await paint('plan', work.id, [{ date: '2026-11-03', start: 540, end: 600 }])
+  const both = await read()
+  assert.equal(both.actual.length, 2)
+  assert.deepEqual(spans(both.plan), [['2026-11-03T01:00:00.000Z', '2026-11-03T02:00:00.000Z', work.id]])
+})
+
+test('Time product paint maps a real SQLite write failure to write-failed with only safe operation details', async (t) => {
+  const harness = await sqliteHarness(t, undefined, {})
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '故障写入', kind: 'time' })
+  const product = harness.ctx.get('timeProduct')
+  assert.ok(product)
+  harness.failNextWrite('actual_blocks')
+  await assert.rejects(product.paint({
+    layer: 'actual', tagId: tag.id, timeZone: 'Asia/Shanghai',
+    runs: [{ date: '2026-11-02', start: 480, end: 540 }],
+  }), error => {
+    assert.equal(error.code, 'secretaryTime/write-failed')
+    assert.deepEqual(error.details, { operation: 'paint' })
+    assert.equal(error.message.includes('injected put failure'), false)
+    assert.equal(error.cause.message, 'injected put failure on actual_blocks')
+    return true
+  })
+  assert.deepEqual((await execute(harness, 'secretary_time', { op: 'actual.list' })).blocks, [])
+})
+
+test('Time product paint preserves not-found when a concurrent erase wins the real Service write queue', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '并发擦除', kind: 'time' })
+  await execute(harness, 'secretary_time', {
+    op: 'actual.create', timeTagId: tag.id, actualSource: 'user_reported',
+    startAt: '2026-11-02T08:00:00+08:00', endAt: '2026-11-02T09:00:00+08:00',
+  })
+  const product = harness.ctx.get('timeProduct')
+  assert.ok(product)
+  const input = {
+    layer: 'actual', tagId: null, timeZone: 'Asia/Shanghai',
+    runs: [{ date: '2026-11-02', start: 480, end: 540 }],
+  }
+  const outcomes = await Promise.allSettled([product.paint(input), product.paint(input)])
+  const missing = outcomes.find(outcome => outcome.status === 'rejected' && outcome.reason.code === 'secretaryTime/not-found')
+  assert.ok(missing, JSON.stringify(outcomes.map(outcome => outcome.status === 'rejected' ? outcome.reason : outcome.value)))
+  assert.deepEqual(missing.reason.details, { blockId: 1 })
+  assert.deepEqual((await execute(harness, 'secretary_time', { op: 'actual.list' })).blocks, [])
+})
+
 test('panel Host state returns the requested deep week and deep paint writes through the same TimeService', async (t) => {
   const harness = await sqliteHarness(t)
   const stateRoute = harness.routes.get('/api/secretary.state')
@@ -1406,12 +1516,14 @@ test('Goal is an upstream Provider: Time, GTD and the panel wait for it and unlo
   assert.equal(harness.ctx.get('goals'), undefined)
   assert.equal(harness.ctx.get('gtd'), undefined)
   assert.equal(harness.ctx.get('time'), undefined)
+  assert.equal(harness.ctx.get('timeProduct'), undefined)
   assert.equal(harness.routes.size, 0)
 
   const provider = await harness.provideGoal()
   assert.ok(harness.ctx.get('goals') instanceof GoalService)
   assert.ok(harness.ctx.get('gtd') instanceof GtdService)
   assert.ok(harness.ctx.get('time') instanceof TimeService)
+  assert.ok(harness.ctx.get('timeProduct'))
   assert.ok(harness.routes.has('/api/secretary.state'))
   assert.ok(harness.routes.has('/api/secretary.command'))
 
@@ -1420,6 +1532,7 @@ test('Goal is an upstream Provider: Time, GTD and the panel wait for it and unlo
     assert.equal(harness.ctx.get('goals'), undefined)
     assert.equal(harness.ctx.get('gtd'), undefined)
     assert.equal(harness.ctx.get('time'), undefined)
+    assert.equal(harness.ctx.get('timeProduct'), undefined)
     assert.equal(harness.routes.size, 0)
   })
 })
@@ -1460,6 +1573,8 @@ test('Secretary composition registers one coherent assistant and user-only GTD s
   const harness = await sqliteHarness(t)
   const gtdAgent = await import('dsh-secretary-gtd/agent')
   const secretary = await import('dsh-secretary')
+  const timePanel = await import('dsh-secretary-time-panel')
+  assert.deepEqual(timePanel.inject, ['time', 'tags'], 'Time product must not inject GTD')
   await harness.ctx.plugin(gtdAgent)
   await harness.ctx.plugin(secretary, { defaultTimeZone: 'Asia/Shanghai' })
 
@@ -1491,6 +1606,7 @@ test('Secretary composition registers one coherent assistant and user-only GTD s
     "name: 'dsh-secretary-tag'",
     "name: 'dsh-secretary-time-block'",
     "name: 'dsh-secretary-panel'",
+    "name: 'dsh-secretary-time-panel'",
     "name: 'dsh-secretary-gtd/tools'",
     "name: 'dsh-secretary-tag/tools'",
     "name: 'dsh-secretary-time-block/tools'",
