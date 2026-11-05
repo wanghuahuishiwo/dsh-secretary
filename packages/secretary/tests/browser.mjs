@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, symlink, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -151,9 +151,9 @@ async function chooseTimeView(page, name) {
   await page.locator('.sec-smenu button').filter({ hasText: name }).click()
 }
 
-async function writeOverlay(home) {
+async function writeOverlay(home, includeTimeRemote = false) {
   const overlay = join(home, 'overlay.yml')
-  await writeFile(overlay, [
+  const rows = [
     '- id: ui-settings-general',
     '  config:',
     "    welcomeNoticeVersion: '2026-09-28.1'",
@@ -184,8 +184,69 @@ async function writeOverlay(home) {
     `      name: 'file://${join(ROOT, 'packages/time-block/lib/index.js')}'`,
     "    - id: secretary-browser-panel",
     `      name: 'file://${join(ROOT, 'packages/panel/lib/index.js')}'`,
-    '',
-  ].join('\n'))
+  ]
+  if (includeTimeRemote) {
+    const profile = join(home, 'profiles', 'web')
+    await mkdir(join(profile, 'node_modules'), { recursive: true })
+    const packageDir = join(ROOT, 'packages/time-panel')
+    await symlink(packageDir, join(profile, 'node_modules/dsh-secretary-time-panel'), 'dir')
+    await writeFile(join(profile, 'package.json'), JSON.stringify({
+      name: 'dsh-profile-web', private: true,
+      dependencies: { 'dsh-secretary-time-panel': `link:${packageDir}` },
+      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] } },
+    }, null, 2))
+    rows.push(
+      "    - id: secretary-browser-time-panel",
+      "      name: 'dsh-secretary-time-panel'",
+      "    - id: secretary-browser-time-tools",
+      `      name: 'file://${join(ROOT, 'packages/time-block/lib/tools.js')}'`,
+      "    - id: secretary-browser-time-lifecycle-fixture",
+      `      name: 'file://${join(home, 'time-product-lifecycle.mjs')}'`,
+    )
+    await writeFile(join(home, 'time-product-lifecycle.mjs'), `
+      export const inject = ['connection', 'loader', 'time', 'tools', 'secretaryStorageDomain']
+      export function apply(ctx) {
+        ctx.effect(() => ctx.connection.fetch.register({
+          path: '/api/secretary-test.time-product', methods: ['POST'], requestBody: 'buffered',
+          async fetch(request) {
+            try {
+              const input = await request.json()
+              const entry = [...ctx.loader.entries()].find(item => item.options.name === 'dsh-secretary-time-panel')
+              if (input.op === 'remove') {
+                const fiber = entry?.fiber
+                if (entry) ctx.loader.remove(entry.id)
+                await fiber?.dispose()
+                await ctx.loader.await()
+              } else if (input.op === 'mount') {
+                if (!entry || entry.fiber?.state === 4) {
+                  const id = await ctx.loader.create({ name: 'dsh-secretary-time-panel' })
+                  await ctx.loader.resolve(id).fiber
+                }
+                await ctx.loader.await()
+              }
+              if (input.op === 'close-storage') {
+                await ctx.secretaryStorageDomain.closeAll()
+                return Response.json({ closed: true })
+              }
+              const tool = ctx.get('tools')?.get('secretary_time')
+              const fromTool = tool ? await tool.execute({ op: 'actual.list', timeZone: 'Asia/Shanghai' }) : undefined
+              return Response.json({
+                product: ctx.get('timeProduct') !== undefined,
+                time: ctx.get('time') !== undefined,
+                tool: tool !== undefined,
+                actual: fromTool?.blocks,
+                entries: [...ctx.loader.entries()].filter(item => item.options.name === 'dsh-secretary-time-panel').map(item => ({ id: item.id, state: item.fiber?.state, error: item.fiber?.error?.message })),
+              })
+            } catch (error) {
+              return Response.json({ error: String(error), stack: error?.stack }, { status: 500 })
+            }
+          },
+        }), 'test-only Time product lifecycle fixture')
+      }
+    `)
+  }
+  rows.push('')
+  await writeFile(overlay, rows.join('\n'))
   return overlay
 }
 
@@ -504,6 +565,139 @@ test('both host themes drive the canvas tokens and produce no page errors', { ti
     assert.notEqual(light, dark, 'the shell follows the host theme instead of a fixed palette')
     assert.equal(await page.locator('.sec-cell').count(), 14 * 144)
     assert.deepEqual(errors, [])
+  } finally {
+    await browser.close()
+    await server.stop()
+  }
+})
+
+/** Call the real Connection/Gateway RPC envelope without using a Client stub. */
+async function remoteCall(page, method, args) {
+  return page.evaluate(async ({ method, args }) => {
+    const response = await fetch(`/api/${method}`, {
+      method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ type: 'client-request', rpcId: `test-${crypto.randomUUID()}`, method, payload: { args } }),
+    })
+    const envelope = await response.json()
+    return envelope.result
+  }, { method, args })
+}
+
+async function lifecycle(page, op) {
+  return page.evaluate(async op => {
+    const response = await fetch('/api/secretary-test.time-product', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op }),
+    })
+    const body = await response.text()
+    if (!response.ok) throw new Error(`lifecycle ${op} failed (${response.status}): ${body}`)
+    return JSON.parse(body)
+  }, op)
+}
+
+/** Open only the new product; its first render must succeed without a retry or fixed sleep. */
+async function openTimeRemote(page, url) {
+  await page.goto(url, { waitUntil: 'domcontentloaded' })
+  await clearDialogs(page)
+  await page.getByText(/^(Default workspace|默认工作区)$/).first().waitFor({ timeout: 15_000 })
+  const newSession = page.getByRole('button', { name: /^(新建会话|New session|New Session)$/ }).first()
+  await newSession.waitFor({ timeout: 15_000 })
+  await newSession.click()
+  await page.waitForFunction(() => document.querySelector('[data-time-remote]') !== null
+    || [...document.querySelectorAll('button')].some(button => ['New tab', 'Open right sidebar', '打开右侧边栏'].includes(button.getAttribute('aria-label') ?? '')),
+    undefined, { timeout: 30_000 })
+  if (await page.locator('[data-time-remote]').count() === 0) {
+    const openSidebar = page.getByRole('button', { name: /^(Open right sidebar|打开右侧边栏)$/ })
+    if (await openSidebar.count() > 0) await openSidebar.click()
+    const tab = page.getByRole('button', { name: /^小秘书-时间块/ }).first()
+    const newTab = page.getByRole('button', { name: 'New tab', exact: true })
+    if (await tab.count() === 0 && await newTab.count() > 0) await newTab.click()
+    await tab.waitFor({ timeout: 15_000 })
+    await tab.click()
+  }
+  await page.locator('[data-time-remote][data-remote-state="ready"]').waitFor({ timeout: 30_000 })
+}
+
+test('Time Remote tracer covers cold-start read/paint, strict errors, and Loader remount', { timeout: 180_000 }, async (t) => {
+  const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-time-remote-'))
+  const overlay = await writeOverlay(home, true)
+  const server = await boot(home, overlay)
+  const browser = await chromium.launch()
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  const errors = []
+  collectPageErrors(page, errors)
+  t.after(async () => { await browser.close(); await server.stop() })
+  try {
+    await page.goto(server.url, { waitUntil: 'domcontentloaded' })
+    await clearDialogs(page)
+    const { tag } = await command(page, { domain: 'tag', op: 'create', name: 'Remote 工作', kind: 'time' })
+    await openTimeRemote(page, server.url)
+    const product = page.locator('[data-time-remote]')
+    assert.equal(await product.locator('[data-remote-module="actual"]').innerText(), '实录 0')
+    assert.equal(await product.locator('[data-remote-module="plan"]').innerText(), '计划 0')
+    assert.match(await product.locator('[data-remote-module="deep"]').innerText(), /^深度时间 168/)
+    assert.equal(await product.locator(`[data-remote-tag="${tag.id}"]`).innerText(), 'Remote 工作')
+    const wrongWireType = await remoteCall(page, 'secretaryTime/paint', {
+      input: {
+        layer: 'actual', tagId: String(tag.id), timeZone: 'Asia/Shanghai',
+        runs: [{ date: '2026-11-02', start: 480, end: 540 }],
+      },
+    })
+    assert.equal(wrongWireType.ok, false)
+    assert.equal(wrongWireType.error.code, 'gateway/input-invalid')
+    const invalidDate = await remoteCall(page, 'secretaryTime/paint', {
+      input: {
+        layer: 'actual', tagId: tag.id, timeZone: 'Asia/Shanghai',
+        runs: [{ date: '2026-02-31', start: 480, end: 540 }],
+      },
+    })
+    assert.equal(invalidDate.ok, false)
+    assert.equal(invalidDate.error.code, 'secretaryTime/invalid-input', JSON.stringify(invalidDate))
+    const empty = await remoteCall(page, 'secretaryTime/readWindow', {
+      input: { anchor: '2026-11-02', timeZone: 'Asia/Shanghai' },
+    })
+    assert.equal(empty.ok, true)
+    assert.deepEqual(empty.value.actual, [], 'wire and domain refusals must not enter the business write path')
+    await product.getByRole('button', { name: '上色 09:00–09:10', exact: true }).click()
+    await product.locator('[data-remote-paint="written"]').waitFor()
+    assert.equal(await product.locator('[data-remote-module="actual"]').innerText(), '实录 1')
+
+    await openTimeRemote(page, server.url)
+    assert.equal(await page.locator('[data-time-remote] [data-remote-module="actual"]').innerText(), '实录 1')
+
+    const removed = await lifecycle(page, 'remove')
+    assert.equal(removed.product, false)
+    assert.equal(removed.time, true)
+    assert.equal(removed.tool, true)
+    assert.equal(removed.actual.length, 1, 'the Agent tool still reads SQLite after the product unloads')
+    await page.locator('[data-time-remote]').waitFor({ state: 'detached', timeout: 30_000 })
+    const unavailable = await remoteCall(page, 'secretaryTime/readWindow', {
+      input: { anchor: '2026-11-02', timeZone: 'Asia/Shanghai' },
+    })
+    assert.equal(unavailable.ok, false)
+    assert.equal(unavailable.error.code, 'gateway/definition-unavailable', 'strict descriptors must not fall back to SRC')
+
+    const mounted = await lifecycle(page, 'mount')
+    assert.equal(mounted.product, true, JSON.stringify(mounted))
+    assert.equal(mounted.time, true)
+    assert.equal(mounted.tool, true)
+    await page.locator('[data-time-remote][data-remote-state="ready"]').waitFor({ timeout: 30_000 })
+    assert.equal(await page.locator('[data-time-remote] [data-remote-module="actual"]').innerText(), '实录 1')
+
+    assert.equal((await lifecycle(page, 'close-storage')).closed, true)
+    const writeFailed = await remoteCall(page, 'secretaryTime/paint', {
+      input: {
+        layer: 'actual', tagId: tag.id, timeZone: 'Asia/Shanghai',
+        runs: [{ date: localDate(), start: 560, end: 570 }],
+      },
+    })
+    assert.equal(writeFailed.ok, false)
+    assert.equal(writeFailed.error.code, 'secretaryTime/write-failed')
+    assert.deepEqual(writeFailed.error.details, { operation: 'paint' })
+    assert.equal('cause' in writeFailed.error, false, 'the original persistence cause must not cross the wire')
+    assert.deepEqual(errors, [])
+  } catch (error) {
+    const browserErrors = errors.map(item => item.message).join('\n')
+    throw new Error(`${error instanceof Error ? error.message : String(error)}\nBrowser errors:\n${browserErrors}\nHost output:\n${server.output()}`, { cause: error })
   } finally {
     await browser.close()
     await server.stop()

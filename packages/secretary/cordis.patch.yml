@@ -31,6 +31,10 @@
     - id: secretary-panel
       name: 'dsh-secretary-panel'
 
+    # 独立 Time 产品曳光弹；与旧面板并存，Agent 领域 Service 仍独立挂载。
+    - id: secretary-time-panel
+      name: 'dsh-secretary-time-panel'
+
     - id: preset-secretary
       name: '@deepseek-ai/dsh-agent-preset'
       config:
