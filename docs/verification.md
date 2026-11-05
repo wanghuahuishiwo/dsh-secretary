@@ -4,7 +4,7 @@
 
 ## 最近真实门禁
 
-证据日期：**2026-11-05（Asia/Shanghai）**。验证基线为 `review/product-delivery-fixes`，起点 integration `300ab6a`；实际宿主为 `dsh 0.2.1-rc.5`。
+证据日期：**2026-11-05（Asia/Shanghai）**。最终验证代码基线为 `integration/product-delivery-remote` 提交 `0e93bb2`；实际宿主为 `dsh 0.2.1-rc.5`。
 
 已实际执行：
 
