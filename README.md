@@ -5,11 +5,11 @@ DeepSeek Harness 的私人 Secretary Agent：以 GTD 管理承诺，以独立 Ta
 ## 产品形态
 
 - **小秘书-时间块**：DSH 右侧栏，保留当前实录、计划、深度时间三个模块的功能与交互。
-- **小秘书-事项**：DSH 左侧栏全局 panel 区，进入独立 `main` 页面；当前只规划空白入口页，完整 OmniFocus UI 继续原型评审。
+- **小秘书-事项**：DSH 左侧栏全局 panel 区，进入独立空白 `main` 页面；完整 OmniFocus UI 继续原型评审。
 - **Tag／Goal**：上游共享模块，不是任一产品的子页面。Goal 当前只有空 Provider。
 - **Secretary Agent**：通过对话和原子 tools 操作同一批领域事实，没有独立产品 UI。
 
-当前重构目标是拆分旧聚合面板，并以 DSH 官方 Typert Remote 连接各产品 application service 与浏览器。上述目标不等于已经实现，真实证据与未覆盖项见 [verification.md](docs/verification.md)。
+Time 与 GTD 使用独立产品入口，不再提供旧聚合面板或 state／command routes；Time 浏览器通过 DSH 官方 Typert Remote 调用自己的产品 application service。真实证据与未覆盖项见 [verification.md](docs/verification.md)。
 
 ## 安装与验证
 

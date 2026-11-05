@@ -37,4 +37,4 @@ GTD 包保存 Inbox、Project 与 Action 的唯一事项事实，提供捕获／
 
 ## 验证
 
-`packages/secretary/tests/tracer.mjs` 通过公开工具、Host routes 与真实临时 SQLite 覆盖上述契约、故障回滚、Tag 并发和完整重开；`tests/browser.mjs` 用隔离 `dsh web` + Chromium 走完 capture → clarify → Next／Forecast → 编辑／完成 → 完整重开。
+`packages/secretary/tests/tracer.mjs` 通过公开 tools 与真实临时 SQLite 覆盖上述契约、故障回滚、Tag 并发和完整重开；`tests/browser.mjs` 验证独立 GTD 左栏空白 main、Conversation 返回与产品装卸，并经 test-only fixture 直接调用 GtdService 证明产品卸载后领域事实仍可写。GTD 当前没有生产浏览器读写 API。

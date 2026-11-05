@@ -9,7 +9,7 @@
 | `dsh-secretary-tag` | 注册 `ctx.tags`、`ctx.tagReferences`，默认打开 `secretary_tag` | `secretaryStorageDomain` |
 | `dsh-secretary-tag/tools` | 注册 `secretary_tag` | `tools`、`tags` |
 
-公共操作：`list / get / create / update / move / delete`。子标签继承父级 kind；移动拒绝跨 kind 和循环；有子级或仍被领域记录引用时拒绝删除。Web 管理面板对两种 kind 共用桌面 HTML5 drag/drop，drop 只调用 `move` 并重新读取 Host 状态；触摸层级拖拽不在验收范围。
+公共操作：`list / get / create / update / move / delete`。子标签继承父级 kind；移动拒绝跨 kind 和循环；有子级或仍被领域记录引用时拒绝删除。当前没有独立 Tag 产品 UI 或浏览器写入 Remote；Time 只读取时间标签树，浏览器测试的数据准备使用临时 Host fixture 直接调用 TagService。
 
 GTD 与 Time 消费方通过 `tagReferences` 注册只读引用 inspector，并在建立或修改引用时与 Tag 写入共用一致性队列。该机制不是跨 domain 事务：next-id 与记录写入允许出现 ID 空洞，但不复用 ID。
 

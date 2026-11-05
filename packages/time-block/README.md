@@ -39,4 +39,4 @@
 
 ## 验证
 
-`packages/secretary` 使用真实 Cordis 公共 tools 和临时 SQLite 覆盖 Plan/Template/Actual CRUD、日期／时区／跨日、apply/undo、应用后独立、计划与实录隔离、引用保护、完整重开恢复及真实写失败回滚；DeepTime 覆盖周一规范化、own／inherited／seed、52 周回溯上限、相邻周与更早周隔离、老 base 种子兼容、封闭枚举、单格／区间设置与清除、非法日期／坐标／区间、Actual 独立及完整重开。真实 Chromium 测试覆盖生产面板的月历、模板操作、深度时间画笔手势、刷新与完整进程重开。
+`packages/secretary` 使用真实 Cordis 公共 tools 和临时 SQLite 覆盖 Plan/Template/Actual CRUD、日期／时区／跨日、apply/undo、应用后独立、计划与实录隔离、引用保护、完整重开恢复及真实写失败回滚；DeepTime 覆盖周一规范化、own／inherited／seed、52 周回溯上限、相邻周与更早周隔离、老 base 种子兼容、封闭枚举、单格／区间设置与清除、非法日期／坐标／区间、Actual 独立及完整重开。真实 Chromium 测试覆盖独立 Time Remote 产品的三模块读写、日期导航、编辑／删除、Undo、深度时间画笔、主题、窄栏与完整进程重开；计划模板领域能力由公共 tools 验收。
