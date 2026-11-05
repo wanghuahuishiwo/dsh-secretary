@@ -30,8 +30,7 @@
 
 ## 事项与 OmniFocus 设计边界
 
-- 当前评审稿为 Open Design `secretary-prototype` 中的 `omnifocus-mac.html`，仓库引用与说明见 [omnifocus-mac-brief.md](../design/omnifocus-mac-brief.md)。
-- 后续内容设计以 Mac 完整工作区为参照：Perspectives Bar、按 Perspective 变化的 Sidebar、Outline 与按需 Inspector；不采用事项右侧栏形态。
+- 后续事项工作区的设计细节与原型引用以 [omnifocus-mac-brief.md](../design/omnifocus-mac-brief.md) 为唯一设计权威；本文只保持产品范围与实施边界。
 - 空白 `main` 页面不代表 Perspectives、Quick Entry、Folder、Action Group、Flagged、Review、Repeat 或其他 OmniFocus 功能已获实施授权。
 - 旧 `GtdWorkspace` 已退出，不作为事项终稿或兼容产品壳。
 

@@ -32,10 +32,12 @@
     "dev": "node build.mjs --watch",
     "prepare": "node build.mjs",
     "test": "node --test tests/tracer.mjs && node --test tests/browser.mjs",
-    "test:browser": "node --test tests/browser.mjs"
+    "test:browser": "node --test tests/browser.mjs",
+    "test:installed": "node --test tests/installed.mjs"
   },
   "dependencies": {
     "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/dsh-storage-sqlite": "0.2.1-rc.5",
     "dsh-secretary-core": "workspace:*",
     "dsh-secretary-goal": "workspace:*",
     "dsh-secretary-gtd": "workspace:*",
@@ -48,7 +50,6 @@
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.5",
     "@deepseek-ai/dsh-storage": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-storage-sqlite": "0.2.1-rc.5",
     "esbuild": "^0.25.10",
     "playwright": "1.62.1"
   }

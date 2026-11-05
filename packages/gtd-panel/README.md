@@ -2,6 +2,10 @@
 
 独立的“小秘书-事项”产品交付插件。Browser 入口以同一稳定 id/key `dsh-secretary-gtd` 注册 `sidebar.panellist` 与 `main`：展开时显示清单图标和“小秘书-事项”，收起时只显示图标；点击后由 DSH AppFrame 打开空白主区，现有 Conversation／workspace 导航负责返回。
 
+## Config
+
+无。本包不声明或读取插件 Config。
+
 ## 入口与限制
 
 - `.`：空 Host apply，只让产品可被 Loader 独立装卸；没有 Host routes、Remote namespace 或 GTD API。

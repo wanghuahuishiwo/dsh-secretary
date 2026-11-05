@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
+import { openTimeRemote } from './open-time-product.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 const home = await mkdtemp(join(tmpdir(), 'shot-'))
@@ -55,30 +56,8 @@ const url = await new Promise((res, rej) => { const t = setTimeout(() => rej(new
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
 
-async function openTimeProduct() {
-  await page.goto(url, { waitUntil: 'domcontentloaded' })
-  for (const label of ['Continue', 'Got it', '继续', '知道了']) {
-    const button = page.getByRole('button', { name: label, exact: true })
-    if (await button.count() && await button.isVisible()) await button.click()
-  }
-  const newSession = page.getByRole('button', { name: /^(新建会话|New session|New Session)$/ }).first()
-  if (await newSession.count()) await newSession.click()
-  await page.waitForFunction(() => document.querySelector('[data-time-remote]') !== null
-    || [...document.querySelectorAll('button')].some(button => ['New tab', 'Open right sidebar', '打开右侧边栏'].includes(button.getAttribute('aria-label') ?? '')))
-  if (await page.locator('[data-time-remote]').count() === 0) {
-    const openSidebar = page.getByRole('button', { name: /^(Open right sidebar|打开右侧边栏)$/ })
-    if (await openSidebar.count()) await openSidebar.click()
-    const tab = page.getByRole('button', { name: /^小秘书-时间块/ }).first()
-    const newTab = page.getByRole('button', { name: 'New tab', exact: true })
-    if (await tab.count() === 0 && await newTab.count() > 0) await newTab.click()
-    await tab.waitFor()
-    await tab.click()
-  }
-  await page.locator('[data-time-remote][data-remote-state="ready"]').waitFor({ timeout: 30_000 })
-}
-
 try {
-  await openTimeProduct()
+  await openTimeRemote(page, url)
   const seeded = await page.evaluate(async () => {
     const response = await fetch('/api/secretary-test.tags', { method: 'POST' })
     if (!response.ok) throw new Error(`Tag fixture failed (${response.status})`)
@@ -86,7 +65,7 @@ try {
   })
   console.log('seeded tags', seeded.tags.length)
   await page.reload({ waitUntil: 'domcontentloaded' })
-  await openTimeProduct()
+  await openTimeRemote(page, url)
   const product = page.locator('[data-time-remote]')
   await product.locator('.sec-daylabel').click()
   await product.locator('.sec-picker').waitFor()
