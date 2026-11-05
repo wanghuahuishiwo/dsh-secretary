@@ -64,25 +64,6 @@ importers:
         specifier: ^0.25.10
         version: 0.25.12
 
-  packages/panel:
-    dependencies:
-      '@deepseek-ai/cordis':
-        specifier: 4.0.5
-        version: 4.0.5
-      dsh-secretary-gtd:
-        specifier: workspace:*
-        version: link:../gtd
-      dsh-secretary-tag:
-        specifier: workspace:*
-        version: link:../tag
-      dsh-secretary-time-block:
-        specifier: workspace:*
-        version: link:../time-block
-    devDependencies:
-      esbuild:
-        specifier: ^0.25.10
-        version: 0.25.12
-
   packages/secretary:
     dependencies:
       '@deepseek-ai/cordis':
@@ -100,9 +81,6 @@ importers:
       dsh-secretary-gtd-panel:
         specifier: workspace:*
         version: link:../gtd-panel
-      dsh-secretary-panel:
-        specifier: workspace:*
-        version: link:../panel
       dsh-secretary-storage:
         specifier: workspace:*
         version: link:../storage

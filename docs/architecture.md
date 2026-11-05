@@ -8,7 +8,7 @@ Secretary preset 的通用插件底座与官方 standard preset 对齐。升级 
 
 ## 产品交付与 API 层
 
-入口决定见 [ADR 0007](adr/0007-independent-product-entry-points.md)，API 归属见 [ADR 0008](adr/0008-product-owned-host-api-adapters.md)，官方推荐的传输终点见 [ADR 0009](adr/0009-product-api-typert-remote.md)。目标结构是：
+入口决定见 [ADR 0007](adr/0007-independent-product-entry-points.md)，API 归属见 [ADR 0008](adr/0008-product-owned-host-api-adapters.md)，官方推荐的传输终点见 [ADR 0009](adr/0009-product-api-typert-remote.md)。当前结构是：
 
 ```text
 dsh-secretary bundle：composition / preset / skills
@@ -65,11 +65,11 @@ GTD 与 Time 不直接关联 Action。Plan／Actual／Template 只保存直接�
 
 ## 范围与验证分层
 
-本轮验收 Time + Tag 与空 Goal Provider 的依赖生命周期。#6 GTD Review／Repeat／OmniFocus UI 和全产品 #8 暂停，现有 GTD UI 不是终稿；Goal 业务模型／UI、统计、预算、对账不在本轮。
+本轮验收独立 Time／GTD 产品、Time + Tag 与空 Goal Provider 的依赖生命周期。#6 GTD Review／Repeat／完整 OmniFocus UI 和全产品 #8 暂停，GTD 当前只有左栏空白 main；Goal 业务模型／UI、统计、预算、对账不在本轮。
 
 本次产品与 Remote 重构的高层测试 seam 是：**生成产物 → Host Remote 注册 → product-local Client assembly → 真实浏览器 → 产品 application service → 领域 Service → 真实临时 SQLite**。先用一条最小 Time 读取与写入贯通并验证冷启动、卸载清理和错误传播，再迁移其余 Time 操作；冷启动必须证明 strict generated descriptor 生效，禁止以 SRC fallback 或固定 sleep 掩盖装配问题。静态原型和内存 stub 不能替代这条链路。
 
-- `packages/secretary/tests/tracer.mjs`：公开 tools、Host routes、真实临时 SQLite、故障注入、Goal 晚就绪与 Provider 卸载清理、完整关闭／重开。
+- `packages/secretary/tests/tracer.mjs`：公开 tools、TimeProductService、真实临时 SQLite、故障注入、Goal 晚就绪与 Provider 卸载清理、完整关闭／重开；反向断言最终 bundle 不含旧聚合 panel 与 routes。
 - `packages/secretary/tests/browser.mjs`：临时 `DSH_HOME` 中真实 `dsh web` 与 Chromium，覆盖直接操作、Tags 拖拽、Undo 链、宿主明暗主题和 390px。
 - `pnpm pack` 检查 bundle 内容。真实安装包的新会话／desktop profile 验收由交付 lead 后续执行，不修改真实用户 profile。
 

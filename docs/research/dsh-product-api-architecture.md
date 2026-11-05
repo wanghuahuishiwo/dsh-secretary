@@ -186,7 +186,7 @@
 
 ### 8.1 对当前 dsh-secretary 的具体含义【设计推断】
 
-当前 `dsh-secretary-panel` 是统一 Host routes 形态：一个插件注入 `connection/tags/gtd/time`，注册 `/api/secretary.state` 与 `/api/secretary.command`，见 [panel/src/index.ts:413-451](/Users/wanghuahui/workspace/dsh-secretary/packages/panel/src/index.ts#L413-L451)；命令再按 `gtd/tag/time/deep` 分派，代表分支见 [同文件:342-410](/Users/wanghuahui/workspace/dsh-secretary/packages/panel/src/index.ts#L342-L410)。Client 的 `PanelState` 同时混合多领域数据，`PanelCommand` 使用 `domain + op`，见 [panel/src/client/api.ts:1-57](/Users/wanghuahui/workspace/dsh-secretary/packages/panel/src/client/api.ts#L1-L57)。这属于本项目的现状事实，不是 DSH 官方推荐证据。
+重构前的 `dsh-secretary-panel` 是统一 Host routes 形态：一个插件注入 `connection/tags/gtd/time`，注册 `/api/secretary.state` 与 `/api/secretary.command`，历史实现见 [panel/src/index.ts:413-451](https://github.com/wanghuahuishiwo/dsh-secretary/blob/5e765ae6bd2d8f56b08af519cd56318f2b423dc9/packages/panel/src/index.ts#L413-L451)；命令再按 `gtd/tag/time/deep` 分派，代表分支见 [同文件:342-410](https://github.com/wanghuahuishiwo/dsh-secretary/blob/5e765ae6bd2d8f56b08af519cd56318f2b423dc9/packages/panel/src/index.ts#L342-L410)。Client 的 `PanelState` 同时混合多领域数据，`PanelCommand` 使用 `domain + op`，见 [panel/src/client/api.ts:1-57](https://github.com/wanghuahuishiwo/dsh-secretary/blob/5e765ae6bd2d8f56b08af519cd56318f2b423dc9/packages/panel/src/client/api.ts#L1-L57)。这是已退出架构的历史事实，不是 DSH 官方推荐证据。
 
 在已确认的独立产品边界下，可按以下问题逐项判断，而不必先选一个总答案：
 

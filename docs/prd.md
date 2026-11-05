@@ -33,14 +33,14 @@
 - 当前评审稿为 Open Design `secretary-prototype` 中的 `omnifocus-mac.html`，仓库引用与说明见 [omnifocus-mac-brief.md](../design/omnifocus-mac-brief.md)。
 - 后续内容设计以 Mac 完整工作区为参照：Perspectives Bar、按 Perspective 变化的 Sidebar、Outline 与按需 Inspector；不采用事项右侧栏形态。
 - 空白 `main` 页面不代表 Perspectives、Quick Entry、Folder、Action Group、Flagged、Review、Repeat 或其他 OmniFocus 功能已获实施授权。
-- 旧 `GtdWorkspace` 不随本次重构保留为隐性产品壳，也不作为事项终稿。
+- 旧 `GtdWorkspace` 已退出，不作为事项终稿或兼容产品壳。
 
-## 目标交付结构
+## 交付结构
 
 - Time 与 GTD 各有独立产品交付插件及生命周期。
-- 每个产品拥有自己的 Host application service、浏览器调用面与 product-local Remote assembly；Secretary bundle 只负责组合、Preset 与 Skills，不拥有跨产品业务代理。
-- 常规业务 API 使用 DSH 官方 Typert Remote。Time 的 `TimeProductService` 拥有三模块 projection、`paint`、`replace` 与 DeepTime 批量编排，再调用领域 Services。
-- GTD 空页没有 Remote namespace 或空 service；第一个真实页面能力出现时再按同一模式添加。
+- Time 产品拥有自己的 Host application service、浏览器调用面与 product-local Remote assembly；Secretary bundle 只负责组合、Preset 与 Skills，不拥有跨产品业务代理。
+- 常规业务 API 使用 DSH 官方 Typert Remote。Time 的 `TimeProductService` 拥有三模块 projection、`paint`、`replaceDay` 与 DeepTime 批量编排，再调用领域 Services。
+- GTD 空页没有 Host application service、Remote namespace 或空 API；第一个真实页面能力出现时再按同一模式添加。
 - 决策理由见 [ADR 0007](adr/0007-independent-product-entry-points.md)、[ADR 0008](adr/0008-product-owned-host-api-adapters.md) 与 [ADR 0009](adr/0009-product-api-typert-remote.md)。
 
 ## 当前非目标

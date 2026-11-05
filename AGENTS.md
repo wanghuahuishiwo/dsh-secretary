@@ -2,7 +2,7 @@
 
 个人 Secretary Agent：以 GTD 管理事项，以 TimeBlock 管理时间，通过主动准备、协商和跟进帮助用户推进结果。
 
-当前集中验收覆盖 Time + Tag 与上游空 Goal Provider；#6 GTD Review／Repeat／UI 与全产品 #8 暂停，现有 GTD UI 不是终稿，不实现 Goal 业务模型、UI 或统计。
+当前集中验收覆盖独立 Time／GTD 产品、Time + Tag 与上游空 Goal Provider；#6 GTD Review／Repeat／完整 UI 与全产品 #8 暂停，GTD 当前只有左栏空白 main，不实现 Goal 业务模型、UI 或统计。
 
 **pnpm workspace，一插件一包，对齐 deepseek-harness 官方仓与 dsh-plugin-template 规范**（结构决策见 [ADR 0004](docs/adr/0004-workspace-packages.md)，supersede 0003）。
 
@@ -26,7 +26,8 @@ packages/
 ├── gtd/           dsh-secretary-gtd        GTD Service + tools + agent + assets/（GTD 技能）
 ├── tag/           dsh-secretary-tag        统一 time/context Tag Service + tools
 ├── time-block/    dsh-secretary-time-block Time Service + tools（依赖 tag 契约）
-├── panel/         dsh-secretary-panel      真实 Host routes + Web client 产品壳
+├── time-panel/    dsh-secretary-time-panel 独立 Time 右栏 + TimeProductService + Typert Remote
+├── gtd-panel/     dsh-secretary-gtd-panel  独立 GTD 左栏入口 + 空白 main（无 Remote）
 └── secretary/     dsh-secretary            可安装 bundle：cordis.patch.yml + preset + secretary 技能 assets
 ```
 

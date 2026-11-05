@@ -79,44 +79,26 @@ async function clearDialogs(page) {
   }
 }
 
-/** Reach the product: a session on screen, the right Sidebar open, and its tab showing. */
+/** Reach the independent Time product through its real generated Remote client. */
 async function openProduct(page, url) {
-  await page.goto(url, { waitUntil: 'domcontentloaded' })
-  await page.waitForTimeout(2_000)
-  await clearDialogs(page)
-  const newSession = page.getByRole('button', { name: /^(新建会话|New session|New Session)$/ }).first()
-  if (await newSession.count() > 0) await newSession.click()
-  await page.locator('[data-composer-input][contenteditable="true"]').first().waitFor({ timeout: 30_000 })
-  const shell = page.locator('.sec-shell')
-  if (await shell.count() === 0) {
-    const openSidebar = page.getByRole('button', { name: /^(Open right sidebar|打开右侧边栏)$/ })
-    if (await openSidebar.count() > 0 && await openSidebar.isVisible()) await openSidebar.click()
-    await page.waitForTimeout(700)
-    const capsule = page.locator('[data-sidebar-right-guide-entry="secretary"]')
-    if (await capsule.count() > 0) await capsule.click()
-    await page.waitForTimeout(1_500)
-  }
-  await shell.waitFor({ timeout: 30_000 })
+  return openTimeRemote(page, url)
 }
 
-async function command(page, body) {
+/** Purpose-specific test fixture backed by the real domain Services, never a production Remote. */
+async function domainFixture(page, action, input = {}) {
   return page.evaluate(async payload => {
-    const response = await fetch('/api/secretary.command', {
+    const response = await fetch('/api/secretary-test.domain', {
       method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(payload),
     })
     const parsed = await response.json()
-    if (!response.ok) throw new Error(parsed.error ?? `command failed (${response.status})`)
+    if (!response.ok) throw new Error(parsed.error ?? `domain fixture failed (${response.status})`)
     return parsed
-  }, body)
+  }, { action, ...input })
 }
 
-/** The time tag tree every test paints with. */
+/** Seed the time tag tree through the test-only TagService fixture. */
 async function seedTags(page) {
-  const work = await command(page, { domain: 'tag', op: 'create', name: '工作', kind: 'time', color: '#477bc7' })
-  const life = await command(page, { domain: 'tag', op: 'create', name: '生活', kind: 'time', color: '#317b68' })
-  await command(page, { domain: 'tag', op: 'create', name: '睡眠', kind: 'time', color: '#5d6b8a', parentId: life.tag.id })
-  const meal = await command(page, { domain: 'tag', op: 'create', name: '吃饭', kind: 'time', color: '#d08a3e', parentId: life.tag.id })
-  return { work: work.tag, life: life.tag, meal: meal.tag }
+  return domainFixture(page, 'seed-time-tags')
 }
 
 async function dragCells(page, day, from, to) {
@@ -153,7 +135,7 @@ async function chooseTimeView(page, name) {
   await page.locator('.sec-smenu button').filter({ hasText: name }).click()
 }
 
-function overlaySource(home, extra = []) {
+function overlaySource(home) {
   return [
     '- id: ui-settings-general',
     '  config:',
@@ -183,84 +165,110 @@ function overlaySource(home, extra = []) {
     `      name: 'file://${join(ROOT, 'packages/gtd/lib/index.js')}'`,
     "    - id: secretary-browser-time",
     `      name: 'file://${join(ROOT, 'packages/time-block/lib/index.js')}'`,
-    "    - id: secretary-browser-panel",
-    `      name: 'file://${join(ROOT, 'packages/panel/lib/index.js')}'`,
+    "    - id: secretary-browser-time-panel",
+    "      name: 'dsh-secretary-time-panel'",
+    "    - id: secretary-browser-time-tools",
+    `      name: 'file://${join(ROOT, 'packages/time-block/lib/tools.js')}'`,
+    "    - id: secretary-browser-time-lifecycle-fixture",
+    `      name: 'file://${join(home, 'time-product-lifecycle.mjs')}'`,
+    "    - id: secretary-browser-domain-fixture",
+    `      name: 'file://${join(home, 'domain-fixture.mjs')}'`,
     "    - id: secretary-browser-gtd-panel",
     `      name: 'file://${join(ROOT, 'packages/gtd-panel/lib/index.js')}'`,
-    ...extra,
     '',
   ].join('\n')
 }
 
-async function writeOverlay(home, includeTimeRemote = false) {
-  const overlay = join(home, 'overlay.yml')
-  const extra = []
-  if (includeTimeRemote) {
-    const profile = join(home, 'profiles', 'web')
-    await mkdir(join(profile, 'node_modules'), { recursive: true })
-    const packageDir = join(ROOT, 'packages/time-panel')
-    await symlink(packageDir, join(profile, 'node_modules/dsh-secretary-time-panel'), 'dir')
-    await writeFile(join(profile, 'package.json'), JSON.stringify({
-      name: 'dsh-profile-web', private: true,
-      dependencies: { 'dsh-secretary-time-panel': `link:${packageDir}` },
-      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] } },
-    }, null, 2))
-    extra.push(
-      "    - id: secretary-browser-time-panel",
-      "      name: 'dsh-secretary-time-panel'",
-      "    - id: secretary-browser-time-tools",
-      `      name: 'file://${join(ROOT, 'packages/time-block/lib/tools.js')}'`,
-      "    - id: secretary-browser-time-lifecycle-fixture",
-      `      name: 'file://${join(home, 'time-product-lifecycle.mjs')}'`,
-    )
-    await writeFile(join(home, 'time-product-lifecycle.mjs'), `
-      export const inject = ['connection', 'loader', 'time', 'tools', 'secretaryStorageDomain']
-      export function apply(ctx) {
-        ctx.effect(() => ctx.connection.fetch.register({
-          path: '/api/secretary-test.time-product', methods: ['POST'], requestBody: 'buffered',
-          async fetch(request) {
-            try {
-              const input = await request.json()
-              const entry = [...ctx.loader.entries()].find(item => item.options.name === 'dsh-secretary-time-panel')
-              if (input.op === 'remove') {
-                const fiber = entry?.fiber
-                if (entry) ctx.loader.remove(entry.id)
-                await fiber?.dispose()
-                await ctx.loader.await()
-              } else if (input.op === 'mount') {
-                if (!entry || entry.fiber?.state === 4) {
-                  const id = await ctx.loader.create({ name: 'dsh-secretary-time-panel' })
-                  await ctx.loader.resolve(id).fiber
-                }
-                await ctx.loader.await()
+async function prepareFixtures(home) {
+  const profile = join(home, 'profiles', 'web')
+  await mkdir(join(profile, 'node_modules'), { recursive: true })
+  const packageDir = join(ROOT, 'packages/time-panel')
+  await symlink(packageDir, join(profile, 'node_modules/dsh-secretary-time-panel'), 'dir')
+  await writeFile(join(profile, 'package.json'), JSON.stringify({
+    name: 'dsh-profile-web', private: true,
+    dependencies: { 'dsh-secretary-time-panel': `link:${packageDir}` },
+    dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] } },
+  }, null, 2))
+  await writeFile(join(home, 'time-product-lifecycle.mjs'), `
+    export const inject = ['connection', 'loader', 'time', 'tools', 'secretaryStorageDomain']
+    export function apply(ctx) {
+      ctx.effect(() => ctx.connection.fetch.register({
+        path: '/api/secretary-test.time-product', methods: ['POST'], requestBody: 'buffered',
+        async fetch(request) {
+          try {
+            const input = await request.json()
+            const entry = [...ctx.loader.entries()].find(item => item.options.name === 'dsh-secretary-time-panel')
+            if (input.op === 'remove') {
+              const fiber = entry?.fiber
+              if (entry) ctx.loader.remove(entry.id)
+              await fiber?.dispose()
+              await ctx.loader.await()
+            } else if (input.op === 'mount') {
+              if (!entry || entry.fiber?.state === 4) {
+                const id = await ctx.loader.create({ name: 'dsh-secretary-time-panel' })
+                await ctx.loader.resolve(id).fiber
               }
-              if (input.op === 'close-storage') {
-                await ctx.secretaryStorageDomain.closeAll()
-                return Response.json({ closed: true })
-              }
-              const tool = ctx.get('tools')?.get('secretary_time')
-              const fromTool = tool ? await tool.execute({ op: 'actual.list', timeZone: 'Asia/Shanghai' }) : undefined
-              return Response.json({
-                product: ctx.get('timeProduct') !== undefined,
-                time: ctx.get('time') !== undefined,
-                tool: tool !== undefined,
-                actual: fromTool?.blocks,
-                entries: [...ctx.loader.entries()].filter(item => item.options.name === 'dsh-secretary-time-panel').map(item => ({ id: item.id, state: item.fiber?.state, error: item.fiber?.error?.message })),
-              })
-            } catch (error) {
-              return Response.json({ error: String(error), stack: error?.stack }, { status: 500 })
+              await ctx.loader.await()
             }
-          },
-        }), 'test-only Time product lifecycle fixture')
-      }
-    `)
-  }
-  await writeFile(overlay, overlaySource(home, extra))
+            if (input.op === 'close-storage') {
+              await ctx.secretaryStorageDomain.closeAll()
+              return Response.json({ closed: true })
+            }
+            const tool = ctx.get('tools')?.get('secretary_time')
+            const fromTool = tool ? await tool.execute({ op: 'actual.list', timeZone: 'Asia/Shanghai' }) : undefined
+            return Response.json({
+              product: ctx.get('timeProduct') !== undefined,
+              time: ctx.get('time') !== undefined,
+              tool: tool !== undefined,
+              actual: fromTool?.blocks,
+              entries: [...ctx.loader.entries()].filter(item => item.options.name === 'dsh-secretary-time-panel').map(item => ({ id: item.id, state: item.fiber?.state, error: item.fiber?.error?.message })),
+            })
+          } catch (error) {
+            return Response.json({ error: String(error), stack: error?.stack }, { status: 500 })
+          }
+        },
+      }), 'test-only Time product lifecycle fixture')
+    }
+  `)
+  await writeFile(join(home, 'domain-fixture.mjs'), `
+    export const inject = ['connection', 'tags', 'gtd']
+    export function apply(ctx) {
+      ctx.effect(() => ctx.connection.fetch.register({
+        path: '/api/secretary-test.domain', methods: ['POST'], requestBody: 'buffered',
+        async fetch(request) {
+          try {
+            const input = await request.json()
+            if (input.action === 'seed-time-tags') {
+              const work = await ctx.tags.createTag({ name: '工作', kind: 'time', color: '#477bc7' })
+              const life = await ctx.tags.createTag({ name: '生活', kind: 'time', color: '#317b68' })
+              await ctx.tags.createTag({ name: '睡眠', kind: 'time', color: '#5d6b8a', parentId: life.id })
+              const meal = await ctx.tags.createTag({ name: '吃饭', kind: 'time', color: '#d08a3e', parentId: life.id })
+              return Response.json({ work, life, meal })
+            }
+            if (input.action === 'capture-gtd') {
+              const item = await ctx.gtd.captureInbox({ title: input.title, raw: input.raw, source: 'browser-test' })
+              return Response.json({ item })
+            }
+            return Response.json({ error: 'unknown test fixture action' }, { status: 400 })
+          } catch (error) {
+            return Response.json({ error: String(error), stack: error?.stack }, { status: 500 })
+          }
+        },
+      }), 'test-only domain Service fixture')
+    }
+  `)
+}
+
+async function writeOverlay(home) {
+  await prepareFixtures(home)
+  const overlay = join(home, 'overlay.yml')
+  await writeFile(overlay, overlaySource(home))
   return overlay
 }
 
 /** Use the watched profile patch when a test exercises real configuration HMR. */
 async function writeProfile(home) {
+  await prepareFixtures(home)
   const profile = join(home, 'profiles', 'web', 'cordis.patch.yml')
   await mkdir(dirname(profile), { recursive: true })
   await writeFile(profile, overlaySource(home))
@@ -594,7 +602,7 @@ test('事项 opens a blank global main from the left Sidebar and returns to the 
   }
 })
 
-test('事项 product HMR unload and remount preserve Conversation, legacy panels, and cold start', { timeout: 300_000 }, async (t) => {
+test('事项 product HMR unload and remount preserve Conversation, the Time product, domain Services, and cold start', { timeout: 300_000 }, async (t) => {
   const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-gtd-hmr-'))
   const profile = await writeProfile(home)
   let server = await boot(home)
@@ -615,16 +623,14 @@ test('事项 product HMR unload and remount preserve Conversation, legacy panels
     await writeFile(profile, `${overlaySource(home)}\n- id: secretary-browser-gtd-panel\n  disabled: true\n`)
     await entry.waitFor({ state: 'detached', timeout: 30_000 })
     await main.waitFor({ state: 'detached' })
-    await page.locator('.sec-shell').waitFor()
     assert.equal(await page.locator('[data-composer-input]').count(), 1,
       'unloading the active main returns to the retained Conversation')
-    await openModule(page, '事项')
-    await page.getByRole('region', { name: 'GTD 工作区' }).waitFor()
-    await openModule(page, '时间块')
-    const captured = await command(page, {
-      domain: 'gtd', op: 'inbox.capture', title: 'GTD 产品卸载后仍捕获', raw: '领域能力独立', source: 'browser-test',
+    await page.locator('[data-time-remote][data-remote-state="ready"]').waitFor()
+    const captured = await domainFixture(page, 'capture-gtd', {
+      title: 'GTD 产品卸载后仍捕获', raw: '领域能力独立',
     })
-    assert.equal(typeof captured.item.id, 'number', 'the existing GTD Host route still writes after product unload')
+    assert.equal(typeof captured.item.id, 'number', 'the GTD domain Service still writes after its product unloads')
+    assert.equal(await page.locator('[data-time-remote]').count(), 1, 'GTD unload leaves the independent Time product mounted')
 
     await writeFile(profile, overlaySource(home))
     await entry.waitFor({ timeout: 30_000 })
@@ -645,33 +651,6 @@ test('事项 product HMR unload and remount preserve Conversation, legacy panels
     t.diagnostic(server.output())
     t.diagnostic(errors.map(item => String(item)).join('\n'))
     throw error
-  } finally {
-    await browser.close()
-    await server.stop()
-  }
-})
-
-test('事项 captures into the Inbox inside the same product shell', { timeout: 240_000 }, async (t) => {
-  const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-browser-'))
-  const overlay = await writeOverlay(home)
-  const server = await boot(home, overlay)
-  const browser = await chromium.launch()
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
-  const errors = []
-  collectPageErrors(page, errors)
-  t.after(async () => { await browser.close(); await server.stop() })
-  try {
-    await openProduct(page, server.url)
-    await openModule(page, '事项')
-    const workspace = page.getByRole('region', { name: 'GTD 工作区' })
-    await workspace.waitFor()
-    const form = workspace.getByRole('region', { name: 'Inbox 视图' })
-    await form.waitFor()
-    await form.locator('input').first().fill('把时间块接进右栏')
-    await form.locator('textarea').first().fill('右栏 tab 打开就是时间块')
-    await form.getByRole('button', { name: '捕获到 Inbox' }).click()
-    await workspace.getByRole('button', { name: '澄清 把时间块接进右栏' }).waitFor()
-    assert.deepEqual(errors, [])
   } finally {
     await browser.close()
     await server.stop()
@@ -756,7 +735,7 @@ async function openTimeRemote(page, url) {
 
 test('Time Remote product covers cold-start real-canvas read/paint, strict errors, and Loader remount', { timeout: 180_000 }, async (t) => {
   const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-time-remote-'))
-  const overlay = await writeOverlay(home, true)
+  const overlay = await writeOverlay(home)
   const server = await boot(home, overlay)
   const browser = await chromium.launch()
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
@@ -766,15 +745,26 @@ test('Time Remote product covers cold-start real-canvas read/paint, strict error
   try {
     await page.goto(server.url, { waitUntil: 'domcontentloaded' })
     await clearDialogs(page)
-    const { tag } = await command(page, { domain: 'tag', op: 'create', name: 'Remote 工作', kind: 'time' })
+    const { work: tag } = await seedTags(page)
     await openTimeRemote(page, server.url)
+    const legacyUrl = path => {
+      const target = new URL(path, server.url)
+      target.search = new URL(server.url).search
+      return target.toString()
+    }
+    const legacyState = await page.context().request.get(legacyUrl('/api/secretary.state?anchor=2026-11-02&timeZone=Asia%2FShanghai'))
+    const legacyCommand = await page.context().request.post(legacyUrl('/api/secretary.command'), { data: {} })
+    assert.deepEqual([legacyState.status(), legacyCommand.status()], [404, 404],
+      'the real Host no longer exposes aggregate state/command routes')
+    assert.equal(await page.locator('[data-sidebar-right-guide-entry="secretary"]').count(), 0)
+    assert.equal(await page.getByRole('region', { name: 'GTD 工作区' }).count(), 0)
     const product = page.locator('.sec-shell[data-time-remote]')
     assert.equal(await product.locator('.sec-blk').count(), 0)
     assert.equal(await product.locator('.sec-day').count(), 14)
     await openModule(page, '深度时间')
     assert.equal(await product.locator('.sec-hc').count(), 168)
     await openModule(page, '时间块')
-    assert.equal(await product.locator('.sec-cat').filter({ hasText: 'Remote 工作' }).count(), 1)
+    assert.equal(await product.locator('.sec-cat').filter({ hasText: '工作' }).count(), 1)
     const wrongWireType = await remoteCall(page, 'secretaryTime/paint', {
       input: {
         layer: 'actual', tagId: String(tag.id), timeZone: 'Asia/Shanghai',
@@ -798,10 +788,10 @@ test('Time Remote product covers cold-start real-canvas read/paint, strict error
     assert.deepEqual(empty.value.actual, [], 'wire and domain refusals must not enter the business write path')
     const today = localDate()
     await dragCells(page, today, 540, 540)
-    await product.locator('.sec-cat').filter({ hasText: 'Remote 工作' }).click()
+    await product.locator('.sec-cat').filter({ hasText: '工作' }).click()
     await product.locator('.sec-blk').waitFor()
     assert.equal(await product.locator('.sec-blk').count(), 1)
-    assert.equal(await product.locator('.sec-blk span').innerText(), 'Remote 工作')
+    assert.equal(await product.locator('.sec-blk span').innerText(), '工作')
 
     await openTimeRemote(page, server.url)
     assert.equal(await page.locator('[data-time-remote] .sec-blk').count(), 1)
@@ -827,7 +817,7 @@ test('Time Remote product covers cold-start real-canvas read/paint, strict error
 
     assert.equal((await lifecycle(page, 'close-storage')).closed, true)
     await dragCells(page, today, 560, 560)
-    await product.locator('.sec-cat').filter({ hasText: 'Remote 工作' }).click()
+    await product.locator('.sec-cat').filter({ hasText: '工作' }).click()
     await product.locator('.sec-toast').filter({ hasText: 'Time paint could not be persisted' }).first().waitFor()
     assert.equal(await product.locator('.sec-head button[title="撤销"]').isDisabled(), true, 'failed paint must not push Undo')
     assert.equal(await product.locator('.sec-toast').filter({ hasText: '已上色' }).count(), 0, 'failed paint must not show success')
@@ -869,7 +859,7 @@ test('Time Remote product covers cold-start real-canvas read/paint, strict error
 
 test('Time Remote product preserves editing, multi-day Undo, date navigation, and Plan isolation', { timeout: 240_000 }, async (t) => {
   const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-time-ui-'))
-  const overlay = await writeOverlay(home, true)
+  const overlay = await writeOverlay(home)
   const server = await boot(home, overlay)
   const browser = await chromium.launch()
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
@@ -966,7 +956,7 @@ test('Time Remote product preserves editing, multi-day Undo, date navigation, an
 
 test('Time Remote product preserves DeepTime inheritance, restart, host themes, and narrow layout', { timeout: 300_000 }, async (t) => {
   const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-time-deep-'))
-  const overlay = await writeOverlay(home, true)
+  const overlay = await writeOverlay(home)
   let server = await boot(home, overlay)
   const browser = await chromium.launch()
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })

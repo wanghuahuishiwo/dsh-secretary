@@ -79,7 +79,6 @@ async function sqliteHarness(t, databasePath, failOn, beforePlugins, includeGoal
     import('dsh-secretary-tag/tools'),
     import('dsh-secretary-time-block'),
     import('dsh-secretary-time-block/tools'),
-    import('dsh-secretary-panel'),
     import('dsh-secretary-time-panel'),
     ...(includeGoal ? [import('dsh-secretary-goal')] : []),
   ])
@@ -1486,24 +1485,14 @@ test('Time product paintDeep maps an ordered mid-batch SQLite failure without hi
   assert.equal(stored.week.cells.find(cell => cell.weekday === 2 && cell.hour === 10).level, 'unset')
 })
 
-test('panel Host state returns the requested deep week and deep paint writes through the same TimeService', async (t) => {
+test('Time product readWindow returns the default window and requested deep week through the same TimeService', async (t) => {
   const harness = await sqliteHarness(t)
-  const stateRoute = harness.routes.get('/api/secretary.state')
-  const commandRoute = harness.routes.get('/api/secretary.command')
-  const state = async (weekStart = '2026-11-02') => {
-    const response = await stateRoute.fetch(new Request(
-      `http://test.local/api/secretary.state?anchor=2026-11-02&timeZone=Asia%2FShanghai&weekStart=${weekStart}`,
-    ))
-    assert.equal(response.status, 200)
-    return response.json()
-  }
-  const command = async body => {
-    const response = await commandRoute.fetch(new Request('http://test.local/api/secretary.command', {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
-    }))
-    assert.equal(response.status, 200, JSON.stringify(await response.clone().json()))
-    return response.json()
-  }
+  await eventually(() => assert.ok(harness.ctx.get('timeProduct')))
+  const product = harness.ctx.get('timeProduct')
+  assert.ok(product)
+  const state = (weekStart = '2026-11-02') => product.readWindow({
+    anchor: '2026-11-02', timeZone: 'Asia/Shanghai', weekStart,
+  })
 
   const initial = await state()
   assert.equal(initial.weekStart, '2026-11-02')
@@ -1514,16 +1503,16 @@ test('panel Host state returns the requested deep week and deep paint writes thr
     '2026-11-06', '2026-11-07', '2026-11-08', '2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12',
   ], 'the default window starts three days before the anchor and runs ten days after it')
 
-  await command({
-    domain: 'deep', op: 'paint', weekStart: '2026-11-02', level: 'medium',
+  await product.paintDeep({
+    weekStart: '2026-11-02', level: 'medium',
     rects: [{ startWeekday: 1, startHour: 9, endWeekday: 2, endHour: 10 }],
   })
   const stored = await execute(harness, 'secretary_time', { op: 'deep.getWeek', weekStart: '2026-11-02' })
   assert.equal(stored.week.source, 'own')
   assert.equal(stored.week.cells.filter(cell => cell.level === 'medium').length, 4)
 
-  const cleared = await command({
-    domain: 'deep', op: 'paint', weekStart: '2026-11-02', level: null,
+  const cleared = await product.paintDeep({
+    weekStart: '2026-11-02', level: null,
     rects: [{ startWeekday: 2, startHour: 10, endWeekday: 2, endHour: 10 }],
   })
   assert.equal(cleared.week.cells.find(cell => cell.weekday === 2 && cell.hour === 10).level, 'unset')
@@ -1537,39 +1526,29 @@ test('panel Host state returns the requested deep week and deep paint writes thr
   assert.equal(earlier.deep.cells.filter(cell => cell.level !== 'unset').length, 0)
 })
 
-test('panel Host paint cuts runs out of the layer it touches and replace restores one day', async (t) => {
+test('Time product paint cuts runs out of one layer and replaceDay, updateBlock, and deleteBlock preserve its facts', async (t) => {
   const harness = await sqliteHarness(t)
   const { tag: work } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
   const { tag: life } = await execute(harness, 'secretary_tag', { op: 'create', name: '生活', kind: 'time' })
-  const stateRoute = harness.routes.get('/api/secretary.state')
-  const commandRoute = harness.routes.get('/api/secretary.command')
-  const command = async body => {
-    const response = await commandRoute.fetch(new Request('http://test.local/api/secretary.command', {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
-    }))
-    assert.equal(response.status, 200, JSON.stringify(await response.clone().json()))
-    return response.json()
-  }
-  const state = async () => {
-    const response = await stateRoute.fetch(new Request(
-      'http://test.local/api/secretary.state?anchor=2026-11-02&timeZone=Asia%2FShanghai&weekStart=2026-11-02',
-    ))
-    assert.equal(response.status, 200)
-    return response.json()
-  }
+  const product = harness.ctx.get('timeProduct')
+  assert.ok(product)
+  const paint = (layer, tagId, runs) => product.paint({ layer, tagId, runs, timeZone: 'Asia/Shanghai' })
+  const state = () => product.readWindow({
+    anchor: '2026-11-02', timeZone: 'Asia/Shanghai', weekStart: '2026-11-02',
+  })
   const spans = blocks => blocks.map(block => [block.startAt, block.endAt, block.timeTagId])
 
-  await command({ domain: 'time', op: 'paint', layer: 'actual', tagId: work.id, runs: [{ date: '2026-11-02', start: 480, end: 600 }] })
+  await paint('actual', work.id, [{ date: '2026-11-02', start: 480, end: 600 }])
   assert.deepEqual(spans((await state()).actual), [['2026-11-02T00:00:00.000Z', '2026-11-02T02:00:00.000Z', work.id]])
 
-  await command({ domain: 'time', op: 'paint', layer: 'actual', tagId: life.id, runs: [{ date: '2026-11-02', start: 500, end: 510 }] })
+  await paint('actual', life.id, [{ date: '2026-11-02', start: 500, end: 510 }])
   assert.deepEqual(spans((await state()).actual), [
     ['2026-11-02T00:00:00.000Z', '2026-11-02T00:20:00.000Z', work.id],
     ['2026-11-02T00:20:00.000Z', '2026-11-02T00:30:00.000Z', life.id],
     ['2026-11-02T00:30:00.000Z', '2026-11-02T02:00:00.000Z', work.id],
   ])
 
-  await command({ domain: 'time', op: 'paint', layer: 'actual', tagId: null, runs: [{ date: '2026-11-02', start: 540, end: 570 }] })
+  await paint('actual', null, [{ date: '2026-11-02', start: 540, end: 570 }])
   assert.deepEqual(spans((await state()).actual), [
     ['2026-11-02T00:00:00.000Z', '2026-11-02T00:20:00.000Z', work.id],
     ['2026-11-02T00:20:00.000Z', '2026-11-02T00:30:00.000Z', life.id],
@@ -1577,125 +1556,103 @@ test('panel Host paint cuts runs out of the layer it touches and replace restore
     ['2026-11-02T01:30:00.000Z', '2026-11-02T02:00:00.000Z', work.id],
   ])
 
-  await command({ domain: 'time', op: 'paint', layer: 'plan', tagId: work.id, runs: [{ date: '2026-11-03', start: 540, end: 600 }] })
+  await paint('plan', work.id, [{ date: '2026-11-03', start: 540, end: 600 }])
   const both = await state()
   assert.deepEqual(spans(both.plan), [['2026-11-03T01:00:00.000Z', '2026-11-03T02:00:00.000Z', work.id]])
   assert.equal(both.actual.length, 4, 'painting the plan must not touch the actual layer')
 
-  await command({
-    domain: 'time', op: 'replace', layer: 'actual', date: '2026-11-02',
+  await product.replaceDay({
+    layer: 'actual', date: '2026-11-02', timeZone: 'Asia/Shanghai',
     intervals: [{ start: 480, end: 600, timeTagId: work.id, note: 'Host 原计划' }],
   })
   assert.deepEqual(spans((await state()).actual), [['2026-11-02T00:00:00.000Z', '2026-11-02T02:00:00.000Z', work.id]])
   const listed = await execute(harness, 'secretary_time', { op: 'actual.list', date: '2026-11-02', timeZone: 'Asia/Shanghai' })
   assert.deepEqual(listed.blocks.map(block => block.note), ['Host 原计划'])
 
-  await command({ domain: 'time', op: 'update', layer: 'actual', id: listed.blocks[0].id, note: '改过', timeTagId: life.id })
+  await product.updateBlock({ layer: 'actual', id: listed.blocks[0].id, note: '改过', timeTagId: life.id })
   const edited = await execute(harness, 'secretary_time', { op: 'actual.get', id: listed.blocks[0].id })
   assert.equal(edited.block.note, '改过')
   assert.equal(edited.block.timeTagId, life.id)
-  await command({ domain: 'time', op: 'delete', layer: 'actual', id: listed.blocks[0].id })
+  await product.deleteBlock({ layer: 'actual', id: listed.blocks[0].id })
   assert.deepEqual((await state()).actual, [])
 })
 
-test('panel state keeps Time and Tag available when GTD storage holds an unreadable legacy record', async (t) => {
+test('Time product keeps Time and Tag available when GTD storage holds an unreadable legacy record', async (t) => {
   const harness = await sqliteHarness(t)
   const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
   const message = "domain 'secretary_gtd': stored record '5ff171ac-1193-4225-a4db-d55be3880eec' in table 'inbox' does not match its schema"
   for (const method of ['listInbox', 'listProjects', 'listActions', 'listNextActions', 'listForecast']) {
     harness.ctx.gtd[method] = async () => { throw new Error(message) }
   }
-  const stateRoute = harness.routes.get('/api/secretary.state')
-  const response = await stateRoute.fetch(new Request('http://test.local/api/secretary.state?anchor=2026-11-02&timeZone=Asia%2FShanghai&weekStart=2026-11-02'))
-  assert.equal(response.status, 200, 'a broken GTD record must not take the whole panel down')
-  const state = await response.json()
+  const product = harness.ctx.get('timeProduct')
+  assert.ok(product)
+  const state = await product.readWindow({ anchor: '2026-11-02', timeZone: 'Asia/Shanghai', weekStart: '2026-11-02' })
   assert.deepEqual(state.tags.map(item => item.id), [tag.id])
   assert.equal(Array.isArray(state.actual), true)
   assert.equal(Array.isArray(state.plan), true)
   assert.equal(Array.isArray(state.deep.cells), true)
-  assert.deepEqual(state.inbox, [])
-  assert.deepEqual(state.projects, [])
-  assert.deepEqual(state.actions, [])
-  assert.deepEqual(state.forecast, [])
-  assert.deepEqual(state.warnings.map(item => item.domain), ['gtd'])
-  assert.equal(state.warnings[0].message, message)
+  for (const key of ['inbox', 'projects', 'actions', 'nextActions', 'forecast', 'warnings']) {
+    assert.equal(key in state, false, `Time projection must not contain aggregate GTD field ${key}`)
+  }
 
-  const written = await harness.routes.get('/api/secretary.command').fetch(new Request('http://test.local/api/secretary.command', {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      domain: 'time', op: 'paint', layer: 'actual', tagId: tag.id,
-      runs: [{ date: '2026-11-02', start: 540, end: 600 }],
-    }),
-  }))
-  assert.equal(written.status, 200, 'Time writes must still work while GTD is unreadable')
-  const after = await stateRoute.fetch(new Request('http://test.local/api/secretary.state?anchor=2026-11-02&timeZone=Asia%2FShanghai&weekStart=2026-11-02'))
-  assert.equal((await after.json()).actual.length, 1)
+  await product.paint({
+    layer: 'actual', tagId: tag.id, timeZone: 'Asia/Shanghai',
+    runs: [{ date: '2026-11-02', start: 540, end: 600 }],
+  })
+  const after = await product.readWindow({ anchor: '2026-11-02', timeZone: 'Asia/Shanghai', weekStart: '2026-11-02' })
+  assert.equal(after.actual.length, 1, 'Time writes still work while GTD is unreadable')
 })
 
-test('panel Host routes and public tools share the same Tag and Time Services', async (t) => {
+test('Time product and public tools share the same Tag and Time Services without aggregate routes', async (t) => {
   const harness = await sqliteHarness(t)
   const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
-  assert.ok(harness.routes, 'missing panel route registry')
-  const stateRoute = harness.routes.get('/api/secretary.state')
-  assert.ok(stateRoute, 'missing panel state route')
-  const state = await stateRoute.fetch(new Request('http://test.local/api/secretary.state?anchor=2026-11-02&timeZone=Asia%2FShanghai&weekStart=2026-11-02'))
-  assert.equal(state.status, 200)
-  assert.deepEqual((await state.json()).tags.map(item => item.id), [tag.id])
+  const product = harness.ctx.get('timeProduct')
+  assert.ok(product)
+  const state = await product.readWindow({ anchor: '2026-11-02', timeZone: 'Asia/Shanghai', weekStart: '2026-11-02' })
+  assert.deepEqual(state.tags.map(item => item.id), [tag.id])
 
-  const commandRoute = harness.routes.get('/api/secretary.command')
-  assert.ok(commandRoute, 'missing panel command route')
-  const created = await commandRoute.fetch(new Request('http://test.local/api/secretary.command', {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      domain: 'time', op: 'paint', layer: 'actual', tagId: tag.id,
-      runs: [{ date: '2026-11-02', start: 540, end: 600 }],
-    }),
-  }))
-  assert.equal(created.status, 200)
+  await product.paint({
+    layer: 'actual', tagId: tag.id, timeZone: 'Asia/Shanghai',
+    runs: [{ date: '2026-11-02', start: 540, end: 600 }],
+  })
   const fromTool = await execute(harness, 'secretary_time', { op: 'actual.list', date: '2026-11-02', timeZone: 'Asia/Shanghai' })
   assert.deepEqual(fromTool.blocks.map(block => block.timeTagId), [tag.id])
   assert.equal(fromTool.blocks[0].startAt, '2026-11-02T01:00:00.000Z')
+  assert.equal(harness.routes.has('/api/secretary.state'), false)
+  assert.equal(harness.routes.has('/api/secretary.command'), false)
 })
 
-test('panel Host GTD routes and public tools share capture, clarification, Next, Forecast, and completion facts', async (t) => {
+test('GTD public tools preserve capture, clarification, Next, Forecast, and completion facts without a product API', async (t) => {
   const harness = await sqliteHarness(t)
   const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
-  const stateRoute = harness.routes.get('/api/secretary.state')
-  const commandRoute = harness.routes.get('/api/secretary.command')
-  const command = async body => {
-    const response = await commandRoute.fetch(new Request('http://test.local/api/secretary.command', {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
-    }))
-    assert.equal(response.status, 200, JSON.stringify(await response.clone().json()))
-    return response.json()
-  }
-  const state = async (anchor = '2026-11-03') => {
-    const response = await stateRoute.fetch(new Request(`http://test.local/api/secretary.state?anchor=${anchor}&timeZone=Asia%2FShanghai&weekStart=2026-11-02`))
-    assert.equal(response.status, 200)
-    return response.json()
-  }
-  const captured = await command({ domain: 'gtd', op: 'inbox.capture', title: 'Host 捕获', raw: 'Host 与工具同源', source: 'browser' })
+  const captured = await execute(harness, 'secretary_gtd', {
+    op: 'inbox.capture', title: '工具捕获', raw: '公共工具与 Service 同源', source: 'user_request',
+  })
   assert.equal(typeof captured.item.id, 'number')
   assert.equal((await execute(harness, 'secretary_gtd', { op: 'inbox.list' })).items[0].id, captured.item.id)
-  const clarified = await command({
-    domain: 'gtd', op: 'inbox.clarify', id: captured.item.id,
-    project: { title: 'Host 项目', outcome: '两端看到同一事实', type: 'parallel', tagIds: [tag.id] },
-    action: { title: 'Host 下一步', plannedAt: '2026-11-03T09:00:00+08:00' },
+  const clarified = await execute(harness, 'secretary_gtd', {
+    op: 'inbox.clarify', id: captured.item.id,
+    project: { title: '工具项目', outcome: '各次读取看到同一事实', type: 'parallel', tagIds: [tag.id] },
+    action: { title: '工具下一步', plannedAt: '2026-11-03T09:00:00+08:00' },
   })
   assert.equal(clarified.action.availability, 'available')
-  const current = await state()
-  assert.deepEqual(current.inbox, [])
-  assert.deepEqual(current.projects.map(project => project.id), [clarified.project.id])
-  assert.deepEqual(current.nextActions.map(action => action.id), [clarified.action.id])
-  assert.deepEqual(current.forecast.map(action => action.id), [clarified.action.id])
-  assert.deepEqual(current.actions[0].effectiveTags, [tag.id])
-  const completed = await command({ domain: 'gtd', op: 'action.complete', id: clarified.action.id, completedAt: '2026-11-03T10:00:00+08:00' })
+  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'inbox.list' })).items, [])
+  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'project.list' })).projects.map(project => project.id), [clarified.project.id])
+  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'action.next' })).actions.map(action => action.id), [clarified.action.id])
+  assert.deepEqual((await execute(harness, 'secretary_gtd', {
+    op: 'action.forecast', date: '2026-11-03', timeZone: 'Asia/Shanghai',
+  })).actions.map(action => action.id), [clarified.action.id])
+  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'action.list' })).actions[0].effectiveTags, [tag.id])
+  const completed = await execute(harness, 'secretary_gtd', {
+    op: 'action.complete', id: clarified.action.id, completedAt: '2026-11-03T10:00:00+08:00',
+  })
   assert.equal(completed.action.status, 'completed')
   assert.equal((await execute(harness, 'secretary_gtd', { op: 'action.get', id: clarified.action.id })).action.completedAt, '2026-11-03T10:00:00+08:00')
-  assert.deepEqual((await state()).nextActions, [])
+  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'action.next' })).actions, [])
+  assert.equal(harness.routes.size, 0, 'the GTD domain needs no legacy state/command routes')
 })
 
-test('Goal is an upstream Provider: Time, GTD and the panel wait for it and unload with it', async (t) => {
+test('Goal is an upstream Provider: Time, GTD and TimeProduct wait for it and unload with it', async (t) => {
   const harness = await sqliteHarness(t, undefined, undefined, undefined, false)
   await eventually(() => assert.ok(harness.ctx.get('tags') instanceof TagService))
   assert.equal(harness.ctx.get('goals'), undefined)
@@ -1709,8 +1666,7 @@ test('Goal is an upstream Provider: Time, GTD and the panel wait for it and unlo
   assert.ok(harness.ctx.get('gtd') instanceof GtdService)
   assert.ok(harness.ctx.get('time') instanceof TimeService)
   assert.ok(harness.ctx.get('timeProduct'))
-  assert.ok(harness.routes.has('/api/secretary.state'))
-  assert.ok(harness.routes.has('/api/secretary.command'))
+  assert.equal(harness.routes.size, 0)
 
   await provider.dispose()
   await eventually(() => {
@@ -1722,7 +1678,7 @@ test('Goal is an upstream Provider: Time, GTD and the panel wait for it and unlo
   })
 })
 
-test('GTD product composition and unload preserve domain Services, Agent tools, and the legacy panel', async (t) => {
+test('GTD product composition and unload preserve domain Services, Agent tools, and the independent Time product', async (t) => {
   const harness = await sqliteHarness(t)
   const gtd = harness.ctx.get('gtd')
   const time = harness.ctx.get('time')
@@ -1751,7 +1707,8 @@ test('GTD product composition and unload preserve domain Services, Agent tools, 
   assert.ok(harness.ctx.time instanceof TimeService)
   const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
   assert.ok(patch.includes("name: 'dsh-secretary-gtd-panel'"), 'the installable bundle mounts the independent GTD product')
-  assert.ok(patch.includes("name: 'dsh-secretary-panel'"), 'this slice retains the legacy aggregate panel')
+  assert.ok(patch.includes("name: 'dsh-secretary-time-panel'"), 'the installable bundle mounts the independent Time product')
+  assert.doesNotMatch(patch, /dsh-secretary-panel|secretary\.state|secretary\.command/)
 })
 
 test('Secretary composition registers one coherent assistant and user-only GTD skills over SQLite services', async (t) => {
@@ -1779,8 +1736,9 @@ test('Secretary composition registers one coherent assistant and user-only GTD s
   }
   assert.equal(harness.tools.has('secretary_time_block'), false)
   assert.equal(harness.tools.has('secretary_statistics'), false)
-  assert.ok(harness.routes.has('/api/secretary.state'))
-  assert.ok(harness.routes.has('/api/secretary.command'))
+  assert.equal(harness.routes.has('/api/secretary.state'), false)
+  assert.equal(harness.routes.has('/api/secretary.command'), false)
+  assert.equal(harness.routes.size, 0, 'the final products register no legacy aggregate routes')
 
   const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
   for (const row of [
@@ -1790,8 +1748,8 @@ test('Secretary composition registers one coherent assistant and user-only GTD s
     "name: 'dsh-secretary-gtd'",
     "name: 'dsh-secretary-tag'",
     "name: 'dsh-secretary-time-block'",
-    "name: 'dsh-secretary-panel'",
     "name: 'dsh-secretary-time-panel'",
+    "name: 'dsh-secretary-gtd-panel'",
     "name: 'dsh-secretary-gtd/tools'",
     "name: 'dsh-secretary-tag/tools'",
     "name: 'dsh-secretary-time-block/tools'",
@@ -1809,6 +1767,11 @@ test('Secretary composition registers one coherent assistant and user-only GTD s
   ]) assert.ok(patch.includes(row), `missing bundle row ${row}`)
   assert.ok(patch.includes("- id: skill-office\n  disabled: true"), 'office skills must stay disabled')
   assert.doesNotMatch(patch, /^- id: storage-domain$/m)
+  assert.doesNotMatch(patch, /dsh-secretary-panel|secretary-panel|secretary\.state|secretary\.command/)
+  const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
+  assert.equal(manifest.dependencies['dsh-secretary-panel'], undefined)
+  assert.equal(manifest.dependencies['dsh-secretary-time-panel'], 'workspace:*')
+  assert.equal(manifest.dependencies['dsh-secretary-gtd-panel'], 'workspace:*')
 })
 
 test('Tag deletion protects GTD references and shares its serial boundary with Action create/update', async (t) => {
