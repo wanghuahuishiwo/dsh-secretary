@@ -2,9 +2,17 @@ import type { Context } from '@deepseek-ai/cordis'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import type { TagService } from 'dsh-secretary-tag/contract'
 import type { ActualSource, FocusLevel, TimeService } from 'dsh-secretary-time-block/contract'
-import type { PaintTimeBlocksRequest, PaintResult, PaintRun, TimeWindowRequest, TimeLayer, TimeWindowProjection } from './types.ts'
+import type {
+  DeleteTimeBlockRequest, DeleteTimeBlockResult, PaintDeepRequest, PaintDeepResult,
+  PaintTimeBlocksRequest, PaintResult, PaintRun, ReplaceTimeDayRequest, TimeLayer,
+  TimeWindowProjection, TimeWindowRequest, UpdateTimeBlockRequest, UpdateTimeBlockResult,
+} from './types.ts'
 
-export type { PaintTimeBlocksRequest, PaintResult, PaintRun, TimeWindowRequest, TimeLayer, TimeWindowProjection } from './types.ts'
+export type {
+  DeleteTimeBlockRequest, DeleteTimeBlockResult, PaintDeepRequest, PaintDeepResult,
+  PaintTimeBlocksRequest, PaintResult, PaintRun, ReplaceTimeDayRequest, TimeLayer,
+  TimeWindowProjection, TimeWindowRequest, UpdateTimeBlockRequest, UpdateTimeBlockResult,
+} from './types.ts'
 
 const WINDOW_BEFORE = 3
 const WINDOW_AFTER = 10
@@ -200,7 +208,28 @@ async function paintRuns(
   await mergeLayer(ctx, layer, fromMs, toMs, timeZone, nowMs)
 }
 
-function invalidInput(error: unknown, operation: 'readWindow' | 'paint' = 'readWindow'): never {
+/** Replace one local day's blocks with the snapshot held by a canvas Undo entry. */
+async function replaceDaySnapshot(
+  ctx: TimeProductContext, layer: TimeLayer, date: string,
+  intervals: ReplaceTimeDayRequest['intervals'], timeZone: string,
+): Promise<void> {
+  const dayStart = zonedStart(date, timeZone)
+  const blocks = await blocksOfLayer(ctx, layer, dayStart, zonedStart(addDays(date, 1), timeZone), timeZone)
+  for (const block of blocks) await deleteBlock(ctx, layer, block.id)
+  for (const interval of intervals) {
+    await writeBlock(ctx, layer, {
+      startMs: dayStart + interval.start * MINUTE_MS,
+      endMs: dayStart + interval.end * MINUTE_MS,
+      timeTagId: interval.timeTagId,
+      note: interval.note,
+      actualSource: 'user_reported',
+    }, timeZone)
+  }
+}
+
+type TimeOperation = 'readWindow' | 'paint' | 'replaceDay' | 'updateBlock' | 'deleteBlock' | 'paintDeep'
+type TimeWriteOperation = Exclude<TimeOperation, 'readWindow'>
+function invalidInput(error: unknown, operation: TimeOperation = 'readWindow'): never {
   if (error instanceof RemoteError) throw error
   if (error instanceof Error && error.message.startsWith('secretary:')) {
     throw new RemoteError('secretaryTime/invalid-input', error.message, { operation }, { cause: error })
@@ -208,16 +237,16 @@ function invalidInput(error: unknown, operation: 'readWindow' | 'paint' = 'readW
   throw error
 }
 
-function paintFailure(ctx: TimeProductContext, error: unknown): never {
+function productFailure(ctx: TimeProductContext, error: unknown, operation: TimeWriteOperation): never {
   if (error instanceof RemoteError) throw error
   const message = error instanceof Error ? error.message : String(error)
   const missing = /^secretary: no (?:actual|plan) block "(\d+)"$/.exec(message)
   if (missing !== null) {
     throw new RemoteError('secretaryTime/not-found', message, { blockId: Number(missing[1]) }, { cause: error })
   }
-  if (message.startsWith('secretary:') && !/invalid stored|write failed|rollback failed/.test(message)) invalidInput(error, 'paint')
-  ctx.logger.error('secretaryTime paint failed', error)
-  throw new RemoteError('secretaryTime/write-failed', 'Time paint could not be persisted', { operation: 'paint' }, { cause: error })
+  if (message.startsWith('secretary:') && !/invalid stored|write failed|rollback failed/.test(message)) invalidInput(error, operation)
+  ctx.logger.error(`secretaryTime ${operation} failed`, error)
+  throw new RemoteError('secretaryTime/write-failed', `Time ${operation} could not be persisted`, { operation }, { cause: error })
 }
 
 /** Host application Service owned by the independent Time product. */
@@ -275,7 +304,87 @@ export class TimeProductService extends TypertRemoteService {
       if (input.runs.length > 0) await paintRuns(this.productCtx, input.layer, input.tagId, input.runs, input.timeZone)
       return { ok: true }
     } catch (error) {
-      paintFailure(this.productCtx, error)
+      productFailure(this.productCtx, error, 'paint')
+    }
+  }
+
+  /** Paint or clear inclusive weekday-by-hour rectangles in one DeepTime week. */
+  @Remote('paintDeep')
+  async paintDeep(input: PaintDeepRequest): Promise<PaintDeepResult> {
+    try {
+      const weekStart = weekStartOf(validDate(input.weekStart, 'weekStart'))
+      if (input.level !== null && input.level !== 'high' && input.level !== 'medium' && input.level !== 'low') {
+        throw new Error('secretary: deep level must be high, medium, low, or null')
+      }
+      for (const rect of input.rects) {
+        if (![rect.startWeekday, rect.startHour, rect.endWeekday, rect.endHour].every(Number.isSafeInteger)
+          || rect.startWeekday < 1 || rect.endWeekday > 7 || rect.startHour < 0 || rect.endHour > 23
+          || rect.startWeekday > rect.endWeekday || rect.startHour > rect.endHour) {
+          throw new Error('secretary: deep rectangles require inclusive weekday 1..7 and hour 0..23 bounds in order')
+        }
+      }
+      let week = await this.productCtx.time.getDeepWeek({ weekStart })
+      for (const rect of input.rects) {
+        const range = { weekStart, ...rect }
+        week = input.level === null
+          ? await this.productCtx.time.clearDeepRange(range)
+          : await this.productCtx.time.setDeepRange({ ...range, level: input.level })
+      }
+      return { week }
+    } catch (error) {
+      productFailure(this.productCtx, error, 'paintDeep')
+    }
+  }
+
+  /** Edit one selected Actual or Plan block using the domain Service's patch rules. */
+  @Remote('updateBlock')
+  async updateBlock(input: UpdateTimeBlockRequest): Promise<UpdateTimeBlockResult> {
+    try {
+      if (input.layer !== 'actual' && input.layer !== 'plan') throw new Error('secretary: updateBlock layer must be actual or plan')
+      if (!Number.isSafeInteger(input.id) || input.id <= 0) throw new Error('secretary: updateBlock id must be a positive integer')
+      const patch = { timeTagId: input.timeTagId, note: input.note, startAt: input.startAt, endAt: input.endAt }
+      const block = input.layer === 'actual'
+        ? await this.productCtx.time.updateActual(input.id, patch)
+        : await this.productCtx.time.updatePlan(input.id, patch)
+      return { block }
+    } catch (error) {
+      productFailure(this.productCtx, error, 'updateBlock')
+    }
+  }
+
+  /** Delete one Actual or Plan block and return the removed domain fact. */
+  @Remote('deleteBlock')
+  async deleteBlock(input: DeleteTimeBlockRequest): Promise<DeleteTimeBlockResult> {
+    try {
+      if (input.layer !== 'actual' && input.layer !== 'plan') throw new Error('secretary: deleteBlock layer must be actual or plan')
+      if (!Number.isSafeInteger(input.id) || input.id <= 0) throw new Error('secretary: deleteBlock id must be a positive integer')
+      const block = input.layer === 'actual'
+        ? await this.productCtx.time.deleteActual(input.id)
+        : await this.productCtx.time.deletePlan(input.id)
+      return { ok: true, block }
+    } catch (error) {
+      productFailure(this.productCtx, error, 'deleteBlock')
+    }
+  }
+
+  /** Restore one complete local-day snapshot for the existing canvas Undo stack. */
+  @Remote('replaceDay')
+  async replaceDay(input: ReplaceTimeDayRequest): Promise<PaintResult> {
+    try {
+      if (input.layer !== 'actual' && input.layer !== 'plan') throw new Error('secretary: replaceDay layer must be actual or plan')
+      const date = validDate(input.date, 'date')
+      validTimeZone(input.timeZone)
+      for (const interval of input.intervals) {
+        if (!Number.isSafeInteger(interval.start) || !Number.isSafeInteger(interval.end)
+          || interval.start < 0 || interval.end > 1440 || interval.end <= interval.start
+          || !Number.isSafeInteger(interval.timeTagId) || interval.timeTagId <= 0) {
+          throw new Error('secretary: replaceDay intervals require 0 <= start < end <= 1440 and a positive timeTagId')
+        }
+      }
+      await replaceDaySnapshot(this.productCtx, input.layer, date, input.intervals, input.timeZone)
+      return { ok: true }
+    } catch (error) {
+      productFailure(this.productCtx, error, 'replaceDay')
     }
   }
 }

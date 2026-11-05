@@ -25,7 +25,7 @@ dsh-secretary bundle：composition / preset / skills
 └── 产品交付插件
     ├── time-panel
     │   ├── TimeProductService extends TypertRemoteService
-    │   │   ├── @Remote：三模块 projection、paint / replace、DeepTime 批量编排
+    │   │   ├── @Remote：readWindow / paint / replaceDay / updateBlock / deleteBlock / paintDeep
     │   │   └── 调用 TimeService + TagService
     │   ├── ./typert + ./remote + ./types + ./client
     │   └── Browser：product-local $mount → child remote.secretaryTime + UI
@@ -38,7 +38,7 @@ dsh-secretary bundle：composition / preset / skills
 Time 的浏览器 Remote 与 Agent tools 是平级 adapters，不是上下层：
 
 ```text
-Time Browser → ctx.remote.<time-namespace> → TimeProductService ─┐
+Time Browser → ctx.remote.secretaryTime → TimeProductService ─────────┐
                                                                  ├→ TimeService / TagService → Storage
 Agent → secretary_time / secretary_tag ──────────────────────────┘
 
