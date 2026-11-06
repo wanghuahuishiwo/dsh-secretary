@@ -53,6 +53,7 @@ Inbox、Project、Action 共用持久化数字 ID。Action 只保存自己的直
 
 ## 延伸阅读
 
+- [GTD 当前产品范围](../../docs/prd/gtd.md)
 - [当前数据模型](../../docs/data-model.md)
 - [领域术语](../../docs/glossary.md)
 - [GTD 产品页面](../gtd-panel/README.md)

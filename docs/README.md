@@ -4,7 +4,9 @@
 
 | 文档 | 职责 |
 |---|---|
-| [prd.md](prd.md) | 当前产品范围、入口、交互边界与非目标。 |
+| [prd/README.md](prd/README.md) | 全局产品原则、共享边界与非目标。 |
+| [prd/time-block.md](prd/time-block.md) | TimeBlock 当前功能、完整画布交互、Undo 与 DeepTime。 |
+| [prd/gtd.md](prd/gtd.md) | GTD 当前入口、空白页面与领域能力边界。 |
 | [architecture.md](architecture.md) | 当前装配、依赖、Host／Client、Remote 与验证入口。 |
 | [data-model.md](data-model.md) | 当前事实、关系、标签、日期与持久化不变式。 |
 | [glossary.md](glossary.md) | 当前领域术语。 |

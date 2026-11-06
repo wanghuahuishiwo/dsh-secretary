@@ -45,7 +45,7 @@ kind: "package-reference"
 ## 延伸阅读
 
 - [GTD 领域包](../gtd/README.md)
-- [当前产品范围](../../docs/prd.md)
+- [当前 GTD 产品范围](../../docs/prd/gtd.md)
 - [OmniFocus 原型说明](../../design/omnifocus-mac-brief.md)
 
 ## 模型体验

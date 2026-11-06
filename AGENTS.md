@@ -24,7 +24,7 @@ packages/
 └── secretary/   可安装 bundle、Preset 与 Secretary 技能
 
 docs/
-├── prd.md           当前产品范围与交互
+├── prd/             当前产品范围与各产品交互
 ├── architecture.md  当前装配、依赖、Remote 与验证入口
 ├── data-model.md    当前事实、关系与持久化语义
 ├── glossary.md      领域术语

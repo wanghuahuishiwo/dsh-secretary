@@ -216,7 +216,7 @@ status = active  ≠  available = true
 
 ## 10. 与旧 Action + TimeCategory PRD／ADR 的冲突
 
-以下对照基于调研时的旧 [prd.md](../prd.md)、[glossary.md](../glossary.md) 和 [0001-action-centric-model.md](../adr/0001-action-centric-model.md)。这些文件当时描述的是 Action-only 首版基线；当前产品方向已由 [ADR 0002](../adr/0002-gtd-time-block-agent.md) 和 [ADR 0003](../adr/0003-single-bundle-multi-plugin.md) 取代，现行 PRD 也已更新。本节保留调研时的差异分析，不再把旧模型称为当前契约。
+以下对照基于调研时的旧 [产品需求](../prd/README.md)、[glossary.md](../glossary.md) 和 [0001-action-centric-model.md](../adr/0001-action-centric-model.md)。这些文件当时描述的是 Action-only 首版基线；当前产品方向已由 [ADR 0002](../adr/0002-gtd-time-block-agent.md) 和 [ADR 0003](../adr/0003-single-bundle-multi-plugin.md) 取代，现行 PRD 也已更新。本节保留调研时的差异分析，不再把旧模型称为当前契约。
 
 | 旧基线（调研时） | OmniFocus 官方机制 | 需要后续决策的冲突 |
 |---|---|---|

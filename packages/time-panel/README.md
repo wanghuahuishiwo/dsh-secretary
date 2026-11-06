@@ -47,6 +47,7 @@ Client 先 `$mount()` 自己的 `/remote`，再在 child Context 等待 `remote.
 
 ## 延伸阅读
 
+- [TimeBlock 功能与交互](../../docs/prd/time-block.md)
 - [运行架构](../../docs/architecture.md)
 - [Time 领域包](../time-block/README.md)
 - [Secretary bundle](../secretary/README.md)
