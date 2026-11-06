@@ -2,6 +2,13 @@
 
 个人 Secretary Agent：以 GTD 管理事项，以 TimeBlock 管理时间，通过主动准备、协商和跟进帮助用户推进结果。
 
+## 行为准则
+
+### 文档
+
+- 同一主题只保留一个当前权威文件，其他位置使用链接。
+- 文档原地更新；只有 ADR 追加历史。规格、工单与验收证据由 tracker 保存。
+
 ## 仓库结构
 
 ```text
@@ -30,13 +37,6 @@ scripts/  Remote 生成等仓库工具
 ```
 
 命令以实际 `package.json` scripts 为准；包级入口、Config 和限制见各包 README。
-
-## 行为准则
-
-### 文档
-
-- 同一主题只保留一个当前权威文件，其他位置使用链接。
-- 文档原地更新；只有 ADR 追加历史。规格、工单与验收证据由 tracker 保存。
 
 <!-- BEGIN TEAM-SKILLS-DRIVERS -->
 ## 驱动
