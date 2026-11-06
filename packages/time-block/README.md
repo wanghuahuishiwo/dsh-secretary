@@ -1,42 +1,79 @@
-# Time / PlanBlock / ActualBlock / PlanTemplateBlock / DeepTime
+---
+description: "Secretary 的日期计划、实录、计划模板与深度时间领域服务；供需要记录时间、复用模板或排查时间事实的用户与维护者阅读。"
+kind: "package-reference"
+---
 
-`dsh-secretary-time-block` 在同一个 `TimeService` 与 `secretary_time` domain 中拥有具体日期的 **PlanBlock（计划块）**、**ActualBlock（实录块）**、按星期复用的 **PlanTemplateBlock（计划模板块）**，以及按周存储并向前继承的 **DeepTime 作息安排**。前三类块只以 `kind = time` 的 Tag 分类，不直接关联 GTD Action；备注可以提及 GTD 对象。计划、模板、实录与深度时间互不回写，深度时间不从 Actual 派生。
+# dsh-secretary-time-block
 
-## 插件入口
+## 概述
 
-| 入口 | 作用 | `inject` | `Config` |
-|---|---|---|---|
-| `dsh-secretary-time-block` | 注册 `ctx.time`（`TimeService`）及持久化 | `secretaryStorageDomain`、`tags`、`tagReferences`、`goals` | `{ domain?: string }` |
-| `dsh-secretary-time-block/tools` | 注册公共工具 `secretary_time` | `tools`、`time` | 无配置字段 |
+本包让你通过 Secretary 管理具体日期的 PlanBlock、ActualBlock、可复用的 PlanTemplateBlock 和持续继承的 DeepTime 周模板。计划、模板、实录与深度时间分别保存，不因其中一个变化而伪造另一个。
 
-工具操作：
+## 目录
 
-- `plan.list / get / create / update / delete`：创建必须显式提供 `date + timeZone + startAt/endAt`；开始时刻必须落在该时区的目标日期，跨日结束允许。按日期查询返回与该日期重叠的计划。
-- `template.list / create / update / delete`：模板使用 `weekday: 1–7` 与本地 `startTime/endTime`；`endTime` 早于 `startTime` 表示跨日，`24:00` 可作为结束时刻。
-- `template.apply / undo`：`apply` 必须显式提供 `weekday + targetDate + timeZone`，一次替换目标日期的计划并返回生成后的块；`undo` 恢复 apply 前的当日计划。apply 后修改模板或日期计划不会同步另一方；若当日计划在 apply 后已变化，undo 会拒绝覆盖后续编辑。
-- `actual.list / get / create / update / delete / start / stop`：`start` 持久化缺少 `endAt` 的运行中记录，`stop` 补写结束时刻；完整区间要求 `endAt > startAt`。
-- `deep.getWeek`：必须提供 `weekStart`，可传周内任意真实 `YYYY-MM-DD`，服务端规范化到周一。返回请求周的 `weekStart`、固定 168 格及 `source`：本周已写为 `own`；否则继承最近的有记录更早周（最多回溯 52 周）为 `inherited`；都没有时用 `base` 种子为 `seed`，空 `base` 即全 `unset`。
-- `deep.setCell / clearCell / setRange / clearRange`：都要求 `weekStart`，先解析该周当前有效 cells，应用改动后写入该周并返回 `source: own`，不改其它周。区间以 `startWeekday/startHour/endWeekday/endHour` 指定闭区间矩形；set 只接受 `high / medium / low`，clear 恢复独立的 `unset`，用户可只使用 `high`。
+- [使用本包](#使用本包)
+- [理解实现](#理解实现)
+- [模型体验](#模型体验)
+- [已知限制与后续工作](#已知限制与后续工作)
 
-共同约束：
+-----
 
-- ID 是同一个 TimeService 内持久化自增数字，KV key 仅在其字符串形式下使用；写失败允许留下 ID 空洞，单次写失败且补偿成功时不留下半套计划事实。
-- 任意区间可以重叠；计划或模板的创建、改绑与 apply 验证时间 Tag，并与 Tag 删除共用一致性写队列。
-- `actualSource` 固定为 `user_reported / agent_observed / imported`；`focus` 是可选封闭枚举 `deep / shallow`，与 Action Completed 无关。
-- `actual.list` 与 `plan.list` 支持具体日期及父时间标签的直接＋所有后代关联查询，并按块 ID 去重；`actual.list` 另支持 `from/to` 范围。
+## 使用本包
 
-## 数据所有权与原子性
+### 组合与配置
 
-默认 domain 为 `secretary_time`（schema version 1），拥有 `plan_blocks`、`actual_blocks`、`plan_template_blocks`、`plan_template_undos`、`deep_templates` 表和 next-id global。默认 bundle 中它经 `secretaryStorageDomain` 路由到 `$DSH_HOME/storages/secretary.db`。产品 application service 与公共工具都调用 `TimeService`，不直接写 SQLite。旧 `plan_days` 聚合桶及 Action-TimeBlock 数据没有兼容层或自动迁移；既有 v1 Actual／Template／Deep 记录可直接重开，旧 Plan 数据按空数据处理。
+本包由 Secretary bundle 挂载。`dsh-secretary-time-block` 提供 `ctx.time`，`/tools` 注册公共工具 `secretary_time`；右栏 UI 由独立的 `time-panel` 包提供。
 
-`deep_templates` 原样保留老 `base` key 与 `{ scope: base, levels }` record，作为所有无记录周的初始种子，不删除、不迁移。每周写入保存到 `week:<周一>`，value 为 `{ scope: week, weekStart, levels }`。每次单格或区间修改只写目标周的一个聚合 record。
+| Config 字段 | 默认值 | 含义 |
+|---|---|---|
+| `domain` | `secretary_time` | 时间事实使用的存储领域名称 |
 
-`plan_blocks` 以 ID 独立保存每条 PlanBlock。日期列表、模板 apply 与 undo 共用目标日期的时区区间重叠语义，因此跨午夜块和已改到其他日期的块不会受起始日期桶影响。`plan_template_undos` 按 target date 持久化最近一次 before／after；undo 只在当前集合仍精确等于 after 时恢复 before，随后删除该 undo 记录。Storage 没有跨 record 事务，多记录替换使用明确补偿恢复；单次真实写失败且补偿成功时恢复完整 before／after，失败允许 ID 空洞。补偿自身再次失败会显式报错并可能留下可重开的部分事实，不保证绝对原子。当前集合和仍可执行的 undo 中的 Tag 引用受删除保护；后续编辑使 undo 失效后，其历史快照不再单独阻止 Tag 删除。
+### Agent 能力
 
-## 当前限制
+- `plan.*`：读取和维护具体日期的计划块。
+- `template.*`：维护星期模板，显式应用或撤销目标日期计划。
+- `actual.*`：补记、编辑、开始和停止实录。
+- `deep.*`：读取、设置和清除周模板中的单格或闭区间矩形。
 
-没有深度时间单日例外、统计、时间预算／对账或旧 Action／TimeBlock 数据迁移。`actualSource` 记录来源声明，本模块不自行核实用户陈述或外部导入。10／15／30 分钟粒度只是 UI 显示与操作对齐，不是本领域事实字段。
+日期、时区和各操作的必填字段由 `contract` 与工具 schema 定义。画布手势和 Remote 产品方法属于 `time-panel`，不在本包重复定义。
 
-## 验证
+## 理解实现
 
-`packages/secretary` 使用真实 Cordis 公共 tools 和临时 SQLite 覆盖 Plan/Template/Actual CRUD、日期／时区／跨日、apply/undo、应用后独立、计划与实录隔离、引用保护、完整重开恢复及真实写失败回滚；DeepTime 覆盖周一规范化、own／inherited／seed、52 周回溯上限、相邻周与更早周隔离、老 base 种子兼容、封闭枚举、单格／区间设置与清除、非法日期／坐标／区间、Actual 独立及完整重开。真实 Chromium 测试覆盖独立 Time Remote 产品的三模块读写、日期导航、编辑／删除、Undo、深度时间画笔、主题、窄栏与完整进程重开；计划模板领域能力由公共 tools 验收。
+<details>
+<summary>实现说明与源码定位</summary>
+
+所有块只以 `kind = time` 的 Tag 分类，不直接关联 GTD Action。计划和实录可以任意重叠；运行中实录允许缺少 `endAt`。`actualSource` 与可选 `focus` 描述实录依据和当时专注状态。
+
+DeepTime 使用 7×24 周模板；未写入的周继承最近的有效更早周，不从 Actual 派生。模板 apply／undo 通过明确补偿处理多记录写入，不宣称跨记录事务。
+
+本包拥有 `plan_blocks`、`actual_blocks`、`plan_template_blocks`、`plan_template_undos` 和 `deep_templates`，默认路由到 `$DSH_HOME/storages/secretary.db`。
+
+</details>
+
+## 延伸阅读
+
+- [当前数据模型](../../docs/data-model.md)
+- [Time 产品包](../time-panel/README.md)
+- [运行架构](../../docs/architecture.md)
+
+## 模型体验
+
+### Time 工具与结果
+
+#### 模型看到什么
+
+模型看到挂载时的 `secretary_time` 操作 schema，以及调用后返回的计划、实录、模板、深度周或错误结果。
+
+#### Token 影响
+
+工具 schema 产生固定开销；结果 token 随返回块数量、字段和错误内容变化。
+
+#### KV Cache 影响
+
+未变更的工具定义保留请求前缀；工具结果只追加到对话历史，不重写计划或实录事实。
+
+## 已知限制与后续工作
+
+- 不支持深度时间日期例外、统计、预算、时间对账或旧数据迁移。
+- 本包不拥有产品 UI；浏览器通过独立 Time 产品调用同一 `TimeService`。
+- 10／15／30 分钟粒度只是显示与操作对齐，不是领域事实字段。

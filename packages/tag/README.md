@@ -1,16 +1,69 @@
-# Tag
+---
+description: "Secretary 的统一 time／context 标签树与 Agent 工具；供需要使用标签、配置标签领域或排查引用一致性的用户与维护者阅读。"
+kind: "package-reference"
+---
 
-独立的 `TagService` 维护统一字段 `id / name / kind / parentId? / color?`，当前 `kind` 只有 `time` 与 `context`。同名不同 kind 是不同对象，公开 ID 为持久化自增数字。
+# dsh-secretary-tag
 
-## 插件入口
+## 概述
 
-| 入口 | 作用 | `inject` |
+本包让 Time 和 GTD 共用一棵可持续保存的标签树。Agent 可以列出、创建、重命名、移动和删除标签；数字 ID 用于精确关联，`time` 与 `context` 两种用途不会因同名而合并。
+
+## 目录
+
+- [使用本包](#使用本包)
+- [理解实现](#理解实现)
+- [模型体验](#模型体验)
+- [已知限制与后续工作](#已知限制与后续工作)
+
+-----
+
+## 使用本包
+
+### 组合与工具
+
+本包由 Secretary bundle 挂载。`dsh-secretary-tag` 提供 `ctx.tags` 和 `ctx.tagReferences`，`/tools` 注册公共工具 `secretary_tag`，支持 `list / get / create / update / move / delete`。
+
+| Config 字段 | 默认值 | 含义 |
 |---|---|---|
-| `dsh-secretary-tag` | 注册 `ctx.tags`、`ctx.tagReferences`，默认打开 `secretary_tag` | `secretaryStorageDomain` |
-| `dsh-secretary-tag/tools` | 注册 `secretary_tag` | `tools`、`tags` |
+| `domain` | `secretary_tag` | 标签树使用的存储领域名称 |
 
-公共操作：`list / get / create / update / move / delete`。子标签继承父级 kind；移动拒绝跨 kind 和循环；有子级或仍被领域记录引用时拒绝删除。当前没有独立 Tag 产品 UI 或浏览器写入 Remote；Time 只读取时间标签树，浏览器测试的数据准备使用临时 Host fixture 直接调用 TagService。
+子标签继承父级 `kind`。移动不能跨 `kind` 或形成循环；有子级或仍被领域记录引用时不能删除。
 
-GTD 与 Time 消费方通过 `tagReferences` 注册只读引用 inspector，并在建立或修改引用时与 Tag 写入共用一致性队列。该机制不是跨 domain 事务：next-id 与记录写入允许出现 ID 空洞，但不复用 ID。
+## 理解实现
 
-默认 domain 经 `secretaryStorageDomain` 路由到同一 `$DSH_HOME/storages/secretary.db`。GTD 在自己的 Service 中派生自身与祖先的 effective Tags；Tag 包只拥有标签树和引用一致性，不复制继承结果。
+<details>
+<summary>实现说明与源码定位</summary>
+
+Tag 保存 `id / name / kind / parentId? / color?`。GTD 与 Time 通过 `tagReferences` 注册只读引用 inspector，并在写入引用时与 Tag 删除共用一致性队列；这不是跨领域事务。
+
+标签事实默认路由到 `$DSH_HOME/storages/secretary.db`。GTD 的 effective Tags 由 GTD 自己派生，本包不复制继承结果。
+
+</details>
+
+## 延伸阅读
+
+- [领域术语](../../docs/glossary.md)
+- [当前数据模型](../../docs/data-model.md)
+- [Time 领域](../time-block/README.md)
+
+## 模型体验
+
+### Tag 工具与结果
+
+#### 模型看到什么
+
+挂载工具时，模型看到 `secretary_tag` 的操作描述、输入 schema，以及调用后返回的标签或错误结果。
+
+#### Token 影响
+
+工具 schema 在挂载期间产生固定开销；结果 token 随标签字段、树大小和错误内容变化。
+
+#### KV Cache 影响
+
+未变更的工具定义保留请求前缀；修改工具定义可能使前缀失效，工具结果只追加到对话历史。
+
+## 已知限制与后续工作
+
+- 当前只有 `time` 和 `context` 两种 `kind`。
+- 没有独立 Tag 产品 UI 或浏览器写入 Remote；Time 产品只读取时间标签树。

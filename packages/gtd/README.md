@@ -1,40 +1,80 @@
-# GTD
+---
+description: "Secretary 的 Inbox、Project 与 Action 领域服务及 Agent 工具；供需要捕获、澄清、安排、跟进或排查事项事实的用户与维护者阅读。"
+kind: "package-reference"
+---
 
-GTD 包保存 Inbox、Project 与 Action 的唯一事项事实，提供捕获／澄清、CRUD、完成／放弃，以及 Next Actions、Forecast、Availability 和 effective Tags 派生查询。领域术语见 [docs/glossary.md](../../docs/glossary.md)。
+# dsh-secretary-gtd
 
-## 当前契约
+## 概述
 
-- Inbox、Project、Action 使用同一个 GTD domain 内持久化自增的数字 ID；没有 UUID、旧 Action／TimeBlock 兼容层或迁移。
-- `inbox.capture` 只保存原始输入。`inbox.clarify` 可创建 Project + 首个 Action，也可省略 `project` 只创建独立 root Action。两分钟立即完成、参考资料与日常生活由捕获／澄清 Skills 引导到其他去向，领域 Service 不按标题拦截。
-- Project 的直接 `tagIds` 必须恰好包含一个 time Tag，可另含 context Tags；`single_action_list` 不强制也不伪造整体 Outcome。独立 root Action 至少有自己的 time Tag。
-- Action 只持久化自己的直接 `tagIds`。读取时的 `effectiveTags` 是自己、所有 parent Action 祖先和 Project Tags 的数字 ID 累加去重，不写回后代。
-- Action 的 `deferAt / plannedAt / dueAt / completedAt / droppedAt` 都是带显式 offset 的 instant；`plannedAt` 是单个柔性计划时刻，不是区间。`estimatedMinutes` 是正整数。不会增加 `defer ≤ planned ≤ due` 的错误排序约束。
-- Availability 由自身／祖先／Project 状态、未来 Defer 和 sequential 前序 active 兄弟派生。`action.next` 只返回当前 `available` 的叶子；parallel 与 SAL 可同时有多个 Next Actions。`action.forecast` 按明确 `date + timeZone` 返回 Defer／Planned／Due 落在该日期的 Action，不保存 Projection。
-- Completed／Dropped 只改变 GTD 状态与对应时刻，不创建或修改 ActualBlock；Actual start／stop 也不完成 Action。
+本包让你通过 Secretary 捕获和澄清事项，维护 Project 与 Action，并查询 Next Actions、Forecast、Availability 和 effective Tags。事项状态与日期在重启后保留；完成或放弃行动不会伪造时间实录。
 
-## 原子操作
+## 目录
 
-公共工具 `secretary_gtd` 使用扁平 `op` schema，所有 ID 参数均为正整数，输出可无损 JSON 往返：
+- [使用本包](#使用本包)
+- [理解实现](#理解实现)
+- [模型体验](#模型体验)
+- [已知限制与后续工作](#已知限制与后续工作)
 
-- `inbox.capture / list / clarify / delete`
-- `project.list / get / create / update / delete`
-- `action.list / create / get / update / delete / complete / drop`
-- `action.next / forecast / effectiveTags`
+-----
 
-`action.update` 的修改字段放在参数顶层。Project 仍有 Action、Action 仍有子级时拒绝直接删除，避免孤儿结构。
+## 使用本包
 
-## 插件入口与数据所有权
+### 组合与配置
 
-| 入口 | 作用 | `inject` |
+本包由 Secretary bundle 挂载，不需要独立安装。
+
+| Config 字段 | 默认值 | 含义 |
 |---|---|---|
-| `dsh-secretary-gtd` | 注册 `ctx.gtd`、GTD 持久化与 Tag 引用 inspector | `secretaryStorageDomain`、`tags`、`tagReferences`、`goals` |
-| `dsh-secretary-gtd/tools` | 注册 `secretary_gtd` | `tools`、`gtd` |
-| `dsh-secretary-gtd/agent` | 注册两个 user-only GTD Skills | `skills` |
+| `domain` | `secretary_gtd` | Inbox、Project 与 Action 使用的存储领域名称 |
 
-默认 domain 为 `secretary_gtd`，拥有 `projects`、`actions`、`inbox` 与 next-id global，经 `secretaryStorageDomain` 路由到 `$DSH_HOME/storages/secretary.db`。建立／修改 GTD Tag 引用与 Tag delete 共用 `withReferenceConsistency` 串行边界；这不是跨 domain 事务，写失败允许 ID 空洞，但不允许重号或悬空 Tag 引用。
+### 入口与能力
 
-准备提醒与产物仍由 Action 保存引用；Schedule、文件与 Time 事实不属于 GTD。完整 Folder、Action Group 类型／移动／Resolved 规则、Review 和 Repeat 不在当前包实现范围。
+| 入口 | 作用 |
+|---|---|
+| `dsh-secretary-gtd` | 提供 `ctx.gtd`、持久化和 Tag 引用检查 |
+| `dsh-secretary-gtd/tools` | 注册公共工具 `secretary_gtd` |
+| `dsh-secretary-gtd/agent` | 注册 user-only 的捕获与澄清 Skills |
 
-## 验证
+Agent 工具覆盖 Inbox 捕获／澄清／删除，Project 与 Action 的 CRUD，Action 完成／放弃，以及 Next、Forecast、effective Tags 查询。完整输入字段由 `contract` 和工具 schema 定义。
 
-`packages/secretary/tests/tracer.mjs` 通过公开 tools 与真实临时 SQLite 覆盖上述契约、故障回滚、Tag 并发和完整重开；`tests/browser.mjs` 验证独立 GTD 左栏空白 main、Conversation 返回与产品装卸，并经 test-only fixture 直接调用 GtdService 证明产品卸载后领域事实仍可写。GTD 当前没有生产浏览器读写 API。
+## 理解实现
+
+<details>
+<summary>实现说明与源码定位</summary>
+
+Inbox、Project、Action 共用持久化数字 ID。Action 只保存自己的直接 Tags；读取时累加自身、父 Action 和 Project 的 Tags，不写回后代。
+
+`plannedAt` 是单个柔性时刻，`dueAt` 是外部约束，`completedAt` 不表示实际工作区间。Availability 和 Forecast 都从当前事实派生，不另存视图。
+
+事实默认路由到 `$DSH_HOME/storages/secretary.db`。结构性删除会拒绝留下孤儿 Action；写失败可以留下 ID 空洞，但不能产生重号或悬空 Tag 引用。
+
+</details>
+
+## 延伸阅读
+
+- [当前数据模型](../../docs/data-model.md)
+- [领域术语](../../docs/glossary.md)
+- [GTD 产品页面](../gtd-panel/README.md)
+
+## 模型体验
+
+### GTD 工具、技能与结果
+
+#### 模型看到什么
+
+模型看到挂载时的 `secretary_gtd` schema、显式加载的捕获／澄清 Skills，以及调用后返回的事项、派生视图或错误。
+
+#### Token 影响
+
+工具 schema 产生固定开销；技能文本只在加载时计入；结果 token 随返回事项和派生字段变化。
+
+#### KV Cache 影响
+
+未变更的定义保留可复用前缀；技能加载和工具结果按对话历史追加，不重写已有事项消息。
+
+## 已知限制与后续工作
+
+- 当前没有生产浏览器读写 API；独立 GTD 页面仍为空白。
+- 不包含完整 Folder、Action Group、Review、Repeat 或 OmniFocus 工作区。
+- Schedule、准备文件和 Time 事实由各自模块拥有，不属于本包。

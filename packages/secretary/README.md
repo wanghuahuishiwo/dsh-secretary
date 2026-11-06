@@ -1,50 +1,99 @@
+---
+description: "可安装的 Secretary bundle：组合私人秘书 Agent、Time 右栏、GTD 左栏与共享 SQLite；供需要安装、配置、定制或排查整个产品的用户与维护者阅读。"
+kind: "package-bundle"
+---
+
 # dsh-secretary
 
-可安装到 DeepSeek Harness 的私人 Secretary Agent bundle。组合 GTD 基础 Service 与 tools、独立 Tag、具体日期 PlanBlock／ActualBlock、PlanTemplateBlock、DeepTime 基础周模板、Time 右栏 Remote 产品和 GTD 左栏空白 main；各领域共用同一 SQLite，GTD Completed、计划、模板、实录与深度时间互不伪造或回写事实。Goal 只建立上游空 service，不实现目标模型、UI、统计、预算与对账。
+## 概述
 
-## 构建与验证
+安装本 bundle 后，profile 会获得同一个 Secretary Agent、完整的“小秘书-时间块”右栏和“小秘书-事项”左栏空白页。GTD、Tag 与 Time 事实共用 Secretary SQLite；GTD 完整工作区和 Goal 业务功能不在当前交付范围内。
+
+## 目录
+
+- [使用本包](#使用本包)
+- [理解实现](#理解实现)
+- [模型体验](#模型体验)
+- [已知限制与后续工作](#已知限制与后续工作)
+
+-----
+
+## 使用本包
+
+### 安装到 profile
+
+先从仓库根构建，再把 bundle 安装到目标 profile：
 
 ```sh
-pnpm install
 pnpm build
-pnpm test
-```
-
-`pnpm test` 包含：
-
-- 真实 Cordis 公共 tools + 临时 SQLite：GTD 数字 ID、独立／项目澄清、CRUD、日期语义、Next／Forecast／Availability、跨层 effective Tags、Tag 树与 GTD／Time 引用保护及并发、Plan／Template／Actual／DeepTime、写失败回滚和完整重开。
-- 真实 `dsh web` + Chromium：独立 Time 右栏的三模块读写、月历与日期导航、标签架、编辑／删除、完整 Undo、DeepTime、宿主明暗主题及窄栏布局；独立“小秘书-事项”左栏入口、空白 main、Conversation 返回、产品独立装卸与冷启动。测试经 test-only fixture 直接调用 Tag／GTD domain Services 准备或核对事实，不新增生产 Tag／GTD Remote；旧聚合 state／command routes 必须返回 404。
-
-浏览器测试需要 DSH `0.2.1-rc.5` 在 PATH 和 Playwright Chromium，不使用版本豁免。可用 `pnpm --filter dsh-secretary test:browser` 单独运行。测试使用临时 `DSH_HOME`，不会连接正在使用的 GUI、真实 desktop profile 或真实 Secretary 数据。
-
-最终 tarball 冷启动另行运行 `pnpm --filter dsh-secretary test:installed`：脚本打包每个 workspace 包，经官方 `dsh plugin add` 安装到带 file overrides 的全新临时 profile，再以真实 `dsh web` + Chromium 验证服务激活、两个产品、第一次 Remote 读取及 paint 重开持久化；不使用源码 overlay，也不读取真实 desktop profile。
-
-## 装配
-
-- 根层：`storage-sqlite`、`secretary-storage`、`secretary-goal`、`secretary-gtd`、`secretary-tag`、`secretary-time-block`、完整 Remote 时间产品 `secretary-time-panel` 与独立事项 `secretary-gtd-panel`。行序仅用于阅读，启动与重载由 Cordis `inject` 驱动。
-- Secretary preset：公共工具 `secretary_gtd`、`secretary_tag`、`secretary_time`，以及既有 GTD/Secretary skills。
-- Goal 只有上游空 Provider；patch 显式禁用宿主 `goal` Service entry，避免与项目 `goals` 重复注册。Goal 业务模型与统计不实现。
-
-`secretary_gtd`、`secretary_tag`、`secretary_time` 经 `secretaryStorageDomain` 默认路由到：
-
-```text
-$DSH_HOME/storages/secretary.db
-```
-
-Time 浏览器经 `ctx.remote.secretaryTime` 调用 `TimeProductService`，后者与 Agent 公共 tools 一样调用 `ctx.tags` / `ctx.time`；GTD tools 调用 `ctx.gtd`。GTD 空页没有业务 API，没有浏览器私有事实源或直接 SQLite 写入。
-
-## 开发体验
-
-```sh
-pnpm dev
-```
-
-desktop profile 通过 `link:` 使用 `packages/secretary` 的构建产物。改动 `cordis.patch.yml` 后用 `/dsh-reload`，再新开会话验证；改动任何包 `src/` 后先构建。bundle patch 按名字引用的包必须是运行 profile 的直接依赖，包括 `dsh-secretary-storage/goal/gtd/tag/time-block/time-panel/gtd-panel` 与 `@deepseek-ai/dsh-storage-sqlite`。
-
-正式安装可先构建，再使用 `plugin_manager` 安装本包，或：
-
-```sh
 dsh plugin --profile <name> add /绝对路径/dsh-secretary/packages/secretary
 ```
 
-运行 profile 必须组合 DSH base/web 与本 bundle。当前不包含深度时间日期例外、完整 Folder／Action Group／Review／Repeat、Goal 模型或统计。
+也可以使用 `plugin_manager` 安装本包。不要安装到正在使用的真实 profile 来试验；验收脚本始终使用临时 `DSH_HOME`。
+
+### 安装后获得什么
+
+- Secretary Agent 及其 GTD／Secretary 技能与 `secretary_gtd`、`secretary_tag`、`secretary_time` 工具。
+- 独立 Time 右栏和 GTD 左栏入口。
+- 上游空 Goal Provider，以及默认写入 `$DSH_HOME/storages/secretary.db` 的共享 SQLite。
+
+### 配置
+
+bundle 本身没有顶层 Config。Secretary agent 子插件支持：
+
+| 字段 | 默认值 | 含义 |
+|---|---|---|
+| `defaultTimeZone` | `Asia/Shanghai` | 秘书使用的默认 IANA 时区 |
+| `timePlanPath` | 未设置 | 只读人生规划文件的绝对路径 |
+
+其他部署差异通过 profile patch 修改 `cordis.patch.yml`，不要在源码里新增隐藏默认值。
+
+### 验证
+
+```sh
+pnpm test
+pnpm --filter dsh-secretary test:browser
+pnpm --filter dsh-secretary test:installed
+```
+
+`test:installed` 打包所有 workspace 包，在临时 profile 中安装最终 tarballs，并用真实 `dsh web`＋Chromium 验证冷启动、Remote 读取和持久化重开。修改 `cordis.patch.yml` 后，开发环境使用 `/dsh-reload` 并新开会话验证。
+
+## 理解实现
+
+<details>
+<summary>装配说明与源码定位</summary>
+
+`cordis.patch.yml` 组合共享存储、上游 Goal、GTD／Tag／Time 领域 Services、两个独立产品包和 Secretary preset。启动与重载由 Cordis `inject` 驱动，行序不承担启动语义。
+
+patch 显式禁用宿主 `goal` Service entry，避免与项目空 Goal Provider 重复注册。所有按名字引用的运行包必须是安装 profile 的实际依赖，包括 `@deepseek-ai/dsh-storage-sqlite`。
+
+</details>
+
+## 延伸阅读
+
+- [运行架构](../../docs/architecture.md)
+- [当前产品范围](../../docs/prd.md)
+- [当前数据模型](../../docs/data-model.md)
+- [工单与验收操作](../../docs/agents/issue-tracker.md)
+
+## 模型体验
+
+### Secretary 提示词、工具与技能
+
+#### 模型看到什么
+
+模型看到 Secretary persona、挂载的工具 schema、显式加载的技能，以及工具返回的领域事实或错误。`defaultTimeZone` 与 `timePlanPath` 作为 Secretary 技能的当前配置后缀出现。
+
+#### Token 影响
+
+persona 和工具 schema 产生固定开销；技能文本在加载时计入；工具结果随返回事实变化。
+
+#### KV Cache 影响
+
+未变更的 persona、配置和工具定义保留可复用前缀；修改它们可能使前缀失效。技能与工具结果按对话历史追加。
+
+## 已知限制与后续工作
+
+- GTD 产品页当前为空白，不包含完整 OmniFocus 工作区。
+- Goal 只有空 Provider，没有目标实体、工具、UI 或统计。
+- 不包含时间统计、预算、对账、深度时间日期例外或旧数据自动迁移。

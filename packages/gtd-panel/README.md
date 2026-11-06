@@ -1,16 +1,70 @@
-# Secretary GTD Panel
+---
+description: "小秘书-事项左栏入口与空白主区；供需要检查独立产品导航、页面形式或装卸生命周期的用户与维护者阅读。"
+kind: "package-reference"
+---
 
-独立的“小秘书-事项”产品交付插件。Browser 入口以同一稳定 id/key `dsh-secretary-gtd` 注册 `sidebar.panellist` 与 `main`：展开时显示清单图标和“小秘书-事项”，收起时只显示图标；点击后由 DSH AppFrame 打开空白主区，现有 Conversation／workspace 导航负责返回。
+# dsh-secretary-gtd-panel
 
-## Config
+## 概述
 
-无。本包不声明或读取插件 Config。
+本包在 DSH 左侧全局 panel 区提供“小秘书-事项”入口，点击后保留 DSH AppFrame 和左栏，在中央打开空白 `main`。它只提供独立页面形式，不包含事项表单或 OmniFocus 控件。
 
-## 入口与限制
+## 目录
 
-- `.`：空 Host apply，只让产品可被 Loader 独立装卸；没有 Host routes、Remote namespace 或 GTD API。
-- `./client`：Web client 插件，仅依赖 `slots`，贡献左栏入口与空白 `main`。
-- 不包含旧 GTD 工作区、OmniFocus 控件、Mac chrome、占位卡片或表单；不 import Time 或旧聚合面板。
-- 既有 `dsh-secretary-gtd` Service、SQLite facts 与 Agent tools 由 bundle 独立组合，本产品卸载不带走它们。
+- [使用本包](#使用本包)
+- [理解实现](#理解实现)
+- [模型体验](#模型体验)
+- [已知限制与后续工作](#已知限制与后续工作)
 
-真实 `dsh web` + Chromium 验证位于 `packages/secretary/tests/browser.mjs`。
+-----
+
+## 使用本包
+
+### 组合与导航
+
+本包由 Secretary bundle 组合，不需要单独安装。左栏展开时显示图标和“小秘书-事项”，收起时只显示图标；现有 Conversation／workspace 导航负责返回会话。
+
+| 出口 | 作用 |
+|---|---|
+| `.` | 空 Host `apply`，使产品能被 Loader 独立装卸 |
+| `./client` | 注册 `sidebar.panellist` 入口和空白 `main` |
+
+本包没有 Config，也没有 Host routes、Remote namespace 或 GTD 业务 API。
+
+## 理解实现
+
+<details>
+<summary>实现说明与源码定位</summary>
+
+入口和页面共用稳定 id/key `dsh-secretary-gtd`。Browser 只依赖 `slots` 注册导航与页面，不 import Time 或旧聚合面板。
+
+产品卸载只移除入口与空白页；`dsh-secretary-gtd` Service、SQLite 事实和 Agent tools 由 bundle 独立组合，不随页面卸载。
+
+</details>
+
+## 延伸阅读
+
+- [GTD 领域包](../gtd/README.md)
+- [当前产品范围](../../docs/prd.md)
+- [OmniFocus 原型说明](../../design/omnifocus-mac-brief.md)
+
+## 模型体验
+
+### 模型上下文
+
+#### 模型看到什么
+
+无。本包不注册工具、提示词、会话事件或事项内容。
+
+#### Token 影响
+
+零直接 token 影响。
+
+#### KV Cache 影响
+
+页面打开、返回或装卸不改变模型请求。
+
+## 已知限制与后续工作
+
+- 中央页面当前为空白，不能在其中捕获、阅读或编辑事项。
+- 不包含完整 OmniFocus 工作区、Quick Entry、Folder、Review、Repeat 或 Goal UI。

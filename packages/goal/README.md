@@ -1,15 +1,69 @@
+---
+description: "Secretary 上游空 Goal Provider；供需要理解 Time／GTD 共享依赖或排查 goals 服务生命周期的维护者阅读。"
+kind: "package-reference"
+---
+
 # dsh-secretary-goal
 
-上游共享 Goal 模块。当前只提供空的 `goals` Cordis service，让 Time、GTD 与未来产品可以先表达并验证真实的依赖关系。
+## 概述
 
-## 入口
+本包提供一个空 `goals` 服务，让 Time 和 GTD 可以表达真实的上游依赖与生命周期等待。它不保存目标，也不提供目标管理功能；用户当前不能通过本包创建或查看 Goal。
 
-- `dsh-secretary-goal`：挂载 `EmptyGoalService`。
-- `dsh-secretary-goal/contract`：导出 `GoalService`，service key 为 `goals`。
+## 目录
 
-## 当前边界
+- [使用本包](#使用本包)
+- [理解实现](#理解实现)
+- [模型体验](#模型体验)
+- [已知限制与后续工作](#已知限制与后续工作)
 
-- 没有 Goal 实体、字段、目标树或关联规则。
-- 不打开 SQLite domain，不提供 tools，不注册 UI。
-- 空模块是依赖与生命周期的曳光弹，不代表 Goal 产品已设计或已交付。
-- 第一条真实 Goal 能力出现时，再扩展 contract 与 implementation；调用方只依赖 contract，不依赖空 Provider 的具体类。
+-----
+
+## 使用本包
+
+### 组合方式
+
+本包由 Secretary bundle 挂载，不需要独立安装。
+
+| 入口 | 作用 | 依赖 |
+|---|---|---|
+| `dsh-secretary-goal` | 注册 `EmptyGoalService` | 无 |
+| `dsh-secretary-goal/contract` | 导出 `GoalService` 类型与 `goals` service key | 仅消费方类型依赖 |
+
+本包没有 Config。消费方依赖 `GoalService` 契约，不依赖空实现的具体类。
+
+## 理解实现
+
+<details>
+<summary>实现说明与源码定位</summary>
+
+`src/index.ts` 只注册空 Provider，`src/contract.ts` 定义消费方使用的服务类型。它不打开 SQLite，也不注册工具、UI 或模型输入。
+
+Secretary bundle 显式禁用宿主自带的 `goal` Service entry，因此安装后由本包提供唯一的 `goals` 服务。
+
+</details>
+
+## 延伸阅读
+
+- [共享上游架构](../../docs/architecture.md)
+- [Secretary bundle](../secretary/README.md)
+
+## 模型体验
+
+### 模型上下文
+
+#### 模型看到什么
+
+无。空 Provider 不提供工具、提示词、会话事件或目标事实。
+
+#### Token 影响
+
+零直接 token 影响。
+
+#### KV Cache 影响
+
+本包不改变模型请求，也不影响 KV Cache。
+
+## 已知限制与后续工作
+
+- 没有 Goal 实体、字段、目标树、关联规则、工具、UI 或持久化。
+- 空服务只证明依赖与生命周期，不代表 Goal 产品已经设计或交付。
