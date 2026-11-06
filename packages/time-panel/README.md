@@ -10,4 +10,4 @@
 
 ## 所有权与限制
 
-本包不拥有 GTD API，也不依赖 GTD Service；最终 bundle 不再包含旧聚合 `dsh-secretary-panel`。
+本包不拥有 GTD API，也不依赖 GTD Service 或聚合面板。

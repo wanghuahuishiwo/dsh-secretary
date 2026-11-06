@@ -18,4 +18,4 @@
 
 ## 验证
 
-公开工具与真实临时 SQLite 的重开恢复覆盖本包链路；证据见 [verification.md](../../docs/verification.md)。
+公开工具与真实临时 SQLite 的重开恢复由 `packages/secretary/tests/tracer.mjs` 覆盖。

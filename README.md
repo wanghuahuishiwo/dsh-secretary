@@ -9,7 +9,7 @@ DeepSeek Harness 的私人 Secretary Agent：以 GTD 管理承诺，以独立 Ta
 - **Tag／Goal**：上游共享模块，不是任一产品的子页面。Goal 当前只有空 Provider。
 - **Secretary Agent**：通过对话和原子 tools 操作同一批领域事实，没有独立产品 UI。
 
-Time 与 GTD 使用独立产品入口，不再提供旧聚合面板或 state／command routes；Time 浏览器通过 DSH 官方 Typert Remote 调用自己的产品 application service。真实证据与未覆盖项见 [verification.md](docs/verification.md)。
+Time 与 GTD 使用独立产品入口，不提供旧聚合面板或 state／command routes；Time 浏览器通过 DSH 官方 Typert Remote 调用自己的产品 application service。规格、工单与验收证据由 [GitHub Issues](docs/agents/issue-tracker.md) 保存。
 
 ## 安装与验证
 
@@ -26,11 +26,10 @@ dsh plugin --profile <name> add <本仓>/packages/secretary
 
 | 你要做什么 | 去哪 |
 |---|---|
-| 改代码（命令、包图、改动约束） | [AGENTS.md](AGENTS.md) |
+| 改代码（仓库结构、改动约束） | [AGENTS.md](AGENTS.md) |
 | 理解当前产品范围与交互边界 | [prd.md](docs/prd.md) |
 | 理解包、依赖、产品 API 与 Remote 终点 | [architecture.md](docs/architecture.md) |
 | 理解领域事实与数据所有权 | [data-model.md](docs/data-model.md) |
-| 查看当前 active 实施规格 | [product-delivery-remote-refactor.md](docs/specs/product-delivery-remote-refactor.md) |
 | 改某个包（exports、Config、限制） | 该包自己的 README |
-| 查看真实证据与未覆盖项 | [verification.md](docs/verification.md) |
-| 查看文档规则、ADR 与调研 | [docs/README.md](docs/README.md) |
+| 查看工单、规格与验收证据 | [GitHub Issues](docs/agents/issue-tracker.md) |
+| 查看文档索引、ADR 与调研 | [docs/README.md](docs/README.md) |

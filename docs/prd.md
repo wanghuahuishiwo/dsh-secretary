@@ -1,6 +1,6 @@
 # 产品需求
 
-本文是用户可见产品范围与交互的唯一权威。领域事实见 [data-model.md](data-model.md)，技术交付与 Remote 结构见 [architecture.md](architecture.md)，实施任务只使用 [active 规格](specs/product-delivery-remote-refactor.md)。
+本文是当前用户可见产品范围与交互的唯一权威。领域事实见 [data-model.md](data-model.md)，技术结构见 [architecture.md](architecture.md)；实施规格与验收由 [GitHub Issues](agents/issue-tracker.md) 承载。
 
 ## 产品原则
 
@@ -13,33 +13,29 @@
 
 | 产品或模块 | 入口与内容 | 当前边界 |
 |---|---|---|
-| **小秘书-时间块** | DSH 右侧栏；包含**实录、计划、深度时间**三个模块。计划模板属于计划，不是第四个模块。 | 保留当前已经实现的产品功能、页面交互和事实语义，本次只重构交付与底层调用。 |
-| **小秘书-事项** | DSH 左侧栏全局 panel 区，与 Plugins／Schedules 同级；点击后保留 DSH 左栏，中央 `main` 打开独立页面。 | 本期只提供**空白页面**以确认入口和形式。现有 GTD Service 与 Agent tools 保留，完整 OmniFocus UI 暂缓。 |
-| **Tag** | 上游共享 TagService 与 Agent tools；Time 使用 `time` Tags，GTD 使用 `time` 与 `context` Tags。 | 不新增独立产品入口，不在本次另建管理 UI 或空 API。 |
-| **Goal** | 上游共享空 GoalService Provider，用于证明依赖和生命周期。 | 不实现 Goal 实体、存储、tools、UI 或统计。 |
+| **小秘书-时间块** | DSH 右侧栏；包含**实录、计划、深度时间**三个模块。计划模板属于计划，不是第四个模块。 | 提供当前完整画布、日期导航、编辑、删除、Undo 与主题适配。 |
+| **小秘书-事项** | DSH 左侧栏全局 panel 区；点击后保留 DSH 左栏，中央 `main` 打开独立页面。 | 当前只有空白页面。GTD Service 与 Agent tools 保留，完整 OmniFocus UI 未实施。 |
+| **Tag** | 上游共享 TagService 与 Agent tools；Time 使用 `time` Tags，GTD 使用 `time` 与 `context` Tags。 | 没有独立产品入口或浏览器写入 API。 |
+| **Goal** | 上游共享空 GoalService Provider。 | 不实现 Goal 实体、存储、tools、UI 或统计。 |
 | **学习、成长、财务、记账** | 候选独立产品。 | 均未规划，不提前设计字段、界面、包或 API。 |
 
-## TimeBlock 保持不变的规则
+## TimeBlock 当前规则
 
-- 实录、计划、深度时间的现有功能和交互是本次重构的回归基线；历史原型不得用于顺带增删当前能力。
-- 计划与实录是不同事实，互不回写；计划模板显式应用到具体日期后也不持续同步。
+- 计划与实录是不同事实，互不回写；计划模板显式应用到具体日期后不持续同步。
 - 深度时间是独立的 7×24 精力周模板，不是实录统计或派生视图。
 - 时间块只以时间标签作为分类主体；GTD 对象只能在备注中提及，不建立直接结构化关联。
-- Agent 与手动 UI 继续复用同一 TimeService 和 TagService；浏览器不直接访问 SQLite。
-- 本次只迁移现有 UI 组件、页面编排和验证，不重新设计并行、画笔、粒度、日期导航或编辑手势。
+- Agent 与手动 UI 复用同一 TimeService 和 TagService；浏览器不直接访问 SQLite。
 
 ## 事项与 OmniFocus 设计边界
 
 - 后续事项工作区的设计细节与原型引用以 [omnifocus-mac-brief.md](../design/omnifocus-mac-brief.md) 为唯一设计权威；本文只保持产品范围与实施边界。
-- 空白 `main` 页面不代表 Perspectives、Quick Entry、Folder、Action Group、Flagged、Review、Repeat 或其他 OmniFocus 功能已获实施授权。
-- 旧 `GtdWorkspace` 已退出，不作为事项终稿或兼容产品壳。
+- 空白 `main` 不代表 Perspectives、Quick Entry、Folder、Action Group、Flagged、Review、Repeat 或其他 OmniFocus 功能已获实施授权。
+- 旧 `GtdWorkspace` 不存在于当前产品，也不作为事项终稿或兼容壳。
 
-## 交付结构
+## 产品与 Agent 边界
 
-- Time 与 GTD 各有独立产品交付插件及生命周期。
-- Time 产品拥有自己的 Host application service、浏览器调用面与 product-local Remote assembly；Secretary bundle 只负责组合、Preset 与 Skills，不拥有跨产品业务代理。
-- 常规业务 API 使用 DSH 官方 Typert Remote。Time 的 `TimeProductService` 拥有三模块 projection、`paint`、`replaceDay` 与 DeepTime 批量编排，再调用领域 Services。
-- GTD 空页没有 Host application service、Remote namespace 或空 API；第一个真实页面能力出现时再按同一模式添加。
+- Time 与 GTD 各有独立产品交付插件及生命周期；Secretary bundle 只负责组合、Preset 与 Skills。
+- Agent 通过领域 Services 操作同一批事实。产品 API 的具体归属、Remote 和装配见 [architecture.md](architecture.md)。
 - 决策理由见 [ADR 0007](adr/0007-independent-product-entry-points.md)、[ADR 0008](adr/0008-product-owned-host-api-adapters.md) 与 [ADR 0009](adr/0009-product-api-typert-remote.md)。
 
 ## 当前非目标

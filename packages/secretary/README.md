@@ -1,6 +1,6 @@
 # dsh-secretary
 
-可安装到 DeepSeek Harness 的私人 Secretary Agent bundle。当前验收覆盖独立 Time／GTD 产品、**Time + Tag 与空 Goal Provider**；#6 GTD Review／Repeat／完整 OmniFocus UI 与全产品 #8 暂停。包内保留 GTD 基础 Service 与 tools、独立 Tag、具体日期 PlanBlock／ActualBlock、PlanTemplateBlock、DeepTime 基础周模板、Time 右栏 Remote 产品和 GTD 左栏空白 main；各领域共用同一 SQLite，GTD Completed、计划、模板、实录与深度时间互不伪造或回写事实。Goal 只建立上游空 service，不实现目标模型、UI、统计、预算与对账。
+可安装到 DeepSeek Harness 的私人 Secretary Agent bundle。组合 GTD 基础 Service 与 tools、独立 Tag、具体日期 PlanBlock／ActualBlock、PlanTemplateBlock、DeepTime 基础周模板、Time 右栏 Remote 产品和 GTD 左栏空白 main；各领域共用同一 SQLite，GTD Completed、计划、模板、实录与深度时间互不伪造或回写事实。Goal 只建立上游空 service，不实现目标模型、UI、统计、预算与对账。
 
 ## 构建与验证
 
@@ -21,9 +21,9 @@ pnpm test
 
 ## 装配
 
-- 根层：`storage-sqlite`、`secretary-storage`、`secretary-goal`、`secretary-gtd`、`secretary-tag`、`secretary-time-block`、完整 Remote 时间产品 `secretary-time-panel` 与独立事项 `secretary-gtd-panel`。行序仅用于阅读，启动与重载由 Cordis `inject` 驱动；旧聚合 `secretary-panel` 已删除。
+- 根层：`storage-sqlite`、`secretary-storage`、`secretary-goal`、`secretary-gtd`、`secretary-tag`、`secretary-time-block`、完整 Remote 时间产品 `secretary-time-panel` 与独立事项 `secretary-gtd-panel`。行序仅用于阅读，启动与重载由 Cordis `inject` 驱动。
 - Secretary preset：公共工具 `secretary_gtd`、`secretary_tag`、`secretary_time`，以及既有 GTD/Secretary skills。
-- Goal 只有上游空 Provider；patch 显式禁用宿主 `goal` Service entry，避免与项目 `goals` 重复注册。Goal 业务模型与统计不实现。旧 `secretary_time_block`、Action 关联 planned/actual 模型及独立 Statistics 包均已移除，不保留兼容层。
+- Goal 只有上游空 Provider；patch 显式禁用宿主 `goal` Service entry，避免与项目 `goals` 重复注册。Goal 业务模型与统计不实现。
 
 `secretary_gtd`、`secretary_tag`、`secretary_time` 经 `secretaryStorageDomain` 默认路由到：
 
@@ -47,4 +47,4 @@ desktop profile 通过 `link:` 使用 `packages/secretary` 的构建产物。改
 dsh plugin --profile <name> add /绝对路径/dsh-secretary/packages/secretary
 ```
 
-运行 profile 必须组合 DSH base/web 与本 bundle。当前切片不包含深度时间日期例外、完整 Folder／Action Group／Review／Repeat、Goal 模型或统计。
+运行 profile 必须组合 DSH base/web 与本 bundle。当前不包含深度时间日期例外、完整 Folder／Action Group／Review／Repeat、Goal 模型或统计。

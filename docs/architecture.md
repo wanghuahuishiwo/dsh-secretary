@@ -2,9 +2,9 @@
 
 ## 形态
 
-仓库是 pnpm workspace，发布一个 `dsh-secretary` bundle。GTD、Tag、Time Services、空 Goal Provider 在 bundle 根层挂载；公共 tools、GTD／Secretary skills 在 Secretary preset 中组合。Tag、Goal 是上游共享模块，Time／GTD 通过 Cordis `inject` 消费它们；运行时等待与重载由 service 可用性驱动，patch 行序没有启动语义。浏览器不获得 Host Cordis Context，也不直接写 SQLite；它只通过所属产品的 Host API adapter 调用同一批领域 Services，没有浏览器私有事实源。包图和开发命令见根 [AGENTS.md](../AGENTS.md)，逐包入口见各自 README。
+仓库是 pnpm workspace，发布一个 `dsh-secretary` bundle。GTD、Tag、Time Services、空 Goal Provider 在 bundle 根层挂载；公共 tools、GTD／Secretary skills 在 Secretary preset 中组合。Tag、Goal 是上游共享模块，Time／GTD 通过 Cordis `inject` 消费它们；运行时等待与重载由 service 可用性驱动，patch 行序没有启动语义。浏览器不获得 Host Cordis Context，也不直接写 SQLite；它只通过所属产品的 Host API adapter 调用同一批领域 Services，没有浏览器私有事实源。仓库结构见根 [AGENTS.md](../AGENTS.md)，逐包入口见各自 README。
 
-Secretary preset 的通用插件底座与官方 standard preset 对齐。升级 DSH 时应重新 diff preset；当前 Storage 依赖与验收宿主均为 `0.2.1-rc.5`，不使用版本豁免代替兼容验证。
+Secretary preset 的通用插件底座与官方 standard preset 对齐。升级 DSH 时应重新 diff preset；bundle 兼容范围以实际 manifest 为准，不使用版本豁免代替兼容验证。
 
 ## 产品交付与 API 层
 
@@ -59,19 +59,13 @@ Time 的 `./client` 是 DSH Client 插件，运行于桌面端的 Chromium rende
 - `secretary_tag`：`tags`。
 - `secretary_time`：`plan_blocks`、`actual_blocks`、`plan_template_blocks`、`plan_template_undos`、`deep_templates`。
 
-各 domain 拥有各自的 next-id global 和串行写队列。空 Goal Provider 不打开 domain，当前没有 Goal 表或目标事实。PlanBlock 以 ID 独立保存，不按起始日期分桶；日期查询、模板 apply 和 undo 都采用“与目标日期的时区区间重叠”语义。`plan_template_undos` 按 target date 保存最近一次 before／after；当前日期集合与 after 不一致时拒绝覆盖后续编辑。Storage 没有跨 record 事务，因此多记录 apply／undo 使用明确补偿恢复；失败测试允许 next-id 出现空洞，但不接受半套计划或半套 undo。
+各 domain 的 next-id、串行写队列、日期与标签不变式见 [data-model.md](data-model.md)。空 Goal Provider 不打开 domain，也没有 Goal 表。
 
-GTD 与 Time 不直接关联 Action。Plan／Actual／Template 只保存直接选择的 time Tag；父标签查询包含所有后代并按记录 ID 去重。Tag 删除保护同时检查当前记录和仍可恢复的模板 undo 引用。DeepTime 是独立 7×24 基础周模板，不从 Actual 派生。
+## 验证入口
 
-## 范围与验证分层
+当前高层测试 seam 是：**生成产物 → Host Remote 注册 → product-local Client assembly → 真实浏览器 → 产品 application service → 领域 Service → 真实临时 SQLite**。冷启动必须证明 strict generated descriptor 生效，不能用 SRC fallback、固定 sleep 或内存 stub 替代真实链路。
 
-本轮验收独立 Time／GTD 产品、Time + Tag 与空 Goal Provider 的依赖生命周期。#6 GTD Review／Repeat／完整 OmniFocus UI 和全产品 #8 暂停，GTD 当前只有左栏空白 main；Goal 业务模型／UI、统计、预算、对账不在本轮。
-
-本次产品与 Remote 重构的高层测试 seam 是：**生成产物 → Host Remote 注册 → product-local Client assembly → 真实浏览器 → 产品 application service → 领域 Service → 真实临时 SQLite**。先用一条最小 Time 读取与写入贯通并验证冷启动、卸载清理和错误传播，再迁移其余 Time 操作；冷启动必须证明 strict generated descriptor 生效，禁止以 SRC fallback 或固定 sleep 掩盖装配问题。静态原型和内存 stub 不能替代这条链路。
-
-- `packages/secretary/tests/tracer.mjs`：公开 tools、TimeProductService、真实临时 SQLite、故障注入、Goal 晚就绪与 Provider 卸载清理、完整关闭／重开；反向断言最终 bundle 不含旧聚合 panel 与 routes。
-- `packages/secretary/tests/browser.mjs`：临时 `DSH_HOME` 中真实 `dsh web` 与 Chromium，覆盖直接操作、Tags 拖拽、Undo 链、宿主明暗主题和 390px。
-- `packages/secretary/tests/installed.mjs`：打包每个 workspace 包，经官方 `dsh plugin add` 与临时 profile file overrides 安装最终 tarballs；在全新 `DSH_HOME` 和空 SQLite 中以真实 `dsh web`＋Chromium 验证服务激活、两个产品、第一次 Remote 读取与 paint 重开持久化，不使用产品源码 overlay。
-- `pnpm pack` 检查 bundle 内容。真实 desktop profile 的人工新会话验收由交付 lead 后续执行，不修改真实用户 profile。
-
-只把已实际运行的结果写入 [verification.md](verification.md)；历史模型对话和旧 Action-TimeBlock 结论不属于本轮证据。
+- `packages/secretary/tests/tracer.mjs`：公开 tools、TimeProductService、真实临时 SQLite、故障注入、Goal 晚就绪与 Provider 卸载清理、完整关闭／重开；反向断言 bundle 不含聚合 panel 与 routes。
+- `packages/secretary/tests/browser.mjs`：临时 `DSH_HOME` 中真实 `dsh web` 与 Chromium，覆盖三模块操作、日期导航、Undo、主题和窄栏。
+- `packages/secretary/tests/installed.mjs`：打包每个 workspace 包，经官方 `dsh plugin add` 与临时 profile file overrides 安装最终 tarballs；在全新 `DSH_HOME` 和空 SQLite 中验证服务激活、两个产品、第一次 Remote 读取与 paint 重开持久化，不使用产品源码 overlay。
+- `pnpm pack` 检查发布内容。所有测试使用临时环境，不修改真实用户 profile；验收证据记录到对应 Issue。

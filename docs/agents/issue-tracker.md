@@ -24,8 +24,8 @@ python3 ~/.team-skills/scripts/driver.py resolve --project-root <项目根> --na
 - 状态与阶段更新只修改映射集合，保留其他标签；认领和更新不构成原子锁。
 - 父子与阻塞使用真实 Issue URL 的正文／评论约定，不使用自动关闭语法，也不冒充 GitHub 原生强制依赖。
 
-## 当前规格与工单
+## 规格、工单与证据
 
-- 仓库只保留 active 规格，位于 `docs/specs/<稳定主题>.md`；产品规则的唯一权威仍是 `docs/prd.md`、`docs/data-model.md` 与 `docs/architecture.md`。
-- GitHub Issue 是工单状态、评论与交付过程的权威入口。发布规格时使用真实 Issue URL，后续需求变化同步更新同一规格与对应 Issue 正文，不创建日期副本或本地平行工单。
-- 规格完成或被取代后，把仍需保留的规则合并回 living docs，再移除旧规格；Issue 保留历史。本地迁移 ticket 不承载产品规则，核实远端后删除。
+- 规格由 GitHub 父 Issue 正文承载，子 Issue 承载实施工单；不在仓库创建 `docs/specs/` 或其他本地副本。
+- 需求变化更新同一个 Issue；已成立的当前规则同步到仓库对应文档，Issue 保留讨论、状态和交付过程。
+- 测试与验收证据记录到对应 Issue 评论或真实 CI／日志链接，不在仓库创建历史验收报告。

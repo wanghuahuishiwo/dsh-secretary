@@ -33,7 +33,7 @@ GTD 包保存 Inbox、Project 与 Action 的唯一事项事实，提供捕获／
 
 默认 domain 为 `secretary_gtd`，拥有 `projects`、`actions`、`inbox` 与 next-id global，经 `secretaryStorageDomain` 路由到 `$DSH_HOME/storages/secretary.db`。建立／修改 GTD Tag 引用与 Tag delete 共用 `withReferenceConsistency` 串行边界；这不是跨 domain 事务，写失败允许 ID 空洞，但不允许重号或悬空 Tag 引用。
 
-准备提醒与产物仍由 Action 保存引用；Schedule、文件与 Time 事实不属于 GTD。完整 Folder、Action Group 类型／移动／Resolved 规则、Review 和 Repeat 留给 #6，不在本包提前实现。
+准备提醒与产物仍由 Action 保存引用；Schedule、文件与 Time 事实不属于 GTD。完整 Folder、Action Group 类型／移动／Resolved 规则、Review 和 Repeat 不在当前包实现范围。
 
 ## 验证
 

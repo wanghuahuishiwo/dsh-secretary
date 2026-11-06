@@ -6,7 +6,7 @@
 
 - **Open Design**：项目 `secretary-prototype` → `omnifocus-mac.html`。
 - **本机评审原件**：`~/Library/Application Support/Open Design/namespaces/release-stable/data/projects/secretary-prototype/omnifocus-mac.html`。
-- **仓库副本**：[omnifocus-mac.html](omnifocus-mac.html)，评审快照固定于提交 `cca50c2`。使用 `?variant=mac` 查看完整工作区。
+- **仓库副本**：[omnifocus-mac.html](omnifocus-mac.html)。使用 `?variant=mac` 查看完整工作区。
 - **官方依据**：[OmniFocus Mac 调研](../docs/research/omnifocus-mac.md) 及其中保存的 16 张官方图像与原始 URL。
 
 预览：[完整工作区](omnifocus-mac-dark.png) · [Forecast](omnifocus-forecast-dark.png) · [Quick Entry](omnifocus-quick-entry.png)。
@@ -29,7 +29,7 @@
 
 ## 实施边界
 
-本期只实现“小秘书-事项”左栏入口和**空白 `main` 页面**。以下内容仍需后续评审，不因原型存在而进入生产：
+当前生产环境只提供“小秘书-事项”左栏入口和**空白 `main` 页面**。以下内容仍需后续评审，不因原型存在而进入生产：
 
 - Perspectives、Quick Entry、Folder、Action Group、Flagged、Review、Repeat 及其他完整 OmniFocus 功能。
 - 具体字段集合、快捷键、拖放、键盘矩阵、权限和数据迁移。
