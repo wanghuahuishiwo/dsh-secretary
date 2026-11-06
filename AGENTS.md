@@ -2,6 +2,8 @@
 
 个人 Secretary Agent：以 GTD 管理事项，以 TimeBlock 管理时间，通过主动准备、协商和跟进帮助用户推进结果。
 
+## 行为准则
+
 ## 仓库结构
 
 ```text
@@ -30,11 +32,6 @@ scripts/  Remote 生成等仓库工具
 ```
 
 命令以实际 `package.json` scripts 为准；包级入口、Config 和限制见各包 README。
-
-## 改动约束
-
-- Tag、Goal 是上游共享模块；Time、GTD 不相互依赖。产品 UI 与领域 Services 分离，Agent tools 与 UI 使用同一批事实。
-- Time Remote 签名、namespace、错误词汇或 exports 变化后必须重新生成并验证真实链路；生成要求见 `packages/time-panel/README.md`。
 
 ## 文档
 

@@ -26,7 +26,7 @@ dsh plugin --profile <name> add <本仓>/packages/secretary
 
 | 你要做什么 | 去哪 |
 |---|---|
-| 改代码（仓库结构、改动约束） | [AGENTS.md](AGENTS.md) |
+| 改代码（仓库结构、行为准则） | [AGENTS.md](AGENTS.md) |
 | 理解当前产品范围与交互边界 | [prd.md](docs/prd.md) |
 | 理解包、依赖、产品 API 与 Remote 终点 | [architecture.md](docs/architecture.md) |
 | 理解领域事实与数据所有权 | [data-model.md](docs/data-model.md) |
