@@ -32,4 +32,4 @@
 ## 决策与跟进
 
 - 独立入口、API 归属与 Remote 终点分别见 [ADR 0007](../adr/0007-independent-product-entry-points.md)、[ADR 0008](../adr/0008-product-owned-host-api-adapters.md) 和 [ADR 0009](../adr/0009-product-api-typert-remote.md)。
-- 新需求、规格、工单和验收证据不写入本目录，统一进入 tracker。
+- 新需求、规格、工单和验收证据不写入本目录，统一进入 tracker。产品文档可保留“规划中（尚未实现）”小节：只写已确认的产品意图并链接 tracker，不复制规格、字段或工单细节。
