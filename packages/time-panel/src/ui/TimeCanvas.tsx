@@ -49,7 +49,7 @@ function splitByHour(runs: readonly Run[]): Run[] {
 
 /** One day column: the date mark, the hour scale, the ten-minute grid, its blocks and its selection. */
 const DayColumn = memo(function DayColumn({
-  day, rowH, today, records, selected, nowMin, tagName, tagColor, onCellDown, onBlockEdit,
+  day, rowH, today, records, selected, nowMin, tagName, tagColor, onCellDown,
 }: {
   day: string
   rowH: number
@@ -60,7 +60,6 @@ const DayColumn = memo(function DayColumn({
   tagName: (id: number) => string
   tagColor: (id: number) => string
   onCellDown: (event: React.PointerEvent<HTMLDivElement>) => void
-  onBlockEdit: (date: string, record: DayRecord) => void
 }) {
   const date = new Date(`${day}T12:00:00`)
   const height = 24 * rowH
@@ -69,14 +68,6 @@ const DayColumn = memo(function DayColumn({
     last: index % PER_HOUR === PER_HOUR - 1,
   }))
   const selRuns = selected === undefined ? [] : splitByHour(runsOf(day, [...selected]))
-
-  const onCellDoubleClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement
-    const minute = Number(target.dataset.min)
-    if (!Number.isFinite(minute)) return
-    const record = recordAt(records, minute)
-    if (record !== undefined) onBlockEdit(day, record)
-  }, [records, day, onBlockEdit])
 
   return (
     <div className="tb-day" data-day={day} style={{ height }}>
@@ -94,7 +85,7 @@ const DayColumn = memo(function DayColumn({
         ))}
       </div>
       <div className="tb-grid" data-day={day} style={{ height }}>
-        <div className="tb-cells" style={{ gridAutoRows: `${rowH}px` }} onPointerDown={onCellDown} onDoubleClick={onCellDoubleClick}>
+        <div className="tb-cells" style={{ gridAutoRows: `${rowH}px` }} onPointerDown={onCellDown}>
           {cells.map(cell => (
             <div key={cell.minute} className={`tb-cell${cell.last ? ' hourlast' : ''}`} data-day={day} data-min={cell.minute} />
           ))}
@@ -363,11 +354,6 @@ export function TimeCanvas(props: Props) {
     clearSelection()
   }
 
-  const handleBlockEdit = useCallback((date: string, record: DayRecord) => {
-    clearSelection()
-    onEdit(date, record)
-  }, [clearSelection, onEdit])
-
   const nowMin = days.includes(today) ? nowMinute : undefined
 
   return (
@@ -388,7 +374,6 @@ export function TimeCanvas(props: Props) {
                   tagName={tagName}
                   tagColor={tagColor}
                   onCellDown={onCellDown}
-                  onBlockEdit={handleBlockEdit}
                 />
               ))}
             </div>
