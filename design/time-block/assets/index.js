@@ -15644,15 +15644,6 @@
   background: var(--tb-surface-raised, #1d2025); color: var(--tb-text-primary, #eceff3);
   font-size: var(--tb-font-label, 11px); font-weight: 600; font-variant-numeric: tabular-nums;
   pointer-events: none; white-space: nowrap; }
-.tb-sb { height: 24px; border-radius: 6px; color: var(--tb-text-secondary, #a3a9b4); font-size: var(--tb-font-label, 11px); padding: 0 8px;
-  display: inline-flex; align-items: center; gap: 5px; }
-.tb-sb[hidden] { display: none; }
-.tb-sb:hover { background: var(--tb-surface-hover, #252931); color: var(--tb-text-primary, #eceff3); }
-.tb-sb.erase { color: var(--tb-danger, #ef8c84); }
-.tb-sb.erase:hover { background: color-mix(in srgb, var(--tb-danger, #ef8c84) 14%, transparent); }
-.tb-sb svg { width: 13px; height: 13px; }
-.tb-chip { display: inline-flex; align-items: center; gap: 6px; font-size: var(--tb-font-body, 12px); color: var(--tb-text-primary, #eceff3); }
-.tb-chip i { width: 9px; height: 9px; border-radius: 2px; }
 
 /* ---------- \u4E00\u7EA7\u62BD\u5C49 ---------- */
 .tb-scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .42); opacity: 0; pointer-events: none;

@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CELL, MAX_ROW_H, MIN_ROW_H, PER_HOUR, WEEKDAY_LABELS,
-  durationLabel, minutesOfRecord, recordAt, runsOf, snapDown,
+  durationLabel, recordAt, runsOf, snapDown,
   type DayRecord, type Run, type TimeTag,
 } from './model.ts'
 import { TagShelf } from './TagShelf.tsx'

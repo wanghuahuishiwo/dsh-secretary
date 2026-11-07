@@ -8,19 +8,19 @@
   "dom": {
     "root": ".tb-app[data-time-remote]（data-remote-state = loading | ready | error）",
     "header": ".tb-head",
-    "moduleMenu": ".tb-head button[aria-label=\"一级模块\"] → .tb-drawer.on 内的 .tb-mrow",
-    "layerButton": ".tb-title（展开 .tb-smenu.on；.tb-title .tsub 显示当前层）",
+    "moduleSwitch": ".tb-module-switch（图标 + .tb-title 当前模块名；点击打开 .tb-drawer）",
+    "drawer": ".tb-drawer.on 内的 .tb-mrow（实录 / 计划 / 深度时间）",
     "dateLabel": ".tb-daylabel",
     "todayButton": ".tb-now",
     "undoButton": ".tb-head button[title=\"撤销\"]",
     "canvas": ".tb-day[data-day]（14 列）→ .tb-cell[data-day][data-min]（每列 24 × 6 格）",
-    "block": ".tb-blk（title 为标签名或备注；按 10 分钟段渲染）",
+    "block": ".tb-blk（title 为标签名或备注；span 只在连续块首格）",
     "selection": ".tb-selbox",
-    "statusBar": ".tb-status（aria-hidden=true 时无选区）",
+    "selectionBadge": ".tb-sel-badge（无选区时不渲染；文本为时长，如“10 分”“1 小时”）",
     "tagShelf": ".tb-shelf .tb-cat",
-    "sheet": ".tb-sheet[role=\"dialog\"][aria-label=\"编辑记录\"]",
-    "deep": ".tb-deep → .tb-hc[data-k=\"weekday-hour\"]（class H / M / L）",
-    "deepStatus": ".tb-sel-badge",
+    "sheet": ".tb-sheet[role=\"dialog\"][aria-label=\"编辑备注\"]（只有备注输入与删除/完成）",
+    "deep": ".tb-deep → .tb-hc[data-k=\"weekday-hour\"]（class H / M / L；data-level）",
+    "deepLabel": "每行连续同级别仅最左一格含级别名 span（高 / 中 / 低）",
     "datePicker": ".tb-picker[role=\"dialog\"] → .tb-picker-day[data-day]",
     "toast": ".tb-toast（文案出现时带 .on）",
     "theme": "html[data-theme]；设计壳按钮 .tb-head button[title=\"切换主题\"]",
@@ -28,8 +28,7 @@
   },
   "defaults": {
     "theme": "dark",
-    "module": "time",
-    "layer": "actual",
+    "module": "actual",
     "reset": "每个场景前重新加载 design/time-block/index.html，FixtureTimeAdapter 恢复内存 fixture",
     "consoleErrors": 0,
     "externalRequests": 0
@@ -44,27 +43,27 @@
       ],
       "expected": [
         "页面只有 1 个 .tb-app，带 data-time-remote，data-remote-state=ready",
-        ".tb-title 显示“时间块”，.tb-title .tsub 显示“实录”（默认层）",
+        ".tb-module-switch .tb-title 显示“实录”（默认模块）",
         ".tb-daylabel 为“11月6日 周五”，.tb-day[data-day=\"2026-11-06\"] 的 .tb-datemark .today 存在",
         ".tb-day 共 14 列，.tb-cell 共 2016 格（14 × 24 × 6）",
-        ".tb-head button[title=\"撤销\"] 为 disabled；.tb-status aria-hidden=true",
+        ".tb-head button[title=\"撤销\"] 为 disabled；.tb-sel-badge 不存在",
         ".tb-toast 为空；headerAction 中“设计预览”标识存在",
         "html[data-theme]=dark；控制台错误 0，外部请求 0"
       ]
     },
     {
-      "id": "layer-switch",
-      "title": "计划 / 实录独立切换，日期不变",
+      "id": "module-switch",
+      "title": "三个一级模块平级切换，日期不变",
       "steps": [
-        "点击 .tb-title 展开 .tb-smenu.on",
-        "点击 .tb-smenu.on 中“计划”",
-        "再次点击 .tb-title 并点击“实录”"
+        "点击 .tb-module-switch 打开 .tb-drawer.on",
+        "点击抽屉中“计划”",
+        "再次打开抽屉并点击“实录”"
       ],
       "expected": [
-        "展开后 .tb-smenu.on 含“实录”“计划”两项",
-        "切到计划后 .tb-title .tsub 为“计划”，.tb-day[data-day=\"2026-11-06\"] 出现 title=\"完成设计方案评审\" 的 12 个 .tb-blk 段，且不再有 title=\"整理 TimeBlock 交互\"",
-        ".tb-daylabel 保持“11月6日 周五”，切层不跳日期",
-        "切回实录后 title=\"整理 TimeBlock 交互\" 恢复为 9 段，计划块消失；两层互不覆盖"
+        "抽屉含“实录”“计划”“深度时间”三项，没有二级菜单",
+        "切到计划后 .tb-title 为“计划”，.tb-day[data-day=\"2026-11-06\"] 出现 title=\"完成设计方案评审\" 的 12 个 .tb-blk 段，且不再有 title=\"整理 TimeBlock 交互\"",
+        ".tb-daylabel 保持“11月6日 周五”，切模块不跳日期",
+        "切回实录后 .tb-title 为“实录”，title=\"整理 TimeBlock 交互\" 恢复为 9 段；两层互不覆盖"
       ]
     },
     {
@@ -76,9 +75,9 @@
         "再次点击 .tb-cell[data-day=\"2026-11-06\"][data-min=\"370\"]"
       ],
       "expected": [
-        "第一步后 .tb-status aria-hidden=false，文本包含“选择了 10 分钟”，当日 .tb-selbox 为 1 个",
-        "第二步后文本为“选择了 20 分钟”，360 与 370 同属一个连续选区",
-        "第三步后回到“选择了 10 分钟”，360 仍选中、370 取消，仍为 1 个 .tb-selbox",
+        "第一步后 .tb-sel-badge 出现，文本为“10 分”，当日 .tb-selbox 为 1 个",
+        "第二步后文本为“20 分”，360 与 370 同属一个连续选区",
+        "第三步后回到“10 分”，360 仍选中、370 取消，仍为 1 个 .tb-selbox",
         "全程不修改时间块：当日 title=\"深度工作\" 的 .tb-blk 保持 4 段"
       ]
     },
@@ -93,20 +92,20 @@
       "expected": [
         ".tb-toast 显示“已上色”",
         "360 / 370 位置出现 title=\"深度工作\" 的 .tb-blk；当日该 title 从 4 段变为 6 段（新增 2 个 10 分钟段）",
-        "选区清空（.tb-status aria-hidden=true）",
+        "选区清空（.tb-sel-badge 消失）",
         ".tb-head button[title=\"撤销\"] 变为可用"
       ]
     },
     {
       "id": "erase",
-      "title": "橡皮擦除整条记录并 Undo 恢复",
+      "title": "Delete 擦除整条记录并 Undo 恢复",
       "steps": [
         "从 .tb-cell[data-day=\"2026-11-06\"][data-min=\"550\"] 拖到 [data-min=\"630\"]，选中整条 90 分钟记录",
-        "点击 .tb-status .tb-sb.erase（橡皮）",
+        "按 Delete",
         "点击 .tb-head button[title=\"撤销\"]"
       ],
       "expected": [
-        "选区栏显示“深度工作 · 整理 TimeBlock 交互”，并出现“备注”按钮",
+        "选区徽章显示“1 小时 30 分”，当日 .tb-selbox 连续覆盖该记录",
         "擦除后 .tb-toast 为“已擦除”，title=\"整理 TimeBlock 交互\" 变为 0 段，撤销可用",
         "Undo 后 .tb-toast 为“已撤销”，该记录恢复为 9 段"
       ]
@@ -143,37 +142,36 @@
       ]
     },
     {
-      "id": "record-edit",
-      "title": "整条记录编辑：换标签、写备注、删除",
+      "id": "record-note",
+      "title": "右键记录：写备注、删除",
       "steps": [
-        "从 .tb-cell[data-day=\"2026-11-06\"][data-min=\"550\"] 拖到 [data-min=\"630\"]",
-        "点击 .tb-status .tb-sb 中“备注”",
-        "在 .tb-sheet 中点击“协作沟通”，在 .tb-note 填“设计走查记录”，点击“完成”",
-        "再次点击“备注”，在 .tb-sheet 中点击“删除”"
+        "在 .tb-cell[data-day=\"2026-11-06\"][data-min=\"550\"] 上右键",
+        "在 .tb-sheet 的 .tb-note 填“设计走查记录”，点击“完成”",
+        "再次右键该记录，点击 .tb-sheet 中“删除”"
       ],
       "expected": [
-        ".tb-sheet[role=\"dialog\"][aria-label=\"编辑记录\"] 显示“09:10 – 10:40”“1 小时 30 分”",
+        ".tb-sheet[role=\"dialog\"][aria-label=\"编辑备注\"] 显示“09:10 – 10:40”“1 小时 30 分”，不提供换标签或调时间控件",
         "保存后 .tb-sheet 关闭，.tb-toast 为“已保存”，title=\"设计走查记录\" 的 .tb-blk 为 9 段",
-        "选区栏识别为“协作沟通 · 设计走查记录”，仍可再次打开编辑浮层",
         "删除后 .tb-sheet 关闭，.tb-toast 为“已删除”，该记录变为 0 段"
       ]
     },
     {
       "id": "deep-time",
-      "title": "深度时间：模块切换、区域选择与级别上色",
+      "title": "深度时间：模块切换、区域选择、级别上色与横向标签",
       "steps": [
-        "点击 .tb-head button[aria-label=\"一级模块\"]",
-        "点击 .tb-drawer .tb-mrow 中“深度时间”，等待 .tb-drawer 移出可视区",
+        "点击 .tb-module-switch 打开抽屉",
+        "点击抽屉中“深度时间”",
         "从 .tb-hc[data-k=\"1-12\"] 拖到 .tb-hc[data-k=\"2-13\"]",
         "点击 .tb-deep .tb-shelf .tb-cat 中“高”",
-        "再次打开一级模块抽屉，点击“时间块”"
+        "再次打开抽屉，点击“实录”"
       ],
       "expected": [
-        "抽屉内包含“时间块”“深度时间”",
+        "抽屉内包含“实录”“计划”“深度时间”",
         "切换后 .tb-deep 出现，.tb-daylabel 为“11月2日 – 11月8日”；.tb-hc 共 168 格，初始 H 9 格、M 6 格、L 6 格",
-        "拖动后 .tb-sel-badge 文本为“选择了 4 格”",
+        "拖动后 .tb-sel-badge 文本为“4 小时”",
         "上色后 .tb-hc.H 变为 13 格，.tb-toast 为“已记录”",
-        "切回时间块后 .tb-title .tsub 为“实录”，title=\"整理 TimeBlock 交互\" 仍为 9 段（Deep 写入不影响时间块数据）"
+        "第 9 行（weekday1-4）中，只有连续同级别的最左格显示“高/中/低”标签，相邻同级别格不重复",
+        "切回实录后 .tb-title 为“实录”，title=\"整理 TimeBlock 交互\" 仍为 9 段（Deep 写入不影响时间块数据）"
       ]
     },
     {
@@ -196,7 +194,7 @@
       "title": "常用操作全程无控制台错误、无外部请求",
       "steps": [
         "重新加载入口",
-        "依次切换计划 / 实录、选中 360 并上色、Undo、下一天、今天、切换到深度时间"
+        "依次切到计划、切回实录、选中 360 并上色、Undo、下一天、今天、切到深度时间"
       ],
       "expected": [
         "consoleErrors = 0",
