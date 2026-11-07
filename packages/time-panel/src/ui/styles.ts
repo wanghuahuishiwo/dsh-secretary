@@ -113,6 +113,23 @@ export const timeStyles = `.tb-app {
 .tb-blk { position: absolute; overflow: hidden; display: flex; align-items: center; padding: 0 4px;
   font-size: var(--tb-font-caption, 10px); font-weight: 600; letter-spacing: .1px; color: #fff; white-space: nowrap; }
 .tb-blk span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Overlap stays in the data but not in the cell: one record plus a count badge. */
+.tb-more { position: absolute; z-index: 4; width: 16px; height: 16px; display: grid; place-items: center; padding: 0;
+  border: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); border-radius: 4px;
+  background: var(--tb-surface-raised, #1d2025); color: var(--tb-text-primary, #eceff3);
+  font-size: 10px; font-weight: 700; line-height: 1; pointer-events: auto; cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .35); }
+.tb-more:hover { background: var(--tb-surface-hover, #252931); }
+.tb-pop { position: absolute; z-index: 6; left: 6px; right: 6px; display: flex; flex-direction: column; gap: 1px;
+  padding: 5px; border: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); border-radius: 8px;
+  background: var(--tb-surface-raised, #1d2025); box-shadow: 0 10px 30px rgba(0, 0, 0, .42); pointer-events: auto; }
+.tb-pop-title { padding: 2px 6px 5px; color: var(--tb-text-tertiary, #727a88); font-size: var(--tb-font-caption, 10px); }
+.tb-pop-row { width: 100%; height: 28px; display: flex; align-items: center; gap: 7px; padding: 0 6px; border: 0; border-radius: 5px;
+  background: transparent; color: var(--tb-text-primary, #eceff3); font-size: var(--tb-font-label, 11px); text-align: left; }
+.tb-pop-row:hover { background: var(--tb-surface-hover, #252931); }
+.tb-pop-row i { width: 8px; height: 8px; flex: none; border-radius: 2px; }
+.tb-pop-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-pop-row time { margin-left: auto; flex: none; color: var(--tb-text-tertiary, #727a88); font-size: var(--tb-font-caption, 10px); font-variant-numeric: tabular-nums; }
 .tb-selbox { position: absolute; box-shadow: inset 0 0 0 2px var(--tb-selection, #f4f7fb); pointer-events: none; }
 .tb-selbox i { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; }
 .tb-selbox i svg { width: 12px; height: 12px; color: var(--tb-text-primary, #eceff3); }

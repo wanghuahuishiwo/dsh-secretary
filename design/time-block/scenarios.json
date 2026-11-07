@@ -14,7 +14,9 @@
     "todayButton": ".tb-now",
     "undoButton": ".tb-head button[title=\"撤销\"]",
     "canvas": ".tb-day[data-day]（14 列）→ .tb-cell[data-day][data-min]（每列 24 × 6 格）",
-    "block": ".tb-blk（title 为标签名或备注；span 只在连续块首格）",
+    "block": ".tb-blk（title 为标签名或备注；span 只在每条记录首个可见格；重叠格只画一条）",
+    "overlapBadge": ".tb-more（重叠格右上角数量角标，文本为 ²/³；aria-label 为“N 条并行记录”）",
+    "overlapPopover": ".tb-pop[role=\"dialog\"]（只有点角标才出现；.tb-pop-row 每条记录，含颜色、名称与起止时间；点外部或 Esc 收起）",
     "selection": ".tb-selbox",
     "selectionBadge": ".tb-sel-badge（无选区时不渲染；文本为时长，如“10 分”“1 小时”）",
     "tagShelf": ".tb-shelf .tb-cat",
@@ -49,6 +51,26 @@
         ".tb-head button[title=\"撤销\"] 为 disabled；.tb-sel-badge 不存在",
         ".tb-toast 为空；headerAction 中“设计预览”标识存在",
         "html[data-theme]=dark；控制台错误 0，外部请求 0"
+      ]
+    },
+    {
+      "id": "parallel-blocks",
+      "title": "并行记录：格阵不拆、不增高，只加数量角标",
+      "steps": [
+        "打开 design/time-block/index.html（实录、11月6日），不点击任何格子",
+        "读取 09:00–11:00 的 .tb-blk 与 .tb-more",
+        "在 09:30 的重叠格上右键，再按 Esc",
+        "点击 09:30 格子的 .tb-more 角标",
+        "点击浮层中的“通勤听 Git 热榜”，再按 Esc",
+        "切到计划，读取 21:20 的角标"
+      ],
+      "expected": [
+        "默认没有 .tb-pop；09:30–10:40 的重叠格只有 1 个 .tb-blk（宽度仍是整格，不再横向切分），每格右上角有 1 个 .tb-more 角标，文本“²”",
+        "09:00–09:20 与 10:40 没有角标；10:40 起“通勤听 Git 热榜”接替显示，标签只在其首个可见格出现一次",
+        "重叠格右键不直接猜一条记录，而是打开同一个 .tb-pop；Esc 收起且不改变选区",
+        "角标点击不改变选区：.tb-sel-badge 仍不存在；.tb-pop 出现且含 2 个 .tb-pop-row，显示“深度工作 · 整理 TimeBlock 交互”“学习 · 通勤听 Git 热榜”及各自起止时间",
+        "点击记录后浮层收起并打开 .tb-sheet（该记录的备注页）；Esc 只关闭浮层，不改变选区",
+        "计划 21:20–21:40 同样只显示一条记录并带角标；每天仍 24 行、每行 6 格，行高不变"
       ]
     },
     {

@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { timeMath } from '../lib/ui-model.js'
 
 const {
-  addDays, clock, durationLabel, localDate, minutesOfRecord, recordsOfDay,
+  addDays, cellRecords, clock, durationLabel, localDate, minutesOfRecord, recordsOfDay,
   runsOf, snapDown, snapUp, timeZoneOf, weekStartOf,
 } = timeMath
 
@@ -31,6 +31,25 @@ test('minute helpers snap to the ten-minute grid, format clocks and count a reco
   assert.equal(durationLabel(60), '1 小时')
   assert.equal(durationLabel(90), '1 小时 30 分')
   assert.deepEqual(minutesOfRecord({ id: 1, start: 480, end: 510, timeTagId: 1 }), [480, 490, 500])
+})
+
+test('cellRecords keeps one displayed record per cell and counts the overlap', () => {
+  const records = [
+    { id: 2, start: 550, end: 640, timeTagId: 1 },
+    { id: 9, start: 570, end: 610, timeTagId: 2 },
+  ]
+  assert.deepEqual(cellRecords(records), [
+    { minute: 550, record: records[0], count: 1 },
+    { minute: 560, record: records[0], count: 1 },
+    { minute: 570, record: records[0], count: 2 },
+    { minute: 580, record: records[0], count: 2 },
+    { minute: 590, record: records[0], count: 2 },
+    { minute: 600, record: records[0], count: 2 },
+    { minute: 610, record: records[0], count: 1 },
+    { minute: 620, record: records[0], count: 1 },
+    { minute: 630, record: records[0], count: 1 },
+  ])
+  assert.deepEqual(cellRecords([]), [])
 })
 
 test('runsOf merges contiguous ten-minute cells and splits gaps', () => {

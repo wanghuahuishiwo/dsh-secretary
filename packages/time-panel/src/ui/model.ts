@@ -172,6 +172,36 @@ export function minutesOfRecord(record: DayRecord): number[] {
   return minutes
 }
 
+/**
+ * One ten-minute cell with the record the collapsed canvas shows there.
+ * Overlapping records stay in the data; the cell picks the earliest one and
+ * carries the total count so the UI can offer a count badge instead of
+ * splitting the cell into thin columns.
+ */
+export interface CellRecord {
+  readonly minute: number
+  readonly record: DayRecord
+  readonly count: number
+}
+
+/** Pick the displayed record for every ten-minute cell of one day. */
+export function cellRecords(records: readonly DayRecord[]): CellRecord[] {
+  const buckets = new Map<number, DayRecord[]>()
+  for (const record of records) {
+    for (let minute = snapDown(record.start); minute < record.end; minute += CELL) {
+      const bucket = buckets.get(minute)
+      if (bucket === undefined) buckets.set(minute, [record])
+      else bucket.push(record)
+    }
+  }
+  const cells: CellRecord[] = []
+  for (const [minute, bucket] of buckets) {
+    bucket.sort((left, right) => left.start - right.start || left.id - right.id)
+    cells.push({ minute, record: bucket[0], count: bucket.length })
+  }
+  return cells.sort((left, right) => left.minute - right.minute)
+}
+
 export function durationLabel(minutes: number): string {
   if (minutes < 60) return `${minutes} 分`
   const hours = Math.floor(minutes / 60)
@@ -207,5 +237,6 @@ export const timeMath = {
   recordAt,
   runsOf,
   minutesOfRecord,
+  cellRecords,
   durationLabel,
 }

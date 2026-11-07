@@ -14694,6 +14694,22 @@
     for (let minute = snapDown(record.start); minute < record.end; minute += CELL) minutes.push(minute);
     return minutes;
   }
+  function cellRecords(records) {
+    const buckets = /* @__PURE__ */ new Map();
+    for (const record of records) {
+      for (let minute = snapDown(record.start); minute < record.end; minute += CELL) {
+        const bucket = buckets.get(minute);
+        if (bucket === void 0) buckets.set(minute, [record]);
+        else bucket.push(record);
+      }
+    }
+    const cells = [];
+    for (const [minute, bucket] of buckets) {
+      bucket.sort((left, right) => left.start - right.start || left.id - right.id);
+      cells.push({ minute, record: bucket[0], count: bucket.length });
+    }
+    return cells.sort((left, right) => left.minute - right.minute);
+  }
   function durationLabel(minutes) {
     if (minutes < 60) return `${minutes} \u5206`;
     const hours = Math.floor(minutes / 60);
@@ -14722,6 +14738,7 @@
     recordAt,
     runsOf,
     minutesOfRecord,
+    cellRecords,
     durationLabel
   };
   var WEEKDAYS = ["\u4E00", "\u4E8C", "\u4E09", "\u56DB", "\u4E94", "\u516D", "\u65E5"];
@@ -15162,6 +15179,10 @@
     ] });
   }
   var FALLBACK_COLOR2 = "#477bc7";
+  var SUPERSCRIPT = ["\u2070", "\xB9", "\xB2", "\xB3", "\u2074", "\u2075", "\u2076", "\u2077", "\u2078", "\u2079"];
+  function countGlyph(count) {
+    return count < SUPERSCRIPT.length ? SUPERSCRIPT[count] : String(count);
+  }
   var CHECK = /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "2.4", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("path", { d: "M2.5 6.4l2.3 2.3L9.5 3.7" }) });
   function splitByHour(runs) {
     const out = [];
@@ -15195,15 +15216,59 @@
       last: index % PER_HOUR === PER_HOUR - 1
     }));
     const selRuns = selected === void 0 ? [] : splitByHour(runsOf(day, [...selected]));
+    const rows = (0, import_react5.useMemo)(() => cellRecords(records), [records]);
+    const [openMinute, setOpenMinute] = (0, import_react5.useState)(null);
+    const firstShown = (0, import_react5.useMemo)(() => {
+      const first = /* @__PURE__ */ new Map();
+      for (const cell of rows) if (!first.has(cell.record.id)) first.set(cell.record.id, cell.minute);
+      return first;
+    }, [rows]);
+    const openRecords = (0, import_react5.useMemo)(() => {
+      if (openMinute === null) return [];
+      return records.filter((record) => record.start <= openMinute && openMinute < record.end).sort((left, right) => left.start - right.start || left.id - right.id);
+    }, [records, openMinute]);
+    (0, import_react5.useEffect)(() => {
+      if (openMinute === null) return;
+      const close = (event) => {
+        const target = event.target;
+        if (target.closest(".tb-pop") !== null || target.closest(".tb-more") !== null) return;
+        event.stopPropagation();
+        event.preventDefault();
+        setOpenMinute(null);
+      };
+      const onKey = (event) => {
+        if (event.key !== "Escape") return;
+        event.stopPropagation();
+        event.preventDefault();
+        setOpenMinute(null);
+      };
+      window.addEventListener("pointerdown", close, true);
+      window.addEventListener("keydown", onKey, true);
+      return () => {
+        window.removeEventListener("pointerdown", close, true);
+        window.removeEventListener("keydown", onKey, true);
+      };
+    }, [openMinute]);
+    (0, import_react5.useEffect)(() => {
+      if (openMinute === null) return;
+      const cell = rows.find((item) => item.minute === openMinute);
+      if (cell === void 0 || cell.count < 2) setOpenMinute(null);
+    }, [rows, openMinute]);
     const onCellContextMenu = (0, import_react5.useCallback)((event) => {
       const target = event.target;
       const minute = Number(target.dataset.min);
       if (!Number.isFinite(minute)) return;
+      const count = rows.find((item) => item.minute === minute)?.count ?? 0;
+      if (count > 1) {
+        event.preventDefault();
+        setOpenMinute(minute);
+        return;
+      }
       const record = recordAt(records, minute);
       if (record === void 0) return;
       event.preventDefault();
       onBlockEdit(day, record);
-    }, [records, day, onBlockEdit]);
+    }, [rows, records, day, onBlockEdit]);
     return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-day", "data-day": day, style: { height }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-gutter", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-datemark", children: [
         /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "m", children: [
@@ -15217,34 +15282,51 @@
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-hours", style: { height }, children: Array.from({ length: 24 }, (_, hour) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: nowMin !== void 0 && hour === Math.floor(nowMin / 60) ? "now" : "", style: { top: hour * rowH + 4 }, children: hour }, hour)) }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-grid", "data-day": day, style: { height }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-cells", style: { gridAutoRows: `${rowH}px` }, onPointerDown: onCellDown, onContextMenu: onCellContextMenu, children: cells.map((cell) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: `tb-cell${cell.last ? " hourlast" : ""}`, "data-day": day, "data-min": cell.minute }, cell.minute)) }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-blocks", children: records.map((record) => {
-          const label = record.note === void 0 || record.note === "" ? tagName(record.timeTagId) : record.note;
-          const tooltip = record.note === void 0 || record.note === "" ? tagName(record.timeTagId) : `${tagName(record.timeTagId)} \xB7 ${record.note}`;
-          const color = tagColor(record.timeTagId);
-          const nodes = [];
-          for (let minute = snapDown(record.start); minute < record.end; minute += CELL) {
-            const isFirstOfSegment = minute === snapDown(record.start);
-            nodes.push(
-              /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
-                "div",
-                {
-                  className: "tb-blk",
-                  style: {
-                    left: `calc(${minute % 60 / CELL / PER_HOUR * 100}% + 0.5px)`,
-                    width: `calc(${100 / PER_HOUR}% - 1px)`,
-                    top: Math.floor(minute / 60) * rowH + 0.5,
-                    height: rowH - 1,
-                    background: color
-                  },
-                  title: tooltip,
-                  children: isFirstOfSegment && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: label })
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-blocks", children: [
+          rows.map(({ minute, record, count }) => {
+            const label = record.note === void 0 || record.note === "" ? tagName(record.timeTagId) : record.note;
+            const tooltip = count > 1 ? `${label} \xB7 \u53E6\u6709 ${count - 1} \u6761\u5E76\u884C\u8BB0\u5F55` : record.note === void 0 || record.note === "" ? tagName(record.timeTagId) : `${tagName(record.timeTagId)} \xB7 ${record.note}`;
+            return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+              "div",
+              {
+                className: "tb-blk",
+                style: {
+                  left: `calc(${minute % 60 / CELL / PER_HOUR * 100}% + 0.5px)`,
+                  width: `calc(${100 / PER_HOUR}% - 1px)`,
+                  top: Math.floor(minute / 60) * rowH + 0.5,
+                  height: rowH - 1,
+                  background: tagColor(record.timeTagId)
                 },
-                `${record.id}:${minute}`
-              )
+                title: tooltip,
+                children: minute === firstShown.get(record.id) && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: label })
+              },
+              `${record.id}:${minute}`
             );
-          }
-          return nodes;
-        }) }),
+          }),
+          rows.filter((cell) => cell.count > 1).map((cell) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+            "button",
+            {
+              type: "button",
+              className: "tb-more",
+              style: {
+                left: `calc(${(cell.minute % 60 / CELL + 1) / PER_HOUR * 100}% - 18px)`,
+                top: Math.floor(cell.minute / 60) * rowH + 2
+              },
+              "aria-label": `${cell.count} \u6761\u5E76\u884C\u8BB0\u5F55`,
+              title: `${cell.count} \u6761\u5E76\u884C\u8BB0\u5F55`,
+              onPointerDown: (event) => {
+                event.stopPropagation();
+                event.preventDefault();
+              },
+              onClick: (event) => {
+                event.stopPropagation();
+                setOpenMinute(cell.minute);
+              },
+              children: countGlyph(cell.count)
+            },
+            `more:${cell.minute}`
+          ))
+        ] }),
         /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-sel", children: [
           selRuns.map((run) => {
             const from = run.start % 60 / CELL;
@@ -15275,7 +15357,44 @@
               }
             }
           )
-        ] })
+        ] }),
+        openMinute !== null && openRecords.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
+          "div",
+          {
+            className: "tb-pop",
+            role: "dialog",
+            "aria-label": `${openRecords.length} \u6761\u5E76\u884C\u8BB0\u5F55`,
+            style: { top: Math.floor(openMinute / 60) * rowH + rowH + 4 },
+            onPointerDown: (event) => event.stopPropagation(),
+            children: [
+              /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-pop-title", children: [
+                openRecords.length,
+                " \u6761\u5E76\u884C\u8BB0\u5F55"
+              ] }),
+              openRecords.map((record) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
+                "button",
+                {
+                  type: "button",
+                  className: "tb-pop-row",
+                  onClick: () => {
+                    setOpenMinute(null);
+                    onBlockEdit(day, record);
+                  },
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("i", { style: { background: tagColor(record.timeTagId) } }),
+                    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: record.note === void 0 || record.note === "" ? tagName(record.timeTagId) : record.note }),
+                    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("time", { children: [
+                      clock(record.start),
+                      "\u2013",
+                      clock(record.end)
+                    ] })
+                  ]
+                },
+                record.id
+              ))
+            ]
+          }
+        )
       ] })
     ] });
   });
@@ -15607,6 +15726,23 @@
 .tb-blk { position: absolute; overflow: hidden; display: flex; align-items: center; padding: 0 4px;
   font-size: var(--tb-font-caption, 10px); font-weight: 600; letter-spacing: .1px; color: #fff; white-space: nowrap; }
 .tb-blk span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Overlap stays in the data but not in the cell: one record plus a count badge. */
+.tb-more { position: absolute; z-index: 4; width: 16px; height: 16px; display: grid; place-items: center; padding: 0;
+  border: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); border-radius: 4px;
+  background: var(--tb-surface-raised, #1d2025); color: var(--tb-text-primary, #eceff3);
+  font-size: 10px; font-weight: 700; line-height: 1; pointer-events: auto; cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .35); }
+.tb-more:hover { background: var(--tb-surface-hover, #252931); }
+.tb-pop { position: absolute; z-index: 6; left: 6px; right: 6px; display: flex; flex-direction: column; gap: 1px;
+  padding: 5px; border: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); border-radius: 8px;
+  background: var(--tb-surface-raised, #1d2025); box-shadow: 0 10px 30px rgba(0, 0, 0, .42); pointer-events: auto; }
+.tb-pop-title { padding: 2px 6px 5px; color: var(--tb-text-tertiary, #727a88); font-size: var(--tb-font-caption, 10px); }
+.tb-pop-row { width: 100%; height: 28px; display: flex; align-items: center; gap: 7px; padding: 0 6px; border: 0; border-radius: 5px;
+  background: transparent; color: var(--tb-text-primary, #eceff3); font-size: var(--tb-font-label, 11px); text-align: left; }
+.tb-pop-row:hover { background: var(--tb-surface-hover, #252931); }
+.tb-pop-row i { width: 8px; height: 8px; flex: none; border-radius: 2px; }
+.tb-pop-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-pop-row time { margin-left: auto; flex: none; color: var(--tb-text-tertiary, #727a88); font-size: var(--tb-font-caption, 10px); font-variant-numeric: tabular-nums; }
 .tb-selbox { position: absolute; box-shadow: inset 0 0 0 2px var(--tb-selection, #f4f7fb); pointer-events: none; }
 .tb-selbox i { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; }
 .tb-selbox i svg { width: 12px; height: 12px; color: var(--tb-text-primary, #eceff3); }
@@ -16072,6 +16208,7 @@
     block("p-07", FIXTURE_TODAY, 900, 930, "rest"),
     block("p-08", FIXTURE_TODAY, 1080, 1140, "exercise"),
     block("p-09", FIXTURE_TODAY, 1260, 1320, "reading", "\u300A\u8BBE\u8BA1\u4E2D\u7684\u8BBE\u8BA1\u300B"),
+    block("p-14", FIXTURE_TODAY, 1280, 1310, "rest", "\u62C9\u4F38"),
     block("p-10", FIXTURE_YESTERDAY, 540, 630, "focus", "\u68B3\u7406\u4E00\u5468\u91CD\u70B9"),
     block("p-11", FIXTURE_YESTERDAY, 720, 780, "meal"),
     block("p-12", FIXTURE_TOMORROW, 540, 600, "collaboration", "\u9879\u76EE\u4F8B\u4F1A"),
@@ -16087,6 +16224,8 @@
     block("a-07", FIXTURE_TODAY, 860, 900, "collaboration", "\u4E34\u65F6\u8BA8\u8BBA"),
     block("a-08", FIXTURE_TODAY, 920, 940, "rest"),
     block("a-09", FIXTURE_TODAY, 1140, 1180, "reading"),
+    block("a-13", FIXTURE_TODAY, 570, 650, "learning", "\u901A\u52E4\u542C Git \u70ED\u699C"),
+    block("a-14", FIXTURE_TODAY, 1150, 1180, "rest", "\u62C9\u4F38"),
     block("a-10", FIXTURE_YESTERDAY, 550, 650, "focus"),
     block("a-11", FIXTURE_YESTERDAY, 650, 680, "collaboration"),
     block("a-12", FIXTURE_TOMORROW, 540, 570, "focus", "\u5DF2\u6709\u5B9E\u5F55\u793A\u4F8B")

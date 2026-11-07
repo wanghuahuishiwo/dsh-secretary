@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CELL, MAX_ROW_H, MIN_ROW_H, PER_HOUR, WEEKDAY_LABELS,
-  durationLabel, recordAt, runsOf, snapDown,
+  cellRecords, clock, durationLabel, recordAt, runsOf, snapDown,
   type DayRecord, type Run, type TimeTag,
 } from './model.ts'
 import { TagShelf } from './TagShelf.tsx'
@@ -30,6 +30,13 @@ interface DragState {
 }
 
 const FALLBACK_COLOR = '#477bc7'
+const SUPERSCRIPT = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹']
+
+/** The count badge stays a single glyph up to nine records. */
+function countGlyph(count: number): string {
+  return count < SUPERSCRIPT.length ? SUPERSCRIPT[count] : String(count)
+}
+
 const CHECK = <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M2.5 6.4l2.3 2.3L9.5 3.7" /></svg>
 
 /** Selection runs never cross an hour boundary: each hour row draws its own box. */
@@ -69,16 +76,69 @@ const DayColumn = memo(function DayColumn({
     last: index % PER_HOUR === PER_HOUR - 1,
   }))
   const selRuns = selected === undefined ? [] : splitByHour(runsOf(day, [...selected]))
+  /** One collapsed cell shows its earliest record; overlaps stay behind a count badge. */
+  const rows = useMemo(() => cellRecords(records), [records])
+  const [openMinute, setOpenMinute] = useState<number | null>(null)
+
+  /** A hidden record starts showing once the earlier records above it end. */
+  const firstShown = useMemo(() => {
+    const first = new Map<number, number>()
+    for (const cell of rows) if (!first.has(cell.record.id)) first.set(cell.record.id, cell.minute)
+    return first
+  }, [rows])
+
+  const openRecords = useMemo(() => {
+    if (openMinute === null) return []
+    return records
+      .filter(record => record.start <= openMinute && openMinute < record.end)
+      .sort((left, right) => left.start - right.start || left.id - right.id)
+  }, [records, openMinute])
+
+  useEffect(() => {
+    if (openMinute === null) return
+    /** Capture so an outside click only closes the sheet and never changes the selection. */
+    const close = (event: PointerEvent) => {
+      const target = event.target as HTMLElement
+      if (target.closest('.tb-pop') !== null || target.closest('.tb-more') !== null) return
+      event.stopPropagation()
+      event.preventDefault()
+      setOpenMinute(null)
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.stopPropagation()
+      event.preventDefault()
+      setOpenMinute(null)
+    }
+    window.addEventListener('pointerdown', close, true)
+    window.addEventListener('keydown', onKey, true)
+    return () => {
+      window.removeEventListener('pointerdown', close, true)
+      window.removeEventListener('keydown', onKey, true)
+    }
+  }, [openMinute])
+
+  useEffect(() => {
+    if (openMinute === null) return
+    const cell = rows.find(item => item.minute === openMinute)
+    if (cell === undefined || cell.count < 2) setOpenMinute(null)
+  }, [rows, openMinute])
 
   const onCellContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement
     const minute = Number(target.dataset.min)
     if (!Number.isFinite(minute)) return
+    const count = rows.find(item => item.minute === minute)?.count ?? 0
+    if (count > 1) {
+      event.preventDefault()
+      setOpenMinute(minute)
+      return
+    }
     const record = recordAt(records, minute)
     if (record === undefined) return
     event.preventDefault()
     onBlockEdit(day, record)
-  }, [records, day, onBlockEdit])
+  }, [rows, records, day, onBlockEdit])
 
   return (
     <div className="tb-day" data-day={day} style={{ height }}>
@@ -102,32 +162,45 @@ const DayColumn = memo(function DayColumn({
           ))}
         </div>
         <div className="tb-blocks">
-          {records.map(record => {
+          {rows.map(({ minute, record, count }) => {
             const label = record.note === undefined || record.note === '' ? tagName(record.timeTagId) : record.note
-            const tooltip = record.note === undefined || record.note === '' ? tagName(record.timeTagId) : `${tagName(record.timeTagId)} · ${record.note}`
-            const color = tagColor(record.timeTagId)
-            const nodes = []
-            for (let minute = snapDown(record.start); minute < record.end; minute += CELL) {
-              const isFirstOfSegment = minute === snapDown(record.start)
-              nodes.push(
-                <div
-                  key={`${record.id}:${minute}`}
-                  className="tb-blk"
-                  style={{
-                    left: `calc(${(((minute % 60) / CELL) / PER_HOUR) * 100}% + 0.5px)`,
-                    width: `calc(${100 / PER_HOUR}% - 1px)`,
-                    top: Math.floor(minute / 60) * rowH + 0.5,
-                    height: rowH - 1,
-                    background: color,
-                  }}
-                  title={tooltip}
-                >
-                  {isFirstOfSegment && <span>{label}</span>}
-                </div>,
-              )
-            }
-            return nodes
+            const tooltip = count > 1
+              ? `${label} · 另有 ${count - 1} 条并行记录`
+              : record.note === undefined || record.note === '' ? tagName(record.timeTagId) : `${tagName(record.timeTagId)} · ${record.note}`
+            return (
+              <div
+                key={`${record.id}:${minute}`}
+                className="tb-blk"
+                style={{
+                  left: `calc(${(((minute % 60) / CELL) / PER_HOUR) * 100}% + 0.5px)`,
+                  width: `calc(${100 / PER_HOUR}% - 1px)`,
+                  top: Math.floor(minute / 60) * rowH + 0.5,
+                  height: rowH - 1,
+                  background: tagColor(record.timeTagId),
+                }}
+                title={tooltip}
+              >
+                {minute === firstShown.get(record.id) && <span>{label}</span>}
+              </div>
+            )
           })}
+          {rows.filter(cell => cell.count > 1).map(cell => (
+            <button
+              key={`more:${cell.minute}`}
+              type="button"
+              className="tb-more"
+              style={{
+                left: `calc(${((((cell.minute % 60) / CELL) + 1) / PER_HOUR) * 100}% - 18px)`,
+                top: Math.floor(cell.minute / 60) * rowH + 2,
+              }}
+              aria-label={`${cell.count} 条并行记录`}
+              title={`${cell.count} 条并行记录`}
+              onPointerDown={event => { event.stopPropagation(); event.preventDefault() }}
+              onClick={event => { event.stopPropagation(); setOpenMinute(cell.minute) }}
+            >
+              {countGlyph(cell.count)}
+            </button>
+          ))}
         </div>
         <div className="tb-sel">
           {selRuns.map(run => {
@@ -161,6 +234,32 @@ const DayColumn = memo(function DayColumn({
             />
           )}
         </div>
+        {openMinute !== null && openRecords.length > 1 && (
+          <div
+            className="tb-pop"
+            role="dialog"
+            aria-label={`${openRecords.length} 条并行记录`}
+            style={{ top: Math.floor(openMinute / 60) * rowH + rowH + 4 }}
+            onPointerDown={event => event.stopPropagation()}
+          >
+            <div className="tb-pop-title">{openRecords.length} 条并行记录</div>
+            {openRecords.map(record => (
+              <button
+                key={record.id}
+                type="button"
+                className="tb-pop-row"
+                onClick={() => {
+                  setOpenMinute(null)
+                  onBlockEdit(day, record)
+                }}
+              >
+                <i style={{ background: tagColor(record.timeTagId) }} />
+                <span>{record.note === undefined || record.note === '' ? tagName(record.timeTagId) : record.note}</span>
+                <time>{clock(record.start)}–{clock(record.end)}</time>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
