@@ -16353,6 +16353,9 @@
 
   // time-block/src/App.tsx
   var import_jsx_runtime11 = __toESM(require_jsx_runtime(), 1);
+  var MIN_RAIL = 320;
+  var MAX_RAIL = 720;
+  var DEFAULT_RAIL = 390;
   var PREVIEW_BADGE = {
     padding: "1px 5px",
     border: "1px solid var(--tb-border-strong)",
@@ -16391,20 +16394,43 @@
   function App() {
     const adapter = (0, import_react7.useMemo)(() => new FixtureTimeAdapter(), []);
     const [theme, setTheme] = (0, import_react7.useState)("dark");
+    const [railWidth, setRailWidth] = (0, import_react7.useState)(DEFAULT_RAIL);
+    const widthRef = (0, import_react7.useRef)(railWidth);
+    widthRef.current = railWidth;
     (0, import_react7.useEffect)(() => {
       document.documentElement.dataset.theme = theme;
     }, [theme]);
-    return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
-      TimeProduct,
-      {
-        adapter,
-        today: FIXTURE_TODAY,
-        headerAction: /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("span", { style: PREVIEW_ROW, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("span", { style: PREVIEW_BADGE, title: "OpenDesign Fixture \u9884\u89C8", children: "\u8BBE\u8BA1\u9884\u89C8" }),
-          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(ThemeToggle, { theme, onToggle: () => setTheme((value) => value === "dark" ? "light" : "dark") })
-        ] })
-      }
-    );
+    const startResize = (0, import_react7.useCallback)((event) => {
+      event.preventDefault();
+      const startX = event.clientX;
+      const startWidth = widthRef.current;
+      const move = (e) => {
+        const delta = startX - e.clientX;
+        setRailWidth(Math.max(MIN_RAIL, Math.min(MAX_RAIL, startWidth + delta)));
+      };
+      const up = () => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        document.body.style.cursor = "";
+      };
+      document.body.style.cursor = "col-resize";
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    }, []);
+    return /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "od-rail", style: { width: `min(100vw, ${railWidth}px)` }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "od-resize", role: "separator", "aria-orientation": "vertical", "aria-label": "\u8C03\u6574\u9884\u89C8\u680F\u5BBD\u5EA6", onPointerDown: startResize }),
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
+        TimeProduct,
+        {
+          adapter,
+          today: FIXTURE_TODAY,
+          headerAction: /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("span", { style: PREVIEW_ROW, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("span", { style: PREVIEW_BADGE, title: "OpenDesign Fixture \u9884\u89C8", children: "\u8BBE\u8BA1\u9884\u89C8" }),
+            /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(ThemeToggle, { theme, onToggle: () => setTheme((value) => value === "dark" ? "light" : "dark") })
+          ] })
+        }
+      )
+    ] });
   }
 
   // time-block/src/index.tsx

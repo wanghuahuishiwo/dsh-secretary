@@ -138,8 +138,35 @@ body {
   font-size: var(--sec-font-body);
   line-height: 1.4;
 }
-#root {
-  width: min(100vw, var(--tb-rail-width));
+.od-rail {
+  height: 100%;
   margin-left: auto;
+  position: relative;
+  overflow: hidden;
+  border-left: 1px solid var(--sec-color-border-subtle);
+}
+.od-resize {
+  position: absolute;
+  left: -3px;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: col-resize;
+  z-index: 100;
+  touch-action: none;
+}
+.od-resize:hover,
+.od-resize:active {
+  background: var(--sec-color-accent-soft);
+}
+.od-resize::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 32px;
+  background: var(--sec-color-border-strong);
 }
 /*# sourceMappingURL=index.css.map */
