@@ -15232,21 +15232,16 @@
       const close = (event) => {
         const target = event.target;
         if (target.closest(".tb-pop") !== null || target.closest(".tb-more") !== null) return;
-        event.stopPropagation();
-        event.preventDefault();
         setOpenMinute(null);
       };
       const onKey = (event) => {
-        if (event.key !== "Escape") return;
-        event.stopPropagation();
-        event.preventDefault();
-        setOpenMinute(null);
+        if (event.key === "Escape") setOpenMinute(null);
       };
-      window.addEventListener("pointerdown", close, true);
-      window.addEventListener("keydown", onKey, true);
+      window.addEventListener("pointerdown", close);
+      window.addEventListener("keydown", onKey);
       return () => {
-        window.removeEventListener("pointerdown", close, true);
-        window.removeEventListener("keydown", onKey, true);
+        window.removeEventListener("pointerdown", close);
+        window.removeEventListener("keydown", onKey);
       };
     }, [openMinute]);
     (0, import_react5.useEffect)(() => {
@@ -15258,17 +15253,11 @@
       const target = event.target;
       const minute = Number(target.dataset.min);
       if (!Number.isFinite(minute)) return;
-      const count = rows.find((item) => item.minute === minute)?.count ?? 0;
-      if (count > 1) {
-        event.preventDefault();
-        setOpenMinute(minute);
-        return;
-      }
       const record = recordAt(records, minute);
       if (record === void 0) return;
       event.preventDefault();
       onBlockEdit(day, record);
-    }, [rows, records, day, onBlockEdit]);
+    }, [records, day, onBlockEdit]);
     return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-day", "data-day": day, style: { height }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-gutter", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-datemark", children: [
         /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "m", children: [

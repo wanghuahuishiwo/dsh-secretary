@@ -96,25 +96,20 @@ const DayColumn = memo(function DayColumn({
 
   useEffect(() => {
     if (openMinute === null) return
-    /** Capture so an outside click only closes the sheet and never changes the selection. */
+    /** The popover is additive: closing it must not change the canvas' own gestures. */
     const close = (event: PointerEvent) => {
       const target = event.target as HTMLElement
       if (target.closest('.tb-pop') !== null || target.closest('.tb-more') !== null) return
-      event.stopPropagation()
-      event.preventDefault()
       setOpenMinute(null)
     }
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      event.stopPropagation()
-      event.preventDefault()
-      setOpenMinute(null)
+      if (event.key === 'Escape') setOpenMinute(null)
     }
-    window.addEventListener('pointerdown', close, true)
-    window.addEventListener('keydown', onKey, true)
+    window.addEventListener('pointerdown', close)
+    window.addEventListener('keydown', onKey)
     return () => {
-      window.removeEventListener('pointerdown', close, true)
-      window.removeEventListener('keydown', onKey, true)
+      window.removeEventListener('pointerdown', close)
+      window.removeEventListener('keydown', onKey)
     }
   }, [openMinute])
 
@@ -128,17 +123,11 @@ const DayColumn = memo(function DayColumn({
     const target = event.target as HTMLElement
     const minute = Number(target.dataset.min)
     if (!Number.isFinite(minute)) return
-    const count = rows.find(item => item.minute === minute)?.count ?? 0
-    if (count > 1) {
-      event.preventDefault()
-      setOpenMinute(minute)
-      return
-    }
     const record = recordAt(records, minute)
     if (record === undefined) return
     event.preventDefault()
     onBlockEdit(day, record)
-  }, [rows, records, day, onBlockEdit])
+  }, [records, day, onBlockEdit])
 
   return (
     <div className="tb-day" data-day={day} style={{ height }}>
