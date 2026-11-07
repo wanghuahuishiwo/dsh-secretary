@@ -108,7 +108,7 @@ const DayColumn = memo(function DayColumn({
             const color = tagColor(record.timeTagId)
             const nodes = []
             for (let minute = snapDown(record.start); minute < record.end; minute += CELL) {
-              const isFirstOfSegment = minute === snapDown(record.start) || minute % 60 === 0
+              const isFirstOfSegment = minute === snapDown(record.start)
               nodes.push(
                 <div
                   key={`${record.id}:${minute}`}

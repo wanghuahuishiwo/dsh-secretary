@@ -15209,7 +15209,7 @@
           const color = tagColor(record.timeTagId);
           const nodes = [];
           for (let minute = snapDown(record.start); minute < record.end; minute += CELL) {
-            const isFirstOfSegment = minute === snapDown(record.start) || minute % 60 === 0;
+            const isFirstOfSegment = minute === snapDown(record.start);
             nodes.push(
               /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
                 "div",
