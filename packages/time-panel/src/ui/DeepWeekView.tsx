@@ -229,15 +229,11 @@ export function DeepWeekView({ week, weekStart, today, busy, onPaint }: Props) {
           )}
         </aside>
       </div>
-      <div className="tb-deep-status" style={{ visibility: selection.size > 0 ? 'visible' : 'hidden' }} aria-hidden={selection.size === 0}>
-        <span>选择了 <b>{selection.size}</b> 格</span>
-        <span className="grow" />
-        <button className="tb-sb" type="button" onClick={clearSelection}>不选</button>
-        <button className="tb-sb erase" type="button" disabled={busy || rects.length === 0} onClick={() => paint(null)}>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M5.5 3h7v9h-7l-3.5-4.5z" /><path d="M8 6l3 3M11 6l-3 3" /></svg>
-          橡皮
-        </button>
-      </div>
+      {selection.size > 0 && (
+        <div className="tb-sel-badge" role="status">
+          选择了 {selection.size} 格
+        </div>
+      )}
     </>
   )
 }

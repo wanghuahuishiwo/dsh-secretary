@@ -14992,21 +14992,10 @@
           week !== void 0 && week.source !== "own" && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { marginTop: "auto", padding: "0 10px 10px", fontSize: "var(--tb-font-caption, 10px)", color: "var(--tb-text-tertiary, #727a88)", lineHeight: 1.6 }, children: week.source === "inherited" ? "\u7EE7\u627F\u81EA\u66F4\u65E9\u4E00\u5468\uFF0C\u6539\u8FD9\u4E00\u5468\u53EA\u5F71\u54CD\u8FD9\u4E00\u5468" : "\u8FD8\u6CA1\u6709\u753B\u8FC7\uFF0C\u6539\u8FD9\u4E00\u5468\u4ECE\u7A7A\u767D\u5F00\u59CB" })
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "tb-deep-status", style: { visibility: selection.size > 0 ? "visible" : "hidden" }, "aria-hidden": selection.size === 0, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { children: [
-          "\u9009\u62E9\u4E86 ",
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("b", { children: selection.size }),
-          " \u683C"
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "grow" }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { className: "tb-sb", type: "button", onClick: clearSelection, children: "\u4E0D\u9009" }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("button", { className: "tb-sb erase", type: "button", disabled: busy || rects.length === 0, onClick: () => paint(null), children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.4", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("path", { d: "M5.5 3h7v9h-7l-3.5-4.5z" }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("path", { d: "M8 6l3 3M11 6l-3 3" })
-          ] }),
-          "\u6A61\u76AE"
-        ] })
+      selection.size > 0 && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "tb-sel-badge", role: "status", children: [
+        "\u9009\u62E9\u4E86 ",
+        selection.size,
+        " \u683C"
       ] })
     ] });
   }
@@ -15721,9 +15710,7 @@
 .tb-hc.H { background: color-mix(in srgb, var(--tb-deep-high, #5aa86a) 52%, var(--tb-grid-cell, #191c21)); }
 .tb-hc.M { background: color-mix(in srgb, var(--tb-deep-medium, #b99530) 40%, var(--tb-grid-cell, #191c21)); }
 .tb-hc.L { background: color-mix(in srgb, var(--tb-deep-low, #79808c) 32%, var(--tb-grid-cell, #191c21)); }
-.tb-deep-status { flex: none; display: flex; align-items: center; gap: 8px; height: var(--tb-status-height, 42px); padding: 0 8px 0 12px;
   border-top: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); background: var(--tb-surface-raised, #1d2025); font-size: var(--tb-font-body, 12px); color: var(--tb-text-secondary, #a3a9b4); }
-.tb-deep-status b { color: var(--tb-text-primary, #eceff3); font-weight: 600; }
 `;
   function createIdIndex() {
     const toNumber = /* @__PURE__ */ new Map();

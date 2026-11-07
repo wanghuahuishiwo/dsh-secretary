@@ -20,7 +20,7 @@
     "tagShelf": ".tb-shelf .tb-cat",
     "sheet": ".tb-sheet[role=\"dialog\"][aria-label=\"编辑记录\"]",
     "deep": ".tb-deep → .tb-hc[data-k=\"weekday-hour\"]（class H / M / L）",
-    "deepStatus": ".tb-deep-status",
+    "deepStatus": ".tb-sel-badge",
     "datePicker": ".tb-picker[role=\"dialog\"] → .tb-picker-day[data-day]",
     "toast": ".tb-toast（文案出现时带 .on）",
     "theme": "html[data-theme]；设计壳按钮 .tb-head button[title=\"切换主题\"]",
@@ -171,7 +171,7 @@
       "expected": [
         "抽屉内包含“时间块”“深度时间”",
         "切换后 .tb-deep 出现，.tb-daylabel 为“11月2日 – 11月8日”；.tb-hc 共 168 格，初始 H 9 格、M 6 格、L 6 格",
-        "拖动后 .tb-deep-status 文本为“选择了 4 格”",
+        "拖动后 .tb-sel-badge 文本为“选择了 4 格”",
         "上色后 .tb-hc.H 变为 13 格，.tb-toast 为“已记录”",
         "切回时间块后 .tb-title .tsub 为“实录”，title=\"整理 TimeBlock 交互\" 仍为 9 段（Deep 写入不影响时间块数据）"
       ]

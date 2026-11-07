@@ -229,7 +229,5 @@ export const timeStyles = `.tb-app {
 .tb-hc.H { background: color-mix(in srgb, var(--tb-deep-high, #5aa86a) 52%, var(--tb-grid-cell, #191c21)); }
 .tb-hc.M { background: color-mix(in srgb, var(--tb-deep-medium, #b99530) 40%, var(--tb-grid-cell, #191c21)); }
 .tb-hc.L { background: color-mix(in srgb, var(--tb-deep-low, #79808c) 32%, var(--tb-grid-cell, #191c21)); }
-.tb-deep-status { flex: none; display: flex; align-items: center; gap: 8px; height: var(--tb-status-height, 42px); padding: 0 8px 0 12px;
   border-top: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); background: var(--tb-surface-raised, #1d2025); font-size: var(--tb-font-body, 12px); color: var(--tb-text-secondary, #a3a9b4); }
-.tb-deep-status b { color: var(--tb-text-primary, #eceff3); font-weight: 600; }
 `
