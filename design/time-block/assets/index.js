@@ -39594,7 +39594,8 @@
     nowMin,
     tagName,
     tagColor,
-    onCellDown
+    onCellDown,
+    onBlockEdit
   }) {
     const date = /* @__PURE__ */ new Date(`${day}T12:00:00`);
     const height = 24 * rowH;
@@ -39603,6 +39604,15 @@
       last: index % PER_HOUR === PER_HOUR - 1
     }));
     const selRuns = selected === void 0 ? [] : splitByHour(runsOf(day, [...selected]));
+    const onCellContextMenu = (0, import_react5.useCallback)((event) => {
+      const target = event.target;
+      const minute = Number(target.dataset.min);
+      if (!Number.isFinite(minute)) return;
+      const record = recordAt(records, minute);
+      if (record === void 0) return;
+      event.preventDefault();
+      onBlockEdit(day, record);
+    }, [records, day, onBlockEdit]);
     return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-day", "data-day": day, style: { height }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-gutter", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-datemark", children: [
         /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "m", children: [
@@ -39615,7 +39625,7 @@
       ] }) }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-hours", style: { height }, children: Array.from({ length: 24 }, (_, hour) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: nowMin !== void 0 && hour === Math.floor(nowMin / 60) ? "now" : "", style: { top: hour * rowH + 4 }, children: hour }, hour)) }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-grid", "data-day": day, style: { height }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-cells", style: { gridAutoRows: `${rowH}px` }, onPointerDown: onCellDown, children: cells.map((cell) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: `tb-cell${cell.last ? " hourlast" : ""}`, "data-day": day, "data-min": cell.minute }, cell.minute)) }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-cells", style: { gridAutoRows: `${rowH}px` }, onPointerDown: onCellDown, onContextMenu: onCellContextMenu, children: cells.map((cell) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: `tb-cell${cell.last ? " hourlast" : ""}`, "data-day": day, "data-min": cell.minute }, cell.minute)) }),
         /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-blocks", children: records.map((record) => {
           const fullName = tagName(record.timeTagId);
           const shortLabel = record.note === void 0 || record.note === "" ? tagInitials(fullName) : record.note;
@@ -39862,6 +39872,10 @@
       onAssign(runs, tagId);
       clearSelection();
     };
+    const handleBlockEdit = (0, import_react5.useCallback)((date, record) => {
+      clearSelection();
+      onEdit(date, record);
+    }, [clearSelection, onEdit]);
     const nowMin = days.includes(today) ? nowMinute : void 0;
     return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_jsx_runtime7.Fragment, { children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-tb", children: [
@@ -39877,7 +39891,8 @@
               nowMin: day === today ? nowMin : void 0,
               tagName,
               tagColor,
-              onCellDown
+              onCellDown,
+              onBlockEdit: handleBlockEdit
             },
             day
           )) }),
