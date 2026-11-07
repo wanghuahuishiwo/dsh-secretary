@@ -108,11 +108,13 @@ export const timeStyles = `.tb-app {
 .tb-hours span.now { color: var(--tb-text-primary, #eceff3); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
 .tb-grid { flex: 1; position: relative; min-width: 0; }
 .tb-cells { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(6, 1fr); }
-.tb-cell { background: var(--tb-grid-cell, #4a4c50); border-right: 1px solid var(--tb-surface-page, #0a0a0b); border-bottom: 1px solid var(--tb-surface-page, #0a0a0b); cursor: crosshair; }
-.tb-cell:nth-child(6n) { border-right: 0; }
-.tb-cell.hourlast { border-bottom: 1px solid var(--tb-surface-page, #0a0a0b); }
+.tb-cell { background: var(--tb-grid-cell, #4a4c50); cursor: crosshair; }
 .tb-cell:hover { background: color-mix(in srgb, var(--tb-grid-cell, #4a4c50) 85%, var(--tb-text-primary, #f2f3f4) 15%); }
 .tb-blocks, .tb-sel { position: absolute; inset: 0; pointer-events: none; }
+/* 1px page-coloured seams above the blocks, matching the reference's filled matrix. */
+.tb-lines { position: absolute; inset: 0; z-index: 2; display: grid; grid-template-columns: repeat(6, 1fr); pointer-events: none; }
+.tb-lines i { border-right: 1.5px solid var(--tb-surface-page, #0a0a0b); border-bottom: 1.5px solid var(--tb-surface-page, #0a0a0b); }
+.tb-lines i:nth-child(6n) { border-right: 0; }
 .tb-blk { position: absolute; overflow: hidden; display: flex; align-items: center; padding: 0 4px;
   font-size: var(--tb-font-caption, 10px); font-weight: 600; letter-spacing: .1px; color: #fff; white-space: nowrap; }
 .tb-blk span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

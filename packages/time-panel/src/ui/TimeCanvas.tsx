@@ -162,8 +162,8 @@ const DayColumn = memo(function DayColumn({
                 key={`${record.id}:${minute}`}
                 className="tb-blk"
                 style={{
-                  left: `calc(${(((minute % 60) / CELL) / PER_HOUR) * 100}% + 0.5px)`,
-                  width: `calc(${100 / PER_HOUR}% - 1px)`,
+                  left: `${(((minute % 60) / CELL) / PER_HOUR) * 100}%`,
+                  width: `${100 / PER_HOUR}%`,
                   top: Math.floor(minute / 60) * rowH + 0.5,
                   height: rowH - 1,
                   background: tagColor(record.timeTagId),
@@ -191,6 +191,9 @@ const DayColumn = memo(function DayColumn({
               {countGlyph(cell.count)}
             </button>
           ))}
+        </div>
+        <div className="tb-lines" aria-hidden="true" style={{ gridAutoRows: `${rowH}px` }}>
+          {Array.from({ length: 24 * PER_HOUR }, (_, index) => <i key={index} />)}
         </div>
         <div className="tb-sel">
           {selRuns.map(run => {

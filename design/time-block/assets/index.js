@@ -15281,8 +15281,8 @@
               {
                 className: "tb-blk",
                 style: {
-                  left: `calc(${minute % 60 / CELL / PER_HOUR * 100}% + 0.5px)`,
-                  width: `calc(${100 / PER_HOUR}% - 1px)`,
+                  left: `${minute % 60 / CELL / PER_HOUR * 100}%`,
+                  width: `${100 / PER_HOUR}%`,
                   top: Math.floor(minute / 60) * rowH + 0.5,
                   height: rowH - 1,
                   background: tagColor(record.timeTagId)
@@ -15317,6 +15317,7 @@
             `more:${cell.minute}`
           ))
         ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-lines", "aria-hidden": "true", style: { gridAutoRows: `${rowH}px` }, children: Array.from({ length: 24 * PER_HOUR }, (_, index) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("i", {}, index)) }),
         /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-sel", children: [
           selRuns.map((run) => {
             const from = run.start % 60 / CELL;
@@ -15734,11 +15735,13 @@
 .tb-hours span.now { color: var(--tb-text-primary, #eceff3); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
 .tb-grid { flex: 1; position: relative; min-width: 0; }
 .tb-cells { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(6, 1fr); }
-.tb-cell { background: var(--tb-grid-cell, #4a4c50); border-right: 1px solid var(--tb-surface-page, #0a0a0b); border-bottom: 1px solid var(--tb-surface-page, #0a0a0b); cursor: crosshair; }
-.tb-cell:nth-child(6n) { border-right: 0; }
-.tb-cell.hourlast { border-bottom: 1px solid var(--tb-surface-page, #0a0a0b); }
+.tb-cell { background: var(--tb-grid-cell, #4a4c50); cursor: crosshair; }
 .tb-cell:hover { background: color-mix(in srgb, var(--tb-grid-cell, #4a4c50) 85%, var(--tb-text-primary, #f2f3f4) 15%); }
 .tb-blocks, .tb-sel { position: absolute; inset: 0; pointer-events: none; }
+/* 1px page-coloured seams above the blocks, matching the reference's filled matrix. */
+.tb-lines { position: absolute; inset: 0; z-index: 2; display: grid; grid-template-columns: repeat(6, 1fr); pointer-events: none; }
+.tb-lines i { border-right: 1.5px solid var(--tb-surface-page, #0a0a0b); border-bottom: 1.5px solid var(--tb-surface-page, #0a0a0b); }
+.tb-lines i:nth-child(6n) { border-right: 0; }
 .tb-blk { position: absolute; overflow: hidden; display: flex; align-items: center; padding: 0 4px;
   font-size: var(--tb-font-caption, 10px); font-weight: 600; letter-spacing: .1px; color: #fff; white-space: nowrap; }
 .tb-blk span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
