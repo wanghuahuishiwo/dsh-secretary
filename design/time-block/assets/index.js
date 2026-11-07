@@ -15559,9 +15559,14 @@
 /* ---------- \u65F6\u95F4\u5757 ---------- */
 .tb-tb { flex: 1; min-height: 0; display: flex; }
 .tb-tb-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
-.tb-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; overflow-anchor: auto; }
-.tb-scroll::-webkit-scrollbar { width: 9px; }
-.tb-scroll::-webkit-scrollbar-thumb { background: var(--tb-border-strong, rgba(255, 255, 255, 0.14)); border-radius: 5px; border: 3px solid var(--tb-surface-rail, #16181c); }
+.tb-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overflow-anchor: auto; }
+.tb-scroll { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+.tb-scroll:hover { scrollbar-color: rgba(128, 128, 128, 0.25) transparent; }
+.tb-scroll::-webkit-scrollbar { width: 4px; }
+.tb-scroll::-webkit-scrollbar-track { background: transparent; }
+.tb-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 2px; }
+.tb-scroll:hover::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.25); }
+.tb-scroll:hover::-webkit-scrollbar-thumb:hover { background: rgba(128, 128, 128, 0.45); }
 .tb-days { position: relative; }
 .tb-day { position: relative; display: flex; }
 .tb-day + .tb-day { border-top: 1px dashed var(--tb-border-strong, rgba(255, 255, 255, 0.14)); }
