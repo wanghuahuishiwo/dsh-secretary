@@ -182,11 +182,13 @@ export function TimeProduct({ adapter, headerAction, today: openingDay }: TimePr
     return () => { window.removeEventListener('keydown', onKey) }
   }, [module, step])
 
-  const paint = useCallback(async (next: TimeLayer, runs: readonly Run[], tagId: number | null) => {
+  const paint = useCallback(async (
+    next: TimeLayer, runs: readonly Run[], tagId: number | null, mode: 'overwrite' | 'parallel' = 'overwrite',
+  ) => {
     if (runs.length === 0) return
     await runWrite(
-      () => adapter.paint({ layer: next, tagId: tagId === null ? null : indexes.tag.string(tagId), runs }),
-      tagId === null ? '已擦除' : '已上色',
+      () => adapter.paint({ layer: next, tagId: tagId === null ? null : indexes.tag.string(tagId), runs, mode }),
+      tagId === null ? '已擦除' : mode === 'parallel' ? '已添加并行' : '已上色',
     )
   }, [adapter, indexes, runWrite])
 
@@ -315,7 +317,7 @@ export function TimeProduct({ adapter, headerAction, today: openingDay }: TimePr
               key={module}
               layer={layer} days={view.days} today={view.today} nowMinute={view.nowMinute}
               focus={focus} onExtend={extendRange} onTopDateChange={setTopDate} records={records[layer]} tags={tags}
-              busy={busy} onAssign={(runs, tagId) => void paint(layer, runs, tagId)}
+              busy={busy} onAssign={(runs, tagId, mode) => void paint(layer, runs, tagId, mode)}
               onEdit={(date, record) => setSheet({ layer, date, record })}
             />
           </section>

@@ -114,12 +114,13 @@ export const timeStyles = `.tb-app {
   font-size: var(--tb-font-caption, 10px); font-weight: 600; letter-spacing: .1px; color: #fff; white-space: nowrap; }
 .tb-blk span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Overlap stays in the data but not in the cell: one record plus a count badge. */
-.tb-more { position: absolute; z-index: 4; width: 16px; height: 16px; display: grid; place-items: center; padding: 0;
-  border: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); border-radius: 4px;
-  background: var(--tb-surface-raised, #1d2025); color: var(--tb-text-primary, #eceff3);
-  font-size: 10px; font-weight: 700; line-height: 1; pointer-events: auto; cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, .35); }
-.tb-more:hover { background: var(--tb-surface-hover, #252931); }
+/* A bare superscript keeps the badge quiet on top of the tag colour. */
+.tb-more { position: absolute; z-index: 4; width: 14px; height: 14px; display: grid; place-items: center; padding: 0;
+  border: 0; background: transparent; color: #fff; font-size: 12px; font-weight: 700; line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .55), 0 0 1px rgba(0, 0, 0, .6);
+  pointer-events: auto; cursor: pointer; opacity: .88; }
+.tb-more::before { content: ''; position: absolute; inset: -4px; }
+.tb-more:hover { opacity: 1; }
 .tb-pop { position: absolute; z-index: 6; left: 6px; right: 6px; display: flex; flex-direction: column; gap: 1px;
   padding: 5px; border: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); border-radius: 8px;
   background: var(--tb-surface-raised, #1d2025); box-shadow: 0 10px 30px rgba(0, 0, 0, .42); pointer-events: auto; }
@@ -163,10 +164,18 @@ export const timeStyles = `.tb-app {
 
 /* ---------- 选区徽章（替代底部状态栏） ---------- */
 .tb-sel-badge { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 10;
+  display: flex; align-items: center; gap: 8px;
   padding: 4px 12px; border-radius: var(--tb-radius-md, 8px); border: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14));
   background: var(--tb-surface-raised, #1d2025); color: var(--tb-text-primary, #eceff3);
   font-size: var(--tb-font-label, 11px); font-weight: 600; font-variant-numeric: tabular-nums;
   pointer-events: none; white-space: nowrap; }
+.tb-sel-badge.split { pointer-events: auto; padding: 3px 4px 3px 11px; }
+.tb-sel-mode { display: flex; align-items: center; gap: 1px; padding: 1px; border-radius: 5px;
+  background: var(--tb-surface-page, #16181c); }
+.tb-sel-mode button { height: 21px; padding: 0 8px; border: 0; border-radius: 4px; background: transparent;
+  color: var(--tb-text-tertiary, #727a88); font-size: var(--tb-font-caption, 10px); font-weight: 600; }
+.tb-sel-mode button.on { background: var(--tb-surface-hover, #252931); color: var(--tb-text-primary, #eceff3);
+  box-shadow: inset 0 0 0 1px var(--tb-border-strong, rgba(255, 255, 255, 0.14)); }
 
 /* ---------- 一级抽屉 ---------- */
 .tb-scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .42); opacity: 0; pointer-events: none;

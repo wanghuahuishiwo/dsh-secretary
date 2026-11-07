@@ -79,6 +79,11 @@ export interface PaintCommand {
   /** `null` erases the selection. */
   readonly tagId: string | null
   readonly runs: readonly TimeRunView[]
+  /**
+   * `overwrite` (default) cuts and replaces what the runs cover.
+   * `parallel` keeps every existing record and adds one new record per run.
+   */
+  readonly mode?: 'overwrite' | 'parallel'
 }
 
 export interface PaintDeepCommand {

@@ -218,6 +218,21 @@ async function paintRuns(
   await mergeLayer(ctx, layer, fromMs, toMs, timeZone, nowMs)
 }
 
+/** Add one new record per run without cutting or deleting any existing record. */
+async function addParallelRuns(
+  ctx: TimeProductContext, layer: TimeLayer, tagId: number, runs: readonly PaintRun[], timeZone: string,
+): Promise<void> {
+  for (const run of runs) {
+    const dayStart = zonedStart(run.date, timeZone)
+    await writeBlock(ctx, layer, {
+      startMs: dayStart + run.start * MINUTE_MS,
+      endMs: dayStart + run.end * MINUTE_MS,
+      timeTagId: tagId,
+      actualSource: 'user_reported',
+    }, timeZone)
+  }
+}
+
 /** Replace one local day's blocks with the snapshot held by a canvas Undo entry. */
 async function replaceDaySnapshot(
   ctx: TimeProductContext, layer: TimeLayer, date: string,
@@ -311,8 +326,18 @@ export class TimeProductService extends TypertRemoteService {
           throw new Error('secretary: paint runs require 0 <= start < end <= 1440')
         }
       }
+      const mode = input.mode ?? 'overwrite'
+      if (mode !== 'overwrite' && mode !== 'parallel') {
+        throw new Error('secretary: paint mode must be overwrite or parallel')
+      }
+      if (mode === 'parallel' && input.tagId === null) {
+        throw new Error('secretary: parallel paint requires a time tag')
+      }
       if (input.tagId !== null) await requireTimeTag(this.productCtx, input.tagId)
-      if (input.runs.length > 0) await paintRuns(this.productCtx, layer, input.tagId, input.runs, input.timeZone)
+      if (input.runs.length > 0) {
+        if (mode === 'parallel') await addParallelRuns(this.productCtx, layer, input.tagId as number, input.runs, input.timeZone)
+        else await paintRuns(this.productCtx, layer, input.tagId, input.runs, input.timeZone)
+      }
       return { ok: true }
     } catch (error) {
       productFailure(this.productCtx, error, 'paint')

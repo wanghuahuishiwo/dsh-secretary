@@ -18,7 +18,8 @@
     "overlapBadge": ".tb-more（重叠格右上角数量角标，文本为 ²/³；aria-label 为“N 条并行记录”）",
     "overlapPopover": ".tb-pop[role=\"dialog\"]（只有点角标才出现；.tb-pop-row 每条记录，含颜色、名称与起止时间；点外部或 Esc 收起）",
     "selection": ".tb-selbox",
-    "selectionBadge": ".tb-sel-badge（无选区时不渲染；文本为时长，如“10 分”“1 小时”）",
+    "selectionBadge": ".tb-sel-badge（无选区时不渲染；含时长与可选 .tb-sel-mode）",
+    "paintMode": ".tb-sel-mode（仅选区碰到已有记录时出现；两个按钮“覆盖”“并行”，默认“覆盖”选中；写入后消失）",
     "tagShelf": ".tb-shelf .tb-cat",
     "sheet": ".tb-sheet[role=\"dialog\"][aria-label=\"编辑备注\"]（只有备注输入与删除/完成）",
     "deep": ".tb-deep → .tb-hc[data-k=\"weekday-hour\"]（class H / M / L；data-level）",
@@ -119,6 +120,22 @@
       ]
     },
     {
+      "id": "parallel-add",
+      "title": "选区碰已有记录：覆盖／并行，默认覆盖",
+      "steps": [
+        "在 09:30–10:00 拖选（该区间已有实录）",
+        "点击 .tb-sel-mode 中的“并行”",
+        "点击标签架“学习”",
+        "等待 Toast；“已添加并行”后点 09:30 的 .tb-more，再点撤销"
+      ],
+      "expected": [
+        "默认选中“覆盖”；选区徽章同时显示“40 分”与“覆盖｜并行”",
+        "点“并行”后 aria-pressed 切换；再点标签写入，Toast 为“已添加并行”，选区与模式一起清空",
+        "原有“整理 TimeBlock 交互”“通勤听 Git 热榜”完整保留；09:30 角标从“²”变“³”，浮层出现第三条“学习 09:30–10:10”",
+        "撤销后角标回到“²”，新增记录消失，原有记录不变"
+      ]
+    },
+    {
       "id": "erase",
       "title": "Delete 擦除整条记录并 Undo 恢复",
       "steps": [
@@ -127,7 +144,7 @@
         "点击 .tb-head button[title=\"撤销\"]"
       ],
       "expected": [
-        "选区徽章显示“1 小时 30 分”，当日 .tb-selbox 连续覆盖该记录",
+        "选区徽章时长显示“1 小时 30 分”，并出现 .tb-sel-mode（默认“覆盖”）",
         "擦除后 .tb-toast 为“已擦除”，title=\"整理 TimeBlock 交互\" 变为 0 段，撤销可用",
         "Undo 后 .tb-toast 为“已撤销”，该记录恢复为 9 段"
       ]

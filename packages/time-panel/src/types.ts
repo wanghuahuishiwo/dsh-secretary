@@ -17,6 +17,8 @@ export interface PaintTimeBlocksRequest {
   readonly tagId: number | null
   readonly runs: readonly PaintRun[]
   readonly timeZone: string
+  /** `overwrite` is the default canvas behavior; `parallel` keeps existing records. */
+  readonly mode?: 'overwrite' | 'parallel'
 }
 
 export interface PaintResult { readonly ok: true }

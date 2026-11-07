@@ -15406,6 +15406,7 @@
     const [rowH, setRowH] = (0, import_react5.useState)(40);
     const [selected, setSelected] = (0, import_react5.useState)(() => /* @__PURE__ */ new Map());
     const [jumpVisible, setJumpVisible] = (0, import_react5.useState)(false);
+    const [parallel, setParallel] = (0, import_react5.useState)(false);
     void layer;
     const timeTags = (0, import_react5.useMemo)(() => tags.filter((tag) => tag.kind === "time"), [tags]);
     const tagOf = (0, import_react5.useCallback)((id) => timeTags.find((tag) => tag.id === id), [timeTags]);
@@ -15498,6 +15499,7 @@
     const writeSelection = (0, import_react5.useCallback)((next) => {
       selectedRef.current = next;
       setSelected(next);
+      setParallel(false);
     }, []);
     const setDayMinutes = (0, import_react5.useCallback)((date, minutes) => {
       const next = new Map(selectedRef.current);
@@ -15556,6 +15558,16 @@
       for (const minutes of selected.values()) total += minutes.size * CELL;
       return total;
     }, [selected]);
+    const overlapsExisting = (0, import_react5.useMemo)(() => {
+      for (const run of runs) {
+        const list = records.get(run.date);
+        if (list !== void 0 && list.some((record) => record.start < run.end && record.end > run.start)) return true;
+      }
+      return false;
+    }, [runs, records]);
+    (0, import_react5.useEffect)(() => {
+      if (!overlapsExisting) setParallel(false);
+    }, [overlapsExisting]);
     (0, import_react5.useEffect)(() => {
       const onKey = (event) => {
         const target = event.target;
@@ -15569,7 +15581,7 @@
         for (const [date, minutes] of selectedRef.current) list.push(...runsOf(date, [...minutes]));
         if (list.length === 0) return;
         event.preventDefault();
-        onAssign(list, null);
+        onAssign(list, null, "overwrite");
         clearSelection();
       };
       window.addEventListener("keydown", onKey);
@@ -15579,7 +15591,7 @@
     }, [onAssign, clearSelection]);
     const assign = (tagId) => {
       if (runs.length === 0) return;
-      onAssign(runs, tagId);
+      onAssign(runs, tagId, parallel ? "parallel" : "overwrite");
       clearSelection();
     };
     const handleBlockEdit = (0, import_react5.useCallback)((date, record) => {
@@ -15610,7 +15622,13 @@
         ] }) }),
         /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(TagShelf, { tags: timeTags, onAssign: assign })
       ] }),
-      totalMinutes > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-sel-badge", role: "status", children: durationLabel(totalMinutes) })
+      totalMinutes > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: `tb-sel-badge${overlapsExisting ? " split" : ""}`, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { role: "status", children: durationLabel(totalMinutes) }),
+        overlapsExisting && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "tb-sel-mode", role: "group", "aria-label": "\u5199\u5165\u65B9\u5F0F", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { type: "button", className: parallel ? "" : "on", "aria-pressed": !parallel, onClick: () => setParallel(false), children: "\u8986\u76D6" }),
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { type: "button", className: parallel ? "on" : "", "aria-pressed": parallel, onClick: () => setParallel(true), children: "\u5E76\u884C" })
+        ] })
+      ] })
     ] });
   }
   function Toast({ message }) {
@@ -15727,12 +15745,13 @@
   font-size: var(--tb-font-caption, 10px); font-weight: 600; letter-spacing: .1px; color: #fff; white-space: nowrap; }
 .tb-blk span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Overlap stays in the data but not in the cell: one record plus a count badge. */
-.tb-more { position: absolute; z-index: 4; width: 16px; height: 16px; display: grid; place-items: center; padding: 0;
-  border: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); border-radius: 4px;
-  background: var(--tb-surface-raised, #1d2025); color: var(--tb-text-primary, #eceff3);
-  font-size: 10px; font-weight: 700; line-height: 1; pointer-events: auto; cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, .35); }
-.tb-more:hover { background: var(--tb-surface-hover, #252931); }
+/* A bare superscript keeps the badge quiet on top of the tag colour. */
+.tb-more { position: absolute; z-index: 4; width: 14px; height: 14px; display: grid; place-items: center; padding: 0;
+  border: 0; background: transparent; color: #fff; font-size: 12px; font-weight: 700; line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .55), 0 0 1px rgba(0, 0, 0, .6);
+  pointer-events: auto; cursor: pointer; opacity: .88; }
+.tb-more::before { content: ''; position: absolute; inset: -4px; }
+.tb-more:hover { opacity: 1; }
 .tb-pop { position: absolute; z-index: 6; left: 6px; right: 6px; display: flex; flex-direction: column; gap: 1px;
   padding: 5px; border: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); border-radius: 8px;
   background: var(--tb-surface-raised, #1d2025); box-shadow: 0 10px 30px rgba(0, 0, 0, .42); pointer-events: auto; }
@@ -15776,10 +15795,18 @@
 
 /* ---------- \u9009\u533A\u5FBD\u7AE0\uFF08\u66FF\u4EE3\u5E95\u90E8\u72B6\u6001\u680F\uFF09 ---------- */
 .tb-sel-badge { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 10;
+  display: flex; align-items: center; gap: 8px;
   padding: 4px 12px; border-radius: var(--tb-radius-md, 8px); border: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14));
   background: var(--tb-surface-raised, #1d2025); color: var(--tb-text-primary, #eceff3);
   font-size: var(--tb-font-label, 11px); font-weight: 600; font-variant-numeric: tabular-nums;
   pointer-events: none; white-space: nowrap; }
+.tb-sel-badge.split { pointer-events: auto; padding: 3px 4px 3px 11px; }
+.tb-sel-mode { display: flex; align-items: center; gap: 1px; padding: 1px; border-radius: 5px;
+  background: var(--tb-surface-page, #16181c); }
+.tb-sel-mode button { height: 21px; padding: 0 8px; border: 0; border-radius: 4px; background: transparent;
+  color: var(--tb-text-tertiary, #727a88); font-size: var(--tb-font-caption, 10px); font-weight: 600; }
+.tb-sel-mode button.on { background: var(--tb-surface-hover, #252931); color: var(--tb-text-primary, #eceff3);
+  box-shadow: inset 0 0 0 1px var(--tb-border-strong, rgba(255, 255, 255, 0.14)); }
 
 /* ---------- \u4E00\u7EA7\u62BD\u5C49 ---------- */
 .tb-scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .42); opacity: 0; pointer-events: none;
@@ -15985,11 +16012,11 @@
         window.removeEventListener("keydown", onKey);
       };
     }, [module, step]);
-    const paint = (0, import_react.useCallback)(async (next, runs, tagId) => {
+    const paint = (0, import_react.useCallback)(async (next, runs, tagId, mode = "overwrite") => {
       if (runs.length === 0) return;
       await runWrite(
-        () => adapter.paint({ layer: next, tagId: tagId === null ? null : indexes.tag.string(tagId), runs }),
-        tagId === null ? "\u5DF2\u64E6\u9664" : "\u5DF2\u4E0A\u8272"
+        () => adapter.paint({ layer: next, tagId: tagId === null ? null : indexes.tag.string(tagId), runs, mode }),
+        tagId === null ? "\u5DF2\u64E6\u9664" : mode === "parallel" ? "\u5DF2\u6DFB\u52A0\u5E76\u884C" : "\u5DF2\u4E0A\u8272"
       );
     }, [adapter, indexes, runWrite]);
     const paintDeep = (0, import_react.useCallback)(async (rects, level) => {
@@ -16116,7 +16143,7 @@
                 records: records[layer],
                 tags,
                 busy,
-                onAssign: (runs, tagId) => void paint(layer, runs, tagId),
+                onAssign: (runs, tagId, mode) => void paint(layer, runs, tagId, mode),
                 onEdit: (date, record) => setSheet({ layer, date, record })
               },
               module
@@ -16289,7 +16316,11 @@
       return this.view();
     }
     async paint(command) {
-      this.write(command.layer, command.runs, command.tagId);
+      if (command.mode === "parallel" && command.tagId !== null) {
+        this.writeParallel(command.layer, command.runs, command.tagId);
+      } else {
+        this.write(command.layer, command.runs, command.tagId);
+      }
       return this.view();
     }
     async undo(layer) {
@@ -16377,6 +16408,27 @@
         next.push(...mergeAdjacent(day));
       }
       this.blocks[layer] = sortBlocks(next);
+      this.history[layer] = [entry, ...this.history[layer]].slice(0, HISTORY_LIMIT);
+    }
+    /** Keep every existing record and append one new record per run. */
+    writeParallel(layer, runs, tagId) {
+      if (runs.length === 0) return;
+      const dates = new Set(runs.map((run) => run.date));
+      const current = this.blocks[layer];
+      const entry = {
+        days: [...dates].map((date) => ({
+          date,
+          before: current.filter((block2) => block2.date === date).map((block2) => ({ ...block2 }))
+        }))
+      };
+      const added = runs.map((run) => ({
+        id: this.createId(),
+        date: run.date,
+        start: run.start,
+        end: run.end,
+        tagId
+      }));
+      this.blocks[layer] = sortBlocks([...current, ...added]);
       this.history[layer] = [entry, ...this.history[layer]].slice(0, HISTORY_LIMIT);
     }
     createId() {

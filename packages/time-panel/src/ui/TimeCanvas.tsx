@@ -18,7 +18,7 @@ interface Props {
   readonly records: ReadonlyMap<string, readonly DayRecord[]>
   readonly tags: readonly TimeTag[]
   readonly busy: boolean
-  readonly onAssign: (runs: readonly Run[], tagId: number | null) => void
+  readonly onAssign: (runs: readonly Run[], tagId: number | null, mode: 'overwrite' | 'parallel') => void
   readonly onEdit: (date: string, record: DayRecord) => void
 }
 
@@ -273,6 +273,7 @@ export function TimeCanvas(props: Props) {
   const [rowH, setRowH] = useState(40)
   const [selected, setSelected] = useState<Map<string, Set<number>>>(() => new Map())
   const [jumpVisible, setJumpVisible] = useState(false)
+  const [parallel, setParallel] = useState(false)
   void layer
 
   const timeTags = useMemo(() => tags.filter(tag => tag.kind === 'time'), [tags])
@@ -373,6 +374,7 @@ export function TimeCanvas(props: Props) {
   const writeSelection = useCallback((next: Map<string, Set<number>>) => {
     selectedRef.current = next
     setSelected(next)
+    setParallel(false)
   }, [])
 
   const setDayMinutes = useCallback((date: string, minutes: readonly number[]) => {
@@ -438,6 +440,19 @@ export function TimeCanvas(props: Props) {
     return total
   }, [selected])
 
+  /** Only show the overwrite/parallel choice when a run actually covers something. */
+  const overlapsExisting = useMemo(() => {
+    for (const run of runs) {
+      const list = records.get(run.date)
+      if (list !== undefined && list.some(record => record.start < run.end && record.end > run.start)) return true
+    }
+    return false
+  }, [runs, records])
+
+  useEffect(() => {
+    if (!overlapsExisting) setParallel(false)
+  }, [overlapsExisting])
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
@@ -451,7 +466,7 @@ export function TimeCanvas(props: Props) {
       for (const [date, minutes] of selectedRef.current) list.push(...runsOf(date, [...minutes]))
       if (list.length === 0) return
       event.preventDefault()
-      onAssign(list, null)
+      onAssign(list, null, 'overwrite')
       clearSelection()
     }
     window.addEventListener('keydown', onKey)
@@ -460,7 +475,7 @@ export function TimeCanvas(props: Props) {
 
   const assign = (tagId: number) => {
     if (runs.length === 0) return
-    onAssign(runs, tagId)
+    onAssign(runs, tagId, parallel ? 'parallel' : 'overwrite')
     clearSelection()
   }
 
@@ -499,8 +514,14 @@ export function TimeCanvas(props: Props) {
         <TagShelf tags={timeTags} onAssign={assign} />
       </div>
       {totalMinutes > 0 && (
-        <div className="tb-sel-badge" role="status">
-          {durationLabel(totalMinutes)}
+        <div className={`tb-sel-badge${overlapsExisting ? ' split' : ''}`}>
+          <span role="status">{durationLabel(totalMinutes)}</span>
+          {overlapsExisting && (
+            <span className="tb-sel-mode" role="group" aria-label="写入方式">
+              <button type="button" className={parallel ? '' : 'on'} aria-pressed={!parallel} onClick={() => setParallel(false)}>覆盖</button>
+              <button type="button" className={parallel ? 'on' : ''} aria-pressed={parallel} onClick={() => setParallel(true)}>并行</button>
+            </span>
+          )}
         </div>
       )}
     </>

@@ -62,7 +62,11 @@ export class FixtureTimeAdapter implements TimeAdapter {
   }
 
   async paint(command: PaintCommand): Promise<TimeView> {
-    this.write(command.layer, command.runs, command.tagId)
+    if (command.mode === 'parallel' && command.tagId !== null) {
+      this.writeParallel(command.layer, command.runs, command.tagId)
+    } else {
+      this.write(command.layer, command.runs, command.tagId)
+    }
     return this.view()
   }
 
@@ -168,6 +172,32 @@ export class FixtureTimeAdapter implements TimeAdapter {
     }
 
     this.blocks[layer] = sortBlocks(next)
+    this.history[layer] = [entry, ...this.history[layer]].slice(0, HISTORY_LIMIT)
+  }
+
+  /** Keep every existing record and append one new record per run. */
+  private writeParallel(
+    layer: TimeLayer,
+    runs: PaintCommand['runs'],
+    tagId: string,
+  ): void {
+    if (runs.length === 0) return
+    const dates = new Set(runs.map(run => run.date))
+    const current = this.blocks[layer]
+    const entry: UndoEntry = {
+      days: [...dates].map(date => ({
+        date,
+        before: current.filter(block => block.date === date).map(block => ({ ...block })),
+      })),
+    }
+    const added = runs.map(run => ({
+      id: this.createId(),
+      date: run.date,
+      start: run.start,
+      end: run.end,
+      tagId,
+    }))
+    this.blocks[layer] = sortBlocks([...current, ...added])
     this.history[layer] = [entry, ...this.history[layer]].slice(0, HISTORY_LIMIT)
   }
 

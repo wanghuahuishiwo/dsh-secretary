@@ -77,6 +77,7 @@ export class RemoteTimeAdapter implements TimeAdapter {
       tagId: command.tagId === null ? null : numericId(command.tagId, '标签'),
       runs: command.runs,
       timeZone: this.timeZone,
+      mode: command.mode ?? 'overwrite',
     })
     if (!result.ok) throw result.error
     this.history[command.layer] = [entry, ...this.history[command.layer]].slice(0, HISTORY_LIMIT)
