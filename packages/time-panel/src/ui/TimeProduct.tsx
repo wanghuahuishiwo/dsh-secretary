@@ -300,6 +300,7 @@ export function TimeProduct({ adapter, headerAction, today: openingDay }: TimePr
         canUndo={view?.canUndo[layer] === true}
         busy={busy}
         pickerOpen={picker !== null}
+        drawerOpen={drawer}
         action={headerAction}
         onDrawer={() => setDrawer(value => !value)}
         onPicker={() => setPicker(picker === null ? module : null)}

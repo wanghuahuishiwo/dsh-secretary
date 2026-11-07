@@ -26,6 +26,7 @@ interface TimeHeaderProps {
   readonly canUndo: boolean
   readonly busy: boolean
   readonly pickerOpen: boolean
+  readonly drawerOpen: boolean
   /** Host-owned control rendered in the header's trailing slot. */
   readonly action?: ReactNode
   readonly onDrawer: () => void
@@ -35,15 +36,21 @@ interface TimeHeaderProps {
 }
 
 /** 产品头部：菜单、模块名、日期导航、今天、撤销。 */
-export function TimeHeader({ module, dateLabel, canUndo, busy, pickerOpen, action, onDrawer, onPicker, onStep, onUndo }: TimeHeaderProps) {
+export function TimeHeader({ module, dateLabel, canUndo, busy, pickerOpen, drawerOpen, action, onDrawer, onPicker, onStep, onUndo }: TimeHeaderProps) {
   return (
     <header className={`tb-head${action === undefined || action === null ? '' : ' has-action'}`}>
-      <button className="tb-hbtn" type="button" aria-label="一级模块" onClick={onDrawer}>
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2.5 4h11M2.5 8h11M2.5 12h11" /></svg>
+      <button
+        className="tb-module-switch"
+        type="button"
+        aria-label="切换一级模块"
+        aria-haspopup="menu"
+        aria-expanded={drawerOpen}
+        onClick={onDrawer}
+      >
+        <svg className="tb-switch-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2.5 4h11M2.5 8h11M2.5 12h11" /></svg>
+        <span className="tb-title">{MODULES.find(item => item.id === module)?.name ?? ''}</span>
+        <svg className="tb-switch-caret" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M2.5 4.5L6 8l3.5-3.5" /></svg>
       </button>
-      <span className="tb-title">
-        {MODULES.find(item => item.id === module)?.name ?? ''}
-      </span>
       <span className="grow" />
       <button className="tb-hbtn" type="button" aria-label={module === 'deep' ? '上一周' : '上一天'} onClick={() => onStep(module === 'deep' ? -7 : -1)}>
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M9.5 4L5.5 8l4 4" /></svg>

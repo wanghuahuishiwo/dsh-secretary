@@ -15021,10 +15021,24 @@
     const end = /* @__PURE__ */ new Date(`${addDays(weekStart, 6)}T12:00:00`);
     return `${start.getMonth() + 1}\u6708${start.getDate()}\u65E5 \u2013 ${end.getMonth() + 1}\u6708${end.getDate()}\u65E5`;
   }
-  function TimeHeader({ module, dateLabel, canUndo, busy, pickerOpen, action, onDrawer, onPicker, onStep, onUndo }) {
+  function TimeHeader({ module, dateLabel, canUndo, busy, pickerOpen, drawerOpen, action, onDrawer, onPicker, onStep, onUndo }) {
     return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("header", { className: `tb-head${action === void 0 || action === null ? "" : " has-action"}`, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "tb-hbtn", type: "button", "aria-label": "\u4E00\u7EA7\u6A21\u5757", onClick: onDrawer, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.5", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2.5 4h11M2.5 8h11M2.5 12h11" }) }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "tb-title", children: MODULES.find((item) => item.id === module)?.name ?? "" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+        "button",
+        {
+          className: "tb-module-switch",
+          type: "button",
+          "aria-label": "\u5207\u6362\u4E00\u7EA7\u6A21\u5757",
+          "aria-haspopup": "menu",
+          "aria-expanded": drawerOpen,
+          onClick: onDrawer,
+          children: [
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { className: "tb-switch-icon", viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.5", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2.5 4h11M2.5 8h11M2.5 12h11" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "tb-title", children: MODULES.find((item) => item.id === module)?.name ?? "" }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { className: "tb-switch-caret", viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "1.7", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2.5 4.5L6 8l3.5-3.5" }) })
+          ]
+        }
+      ),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "grow" }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "tb-hbtn", type: "button", "aria-label": module === "deep" ? "\u4E0A\u4E00\u5468" : "\u4E0A\u4E00\u5929", onClick: () => onStep(module === "deep" ? -7 : -1), children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.6", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M9.5 4L5.5 8l4 4" }) }) }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "tb-daylabel", type: "button", "aria-label": module === "deep" ? "\u9009\u62E9\u4E00\u5468" : "\u9009\u62E9\u65E5\u671F", "aria-expanded": pickerOpen, onClick: onPicker, children: dateLabel }),
@@ -15511,11 +15525,14 @@
 .tb-hbtn:disabled { opacity: .28; cursor: default; }
 .tb-hbtn:disabled:hover { background: none; color: var(--tb-text-secondary, #a3a9b4); }
 .tb-hbtn svg { width: 16px; height: 16px; }
-.tb-title { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 7px 0 8px; border-radius: 7px;
-  color: var(--tb-text-primary, #eceff3); font-size: 14.5px; font-weight: 600; letter-spacing: .1px; }
-.tb-title:hover { background: var(--tb-surface-hover, #252931); }
-.tb-title .tsub { font-weight: 500; font-size: var(--tb-font-body, 12px); color: var(--tb-text-tertiary, #727a88); }
-.tb-title .tsub:not(:empty)::before { content: "\xB7 "; }
+.tb-module-switch { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 9px 0 6px;
+  border-radius: 8px; color: var(--tb-text-primary, #eceff3); }
+.tb-module-switch:hover { background: var(--tb-surface-hover, #252931); }
+.tb-module-switch:focus-visible { outline: 2px solid var(--tb-accent, #82aaff); outline-offset: 1px; }
+.tb-switch-icon { width: 16px; height: 16px; flex: none; color: var(--tb-text-secondary, #a3a9b4); }
+.tb-module-switch:hover .tb-switch-icon { color: var(--tb-text-primary, #eceff3); }
+.tb-switch-caret { width: 11px; height: 11px; flex: none; color: var(--tb-text-tertiary, #727a88); }
+.tb-title { font-size: 14.5px; font-weight: 600; letter-spacing: .1px; white-space: nowrap; }
 .tb-daylabel { height: 24px; padding: 0 8px; border-radius: 6px; color: var(--tb-text-primary, #eceff3); font-size: var(--tb-font-body, 12px);
   font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tb-daylabel:hover { background: var(--tb-surface-hover, #252931); }
@@ -15950,6 +15967,7 @@
               canUndo: view?.canUndo[layer] === true,
               busy,
               pickerOpen: picker !== null,
+              drawerOpen: drawer,
               action: headerAction,
               onDrawer: () => setDrawer((value) => !value),
               onPicker: () => setPicker(picker === null ? module : null),
