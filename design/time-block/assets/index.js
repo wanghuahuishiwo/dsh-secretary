@@ -14992,11 +14992,7 @@
           week !== void 0 && week.source !== "own" && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { marginTop: "auto", padding: "0 10px 10px", fontSize: "var(--tb-font-caption, 10px)", color: "var(--tb-text-tertiary, #727a88)", lineHeight: 1.6 }, children: week.source === "inherited" ? "\u7EE7\u627F\u81EA\u66F4\u65E9\u4E00\u5468\uFF0C\u6539\u8FD9\u4E00\u5468\u53EA\u5F71\u54CD\u8FD9\u4E00\u5468" : "\u8FD8\u6CA1\u6709\u753B\u8FC7\uFF0C\u6539\u8FD9\u4E00\u5468\u4ECE\u7A7A\u767D\u5F00\u59CB" })
         ] })
       ] }),
-      selection.size > 0 && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "tb-sel-badge", role: "status", children: [
-        "\u9009\u62E9\u4E86 ",
-        selection.size,
-        " \u683C"
-      ] })
+      selection.size > 0 && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "tb-sel-badge", role: "status", children: durationLabel(selection.size * 60) })
     ] });
   }
   var MODULES = [
@@ -15586,7 +15582,7 @@
 .tb-blk { position: absolute; overflow: hidden; display: flex; align-items: center; padding: 0 4px;
   font-size: var(--tb-font-caption, 10px); font-weight: 600; letter-spacing: .1px; color: #fff; white-space: nowrap; }
 .tb-blk span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tb-selbox { position: absolute; box-shadow: inset 0 0 0 2px var(--tb-selection, #f4f7fb); }
+.tb-selbox { position: absolute; box-shadow: inset 0 0 0 2px var(--tb-selection, #f4f7fb); pointer-events: none; }
 .tb-selbox i { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; }
 .tb-selbox i svg { width: 12px; height: 12px; color: var(--tb-text-primary, #eceff3); }
 .tb-nowline { position: absolute; width: 2px; background: var(--tb-text-primary, #eceff3); box-shadow: 0 0 0 .5px rgba(0, 0, 0, .45); }

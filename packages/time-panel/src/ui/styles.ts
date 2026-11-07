@@ -105,7 +105,7 @@ export const timeStyles = `.tb-app {
 .tb-blk { position: absolute; overflow: hidden; display: flex; align-items: center; padding: 0 4px;
   font-size: var(--tb-font-caption, 10px); font-weight: 600; letter-spacing: .1px; color: #fff; white-space: nowrap; }
 .tb-blk span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tb-selbox { position: absolute; box-shadow: inset 0 0 0 2px var(--tb-selection, #f4f7fb); }
+.tb-selbox { position: absolute; box-shadow: inset 0 0 0 2px var(--tb-selection, #f4f7fb); pointer-events: none; }
 .tb-selbox i { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; }
 .tb-selbox i svg { width: 12px; height: 12px; color: var(--tb-text-primary, #eceff3); }
 .tb-nowline { position: absolute; width: 2px; background: var(--tb-text-primary, #eceff3); box-shadow: 0 0 0 .5px rgba(0, 0, 0, .45); }

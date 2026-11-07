@@ -481,7 +481,7 @@ test('深度时间 paints one week, the next week inherits it, and editing that 
     await page.mouse.down()
     await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, { steps: 6 })
     await page.mouse.up()
-    assert.match(await page.locator('.tb-sel-badge').innerText(), /选择了\s*4\s*格/, 'dragging makes a rectangle')
+    assert.match(await page.locator('.tb-sel-badge').innerText(), /4 小时/, 'dragging makes a rectangle')
     await page.locator('.tb-cat').filter({ hasText: '高' }).first().click()
     await page.waitForFunction(() => document.querySelectorAll('.tb-hc.H').length === 4)
 
@@ -929,7 +929,7 @@ test('Time Remote product preserves DeepTime inheritance, restart, host themes, 
     await page.mouse.down()
     await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, { steps: 6 })
     await page.mouse.up()
-    assert.match(await product.locator('.tb-sel-badge').innerText(), /选择了\s*4\s*格/)
+    assert.match(await product.locator('.tb-sel-badge').innerText(), /4 小时/)
     await product.locator('.tb-cat').filter({ hasText: '高' }).click()
     await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .tb-hc.H').length === 4)
     await product.getByRole('button', { name: '下一周' }).click()

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DeepCellLevel, DeepLevel, DeepWeekData } from './model.ts'
-import { WEEKDAY_LABELS, addDays, weekStartOf } from './model.ts'
+import { WEEKDAY_LABELS, addDays, durationLabel, weekStartOf } from './model.ts'
 
 interface Props {
   readonly week: DeepWeekData | undefined
@@ -231,7 +231,7 @@ export function DeepWeekView({ week, weekStart, today, busy, onPaint }: Props) {
       </div>
       {selection.size > 0 && (
         <div className="tb-sel-badge" role="status">
-          选择了 {selection.size} 格
+          {durationLabel(selection.size * 60)}
         </div>
       )}
     </>
