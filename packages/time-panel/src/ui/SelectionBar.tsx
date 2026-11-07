@@ -17,12 +17,12 @@ interface SelectionBarProps {
 /** 底部选区栏：分钟统计、整条记录识别、备注入口、不选与橡皮。 */
 export function SelectionBar({ totalMinutes, whole, busy, hasRuns, tagName, tagColor, onEdit, onClear, onErase }: SelectionBarProps) {
   return (
-    <div className="sec-status" style={{ visibility: totalMinutes > 0 ? 'visible' : 'hidden' }} aria-hidden={totalMinutes === 0}>
+    <div className="tb-status" style={{ visibility: totalMinutes > 0 ? 'visible' : 'hidden' }} aria-hidden={totalMinutes === 0}>
       <span>
         {whole === undefined
           ? <>选择了 <b>{totalMinutes}</b> 分钟</>
           : (
-            <span className="sec-chip">
+            <span className="tb-chip">
               <i style={{ background: tagColor(whole.record.timeTagId) }} />
               {tagName(whole.record.timeTagId)}{whole.record.note === undefined || whole.record.note === '' ? '' : ` · ${whole.record.note}`}
             </span>
@@ -31,10 +31,10 @@ export function SelectionBar({ totalMinutes, whole, busy, hasRuns, tagName, tagC
       </span>
       <span className="grow" />
       {whole !== undefined && (
-        <button className="sec-sb" type="button" disabled={busy} onClick={() => onEdit(whole.date, whole.record)}>备注</button>
+        <button className="tb-sb" type="button" disabled={busy} onClick={() => onEdit(whole.date, whole.record)}>备注</button>
       )}
-      <button className="sec-sb" type="button" onClick={onClear}>不选</button>
-      <button className="sec-sb erase" type="button" disabled={busy || !hasRuns} onClick={onErase}>{ERASER}橡皮</button>
+      <button className="tb-sb" type="button" onClick={onClear}>不选</button>
+      <button className="tb-sb erase" type="button" disabled={busy || !hasRuns} onClick={onErase}>{ERASER}橡皮</button>
     </div>
   )
 }

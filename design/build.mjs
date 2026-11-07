@@ -12,7 +12,7 @@ async function hasModuleEntry(module) {
 }
 
 const modules = (await readdir('.', { withFileTypes: true }))
-  .filter((entry) => entry.isDirectory() && entry.name !== 'node_modules' && entry.name !== 'shared')
+  .filter((entry) => entry.isDirectory() && entry.name !== 'node_modules')
   .map((entry) => entry.name)
 
 const entries = []

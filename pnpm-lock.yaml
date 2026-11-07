@@ -20,6 +20,9 @@ importers:
 
   design:
     dependencies:
+      dsh-secretary-time-panel:
+        specifier: workspace:*
+        version: link:../packages/time-panel
       react:
         specifier: ^19.0.0
         version: 19.3.1

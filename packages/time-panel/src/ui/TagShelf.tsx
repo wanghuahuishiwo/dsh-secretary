@@ -20,20 +20,20 @@ export function TagShelf({ tags, onAssign }: TagShelfProps) {
   const tagColor = (id: number) => tagOf(id)?.color ?? FALLBACK_COLOR
 
   return (
-    <aside className={`sec-shelf${mini ? ' mini' : ''}`} aria-label="时间标签架">
-      {mini && <span className="sec-brush" style={{ background: brushTagId === undefined ? FALLBACK_COLOR : tagColor(brushTagId) }} />}
-      <button className="sec-shelf-head" type="button" onClick={() => setMini(value => !value)}>
+    <aside className={`tb-shelf${mini ? ' mini' : ''}`} aria-label="时间标签架">
+      {mini && <span className="tb-brush" style={{ background: brushTagId === undefined ? FALLBACK_COLOR : tagColor(brushTagId) }} />}
+      <button className="tb-shelf-head" type="button" onClick={() => setMini(value => !value)}>
         {CHEVRONS}
         <span>合上所有内容</span>
       </button>
-      <div className="sec-shelf-list">
+      <div className="tb-shelf-list">
         {roots.map(tag => {
           const kids = tags.filter(item => item.parentId === tag.id)
           const open = collapsed[tag.id] !== true
           return (
             <div key={tag.id} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               <button
-                className="sec-cat"
+                className="tb-cat"
                 type="button"
                 style={{ background: tag.color ?? FALLBACK_COLOR }}
                 aria-expanded={kids.length > 0 ? open : undefined}
@@ -53,7 +53,7 @@ export function TagShelf({ tags, onAssign }: TagShelfProps) {
                 )}
               </button>
               {open && kids.map(kid => (
-                <button key={kid.id} className="sec-cat sub" type="button" style={{ background: kid.color ?? FALLBACK_COLOR }} onClick={() => { setBrushTagId(kid.id); onAssign(kid.id) }}>
+                <button key={kid.id} className="tb-cat sub" type="button" style={{ background: kid.color ?? FALLBACK_COLOR }} onClick={() => { setBrushTagId(kid.id); onAssign(kid.id) }}>
                   <span>{kid.name}</span>
                 </button>
               ))}

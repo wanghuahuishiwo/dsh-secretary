@@ -1,0 +1,84 @@
+/*
+ * 小秘书-时间块模块 token（--tb-*）。
+ *
+ * 颜色 / 字阶 / 间距 / 圆角 alias 到项目级 --sec-*；只有时间块自己的
+ * 尺寸、深度级别色和设计 fixture 调色板使用字面值。
+ * 组件（packages/time-panel/src/ui）只消费 --tb-*。
+ */
+:root {
+  --tb-surface-page: var(--sec-color-surface-page);
+  --tb-surface-rail: var(--sec-color-surface-rail);
+  --tb-surface-raised: var(--sec-color-surface-raised);
+  --tb-surface-hover: var(--sec-color-surface-hover);
+  --tb-grid-cell: var(--sec-color-surface-grid-cell);
+
+  --tb-text-primary: var(--sec-color-text-primary);
+  --tb-text-secondary: var(--sec-color-text-secondary);
+  --tb-text-tertiary: var(--sec-color-text-tertiary);
+
+  --tb-border-subtle: var(--sec-color-border-subtle);
+  --tb-border-strong: var(--sec-color-border-strong);
+
+  --tb-accent: var(--sec-color-accent);
+  --tb-accent-soft: var(--sec-color-accent-soft);
+  --tb-danger: var(--sec-color-danger);
+  --tb-selection: var(--sec-color-selection);
+
+  --tb-font-family: var(--sec-font-family);
+  --tb-font-caption: var(--sec-font-caption);
+  --tb-font-label: var(--sec-font-label);
+  --tb-font-body: var(--sec-font-body);
+  --tb-font-title: var(--sec-font-title);
+
+  --tb-space-1: var(--sec-space-1);
+  --tb-space-2: var(--sec-space-2);
+  --tb-space-3: var(--sec-space-3);
+  --tb-space-4: var(--sec-space-4);
+  --tb-space-5: var(--sec-space-5);
+  --tb-space-6: var(--sec-space-6);
+
+  --tb-radius-sm: var(--sec-radius-sm);
+  --tb-radius-md: var(--sec-radius-md);
+  --tb-radius-lg: var(--sec-radius-lg);
+
+  /* 模块尺寸：只属于 390px 时间块右栏，不下沉到根 token。 */
+  --tb-control-height: 30px;
+  --tb-hour-height: 26px;
+  --tb-rail-width: 390px;
+  --tb-shelf-width: 116px;
+  --tb-status-height: 42px;
+
+  /* 深度时间级别色。 */
+  --tb-deep-high: #5aa86a;
+  --tb-deep-medium: #b99530;
+  --tb-deep-low: #79808c;
+
+  /* 设计 fixture 调色板；生产标签色仍来自 Tag 数据。 */
+  --tb-tag-work: #6479c8;
+  --tb-tag-focus: #547ec4;
+  --tb-tag-collaboration: #8870bd;
+  --tb-tag-life: #50856c;
+  --tb-tag-meal: #a27a4c;
+  --tb-tag-exercise: #4f927b;
+  --tb-tag-learning: #a0704e;
+  --tb-tag-reading: #737fb5;
+  --tb-tag-rest: #737985;
+  --tb-tag-errand: #a26978;
+}
+
+:root[data-theme='light'] {
+  --tb-deep-high: #3f7d4c;
+  --tb-deep-medium: #8a6d1f;
+  --tb-deep-low: #5d636e;
+
+  --tb-tag-work: #4c62aa;
+  --tb-tag-focus: #3e6fae;
+  --tb-tag-collaboration: #72589f;
+  --tb-tag-life: #3d7257;
+  --tb-tag-meal: #886238;
+  --tb-tag-exercise: #3e7962;
+  --tb-tag-learning: #875b39;
+  --tb-tag-reading: #59679c;
+  --tb-tag-rest: #626875;
+  --tb-tag-errand: #8d5262;
+}

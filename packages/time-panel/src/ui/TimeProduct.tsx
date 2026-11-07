@@ -65,14 +65,15 @@ const FALLBACK_TODAY = localDate()
  * rendered from the `TimeView` returned by every command, so no write is
  * assumed to have succeeded before the host answered.
  */
-export function TimeProduct({ adapter, headerAction }: TimeProductProps) {
+export function TimeProduct({ adapter, headerAction, today: openingDay }: TimeProductProps) {
+  const openingDate = openingDay ?? FALLBACK_TODAY
   const [module, setModule] = useState<TimeModule>('time')
   const [layer, setLayer] = useState<TimeLayer>('actual')
-  const [anchor] = useState(() => FALLBACK_TODAY)
-  const [range, setRange] = useState(() => ({ from: addDays(FALLBACK_TODAY, -3), to: addDays(FALLBACK_TODAY, 10) }))
-  const [focus, setFocus] = useState(() => ({ date: FALLBACK_TODAY, token: 1 }))
-  const [topDate, setTopDate] = useState(() => FALLBACK_TODAY)
-  const [weekStart, setWeekStart] = useState(() => weekStartOf(FALLBACK_TODAY))
+  const [anchor] = useState(() => openingDate)
+  const [range, setRange] = useState(() => ({ from: addDays(openingDate, -3), to: addDays(openingDate, 10) }))
+  const [focus, setFocus] = useState(() => ({ date: openingDate, token: 1 }))
+  const [topDate, setTopDate] = useState(() => openingDate)
+  const [weekStart, setWeekStart] = useState(() => weekStartOf(openingDate))
   const [view, setView] = useState<TimeView>()
   const [drawer, setDrawer] = useState(false)
   const [subMenu, setSubMenu] = useState(false)
@@ -157,13 +158,17 @@ export function TimeProduct({ adapter, headerAction }: TimeProductProps) {
     setFocus(previous => ({ date: topDate, token: previous.token + 1 }))
   }, [topDate])
 
+  // The adapter's `today` is authoritative once loaded, so 今天 / 本周 land on the
+  // product day even when the host clock and a pinned fixture disagree.
+  const productToday = view?.today ?? openingDate
+
   const step = useCallback((amount: number) => {
     if (module === 'deep') {
-      setWeekStart(amount === 0 ? weekStartOf(localDate()) : addDays(weekStart, amount))
+      setWeekStart(amount === 0 ? weekStartOf(productToday) : addDays(weekStart, amount))
       return
     }
-    jumpTo(amount === 0 ? localDate() : addDays(topDate, amount))
-  }, [jumpTo, module, topDate, weekStart])
+    jumpTo(amount === 0 ? productToday : addDays(topDate, amount))
+  }, [jumpTo, module, productToday, topDate, weekStart])
 
   // One day with the arrows, one week with PageUp / PageDown; typing wins.
   useEffect(() => {
@@ -284,7 +289,7 @@ export function TimeProduct({ adapter, headerAction }: TimeProductProps) {
     cells: view.deep.levels.map(level => ({ level })),
   }, [view])
 
-  const today = view?.today ?? FALLBACK_TODAY
+  const today = productToday
   const titleSub = module === 'time' ? (layer === 'plan' ? '计划' : '实录') : ''
   const subItems = module === 'time'
     ? [{ id: 'actual' as const, name: '实录' }, { id: 'plan' as const, name: '计划' }]
@@ -296,7 +301,7 @@ export function TimeProduct({ adapter, headerAction }: TimeProductProps) {
 
   return (
     <div
-      className="sec-shell"
+      className="tb-app"
       data-time-remote
       data-remote-state={view === undefined ? (error === '' ? 'loading' : 'error') : 'ready'}
     >
@@ -317,8 +322,8 @@ export function TimeProduct({ adapter, headerAction }: TimeProductProps) {
         onUndo={() => void undo()}
       />
 
-      <div className="sec-views">
-        <section className="sec-view on" style={{ display: module === 'time' && layer === 'actual' ? 'flex' : 'none' }}>
+      <div className="tb-views">
+        <section className="tb-view on" style={{ display: module === 'time' && layer === 'actual' ? 'flex' : 'none' }}>
           {view !== undefined && module === 'time' && layer === 'actual' && (
             <TimeCanvas
               layer="actual" days={view.days} today={view.today} nowMinute={view.nowMinute}
@@ -328,7 +333,7 @@ export function TimeProduct({ adapter, headerAction }: TimeProductProps) {
             />
           )}
         </section>
-        <section className="sec-view on" style={{ display: module === 'time' && layer === 'plan' ? 'flex' : 'none' }}>
+        <section className="tb-view on" style={{ display: module === 'time' && layer === 'plan' ? 'flex' : 'none' }}>
           {view !== undefined && module === 'time' && layer === 'plan' && (
             <TimeCanvas
               layer="plan" days={view.days} today={view.today} nowMinute={view.nowMinute}
@@ -338,7 +343,7 @@ export function TimeProduct({ adapter, headerAction }: TimeProductProps) {
             />
           )}
         </section>
-        <section className="sec-view on" style={{ display: module === 'deep' ? 'flex' : 'none' }}>
+        <section className="tb-view on" style={{ display: module === 'deep' ? 'flex' : 'none' }}>
           {module === 'deep' && <DeepWeekView
             week={deepWeek} weekStart={weekStart} today={today} busy={busy}
             onPaint={(rects, level) => void paintDeep(rects, level)}
@@ -358,10 +363,10 @@ export function TimeProduct({ adapter, headerAction }: TimeProductProps) {
         />
       )}
 
-      {error !== '' && <div className="sec-toast on" style={{ bottom: 52 }}>{error}</div>}
+      {error !== '' && <div className="tb-toast on" style={{ bottom: 52 }}>{error}</div>}
 
       {subMenu && subItems.length > 0 && (
-        <div className="sec-smenu on" style={{ left: 44, top: 42 }}>
+        <div className="tb-smenu on" style={{ left: 44, top: 42 }}>
           {subItems.map(item => (
             <button key={item.id} type="button" className={layer === item.id ? 'on' : ''} onClick={() => { switchLayer(item.id); setSubMenu(false) }}>
               <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M2.5 6.2l2.4 2.4L9.5 4" /></svg>

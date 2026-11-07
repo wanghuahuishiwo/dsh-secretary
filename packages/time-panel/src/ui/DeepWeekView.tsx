@@ -19,9 +19,9 @@ export interface DeepRect {
 }
 
 const LEVELS: { id: DeepLevel; name: string; color: string }[] = [
-  { id: 'high', name: 'high', color: '#5aa86a' },
-  { id: 'medium', name: 'medium', color: '#b99530' },
-  { id: 'low', name: 'low', color: '#79808c' },
+  { id: 'high', name: 'high', color: 'var(--tb-deep-high, #5aa86a)' },
+  { id: 'medium', name: 'medium', color: 'var(--tb-deep-medium, #b99530)' },
+  { id: 'low', name: 'low', color: 'var(--tb-deep-low, #79808c)' },
 ]
 
 function levelOf(cells: readonly DeepCellLevel[] | undefined, weekday: number, hour: number): DeepCellLevel {
@@ -163,32 +163,32 @@ export function DeepWeekView({ week, weekStart, today, busy, onPaint }: Props) {
 
   return (
     <>
-      <div className="sec-deep">
-        <div className="sec-deep-main">
-          <div className="sec-deep-head">
+      <div className="tb-deep">
+        <div className="tb-deep-main">
+          <div className="tb-deep-head">
             {days.map(day => (
               <span key={day} className={`d${day === today ? ' today' : ''}`}>
                 {new Date(`${day}T12:00:00`).getMonth() + 1}/{new Date(`${day}T12:00:00`).getDate()} {WEEKDAY_LABELS[(new Date(`${day}T12:00:00`).getDay() + 6) % 7]}
               </span>
             ))}
           </div>
-          <div className="sec-deep-body" ref={bodyRef}>
-            <div className="sec-deep-hours" style={{ height: 24 * rowH }}>
+          <div className="tb-deep-body" ref={bodyRef}>
+            <div className="tb-deep-hours" style={{ height: 24 * rowH }}>
               {Array.from({ length: 24 }, (_, hour) => (
                 <span key={hour} style={{ top: hour * rowH + 3 }}>{hour % 2 === 0 ? hour : ''}</span>
               ))}
             </div>
-            <div className="sec-deep-cols" onPointerDown={onCellDown}>
+            <div className="tb-deep-cols" onPointerDown={onCellDown}>
               {days.map((day, index) => {
                 const weekday = index + 1
                 return (
-                  <div key={day} className="sec-deep-col" style={{ height: 24 * rowH }}>
+                  <div key={day} className="tb-deep-col" style={{ height: 24 * rowH }}>
                     {Array.from({ length: 24 }, (_, hour) => {
                       const cell = levelOf(cells, weekday, hour)
                       return (
                         <div
                           key={hour}
-                          className={`sec-hc${cell === 'unset' ? '' : ` ${cell === 'high' ? 'H' : cell === 'medium' ? 'M' : 'L'}`}`}
+                          className={`tb-hc${cell === 'unset' ? '' : ` ${cell === 'high' ? 'H' : cell === 'medium' ? 'M' : 'L'}`}`}
                           data-k={`${weekday}-${hour}`}
                           style={{ top: hour * rowH + 0.5, height: rowH - 1 }}
                         />
@@ -197,7 +197,7 @@ export function DeepWeekView({ week, weekStart, today, busy, onPaint }: Props) {
                     {[...selection].filter(key => key.startsWith(`${weekday}-`)).map(key => {
                       const hour = Number(key.split('-')[1])
                       return (
-                        <div key={key} className="sec-selbox" style={{ left: 0.5, right: 0.5, top: hour * rowH + 0.5, height: rowH - 1 }}>
+                        <div key={key} className="tb-selbox" style={{ left: 0.5, right: 0.5, top: hour * rowH + 0.5, height: rowH - 1 }}>
                           <i style={{ left: 0, width: '100%' }}>
                             <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M2.5 6.4l2.3 2.3L9.5 3.7" /></svg>
                           </i>
@@ -210,11 +210,11 @@ export function DeepWeekView({ week, weekStart, today, busy, onPaint }: Props) {
             </div>
           </div>
         </div>
-        <aside className="sec-shelf">
+        <aside className="tb-shelf">
           {LEVELS.map(item => (
             <button
               key={item.id}
-              className="sec-cat"
+              className="tb-cat"
               type="button"
               style={{ background: item.color, opacity: level === item.id ? 1 : 0.62, margin: '2px 7px 5px' }}
               onClick={() => paint(item.id)}
@@ -229,11 +229,11 @@ export function DeepWeekView({ week, weekStart, today, busy, onPaint }: Props) {
           )}
         </aside>
       </div>
-      <div className="sec-deep-status" style={{ visibility: selection.size > 0 ? 'visible' : 'hidden' }} aria-hidden={selection.size === 0}>
+      <div className="tb-deep-status" style={{ visibility: selection.size > 0 ? 'visible' : 'hidden' }} aria-hidden={selection.size === 0}>
         <span>选择了 <b>{selection.size}</b> 格</span>
         <span className="grow" />
-        <button className="sec-sb" type="button" onClick={clearSelection}>不选</button>
-        <button className="sec-sb erase" type="button" disabled={busy || rects.length === 0} onClick={() => paint(null)}>
+        <button className="tb-sb" type="button" onClick={clearSelection}>不选</button>
+        <button className="tb-sb erase" type="button" disabled={busy || rects.length === 0} onClick={() => paint(null)}>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M5.5 3h7v9h-7l-3.5-4.5z" /><path d="M8 6l3 3M11 6l-3 3" /></svg>
           橡皮
         </button>

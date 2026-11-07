@@ -71,27 +71,27 @@ const DayColumn = memo(function DayColumn({
   const selRuns = selected === undefined ? [] : splitByHour(runsOf(day, [...selected]))
 
   return (
-    <div className="sec-day" data-day={day} style={{ height }}>
-      <div className="sec-gutter">
-        <div className="sec-datemark">
+    <div className="tb-day" data-day={day} style={{ height }}>
+      <div className="tb-gutter">
+        <div className="tb-datemark">
           <span className="m">{date.getMonth() + 1}月</span>
           <span className="d">{date.getDate()}</span>
           <span className="w">{WEEKDAY_LABELS[(date.getDay() + 6) % 7]}</span>
           {day === today && <span className="t today">今天</span>}
         </div>
       </div>
-      <div className="sec-hours" style={{ height }}>
+      <div className="tb-hours" style={{ height }}>
         {Array.from({ length: 24 }, (_, hour) => (
           <span key={hour} className={nowMin !== undefined && hour === Math.floor(nowMin / 60) ? 'now' : ''} style={{ top: hour * rowH + 4 }}>{hour}</span>
         ))}
       </div>
-      <div className="sec-grid" data-day={day} style={{ height }}>
-        <div className="sec-cells" style={{ gridAutoRows: `${rowH}px` }} onPointerDown={onCellDown}>
+      <div className="tb-grid" data-day={day} style={{ height }}>
+        <div className="tb-cells" style={{ gridAutoRows: `${rowH}px` }} onPointerDown={onCellDown}>
           {cells.map(cell => (
-            <div key={cell.minute} className={`sec-cell${cell.last ? ' hourlast' : ''}`} data-day={day} data-min={cell.minute} />
+            <div key={cell.minute} className={`tb-cell${cell.last ? ' hourlast' : ''}`} data-day={day} data-min={cell.minute} />
           ))}
         </div>
-        <div className="sec-blocks">
+        <div className="tb-blocks">
           {records.map(record => {
             const label = record.note === undefined || record.note === '' ? tagName(record.timeTagId) : record.note
             const color = tagColor(record.timeTagId)
@@ -100,7 +100,7 @@ const DayColumn = memo(function DayColumn({
               nodes.push(
                 <div
                   key={`${record.id}:${minute}`}
-                  className="sec-blk"
+                  className="tb-blk"
                   style={{
                     left: `calc(${(((minute % 60) / CELL) / PER_HOUR) * 100}% + 0.5px)`,
                     width: `calc(${100 / PER_HOUR}% - 1px)`,
@@ -117,14 +117,14 @@ const DayColumn = memo(function DayColumn({
             return nodes
           })}
         </div>
-        <div className="sec-sel">
+        <div className="tb-sel">
           {selRuns.map(run => {
             const from = (run.start % 60) / CELL
             const count = (run.end - run.start) / CELL
             return (
               <div
                 key={run.start}
-                className="sec-selbox"
+                className="tb-selbox"
                 style={{
                   left: `calc(${(from / PER_HOUR) * 100}% + 1.5px)`,
                   width: `calc(${(count / PER_HOUR) * 100}% - 3px)`,
@@ -140,7 +140,7 @@ const DayColumn = memo(function DayColumn({
           })}
           {nowMin !== undefined && (
             <div
-              className="sec-nowline"
+              className="tb-nowline"
               style={{
                 left: `calc(${((nowMin % 60) / 60) * 100}% - 1px)`,
                 top: Math.floor(nowMin / 60) * rowH + 1.5,
@@ -186,7 +186,7 @@ export function TimeCanvas(props: Props) {
 
   const scrollToDate = useCallback((date: string, smooth: boolean) => {
     const element = scrollRef.current
-    const day = element?.querySelector<HTMLElement>(`.sec-day[data-day="${date}"]`)
+    const day = element?.querySelector<HTMLElement>(`.tb-day[data-day="${date}"]`)
     if (element === null || day === null || day === undefined) return
     element.scrollTo({ top: day.offsetTop, behavior: smooth ? 'smooth' : 'auto' })
   }, [])
@@ -200,7 +200,7 @@ export function TimeCanvas(props: Props) {
   useEffect(() => {
     if (appliedFocus.current === focus.token) return
     const element = scrollRef.current
-    const day = element?.querySelector<HTMLElement>(`.sec-day[data-day="${focus.date}"]`)
+    const day = element?.querySelector<HTMLElement>(`.tb-day[data-day="${focus.date}"]`)
     if (element === null || day === null || day === undefined) return
     appliedFocus.current = focus.token
     focusedDay.current = focus.date
@@ -213,7 +213,7 @@ export function TimeCanvas(props: Props) {
     const held = anchor.current
     const element = scrollRef.current
     if (held === null || element === null) return
-    const day = element.querySelector<HTMLElement>(`.sec-day[data-day="${held.date}"]`)
+    const day = element.querySelector<HTMLElement>(`.tb-day[data-day="${held.date}"]`)
     if (day === null || day === undefined) return
     element.scrollTop = day.offsetTop + held.offset
   }, [days])
@@ -221,7 +221,7 @@ export function TimeCanvas(props: Props) {
   // Row height settles after the first paint; the focused day has to stay put through it.
   useEffect(() => {
     const element = scrollRef.current
-    const day = element?.querySelector<HTMLElement>(`.sec-day[data-day="${focusedDay.current}"]`)
+    const day = element?.querySelector<HTMLElement>(`.tb-day[data-day="${focusedDay.current}"]`)
     if (element === null || day === null || day === undefined) return
     element.scrollTo({ top: day.offsetTop, behavior: 'auto' })
   }, [rowH])
@@ -233,10 +233,10 @@ export function TimeCanvas(props: Props) {
   const onScroll = useCallback(() => {
     const element = scrollRef.current
     if (element === null) return
-    const day = element.querySelector<HTMLElement>(`.sec-day[data-day="${today}"]`)
+    const day = element.querySelector<HTMLElement>(`.tb-day[data-day="${today}"]`)
     if (day !== null && day !== undefined) setJumpVisible(Math.abs(element.scrollTop - day.offsetTop) > 12)
     // The header date follows the day under the top edge, so it always says where you are.
-    const columns = element.querySelectorAll<HTMLElement>('.sec-day')
+    const columns = element.querySelectorAll<HTMLElement>('.tb-day')
     let top = ''
     let topOffset = 0
     for (const column of columns) {
@@ -380,10 +380,10 @@ export function TimeCanvas(props: Props) {
 
   return (
     <>
-      <div className="sec-tb">
-        <div className="sec-tb-main">
-          <div className="sec-scroll" ref={scrollRef} onScroll={onScroll} aria-label="时间块画布">
-            <div className="sec-days">
+      <div className="tb-tb">
+        <div className="tb-tb-main">
+          <div className="tb-scroll" ref={scrollRef} onScroll={onScroll} aria-label="时间块画布">
+            <div className="tb-days">
               {days.map(day => (
                 <DayColumn
                   key={day}
@@ -399,7 +399,7 @@ export function TimeCanvas(props: Props) {
                 />
               ))}
             </div>
-            <button className={`sec-jump${jumpVisible ? ' on' : ''}`} type="button" onClick={() => scrollToDate(today, true)}>回到今天</button>
+            <button className={`tb-jump${jumpVisible ? ' on' : ''}`} type="button" onClick={() => scrollToDate(today, true)}>回到今天</button>
           </div>
         </div>
         <TagShelf tags={timeTags} onAssign={assign} />

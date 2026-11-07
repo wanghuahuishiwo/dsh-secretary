@@ -4,5 +4,5 @@ interface ToastProps {
 
 /** 底部操作反馈；空字符串时隐藏。 */
 export function Toast({ message }: ToastProps) {
-  return <div className={`sec-toast${message === '' ? '' : ' on'}`}>{message}</div>
+  return <div className={`tb-toast${message === '' ? '' : ' on'}`}>{message}</div>
 }

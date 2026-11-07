@@ -1,28 +1,29 @@
 # 时间块
 
-小秘书-时间块的 390px 右栏设计稿，覆盖计划、实录、共享时间画布与标签上色。视觉与组件边界见 [DESIGN.md](../../DESIGN.md)，产品事实见 [time-block.md](../../docs/prd/time-block.md)。
+小秘书-时间块的 DSH 右栏设计稿：与生产渲染同一套 `TimeProduct`，用 Fixture Adapter 提供可复现数据。模块视觉、组件与 token 契约见 [DESIGN.md](DESIGN.md)，项目级原则见根 [DESIGN.md](../../DESIGN.md)，产品事实见 [time-block.md](../../docs/prd/time-block.md)。
 
 ## 入口
 
 - 预览：`index.html`
 - 场景：`scenarios.json`
-- 视觉基线：`baselines/select-390-dark.png`
+- 视觉基线：`baselines/select-390-dark.png`（历史基线，组件切换后的对照在验收阶段更新）
+- 模块 token：[tokens.css](tokens.css)
 
 ## 交互
 
-- 计划与实录独立切换，日期导航保持当前日期。
-- 10 分钟格画布：单击追加或取消，同日拖动形成连续选区。
-- 层级标签架上色、橡皮擦除、Undo 与选区分钟统计。
-- 390px 窄栏，暗色为默认主题，可切换浅色。
+- 多日 24h × 6 格画布：计划与实录独立切换，日期导航保持当前日期；滚动扩展日期窗口。
+- 10 分钟格选择：单击追加或取消，同日拖动形成连续选区；标签上色、橡皮擦除、选区分钟统计。
+- 记录编辑：调节时间、换标签、写备注、删除；Undo 按层恢复。
+- 自绘月历选天 / 选周；今天 / 本周。
+- 深度时间：7 × 24 周网格、级别上色与擦除。
+- 一级模块抽屉；明暗主题切换（仅设计壳，生产跟随 DSH）。
 
 ## 数据
 
-UI 只依赖 [`shared/model/adapter.ts`](../shared/model/adapter.ts) 的 `load / paint / erase / undo`。当前组合根为 `src/FixtureTimeAdapter.ts`，数据保存在内存，固定演示日期为 `2026-11-06`，重载页面恢复 fixtures。生产接入实现同一接口。
+设计侧只 import `dsh-secretary-time-panel/ui`。组合根 [`src/App.tsx`](src/App.tsx) 创建 [`FixtureTimeAdapter`](src/FixtureTimeAdapter.ts)，它实现 `TimeAdapter`：纯内存，固定演示今天 `2026-11-06`、当前时刻 `14:20`，覆盖多日块、Deep 周数据、编辑与 Undo；重载页面恢复 fixture，不访问网络、SQLite 或生产数据。
+
+生产走 `RemoteTimeAdapter`，与 fixture 共享同一契约；设计稿不接线生产 Remote。
 
 ## 验收
 
-`scenarios.json` 定义 9 个可执行场景，覆盖默认计划、选择、上色、擦除、Undo、计划/实录切换、日期导航、主题切换与拖动选择。验收视口为 390 × 844，控制台错误与外部请求均为 0。
-
-## 范围
-
-本稿覆盖单日右栏。多日连续扩展、月历、完整记录编辑、深度时间、生产错误恢复和持久化由后续设计稿承接。
+浏览器打开 `index.html`：完整产品 UI 加载、主题切换可用、控制台无错误、无外部请求。`scenarios.json` 记录可复现场景；完整产品 UI 的选择器与断言在验收阶段同步更新。生产验收仍需真实 DSH + Remote + SQLite。

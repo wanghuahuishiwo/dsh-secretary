@@ -10,8 +10,6 @@
   },
   "include": [
     "global.d.ts",
-    "shared/**/*.ts",
-    "shared/**/*.tsx",
     "*/src/**/*.ts",
     "*/src/**/*.tsx"
   ]

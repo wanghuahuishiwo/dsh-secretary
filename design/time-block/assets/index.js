@@ -534,13 +534,13 @@
           return localPerformance.now();
         };
       } else {
-        localDate = Date, initialTime = localDate.now();
+        localDate2 = Date, initialTime = localDate2.now();
         exports.unstable_now = function() {
-          return localDate.now() - initialTime;
+          return localDate2.now() - initialTime;
         };
       }
       var localPerformance;
-      var localDate;
+      var localDate2;
       var initialTime;
       var taskQueue = [];
       var timerQueue = [];
@@ -14573,164 +14573,1600 @@
   });
 
   // time-block/src/index.tsx
-  var import_react5 = __toESM(require_react(), 1);
+  var import_react8 = __toESM(require_react(), 1);
   var import_client = __toESM(require_client(), 1);
 
   // time-block/src/App.tsx
-  var import_react4 = __toESM(require_react(), 1);
+  var import_react7 = __toESM(require_react(), 1);
 
-  // shared/model/time.ts
-  var CELL_MINUTES = 10;
-  var CELLS_PER_HOUR = 6;
+  // ../packages/time-panel/lib/ui.js
+  var import_react = __toESM(require_react(), 1);
+  var import_react2 = __toESM(require_react(), 1);
+  var import_jsx_runtime = __toESM(require_jsx_runtime(), 1);
+  var import_react3 = __toESM(require_react(), 1);
+  var import_jsx_runtime2 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
+  var import_react4 = __toESM(require_react(), 1);
+  var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
+  var import_react5 = __toESM(require_react(), 1);
+  var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
+  var import_react6 = __toESM(require_react(), 1);
+  var import_jsx_runtime7 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime8 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime9 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime10 = __toESM(require_jsx_runtime(), 1);
+  var CELL = 10;
+  var PER_HOUR = 60 / CELL;
+  var MIN_ROW_H = 22;
+  var MAX_ROW_H = 64;
+  var CELL_MINUTES = CELL;
+  var CELLS_PER_HOUR = PER_HOUR;
   var MINUTES_PER_DAY = 24 * 60;
+  function pad(value) {
+    return String(value).padStart(2, "0");
+  }
+  function clock(minute) {
+    const value = (minute % 1440 + 1440) % 1440;
+    return `${pad(Math.floor(value / 60))}:${pad(value % 60)}`;
+  }
+  var formatClock = clock;
+  function localDate(date = /* @__PURE__ */ new Date()) {
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  }
   function addDays(date, amount) {
     const value = /* @__PURE__ */ new Date(`${date}T12:00:00`);
     value.setDate(value.getDate() + amount);
-    return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
+    return localDate(value);
+  }
+  function timeZoneOf() {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Shanghai";
   }
   function formatDateLabel(date) {
     const value = /* @__PURE__ */ new Date(`${date}T12:00:00`);
     const weekday = ["\u5468\u65E5", "\u5468\u4E00", "\u5468\u4E8C", "\u5468\u4E09", "\u5468\u56DB", "\u5468\u4E94", "\u5468\u516D"][value.getDay()];
     return `${value.getMonth() + 1}\u6708${value.getDate()}\u65E5 ${weekday}`;
   }
-  function formatClock(minute) {
-    return `${pad(Math.floor(minute / 60))}:${pad(minute % 60)}`;
+  function weekdayOf(date) {
+    return ((/* @__PURE__ */ new Date(`${date}T12:00:00`)).getDay() + 6) % 7 + 1;
   }
-  function formatDuration(minutes) {
-    if (minutes < 60) return `${minutes} \u5206\u949F`;
-    const hours = Math.floor(minutes / 60);
-    const rest = minutes % 60;
-    return rest === 0 ? `${hours} \u5C0F\u65F6` : `${hours} \u5C0F\u65F6 ${rest} \u5206`;
+  function weekStartOf(date) {
+    return addDays(date, 1 - weekdayOf(date));
   }
-  function runsOfSelection(date, selected) {
-    const sorted = [...selected].sort((left, right) => left - right);
+  function snapDown(minute) {
+    return Math.floor(minute / CELL) * CELL;
+  }
+  function snapUp(minute) {
+    return Math.ceil(minute / CELL) * CELL;
+  }
+  function localDateOf(instant, timeZone) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(new Date(instant));
+    const field = (type) => parts.find((part) => part.type === type)?.value ?? "";
+    return `${field("year")}-${field("month")}-${field("day")}`;
+  }
+  function minuteOf(instant, timeZone) {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23"
+    }).formatToParts(new Date(instant));
+    const field = (type) => Number(parts.find((part) => part.type === type)?.value ?? 0);
+    return field("hour") * 60 + field("minute");
+  }
+  function atMinute(date, minute) {
+    const value = /* @__PURE__ */ new Date(`${date}T00:00:00`);
+    value.setMinutes(minute);
+    return value.toISOString();
+  }
+  function recordsOfDay(blocks, date, timeZone, nowMs) {
+    const result = [];
+    for (const block2 of blocks) {
+      const startDate = localDateOf(block2.startAt, timeZone);
+      const endDate = block2.endAt === void 0 ? localDateOf(nowMs, timeZone) : localDateOf(block2.endAt, timeZone);
+      if (startDate > date || endDate < date) continue;
+      const start = startDate === date ? minuteOf(block2.startAt, timeZone) : 0;
+      const end = endDate === date ? minuteOf(block2.endAt ?? new Date(nowMs).toISOString(), timeZone) : 1440;
+      if (end <= start) continue;
+      result.push({ id: block2.id, start, end, timeTagId: block2.timeTagId, note: block2.note });
+    }
+    return result.sort((left, right) => left.start - right.start || left.id - right.id);
+  }
+  function recordAt(records, minute) {
+    return records.find((record) => record.start <= minute && minute < record.end);
+  }
+  function runsOf(day, minutes) {
+    const sorted = [...new Set(minutes)].sort((left, right) => left - right);
     const runs = [];
     for (const minute of sorted) {
-      const previous = runs[runs.length - 1];
-      if (previous !== void 0 && previous.end === minute) {
-        runs[runs.length - 1] = { ...previous, end: minute + CELL_MINUTES };
-      } else {
-        runs.push({ date, start: minute, end: minute + CELL_MINUTES });
+      const last = runs[runs.length - 1];
+      if (last !== void 0 && last.end === minute) {
+        runs[runs.length - 1] = { date: day, start: last.start, end: minute + CELL };
+        continue;
       }
+      if (last !== void 0 && minute < last.end) continue;
+      runs.push({ date: day, start: minute, end: minute + CELL });
     }
     return runs;
   }
-  function pad(value) {
-    return String(value).padStart(2, "0");
+  function runsOfSelection(date, selected) {
+    return runsOf(date, [...selected]);
   }
-
-  // shared/components/RailShell.tsx
-  var import_jsx_runtime = __toESM(require_jsx_runtime(), 1);
-  function RailShell({
-    layer,
-    date,
-    today,
-    theme,
-    canUndo,
-    busy,
-    onLayerChange,
-    onDateChange,
-    onUndo,
-    onThemeToggle,
-    children
-  }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tb-rail", "data-testid": "time-block-preview", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "tb-rail-header", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tb-title-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tb-title-group", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("h1", { children: [
-              "\u5C0F\u79D8\u4E66 ",
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\xB7" }),
-              " \u65F6\u95F4\u5757"
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tb-preview-badge", children: "\u8BBE\u8BA1\u9884\u89C8" })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-            "button",
-            {
-              className: "tb-icon-button",
-              type: "button",
-              "data-testid": "theme-toggle",
-              "aria-label": theme === "dark" ? "\u5207\u6362\u5230\u6D45\u8272\u4E3B\u9898" : "\u5207\u6362\u5230\u6DF1\u8272\u4E3B\u9898",
-              title: theme === "dark" ? "\u6D45\u8272\u4E3B\u9898" : "\u6DF1\u8272\u4E3B\u9898",
-              onClick: onThemeToggle,
-              children: theme === "dark" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SunIcon, {}) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(MoonIcon, {})
-            }
-          ),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-            "button",
-            {
-              className: "tb-undo-button",
-              type: "button",
-              "data-testid": "undo",
-              "aria-label": "\u64A4\u9500",
-              disabled: !canUndo || busy,
-              onClick: onUndo,
-              children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(UndoIcon, {}),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u64A4\u9500" })
-              ]
-            }
-          )
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tb-navigation-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tb-layer-switch", role: "tablist", "aria-label": "\u65F6\u95F4\u5757\u9875\u9762", children: ["plan", "actual"].map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-            "button",
-            {
-              id: `tab-${item}`,
-              type: "button",
-              role: "tab",
-              "aria-selected": layer === item,
-              "data-testid": `${item}-tab`,
-              className: layer === item ? "is-active" : "",
-              onClick: () => onLayerChange(item),
-              children: item === "plan" ? "\u8BA1\u5212" : "\u5B9E\u5F55"
-            },
-            item
-          )) }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("nav", { className: "tb-date-navigation", "aria-label": "\u65E5\u671F\u5BFC\u822A", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", className: "tb-icon-button", "data-testid": "previous-day", "aria-label": "\u4E0A\u4E00\u5929", onClick: () => onDateChange(addDays(date, -1)), children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Chevron, { direction: "left" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tb-date-label", "data-testid": "current-date", "data-date": date, children: formatDateLabel(date) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", className: "tb-icon-button", "data-testid": "next-day", "aria-label": "\u4E0B\u4E00\u5929", onClick: () => onDateChange(addDays(date, 1)), children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Chevron, { direction: "right" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", className: "tb-today-button", "data-testid": "today", disabled: date === today, onClick: () => onDateChange(today), children: "\u4ECA\u5929" })
+  function minutesOfRecord(record) {
+    const minutes = [];
+    for (let minute = snapDown(record.start); minute < record.end; minute += CELL) minutes.push(minute);
+    return minutes;
+  }
+  function durationLabel(minutes) {
+    if (minutes < 60) return `${minutes} \u5206`;
+    const hours = Math.floor(minutes / 60);
+    return minutes % 60 === 0 ? `${hours} \u5C0F\u65F6` : `${hours} \u5C0F\u65F6 ${minutes % 60} \u5206`;
+  }
+  var formatDuration = durationLabel;
+  var WEEKDAY_LABELS = ["\u5468\u4E00", "\u5468\u4E8C", "\u5468\u4E09", "\u5468\u56DB", "\u5468\u4E94", "\u5468\u516D", "\u5468\u65E5"];
+  var timeMath = {
+    CELL,
+    PER_HOUR,
+    CELL_MINUTES,
+    CELLS_PER_HOUR,
+    MINUTES_PER_DAY,
+    MIN_ROW_H,
+    MAX_ROW_H,
+    WEEKDAY_LABELS,
+    clock,
+    formatClock,
+    localDate,
+    addDays,
+    timeZoneOf,
+    formatDateLabel,
+    weekdayOf,
+    weekStartOf,
+    snapDown,
+    snapUp,
+    localDateOf,
+    minuteOf,
+    atMinute,
+    recordsOfDay,
+    recordAt,
+    runsOf,
+    runsOfSelection,
+    minutesOfRecord,
+    durationLabel,
+    formatDuration
+  };
+  var WEEKDAYS = ["\u4E00", "\u4E8C", "\u4E09", "\u56DB", "\u4E94", "\u516D", "\u65E5"];
+  function monthMatrix(month) {
+    const first = `${month}-01`;
+    const weekday = ((/* @__PURE__ */ new Date(`${first}T12:00:00`)).getDay() + 6) % 7;
+    const start = addDays(first, -weekday);
+    return Array.from({ length: 6 }, (_, row) => Array.from({ length: 7 }, (_2, column) => addDays(start, row * 7 + column)));
+  }
+  function weekLabel(weekStart) {
+    const start = /* @__PURE__ */ new Date(`${weekStart}T12:00:00`);
+    const end = /* @__PURE__ */ new Date(`${addDays(weekStart, 6)}T12:00:00`);
+    return `${start.getMonth() + 1}\u6708${start.getDate()}\u65E5 \u2013 ${end.getMonth() + 1}\u6708${end.getDate()}\u65E5`;
+  }
+  function monthLabel(month) {
+    const [year, value] = month.split("-").map(Number);
+    return `${year}\u5E74${value}\u6708`;
+  }
+  function shiftMonth(month, amount) {
+    const [year, value] = month.split("-").map(Number);
+    const shifted = new Date(Date.UTC(year, value - 1 + amount, 1));
+    return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, "0")}`;
+  }
+  function DatePicker({ mode, value, today, onPick, onClose }) {
+    const [month, setMonth] = (0, import_react2.useState)(() => value.slice(0, 7));
+    const root2 = (0, import_react2.useRef)(null);
+    (0, import_react2.useEffect)(() => {
+      setMonth(value.slice(0, 7));
+    }, [value]);
+    (0, import_react2.useEffect)(() => {
+      const onPointerDown = (event) => {
+        if (root2.current !== null && !(event.target instanceof Node && root2.current.contains(event.target))) onClose();
+      };
+      const onKey = (event) => {
+        if (event.key === "Escape") onClose();
+      };
+      window.addEventListener("pointerdown", onPointerDown);
+      window.addEventListener("keydown", onKey);
+      return () => {
+        window.removeEventListener("pointerdown", onPointerDown);
+        window.removeEventListener("keydown", onKey);
+      };
+    }, [onClose]);
+    const matrix = (0, import_react2.useMemo)(() => monthMatrix(month), [month]);
+    const selectedWeek = weekStartOf(value);
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tb-picker", ref: root2, role: "dialog", "aria-label": mode === "week" ? "\u9009\u62E9\u4E00\u5468" : "\u9009\u62E9\u65E5\u671F", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tb-picker-head", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", "aria-label": "\u4E0A\u4E00\u6708", className: "tb-picker-nav", onClick: () => setMonth((previous) => shiftMonth(previous, -1)), children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "1.7", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M7.5 2.5L4 6l3.5 3.5" }) }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tb-picker-title", children: monthLabel(month) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", "aria-label": "\u4E0B\u4E00\u6708", className: "tb-picker-nav", onClick: () => setMonth((previous) => shiftMonth(previous, 1)), children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "1.7", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M4.5 2.5L8 6l-3.5 3.5" }) }) })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tb-picker-weekdays", children: WEEKDAYS.map((day) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: day }, day)) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "tb-picker-grid", children: matrix.map((row) => row.map((day) => {
+        const inMonth = day.slice(0, 7) === month;
+        const selected = mode === "week" ? weekStartOf(day) === selectedWeek : day === value;
+        const classes = ["tb-picker-day"];
+        if (!inMonth) classes.push("out");
+        if (selected) classes.push("on");
+        if (selected && mode === "week" && day === selectedWeek) classes.push("wstart");
+        if (selected && mode === "week" && day === addDays(selectedWeek, 6)) classes.push("wend");
+        if (day === today) classes.push("today");
+        return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "button",
+          {
+            type: "button",
+            className: classes.join(" "),
+            "data-day": day,
+            "aria-label": `${Number(day.slice(5, 7))}\u6708${Number(day.slice(8, 10))}\u65E5`,
+            "aria-pressed": selected,
+            onClick: () => onPick(day),
+            children: Number(day.slice(8, 10))
+          },
+          day
+        );
+      })) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tb-picker-foot", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: mode === "week" ? weekLabel(selectedWeek) : "\u70B9\u4E00\u5929" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "button",
+          {
+            type: "button",
+            className: "tb-picker-now",
+            onClick: () => onPick(mode === "week" ? weekStartOf(today) : today),
+            children: mode === "week" ? "\u672C\u5468" : "\u4ECA\u5929"
+          }
+        )
+      ] })
+    ] });
+  }
+  var LEVELS = [
+    { id: "high", name: "high", color: "var(--tb-deep-high, #5aa86a)" },
+    { id: "medium", name: "medium", color: "var(--tb-deep-medium, #b99530)" },
+    { id: "low", name: "low", color: "var(--tb-deep-low, #79808c)" }
+  ];
+  function levelOf(cells, weekday, hour) {
+    if (cells === void 0) return "unset";
+    return cells[(weekday - 1) * 24 + hour] ?? "unset";
+  }
+  function rectsOf(selection) {
+    const byDay = /* @__PURE__ */ new Map();
+    for (const key of selection) {
+      const [weekday, hour] = key.split("-").map(Number);
+      const hours = byDay.get(weekday) ?? [];
+      hours.push(hour);
+      byDay.set(weekday, hours);
+    }
+    const rects = [];
+    for (const [weekday, hours] of byDay) {
+      hours.sort((left, right) => left - right);
+      let start = hours[0];
+      let previous = hours[0];
+      for (const hour of hours.slice(1)) {
+        if (hour === previous + 1) {
+          previous = hour;
+          continue;
+        }
+        rects.push({ startWeekday: weekday, startHour: start, endWeekday: weekday, endHour: previous });
+        start = hour;
+        previous = hour;
+      }
+      rects.push({ startWeekday: weekday, startHour: start, endWeekday: weekday, endHour: previous });
+    }
+    return rects;
+  }
+  function DeepWeekView({ week, weekStart, today, busy, onPaint }) {
+    const bodyRef = (0, import_react3.useRef)(null);
+    const dragRef = (0, import_react3.useRef)(null);
+    const selectionRef = (0, import_react3.useRef)(/* @__PURE__ */ new Set());
+    const [rowH, setRowH] = (0, import_react3.useState)(32);
+    const [selection, setSelection] = (0, import_react3.useState)(() => /* @__PURE__ */ new Set());
+    const [level, setLevel] = (0, import_react3.useState)("high");
+    const days = (0, import_react3.useMemo)(() => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)), [weekStart]);
+    const cells = week?.cells.map((cell) => cell.level);
+    (0, import_react3.useEffect)(() => {
+      const element = bodyRef.current;
+      if (element === null) return;
+      const fit = () => {
+        const height = element.clientHeight;
+        if (height === 0) return;
+        setRowH(Math.max(16, Math.min(44, height / 24)));
+      };
+      fit();
+      const observer = new ResizeObserver(fit);
+      observer.observe(element);
+      return () => {
+        observer.disconnect();
+      };
+    }, []);
+    const writeSelection = (0, import_react3.useCallback)((next) => {
+      selectionRef.current = next;
+      setSelection(next);
+    }, []);
+    const onCellDown = (0, import_react3.useCallback)((event) => {
+      const target = event.target;
+      const key = target.dataset.k;
+      if (key === void 0) return;
+      event.preventDefault();
+      const wasSelected = selectionRef.current.has(key);
+      dragRef.current = { key, moved: false, wasSelected };
+      if (!wasSelected) writeSelection(/* @__PURE__ */ new Set([...selectionRef.current, key]));
+    }, [writeSelection]);
+    (0, import_react3.useEffect)(() => {
+      const move = (event) => {
+        const drag = dragRef.current;
+        if (drag === null) return;
+        const key = event.target?.dataset?.k;
+        if (key === void 0) return;
+        const [startDay, startHour] = drag.key.split("-").map(Number);
+        const [endDay, endHour] = key.split("-").map(Number);
+        if (!drag.moved && startDay === endDay && startHour === endHour) return;
+        drag.moved = true;
+        const next = /* @__PURE__ */ new Set();
+        for (let day = Math.min(startDay, endDay); day <= Math.max(startDay, endDay); day += 1) {
+          for (let hour = Math.min(startHour, endHour); hour <= Math.max(startHour, endHour); hour += 1) next.add(`${day}-${hour}`);
+        }
+        writeSelection(next);
+      };
+      const up = () => {
+        const drag = dragRef.current;
+        if (drag === null) return;
+        dragRef.current = null;
+        if (drag.moved || !drag.wasSelected) return;
+        writeSelection(new Set([...selectionRef.current].filter((key) => key !== drag.key)));
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+      return () => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+      };
+    }, [writeSelection]);
+    const clearSelection = (0, import_react3.useCallback)(() => writeSelection(/* @__PURE__ */ new Set()), [writeSelection]);
+    const rects = (0, import_react3.useMemo)(() => rectsOf(selection), [selection]);
+    const paint = (next) => {
+      if (rects.length === 0) return;
+      if (next !== null) setLevel(next);
+      onPaint(rects, next);
+      clearSelection();
+    };
+    (0, import_react3.useEffect)(() => {
+      const onKey = (event) => {
+        const target = event.target;
+        if (target !== null && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+        if (event.key === "Escape") {
+          clearSelection();
+          return;
+        }
+        if (event.key !== "Delete" && event.key !== "Backspace") return;
+        const list = rectsOf(selectionRef.current);
+        if (list.length === 0) return;
+        event.preventDefault();
+        onPaint(list, null);
+        clearSelection();
+      };
+      window.addEventListener("keydown", onKey);
+      return () => {
+        window.removeEventListener("keydown", onKey);
+      };
+    }, [clearSelection, onPaint]);
+    const rangeLabel = `${(/* @__PURE__ */ new Date(`${weekStart}T12:00:00`)).getMonth() + 1}\u6708${(/* @__PURE__ */ new Date(`${weekStart}T12:00:00`)).getDate()}\u65E5 \u2013 ${(/* @__PURE__ */ new Date(`${addDays(weekStart, 6)}T12:00:00`)).getMonth() + 1}\u6708${(/* @__PURE__ */ new Date(`${addDays(weekStart, 6)}T12:00:00`)).getDate()}\u65E5`;
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_jsx_runtime2.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "tb-deep", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "tb-deep-main", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "tb-deep-head", children: days.map((day) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: `d${day === today ? " today" : ""}`, children: [
+            (/* @__PURE__ */ new Date(`${day}T12:00:00`)).getMonth() + 1,
+            "/",
+            (/* @__PURE__ */ new Date(`${day}T12:00:00`)).getDate(),
+            " ",
+            WEEKDAY_LABELS[((/* @__PURE__ */ new Date(`${day}T12:00:00`)).getDay() + 6) % 7]
+          ] }, day)) }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "tb-deep-body", ref: bodyRef, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "tb-deep-hours", style: { height: 24 * rowH }, children: Array.from({ length: 24 }, (_, hour) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: { top: hour * rowH + 3 }, children: hour % 2 === 0 ? hour : "" }, hour)) }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "tb-deep-cols", onPointerDown: onCellDown, children: days.map((day, index) => {
+              const weekday = index + 1;
+              return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "tb-deep-col", style: { height: 24 * rowH }, children: [
+                Array.from({ length: 24 }, (_, hour) => {
+                  const cell = levelOf(cells, weekday, hour);
+                  return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+                    "div",
+                    {
+                      className: `tb-hc${cell === "unset" ? "" : ` ${cell === "high" ? "H" : cell === "medium" ? "M" : "L"}`}`,
+                      "data-k": `${weekday}-${hour}`,
+                      style: { top: hour * rowH + 0.5, height: rowH - 1 }
+                    },
+                    hour
+                  );
+                }),
+                [...selection].filter((key) => key.startsWith(`${weekday}-`)).map((key) => {
+                  const hour = Number(key.split("-")[1]);
+                  return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "tb-selbox", style: { left: 0.5, right: 0.5, top: hour * rowH + 0.5, height: rowH - 1 }, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("i", { style: { left: 0, width: "100%" }, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "2.4", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("path", { d: "M2.5 6.4l2.3 2.3L9.5 3.7" }) }) }) }, key);
+                })
+              ] }, day);
+            }) })
           ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("aside", { className: "tb-shelf", children: [
+          LEVELS.map((item) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+            "button",
+            {
+              className: "tb-cat",
+              type: "button",
+              style: { background: item.color, opacity: level === item.id ? 1 : 0.62, margin: "2px 7px 5px" },
+              onClick: () => paint(item.id),
+              children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { children: item.name })
+            },
+            item.id
+          )),
+          week !== void 0 && week.source !== "own" && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { marginTop: "auto", padding: "0 10px 10px", fontSize: 10.5, color: "var(--txt-4)", lineHeight: 1.6 }, children: week.source === "inherited" ? "\u7EE7\u627F\u81EA\u66F4\u65E9\u4E00\u5468\uFF0C\u6539\u8FD9\u4E00\u5468\u53EA\u5F71\u54CD\u8FD9\u4E00\u5468" : "\u8FD8\u6CA1\u6709\u753B\u8FC7\uFF0C\u6539\u8FD9\u4E00\u5468\u4ECE\u7A7A\u767D\u5F00\u59CB" })
         ] })
       ] }),
-      children
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "tb-deep-status", style: { visibility: selection.size > 0 ? "visible" : "hidden" }, "aria-hidden": selection.size === 0, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { children: [
+          "\u9009\u62E9\u4E86 ",
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("b", { children: selection.size }),
+          " \u683C"
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "grow" }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { className: "tb-sb", type: "button", onClick: clearSelection, children: "\u4E0D\u9009" }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("button", { className: "tb-sb erase", type: "button", disabled: busy || rects.length === 0, onClick: () => paint(null), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.4", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("path", { d: "M5.5 3h7v9h-7l-3.5-4.5z" }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("path", { d: "M8 6l3 3M11 6l-3 3" })
+          ] }),
+          "\u6A61\u76AE"
+        ] })
+      ] })
     ] });
   }
-  function Chevron({ direction }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.6", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: direction === "left" ? "M10 3.5 5.5 8 10 12.5" : "m6 3.5 4.5 4.5-4.5 4.5" }) });
+  var MODULES = [
+    { id: "time", name: "\u65F6\u95F4\u5757", icon: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.3", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("rect", { x: "2", y: "2", width: "12", height: "12", rx: "3" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2 6h12M6 6v8" })
+    ] }) },
+    { id: "deep", name: "\u6DF1\u5EA6\u65F6\u95F4", icon: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.3", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2 12l3.5-5 3 3.5L12 4" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2 14h12" })
+    ] }) }
+  ];
+  function dayLabel(date) {
+    const value = /* @__PURE__ */ new Date(`${date}T12:00:00`);
+    return `${value.getMonth() + 1}\u6708${value.getDate()}\u65E5 ${WEEKDAY_LABELS[(value.getDay() + 6) % 7]}`;
   }
-  function UndoIcon() {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.4", "aria-hidden": "true", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M3 6.5h6.5a3.5 3.5 0 0 1 0 7H6" }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M5.5 3.5 2.5 6.5l3 3" })
+  function weekLabel2(weekStart) {
+    const start = /* @__PURE__ */ new Date(`${weekStart}T12:00:00`);
+    const end = /* @__PURE__ */ new Date(`${addDays(weekStart, 6)}T12:00:00`);
+    return `${start.getMonth() + 1}\u6708${start.getDate()}\u65E5 \u2013 ${end.getMonth() + 1}\u6708${end.getDate()}\u65E5`;
+  }
+  function TimeHeader({ module, titleSub, dateLabel, canUndo, busy, subMenuOpen, pickerOpen, action, onDrawer, onSubMenu, onPicker, onStep, onUndo }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("header", { className: `tb-head${action === void 0 || action === null ? "" : " has-action"}`, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "tb-hbtn", type: "button", "aria-label": "\u4E00\u7EA7\u6A21\u5757", onClick: onDrawer, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.5", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2.5 4h11M2.5 8h11M2.5 12h11" }) }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("button", { className: "tb-title", type: "button", "aria-expanded": subMenuOpen, onClick: onSubMenu, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: MODULES.find((item) => item.id === module)?.name ?? "" }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "tsub", children: titleSub }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "1.7", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2.5 4.5L6 8l3.5-3.5" }) })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "grow" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "tb-hbtn", type: "button", "aria-label": module === "deep" ? "\u4E0A\u4E00\u5468" : "\u4E0A\u4E00\u5929", onClick: () => onStep(module === "deep" ? -7 : -1), children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.6", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M9.5 4L5.5 8l4 4" }) }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "tb-daylabel", type: "button", "aria-label": module === "deep" ? "\u9009\u62E9\u4E00\u5468" : "\u9009\u62E9\u65E5\u671F", "aria-expanded": pickerOpen, onClick: onPicker, children: dateLabel }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "tb-hbtn", type: "button", "aria-label": module === "deep" ? "\u4E0B\u4E00\u5468" : "\u4E0B\u4E00\u5929", onClick: () => onStep(module === "deep" ? 7 : 1), children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.6", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M6.5 4l4 4-4 4" }) }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "tb-now", type: "button", onClick: () => onStep(0), children: module === "deep" ? "\u672C\u5468" : "\u4ECA\u5929" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "tb-hbtn", type: "button", title: "\u64A4\u9500", disabled: !canUndo || busy, onClick: onUndo, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.4", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M3 7h6.5a3.5 3.5 0 010 7H6" }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M5.5 4L2.5 7l3 3" })
+      ] }) }),
+      action
     ] });
   }
-  function SunIcon() {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.35", "aria-hidden": "true", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: "8", cy: "8", r: "2.7" }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.9.9M11.7 11.7l.9.9M12.6 3.4l-.9.9M4.3 11.7l-.9.9" })
+  function Drawer({ open, module, onModuleChange, onClose }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_jsx_runtime4.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: `tb-scrim${open ? " on" : ""}`, onClick: onClose }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("nav", { className: `tb-drawer${open ? " on" : ""}`, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "cap", children: "\u5C0F\u79D8\u4E66" }),
+        MODULES.map((item) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+          "button",
+          {
+            className: `tb-mrow${module === item.id ? " on" : ""}`,
+            type: "button",
+            onClick: () => onModuleChange(item.id),
+            children: [
+              item.icon,
+              item.name
+            ]
+          },
+          item.id
+        ))
+      ] })
     ] });
   }
-  function MoonIcon() {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.35", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M13.3 10.1A5.8 5.8 0 0 1 5.9 2.7a5.8 5.8 0 1 0 7.4 7.4Z" }) });
+  function RecordSheet({ target, tags, busy, onClose, onSave, onDelete }) {
+    const [start, setStart] = (0, import_react4.useState)(target.record.start);
+    const [end, setEnd] = (0, import_react4.useState)(target.record.end);
+    const [tagId, setTagId] = (0, import_react4.useState)(target.record.timeTagId);
+    const [note, setNote] = (0, import_react4.useState)(target.record.note ?? "");
+    const timeTags = tags.filter((tag) => tag.kind === "time");
+    (0, import_react4.useEffect)(() => {
+      const onKey = (event) => {
+        if (event.key === "Escape") onClose();
+      };
+      window.addEventListener("keydown", onKey);
+      return () => {
+        window.removeEventListener("keydown", onKey);
+      };
+    }, [onClose]);
+    return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "tb-sheet on", role: "dialog", "aria-label": "\u7F16\u8F91\u8BB0\u5F55", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "grab" }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "row", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: "time", children: [
+          clock(start),
+          " \u2013 ",
+          clock(end)
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "dur", children: durationLabel(end - start) }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "grow" }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { className: "tb-step", type: "button", disabled: end - start <= CELL, onClick: () => setStart(Math.max(0, start - CELL)), children: "\u2212" }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { className: "tb-step", type: "button", disabled: end >= 1440, onClick: () => setEnd(Math.min(1440, end + CELL)), children: "\uFF0B" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "tb-picks", children: timeTags.map((tag) => /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { type: "button", className: tag.id === tagId ? "on" : "", style: { background: tag.color ?? "#477bc7" }, onClick: () => setTagId(tag.id), children: tag.name }, tag.id)) }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("input", { className: "tb-note", placeholder: "\u5907\u6CE8\uFF08\u53EF\u7A7A\uFF09", value: note, onChange: (event) => setNote(event.target.value) }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "tb-acts", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { className: "tb-btn danger", type: "button", disabled: busy, onClick: onDelete, children: "\u5220\u9664" }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { className: "tb-btn primary", type: "button", disabled: busy, onClick: () => onSave({ start, end, timeTagId: tagId, note: note === "" ? void 0 : note }), children: "\u5B8C\u6210" })
+      ] })
+    ] });
+  }
+  var ERASER = /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.4", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("path", { d: "M5.5 3h7v9h-7l-3.5-4.5z" }),
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("path", { d: "M8 6l3 3M11 6l-3 3" })
+  ] });
+  function SelectionBar({ totalMinutes, whole, busy, hasRuns, tagName, tagColor, onEdit, onClear, onErase }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "tb-status", style: { visibility: totalMinutes > 0 ? "visible" : "hidden" }, "aria-hidden": totalMinutes === 0, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: whole === void 0 ? /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_jsx_runtime6.Fragment, { children: [
+        "\u9009\u62E9\u4E86 ",
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("b", { children: totalMinutes }),
+        " \u5206\u949F"
+      ] }) : /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "tb-chip", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("i", { style: { background: tagColor(whole.record.timeTagId) } }),
+        tagName(whole.record.timeTagId),
+        whole.record.note === void 0 || whole.record.note === "" ? "" : ` \xB7 ${whole.record.note}`
+      ] }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "grow" }),
+      whole !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "tb-sb", type: "button", disabled: busy, onClick: () => onEdit(whole.date, whole.record), children: "\u5907\u6CE8" }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "tb-sb", type: "button", onClick: onClear, children: "\u4E0D\u9009" }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("button", { className: "tb-sb erase", type: "button", disabled: busy || !hasRuns, onClick: onErase, children: [
+        ERASER,
+        "\u6A61\u76AE"
+      ] })
+    ] });
+  }
+  var FALLBACK_COLOR = "#477bc7";
+  var CHEVRONS = /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "1.5", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("path", { d: "M3 5.2L6 2.4l3 2.8M3 9.5L6 6.7l3 2.8" }) });
+  function TagShelf({ tags, onAssign }) {
+    const [mini, setMini] = (0, import_react6.useState)(false);
+    const [collapsed, setCollapsed] = (0, import_react6.useState)({});
+    const [brushTagId, setBrushTagId] = (0, import_react6.useState)(void 0);
+    const roots = tags.filter((tag) => tag.parentId === void 0);
+    const tagOf = (id) => tags.find((tag) => tag.id === id);
+    const tagColor = (id) => tagOf(id)?.color ?? FALLBACK_COLOR;
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("aside", { className: `tb-shelf${mini ? " mini" : ""}`, "aria-label": "\u65F6\u95F4\u6807\u7B7E\u67B6", children: [
+      mini && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "tb-brush", style: { background: brushTagId === void 0 ? FALLBACK_COLOR : tagColor(brushTagId) } }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("button", { className: "tb-shelf-head", type: "button", onClick: () => setMini((value) => !value), children: [
+        CHEVRONS,
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: "\u5408\u4E0A\u6240\u6709\u5185\u5BB9" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-shelf-list", children: roots.map((tag) => {
+        const kids = tags.filter((item) => item.parentId === tag.id);
+        const open = collapsed[tag.id] !== true;
+        return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: 5 }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
+            "button",
+            {
+              className: "tb-cat",
+              type: "button",
+              style: { background: tag.color ?? FALLBACK_COLOR },
+              "aria-expanded": kids.length > 0 ? open : void 0,
+              onClick: (event) => {
+                if (kids.length > 0 && event.target.closest(".caret") !== null) {
+                  setCollapsed((previous) => ({ ...previous, [tag.id]: open }));
+                  return;
+                }
+                setBrushTagId(tag.id);
+                onAssign(tag.id);
+                if (kids.length > 0) setCollapsed((previous) => ({ ...previous, [tag.id]: false }));
+              },
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: tag.name }),
+                kids.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("svg", { className: "caret", viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "1.7", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("path", { d: "M4 2.5L7.5 6 4 9.5" }) })
+              ]
+            }
+          ),
+          open && kids.map((kid) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { className: "tb-cat sub", type: "button", style: { background: kid.color ?? FALLBACK_COLOR }, onClick: () => {
+            setBrushTagId(kid.id);
+            onAssign(kid.id);
+          }, children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: kid.name }) }, kid.id))
+        ] }, tag.id);
+      }) })
+    ] });
+  }
+  var FALLBACK_COLOR2 = "#477bc7";
+  var CHECK = /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "2.4", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("path", { d: "M2.5 6.4l2.3 2.3L9.5 3.7" }) });
+  function splitByHour(runs) {
+    const out = [];
+    for (const run of runs) {
+      let start = run.start;
+      while (start < run.end) {
+        const hourEnd = (Math.floor(start / 60) + 1) * 60;
+        const end = Math.min(run.end, hourEnd);
+        out.push({ date: run.date, start, end });
+        start = end;
+      }
+    }
+    return out;
+  }
+  var DayColumn = (0, import_react5.memo)(function DayColumn2({
+    day,
+    rowH,
+    today,
+    records,
+    selected,
+    nowMin,
+    tagName,
+    tagColor,
+    onCellDown
+  }) {
+    const date = /* @__PURE__ */ new Date(`${day}T12:00:00`);
+    const height = 24 * rowH;
+    const cells = Array.from({ length: 24 * PER_HOUR }, (_, index) => ({
+      minute: Math.floor(index / PER_HOUR) * 60 + index % PER_HOUR * CELL,
+      last: index % PER_HOUR === PER_HOUR - 1
+    }));
+    const selRuns = selected === void 0 ? [] : splitByHour(runsOf(day, [...selected]));
+    return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-day", "data-day": day, style: { height }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "tb-gutter", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-datemark", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("span", { className: "m", children: [
+          date.getMonth() + 1,
+          "\u6708"
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "d", children: date.getDate() }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "w", children: WEEKDAY_LABELS[(date.getDay() + 6) % 7] }),
+        day === today && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "t today", children: "\u4ECA\u5929" })
+      ] }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "tb-hours", style: { height }, children: Array.from({ length: 24 }, (_, hour) => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: nowMin !== void 0 && hour === Math.floor(nowMin / 60) ? "now" : "", style: { top: hour * rowH + 4 }, children: hour }, hour)) }),
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-grid", "data-day": day, style: { height }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "tb-cells", style: { gridAutoRows: `${rowH}px` }, onPointerDown: onCellDown, children: cells.map((cell) => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: `tb-cell${cell.last ? " hourlast" : ""}`, "data-day": day, "data-min": cell.minute }, cell.minute)) }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "tb-blocks", children: records.map((record) => {
+          const label = record.note === void 0 || record.note === "" ? tagName(record.timeTagId) : record.note;
+          const color = tagColor(record.timeTagId);
+          const nodes = [];
+          for (let minute = snapDown(record.start); minute < record.end; minute += CELL) {
+            nodes.push(
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+                "div",
+                {
+                  className: "tb-blk",
+                  style: {
+                    left: `calc(${minute % 60 / CELL / PER_HOUR * 100}% + 0.5px)`,
+                    width: `calc(${100 / PER_HOUR}% - 1px)`,
+                    top: Math.floor(minute / 60) * rowH + 0.5,
+                    height: rowH - 1,
+                    background: color
+                  },
+                  title: label,
+                  children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { children: label })
+                },
+                `${record.id}:${minute}`
+              )
+            );
+          }
+          return nodes;
+        }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-sel", children: [
+          selRuns.map((run) => {
+            const from = run.start % 60 / CELL;
+            const count = (run.end - run.start) / CELL;
+            return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+              "div",
+              {
+                className: "tb-selbox",
+                style: {
+                  left: `calc(${from / PER_HOUR * 100}% + 1.5px)`,
+                  width: `calc(${count / PER_HOUR * 100}% - 3px)`,
+                  top: Math.floor(run.start / 60) * rowH + 1.5,
+                  height: rowH - 3
+                },
+                children: Array.from({ length: count }, (_, index) => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("i", { style: { left: `${index / count * 100}%`, width: `${100 / count}%` }, children: CHECK }, index))
+              },
+              run.start
+            );
+          }),
+          nowMin !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+            "div",
+            {
+              className: "tb-nowline",
+              style: {
+                left: `calc(${nowMin % 60 / 60 * 100}% - 1px)`,
+                top: Math.floor(nowMin / 60) * rowH + 1.5,
+                height: rowH - 3
+              }
+            }
+          )
+        ] })
+      ] })
+    ] });
+  });
+  function TimeCanvas(props) {
+    const { layer, days, today, nowMinute, focus, onExtend, onTopDateChange, records, tags, busy, onAssign, onEdit } = props;
+    const scrollRef = (0, import_react5.useRef)(null);
+    const dragRef = (0, import_react5.useRef)(null);
+    const selectedRef = (0, import_react5.useRef)(/* @__PURE__ */ new Map());
+    const [rowH, setRowH] = (0, import_react5.useState)(40);
+    const [selected, setSelected] = (0, import_react5.useState)(() => /* @__PURE__ */ new Map());
+    const [jumpVisible, setJumpVisible] = (0, import_react5.useState)(false);
+    void layer;
+    const timeTags = (0, import_react5.useMemo)(() => tags.filter((tag) => tag.kind === "time"), [tags]);
+    const tagOf = (0, import_react5.useCallback)((id) => timeTags.find((tag) => tag.id === id), [timeTags]);
+    const tagName = (0, import_react5.useCallback)((id) => tagOf(id)?.name ?? `\u6807\u7B7E ${id}`, [tagOf]);
+    const tagColor = (0, import_react5.useCallback)((id) => tagOf(id)?.color ?? FALLBACK_COLOR2, [tagOf]);
+    (0, import_react5.useEffect)(() => {
+      const element = scrollRef.current;
+      if (element === null) return;
+      const fit = () => {
+        const height = element.clientHeight;
+        if (height === 0) return;
+        setRowH(Math.min(MAX_ROW_H, Math.max(MIN_ROW_H, height / 24)));
+      };
+      fit();
+      const observer = new ResizeObserver(fit);
+      observer.observe(element);
+      return () => {
+        observer.disconnect();
+      };
+    }, []);
+    const scrollToDate = (0, import_react5.useCallback)((date, smooth) => {
+      const element = scrollRef.current;
+      const day = element?.querySelector(`.tb-day[data-day="${date}"]`);
+      if (element === null || day === null || day === void 0) return;
+      element.scrollTo({ top: day.offsetTop, behavior: smooth ? "smooth" : "auto" });
+    }, []);
+    const appliedFocus = (0, import_react5.useRef)(0);
+    const focusedDay = (0, import_react5.useRef)(focus.date);
+    const anchor = (0, import_react5.useRef)(null);
+    (0, import_react5.useEffect)(() => {
+      if (appliedFocus.current === focus.token) return;
+      const element = scrollRef.current;
+      const day = element?.querySelector(`.tb-day[data-day="${focus.date}"]`);
+      if (element === null || day === null || day === void 0) return;
+      appliedFocus.current = focus.token;
+      focusedDay.current = focus.date;
+      anchor.current = null;
+      element.scrollTo({ top: day.offsetTop, behavior: "auto" });
+    }, [focus, days, rowH]);
+    (0, import_react5.useEffect)(() => {
+      const held = anchor.current;
+      const element = scrollRef.current;
+      if (held === null || element === null) return;
+      const day = element.querySelector(`.tb-day[data-day="${held.date}"]`);
+      if (day === null || day === void 0) return;
+      element.scrollTop = day.offsetTop + held.offset;
+    }, [days]);
+    (0, import_react5.useEffect)(() => {
+      const element = scrollRef.current;
+      const day = element?.querySelector(`.tb-day[data-day="${focusedDay.current}"]`);
+      if (element === null || day === null || day === void 0) return;
+      element.scrollTo({ top: day.offsetTop, behavior: "auto" });
+    }, [rowH]);
+    const edgeRef = (0, import_react5.useRef)(null);
+    (0, import_react5.useEffect)(() => {
+      edgeRef.current = null;
+    }, [days]);
+    const reportedTop = (0, import_react5.useRef)("");
+    const onScroll = (0, import_react5.useCallback)(() => {
+      const element = scrollRef.current;
+      if (element === null) return;
+      const day = element.querySelector(`.tb-day[data-day="${today}"]`);
+      if (day !== null && day !== void 0) setJumpVisible(Math.abs(element.scrollTop - day.offsetTop) > 12);
+      const columns = element.querySelectorAll(".tb-day");
+      let top = "";
+      let topOffset = 0;
+      for (const column of columns) {
+        if (column.offsetTop <= element.scrollTop + 1) {
+          top = column.dataset.day ?? top;
+          topOffset = column.offsetTop;
+        } else break;
+      }
+      if (top !== "") {
+        anchor.current = { date: top, offset: element.scrollTop - topOffset };
+        if (top !== reportedTop.current) {
+          reportedTop.current = top;
+          onTopDateChange(top);
+        }
+      }
+      const threshold = element.clientHeight * 0.75;
+      const side = element.scrollTop < threshold ? "before" : element.scrollTop + element.clientHeight > element.scrollHeight - threshold ? "after" : null;
+      if (side === null) {
+        edgeRef.current = null;
+        return;
+      }
+      if (edgeRef.current === side) return;
+      edgeRef.current = side;
+      onExtend(side);
+    }, [onExtend, onTopDateChange, today]);
+    const writeSelection = (0, import_react5.useCallback)((next) => {
+      selectedRef.current = next;
+      setSelected(next);
+    }, []);
+    const setDayMinutes = (0, import_react5.useCallback)((date, minutes) => {
+      const next = new Map(selectedRef.current);
+      if (minutes.length === 0) next.delete(date);
+      else next.set(date, new Set(minutes));
+      writeSelection(next);
+    }, [writeSelection]);
+    const onCellDown = (0, import_react5.useCallback)((event) => {
+      const target = event.target;
+      const date = target.dataset.day;
+      const minute = Number(target.dataset.min);
+      if (date === void 0 || !Number.isFinite(minute)) return;
+      event.preventDefault();
+      const current = selectedRef.current.get(date);
+      const wasSelected = current?.has(minute) ?? false;
+      dragRef.current = { date, minute, moved: false, wasSelected };
+      if (!wasSelected) setDayMinutes(date, [...current ?? [], minute]);
+    }, [setDayMinutes]);
+    (0, import_react5.useEffect)(() => {
+      const move = (event) => {
+        const drag = dragRef.current;
+        if (drag === null) return;
+        const target = event.target;
+        const date = target?.dataset?.day;
+        const minute = Number(target?.dataset?.min);
+        if (date === void 0 || date !== drag.date || !Number.isFinite(minute)) return;
+        if (!drag.moved && minute === drag.minute) return;
+        drag.moved = true;
+        const minutes = [];
+        for (let value = Math.min(drag.minute, minute); value <= Math.max(drag.minute, minute); value += CELL) minutes.push(value);
+        setDayMinutes(drag.date, minutes);
+      };
+      const up = () => {
+        const drag = dragRef.current;
+        if (drag === null) return;
+        dragRef.current = null;
+        if (drag.moved || !drag.wasSelected) return;
+        const current = selectedRef.current.get(drag.date) ?? /* @__PURE__ */ new Set();
+        setDayMinutes(drag.date, [...current].filter((minute) => minute !== drag.minute));
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+      return () => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+      };
+    }, [setDayMinutes]);
+    const clearSelection = (0, import_react5.useCallback)(() => writeSelection(/* @__PURE__ */ new Map()), [writeSelection]);
+    const runs = (0, import_react5.useMemo)(() => {
+      const list = [];
+      for (const [date, minutes] of selected) list.push(...runsOf(date, [...minutes]));
+      return list;
+    }, [selected]);
+    const totalMinutes = (0, import_react5.useMemo)(() => {
+      let total = 0;
+      for (const minutes of selected.values()) total += minutes.size * CELL;
+      return total;
+    }, [selected]);
+    const whole = (0, import_react5.useMemo)(() => {
+      if (selected.size !== 1) return void 0;
+      const [date, minutes] = [...selected][0];
+      const dayRecords = records.get(date) ?? [];
+      const hit = /* @__PURE__ */ new Set();
+      for (const minute of minutes) {
+        const record2 = recordAt(dayRecords, minute);
+        if (record2 !== void 0) hit.add(record2.id);
+      }
+      if (hit.size !== 1) return void 0;
+      const record = dayRecords.find((item) => item.id === [...hit][0]);
+      if (record === void 0) return void 0;
+      const covered = minutesOfRecord(record);
+      if (covered.length !== minutes.size || !covered.every((minute) => minutes.has(minute))) return void 0;
+      return { date, record };
+    }, [selected, records]);
+    (0, import_react5.useEffect)(() => {
+      const onKey = (event) => {
+        const target = event.target;
+        if (target !== null && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+        if (event.key === "Escape") {
+          if (selectedRef.current.size > 0) clearSelection();
+          return;
+        }
+        if (event.key !== "Delete" && event.key !== "Backspace") return;
+        const list = [];
+        for (const [date, minutes] of selectedRef.current) list.push(...runsOf(date, [...minutes]));
+        if (list.length === 0) return;
+        event.preventDefault();
+        onAssign(list, null);
+        clearSelection();
+      };
+      window.addEventListener("keydown", onKey);
+      return () => {
+        window.removeEventListener("keydown", onKey);
+      };
+    }, [onAssign, clearSelection]);
+    const assign = (tagId) => {
+      if (runs.length === 0) return;
+      onAssign(runs, tagId);
+      clearSelection();
+    };
+    const nowMin = days.includes(today) ? nowMinute : void 0;
+    return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_jsx_runtime8.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-tb", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "tb-tb-main", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-scroll", ref: scrollRef, onScroll, "aria-label": "\u65F6\u95F4\u5757\u753B\u5E03", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "tb-days", children: days.map((day) => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+            DayColumn,
+            {
+              day,
+              rowH,
+              today,
+              records: records.get(day) ?? [],
+              selected: selected.get(day),
+              nowMin: day === today ? nowMin : void 0,
+              tagName,
+              tagColor,
+              onCellDown
+            },
+            day
+          )) }),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("button", { className: `tb-jump${jumpVisible ? " on" : ""}`, type: "button", onClick: () => scrollToDate(today, true), children: "\u56DE\u5230\u4ECA\u5929" })
+        ] }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(TagShelf, { tags: timeTags, onAssign: assign })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+        SelectionBar,
+        {
+          totalMinutes,
+          whole,
+          busy,
+          hasRuns: runs.length > 0,
+          tagName,
+          tagColor,
+          onEdit,
+          onClear: clearSelection,
+          onErase: () => {
+            onAssign(runs, null);
+            clearSelection();
+          }
+        }
+      )
+    ] });
+  }
+  function Toast({ message }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: `tb-toast${message === "" ? "" : " on"}`, children: message });
+  }
+  var timeStyles = `.tb-app {
+  position: relative;
+  height: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--tb-surface-rail, #151517);
+  color: var(--tb-text-primary, #ececef);
+  font-family: var(--tb-font-family, -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, sans-serif);
+  font-size: 13px;
+  line-height: 1.45;
+
+  --rail: var(--tb-surface-rail, #151517);
+  --rail-2: var(--tb-surface-raised, #1b1b1e);
+  --rail-3: var(--tb-surface-hover, #212125);
+  --cell: var(--tb-grid-cell, #2b2b31);
+  --line: var(--tb-border-subtle, rgba(255, 255, 255, .09));
+  --line-2: var(--tb-border-strong, rgba(255, 255, 255, .14));
+  --dash: var(--tb-border-strong, #4f4f57);
+  --txt: var(--tb-text-primary, #ececef);
+  --txt-2: var(--tb-text-secondary, #a2a2aa);
+  --txt-3: var(--tb-text-tertiary, #71717a);
+  --txt-4: var(--tb-text-tertiary, #55555d);
+  --accent: var(--tb-accent, #5b8def);
+  --accent-soft: var(--tb-accent-soft, rgba(91, 141, 239, .18));
+  --danger: var(--tb-danger, #e0554b);
+  --sel-ring: var(--tb-selection, #ffffff);
+  --sel-ink: var(--tb-selection, #101014);
+  --shadow: 0 14px 38px rgba(0, 0, 0, .38);
+  --shadow-sm: 0 6px 18px rgba(0, 0, 0, .28);
+}
+.tb-app *, .tb-app *::before, .tb-app *::after { box-sizing: border-box; }
+.tb-app button, .tb-app input, .tb-app textarea { font: inherit; color: inherit; }
+.tb-app button { background: none; border: 0; cursor: pointer; }
+.tb-app :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ---------- header ---------- */
+.tb-head { flex: none; height: 42px; display: flex; align-items: center; gap: 2px; padding: 0 8px; }
+/* A host action (OD theme/preview) gets its own compact row; production keeps the 42px row. */
+.tb-head.has-action { height: auto; min-height: 42px; flex-wrap: wrap; gap: 1px; padding: 7px 6px; }
+.tb-head.has-action .tb-daylabel { padding: 0 7px; }
+.tb-hbtn { width: 28px; height: 28px; border-radius: 7px; color: var(--txt-2); display: grid; place-items: center; padding: 0; }
+.tb-hbtn:hover { background: var(--rail-3); color: var(--txt); }
+.tb-hbtn:disabled { opacity: .28; cursor: default; }
+.tb-hbtn:disabled:hover { background: none; color: var(--txt-2); }
+.tb-hbtn svg { width: 16px; height: 16px; }
+.tb-title { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 7px 0 8px; border-radius: 7px;
+  color: var(--txt); font-size: 14.5px; font-weight: 600; letter-spacing: .1px; }
+.tb-title:hover { background: var(--rail-3); }
+.tb-title .tsub { font-weight: 500; font-size: 12.5px; color: var(--txt-3); }
+.tb-title .tsub:not(:empty)::before { content: "\xB7 "; }
+.tb-daylabel { height: 24px; padding: 0 8px; border-radius: 6px; color: var(--txt); font-size: 12.5px;
+  font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tb-daylabel:hover { background: var(--rail-3); }
+.tb-now { height: 24px; padding: 0 8px; border-radius: 6px; color: var(--txt-3); font-size: 11.5px; }
+.tb-now:hover { background: var(--rail-3); color: var(--txt); }
+
+/* ---------- \u81EA\u7ED8\u65E5\u5386\uFF08\u65F6\u95F4\u5757\u9009\u5929 / \u6DF1\u5EA6\u65F6\u95F4\u9009\u5468\uFF09 ---------- */
+.tb-picker { position: absolute; right: 2px; top: 44px; z-index: 24; width: 258px; padding: 8px;
+  border-radius: 10px; background: var(--rail-2); border: 1px solid var(--line-2); box-shadow: var(--shadow); }
+.tb-picker-head { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+.tb-picker-title { flex: 1; text-align: center; font-size: 12.5px; font-weight: 600; color: var(--txt); }
+.tb-picker-nav { width: 24px; height: 24px; border-radius: 6px; color: var(--txt-3); display: grid; place-items: center; padding: 0; }
+.tb-picker-nav:hover { background: var(--rail-3); color: var(--txt); }
+.tb-picker-nav svg { width: 12px; height: 12px; }
+.tb-picker-weekdays, .tb-picker-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.tb-picker-weekdays { margin-bottom: 2px; }
+.tb-picker-weekdays span { text-align: center; font-size: 10px; color: var(--txt-4); padding: 3px 0; }
+.tb-picker-grid button { height: 28px; border-radius: 5px; color: var(--txt-2); font-size: 12px;
+  font-variant-numeric: tabular-nums; }
+.tb-picker-grid button:hover { background: var(--rail-3); color: var(--txt); }
+.tb-picker-grid button.out { color: var(--txt-4); opacity: .5; }
+.tb-picker-grid button.today { color: var(--accent); font-weight: 700; }
+.tb-picker-grid button.on { background: var(--accent); color: #fff; font-weight: 600; }
+.tb-picker-grid button.on.today { color: #fff; }
+.tb-picker-grid button.wstart { border-radius: 5px 0 0 5px; }
+.tb-picker-grid button.wend { border-radius: 0 5px 5px 0; }
+.tb-picker-grid button.wstart.wend { border-radius: 5px; }
+.tb-picker-foot { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding-top: 6px;
+  border-top: 1px solid var(--line); font-size: 10.5px; color: var(--txt-4); }
+.tb-picker-now { margin-left: auto; height: 22px; padding: 0 8px; border-radius: 5px; color: var(--accent); font-size: 11.5px; }
+.tb-picker-now:hover { background: var(--accent-soft); }
+.tb-title svg { width: 11px; height: 11px; color: var(--txt-3); transition: transform .16s; }
+.tb-title[aria-expanded="true"] svg { transform: rotate(180deg); }
+.tb-head .grow { flex: 1; }
+
+/* ---------- views ---------- */
+.tb-views { flex: 1; min-height: 0; position: relative; }
+.tb-view { position: absolute; inset: 0; display: none; min-height: 0; }
+.tb-view.on { display: flex; flex-direction: column; }
+
+/* ---------- \u65F6\u95F4\u5757 ---------- */
+.tb-tb { flex: 1; min-height: 0; display: flex; }
+.tb-tb-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.tb-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; overflow-anchor: auto; }
+.tb-scroll::-webkit-scrollbar { width: 9px; }
+.tb-scroll::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 5px; border: 3px solid var(--rail); }
+.tb-days { position: relative; }
+.tb-day { position: relative; display: flex; }
+.tb-day + .tb-day { border-top: 1px dashed var(--dash); }
+.tb-gutter { width: 46px; flex: none; position: relative; }
+.tb-datemark { position: absolute; left: 6px; top: 5px; display: flex; flex-direction: column; gap: 1px; pointer-events: none; }
+.tb-datemark .m { font-size: 9.5px; color: var(--txt-3); letter-spacing: .3px; }
+.tb-datemark .d { font-size: 21px; line-height: 1.05; font-weight: 600; color: var(--txt); font-variant-numeric: tabular-nums; letter-spacing: -.2px; }
+.tb-datemark .w { font-size: 9.5px; color: var(--txt-2); }
+.tb-datemark .t { font-size: 9.5px; color: var(--txt-4); }
+.tb-datemark .t.today { color: var(--accent); }
+.tb-hours { width: 22px; flex: none; position: relative; }
+.tb-hours span { position: absolute; right: 5px; font-size: 10px; color: var(--txt-3); font-variant-numeric: tabular-nums; letter-spacing: -.1px; }
+.tb-hours span.now { color: var(--txt); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.tb-grid { flex: 1; position: relative; min-width: 0; }
+.tb-cells { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(6, 1fr); }
+.tb-cell { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); cursor: crosshair; }
+.tb-cell:nth-child(6n) { border-right: 0; }
+.tb-cell.hourlast { border-bottom: 1px solid var(--line-2); }
+.tb-cell:hover { background: var(--rail-3); }
+.tb-blocks, .tb-sel { position: absolute; inset: 0; pointer-events: none; }
+.tb-blk { position: absolute; overflow: hidden; display: flex; align-items: center; padding: 0 4px;
+  font-size: 10px; font-weight: 600; letter-spacing: .1px; color: #fff; white-space: nowrap; }
+.tb-blk span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-selbox { position: absolute; box-shadow: inset 0 0 0 2px var(--sel-ring); }
+.tb-selbox i { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; }
+.tb-selbox i svg { width: 12px; height: 12px; color: var(--sel-ink); }
+.tb-nowline { position: absolute; width: 2px; background: var(--txt); box-shadow: 0 0 0 .5px rgba(0, 0, 0, .45); }
+.tb-jump { position: absolute; right: 12px; bottom: 12px; height: 27px; padding: 0 11px; border-radius: 14px;
+  border: 1px solid var(--line-2); background: var(--rail-2); color: var(--txt-2); font-size: 11.5px;
+  box-shadow: var(--shadow-sm); opacity: 0; pointer-events: none; transition: opacity .16s; z-index: 5; }
+.tb-jump.on { opacity: 1; pointer-events: auto; }
+
+/* ---------- \u7C7B\u522B\u5217\uFF08\u6807\u7B7E\u67B6\uFF09 ---------- */
+.tb-shelf { width: var(--tb-shelf-width, 118px); flex: none; display: flex; flex-direction: column; min-height: 0; }
+.tb-shelf.mini { width: 34px; }
+.tb-shelf-head { flex: none; height: 30px; display: flex; align-items: center; gap: 4px; padding: 0 8px;
+  color: var(--txt-3); font-size: 10.5px; text-align: left; }
+.tb-shelf-head:hover { color: var(--txt-2); }
+.tb-shelf-head svg { width: 12px; height: 12px; flex: none; }
+.tb-shelf.mini .tb-shelf-head { justify-content: center; padding: 0; }
+.tb-shelf.mini .tb-shelf-head span, .tb-shelf.mini .tb-shelf-list, .tb-shelf.mini .tb-shelf-more { display: none; }
+.tb-shelf-list { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 7px 8px; display: flex; flex-direction: column; gap: 5px; scrollbar-width: none; }
+.tb-shelf-more { flex: none; height: 30px; color: var(--txt-3); font-size: 11px; text-align: left; padding: 0 14px; }
+.tb-shelf-more:hover { color: var(--txt-2); }
+.tb-brush { width: 20px; height: 20px; border-radius: 4px; margin: 6px auto 0; }
+.tb-cat { flex: none; height: 33px; border-radius: 5px; color: #fff; font-size: 12px; font-weight: 600;
+  letter-spacing: .2px; padding: 0 8px; display: flex; align-items: center; gap: 5px; text-align: left;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07); transition: filter .12s; }
+.tb-cat:hover { filter: brightness(1.07); }
+.tb-cat.sub { height: 28px; font-size: 11px; margin-left: 7px; }
+.tb-cat .caret { margin-left: auto; width: 10px; height: 10px; opacity: .65; transition: transform .15s; }
+.tb-cat[aria-expanded="true"] .caret { transform: rotate(90deg); }
+.tb-cat span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- \u5E95\u90E8\u72B6\u6001\u680F ---------- */
+.tb-status { flex: none; display: flex; align-items: center; gap: 8px; height: var(--tb-status-height, 36px); padding: 0 8px 0 12px;
+  border-top: 1px solid var(--line-2); background: var(--rail-2); font-size: 12px; color: var(--txt-2); }
+.tb-status b { color: var(--txt); font-weight: 600; font-variant-numeric: tabular-nums; }
+.tb-status .grow { flex: 1; }
+.tb-sb { height: 24px; border-radius: 6px; color: var(--txt-2); font-size: 11.5px; padding: 0 8px;
+  display: inline-flex; align-items: center; gap: 5px; }
+.tb-sb[hidden] { display: none; }
+.tb-sb:hover { background: var(--rail-3); color: var(--txt); }
+.tb-sb.erase { color: var(--danger); }
+.tb-sb.erase:hover { background: color-mix(in srgb, var(--danger) 14%, transparent); }
+.tb-sb svg { width: 13px; height: 13px; }
+.tb-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--txt); }
+.tb-chip i { width: 9px; height: 9px; border-radius: 2px; }
+
+/* ---------- \u4E00\u7EA7\u62BD\u5C49 ---------- */
+.tb-scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .42); opacity: 0; pointer-events: none;
+  transition: opacity .2s; z-index: 20; }
+.tb-scrim.on { opacity: 1; pointer-events: auto; }
+.tb-drawer { position: absolute; left: 0; top: 0; bottom: 0; width: 232px; z-index: 21; background: var(--rail-2);
+  border-right: 1px solid var(--line); padding: 14px 10px; display: flex; flex-direction: column;
+  transform: translateX(-101%); transition: transform .26s cubic-bezier(.32, .72, 0, 1); box-shadow: var(--shadow); }
+.tb-drawer.on { transform: none; }
+.tb-drawer .cap { font-size: 10.5px; color: var(--txt-4); padding: 2px 10px 10px; letter-spacing: .4px; }
+.tb-mrow { flex: none; width: 100%; height: 40px; border-radius: 8px; color: var(--txt-2); font-size: 14px;
+  display: flex; align-items: center; gap: 11px; padding: 0 10px; text-align: left; }
+.tb-mrow:hover { background: var(--rail-3); color: var(--txt); }
+.tb-mrow.on { color: var(--txt); background: var(--accent-soft); }
+.tb-mrow svg { width: 17px; height: 17px; flex: none; color: var(--txt-3); }
+.tb-mrow.on svg { color: var(--accent); }
+.tb-dsep { flex: none; height: 1px; background: var(--line); margin: 7px 10px; }
+
+/* ---------- \u4E8C\u7EA7\u83DC\u5355 ---------- */
+.tb-smenu { position: absolute; z-index: 22; min-width: 172px; padding: 5px; border-radius: 10px; background: var(--rail-3);
+  border: 1px solid var(--line-2); box-shadow: var(--shadow); opacity: 0; transform: translateY(-4px) scale(.98);
+  pointer-events: none; transition: opacity .14s, transform .14s; transform-origin: top left; }
+.tb-smenu.on { opacity: 1; transform: none; pointer-events: auto; }
+.tb-smenu button { width: 100%; height: 32px; border-radius: 6px; color: var(--txt-2); font-size: 13px;
+  display: flex; align-items: center; gap: 7px; padding: 0 8px; text-align: left; }
+.tb-smenu button:hover { background: var(--rail-2); color: var(--txt); }
+.tb-smenu button.on { color: var(--txt); font-weight: 600; }
+.tb-smenu button svg { width: 12px; height: 12px; color: var(--accent); opacity: 0; }
+.tb-smenu button.on svg { opacity: 1; }
+
+/* ---------- \u7F16\u8F91\u6D6E\u5C42 ---------- */
+.tb-sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 23; background: var(--rail-2);
+  border-top: 1px solid var(--line); border-radius: 14px 14px 0 0; box-shadow: var(--shadow);
+  padding: 8px 12px 14px; max-height: 76%; overflow-y: auto;
+  transform: translateY(101%); transition: transform .24s cubic-bezier(.32, .72, 0, 1); }
+.tb-sheet.on { transform: none; }
+.tb-sheet .grab { width: 34px; height: 4px; border-radius: 2px; background: var(--line-2); margin: 0 auto 11px; }
+.tb-sheet .row { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+.tb-sheet .time { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tb-sheet .dur { font-size: 11px; color: var(--txt-3); background: var(--rail-3); border-radius: 4px; padding: 1px 6px; }
+.tb-sheet .grow { flex: 1; }
+.tb-step { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line-2); color: var(--txt-2);
+  font-size: 14px; line-height: 1; padding: 0; }
+.tb-step:hover { background: var(--rail-3); color: var(--txt); }
+.tb-picks { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 10px; }
+.tb-picks button { height: 25px; border-radius: 5px; padding: 0 9px; font-size: 11.5px; color: #fff; opacity: .5; }
+.tb-picks button.on { opacity: 1; box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px var(--accent); }
+.tb-note { width: 100%; height: 30px; border-radius: 7px; border: 1px solid var(--line-2); background: var(--rail-3);
+  color: var(--txt); font-size: 12.5px; padding: 0 9px; margin-bottom: 10px; }
+.tb-note::placeholder { color: var(--txt-4); }
+.tb-acts { display: flex; gap: 8px; }
+.tb-btn { height: 31px; flex: 1; border-radius: 7px; border: 1px solid var(--line-2); background: var(--rail-3); color: var(--txt); font-size: 13px; }
+.tb-btn.primary { background: var(--txt); color: var(--rail); border-color: transparent; font-weight: 600; }
+.tb-btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
+
+/* ---------- toast ---------- */
+.tb-toast { position: absolute; left: 50%; bottom: 16px; transform: translate(-50%, 6px); z-index: 30;
+  background: var(--rail-3); border: 1px solid var(--line-2); border-radius: 8px; padding: 7px 13px;
+  font-size: 12px; color: var(--txt); box-shadow: var(--shadow-sm); opacity: 0; pointer-events: none;
+  transition: all .16s; max-width: 86%; }
+.tb-toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- \u6DF1\u5EA6\u65F6\u95F4 ---------- */
+.tb-deep { flex: 1; min-height: 0; display: flex; }
+.tb-deep-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.tb-deep-head { flex: none; height: 26px; display: flex; padding-left: 30px; border-bottom: 1px solid var(--line-2); }
+.tb-deep-head .d { flex: 1; display: grid; place-items: center; font-size: 10.5px; color: var(--txt-3); }
+.tb-deep-head .d.today { color: var(--accent); font-weight: 600; }
+.tb-deep-body { flex: 1; min-height: 0; display: flex; overflow: hidden; }
+.tb-deep-hours { width: 30px; flex: none; position: relative; }
+.tb-deep-hours span { position: absolute; right: 6px; font-size: 9.5px; color: var(--txt-4); font-variant-numeric: tabular-nums; }
+.tb-deep-cols { flex: 1; display: flex; min-width: 0; position: relative; touch-action: none; background: var(--rail-3); }
+.tb-deep-col { flex: 1; min-width: 0; position: relative; }
+.tb-hc { position: absolute; left: 0; right: 0; background: var(--cell); cursor: crosshair; box-shadow: 0 0 0 1px var(--rail-3); }
+.tb-hc:hover { filter: brightness(1.12); }
+.tb-hc.H { background: color-mix(in srgb, var(--tb-deep-high, #6fbf73) 52%, var(--cell)); }
+.tb-hc.M { background: color-mix(in srgb, var(--tb-deep-medium, #e0c04a) 40%, var(--cell)); }
+.tb-hc.L { background: color-mix(in srgb, var(--tb-deep-low, #9aa0ac) 32%, var(--cell)); }
+.tb-deep-status { flex: none; display: flex; align-items: center; gap: 8px; height: var(--tb-status-height, 36px); padding: 0 8px 0 12px;
+  border-top: 1px solid var(--line-2); background: var(--rail-2); font-size: 12px; color: var(--txt-2); }
+.tb-deep-status b { color: var(--txt); font-weight: 600; }
+`;
+  function createIdIndex() {
+    const toNumber = /* @__PURE__ */ new Map();
+    const toString = /* @__PURE__ */ new Map();
+    let next = 0;
+    return {
+      number(id) {
+        let value = toNumber.get(id);
+        if (value === void 0) {
+          next += 1;
+          value = next;
+          toNumber.set(id, value);
+          toString.set(value, id);
+        }
+        return value;
+      },
+      string(id) {
+        const known = toString.get(id);
+        if (known === void 0) throw new Error(`\u672A\u77E5 UI \u6807\u8BC6\uFF1A${id}`);
+        return known;
+      }
+    };
+  }
+  function messageOf(reason) {
+    return reason instanceof Error ? reason.message : String(reason);
+  }
+  var FALLBACK_TODAY = localDate();
+  function TimeProduct({ adapter, headerAction, today: openingDay }) {
+    const openingDate = openingDay ?? FALLBACK_TODAY;
+    const [module, setModule] = (0, import_react.useState)("time");
+    const [layer, setLayer] = (0, import_react.useState)("actual");
+    const [anchor] = (0, import_react.useState)(() => openingDate);
+    const [range, setRange] = (0, import_react.useState)(() => ({ from: addDays(openingDate, -3), to: addDays(openingDate, 10) }));
+    const [focus, setFocus] = (0, import_react.useState)(() => ({ date: openingDate, token: 1 }));
+    const [topDate, setTopDate] = (0, import_react.useState)(() => openingDate);
+    const [weekStart, setWeekStart] = (0, import_react.useState)(() => weekStartOf(openingDate));
+    const [view, setView] = (0, import_react.useState)();
+    const [drawer, setDrawer] = (0, import_react.useState)(false);
+    const [subMenu, setSubMenu] = (0, import_react.useState)(false);
+    const [sheet, setSheet] = (0, import_react.useState)();
+    const [busy, setBusy] = (0, import_react.useState)(false);
+    const [toast, setToast] = (0, import_react.useState)("");
+    const [error, setError] = (0, import_react.useState)("");
+    const [picker, setPicker] = (0, import_react.useState)(null);
+    const toastTimer = (0, import_react.useRef)(0);
+    const revision = (0, import_react.useRef)(0);
+    const indexesRef = (0, import_react.useRef)(void 0);
+    if (indexesRef.current === void 0) {
+      indexesRef.current = { tag: createIdIndex(), block: createIdIndex() };
+    }
+    const indexes = indexesRef.current;
+    const say = (0, import_react.useCallback)((message) => {
+      setToast(message);
+      window.clearTimeout(toastTimer.current);
+      toastTimer.current = window.setTimeout(() => setToast(""), 1600);
+    }, []);
+    const load = (0, import_react.useCallback)(async () => {
+      const ticket = revision.current + 1;
+      revision.current = ticket;
+      const next = await adapter.load({ anchor, from: range.from, to: range.to, weekStart });
+      if (revision.current !== ticket) return;
+      setView(next);
+      setError("");
+    }, [adapter, anchor, range, weekStart]);
+    (0, import_react.useEffect)(() => {
+      void load().catch((reason) => {
+        setError(messageOf(reason));
+      });
+    }, [load]);
+    const runWrite = (0, import_react.useCallback)(async (operation, message) => {
+      const ticket = revision.current + 1;
+      revision.current = ticket;
+      setBusy(true);
+      try {
+        const next = await operation();
+        if (revision.current === ticket) {
+          setView(next);
+          setError("");
+        }
+        say(message);
+        return true;
+      } catch (reason) {
+        const text = messageOf(reason);
+        if (revision.current === ticket) setError(text);
+        say(text);
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    }, [say]);
+    const extendRange = (0, import_react.useCallback)((side) => {
+      setRange((previous) => {
+        const next = side === "before" ? { from: addDays(previous.from, -7), to: previous.to } : { from: previous.from, to: addDays(previous.to, 7) };
+        const span = (Date.parse(`${next.to}T00:00:00`) - Date.parse(`${next.from}T00:00:00`)) / 864e5 + 1;
+        if (span <= 63) return next;
+        return side === "before" ? { from: next.from, to: addDays(next.to, -7) } : { from: addDays(next.from, 7), to: next.to };
+      });
+    }, []);
+    const jumpTo = (0, import_react.useCallback)((date) => {
+      setRange({ from: addDays(date, -3), to: addDays(date, 10) });
+      setTopDate(date);
+      setFocus((previous) => ({ date, token: previous.token + 1 }));
+    }, []);
+    const switchLayer = (0, import_react.useCallback)((next) => {
+      setLayer(next);
+      setFocus((previous) => ({ date: topDate, token: previous.token + 1 }));
+    }, [topDate]);
+    const productToday = view?.today ?? openingDate;
+    const step = (0, import_react.useCallback)((amount) => {
+      if (module === "deep") {
+        setWeekStart(amount === 0 ? weekStartOf(productToday) : addDays(weekStart, amount));
+        return;
+      }
+      jumpTo(amount === 0 ? productToday : addDays(topDate, amount));
+    }, [jumpTo, module, productToday, topDate, weekStart]);
+    (0, import_react.useEffect)(() => {
+      const onKey = (event) => {
+        const target = event.target;
+        if (target !== null && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+        const unit = module === "deep" ? 7 : 1;
+        const map = { ArrowLeft: -unit, ArrowRight: unit, PageUp: -7, PageDown: 7 };
+        const amount = map[event.key];
+        if (amount === void 0) return;
+        event.preventDefault();
+        step(amount);
+      };
+      window.addEventListener("keydown", onKey);
+      return () => {
+        window.removeEventListener("keydown", onKey);
+      };
+    }, [module, step]);
+    const paint = (0, import_react.useCallback)(async (next, runs, tagId) => {
+      if (runs.length === 0) return;
+      await runWrite(
+        () => adapter.paint({ layer: next, tagId: tagId === null ? null : indexes.tag.string(tagId), runs }),
+        tagId === null ? "\u5DF2\u64E6\u9664" : "\u5DF2\u4E0A\u8272"
+      );
+    }, [adapter, indexes, runWrite]);
+    const paintDeep = (0, import_react.useCallback)(async (rects, level) => {
+      if (rects.length === 0) return;
+      await runWrite(
+        () => adapter.paintDeep({ weekStart, level, rects }),
+        level === null ? "\u5DF2\u64E6\u9664" : "\u5DF2\u8BB0\u5F55"
+      );
+    }, [adapter, runWrite, weekStart]);
+    const saveSheet = (0, import_react.useCallback)(async (target, patch) => {
+      const ok = await runWrite(
+        () => adapter.updateBlock({
+          layer: target.layer,
+          id: indexes.block.string(target.record.id),
+          date: target.date,
+          start: patch.start,
+          end: patch.end,
+          tagId: indexes.tag.string(patch.timeTagId),
+          note: patch.note
+        }),
+        "\u5DF2\u4FDD\u5B58"
+      );
+      if (ok) setSheet(void 0);
+    }, [adapter, indexes, runWrite]);
+    const deleteSheet = (0, import_react.useCallback)(async (target) => {
+      const ok = await runWrite(
+        () => adapter.deleteBlock({ layer: target.layer, id: indexes.block.string(target.record.id) }),
+        "\u5DF2\u5220\u9664"
+      );
+      if (ok) setSheet(void 0);
+    }, [adapter, indexes, runWrite]);
+    const undo = (0, import_react.useCallback)(async () => {
+      if (busy || view === void 0 || view.canUndo[layer] !== true) return;
+      const ticket = revision.current + 1;
+      revision.current = ticket;
+      setBusy(true);
+      try {
+        const next = await adapter.undo(layer);
+        if (next === void 0) return;
+        if (revision.current === ticket) {
+          setView(next);
+          setError("");
+        }
+        say("\u5DF2\u64A4\u9500");
+      } catch (reason) {
+        const message = messageOf(reason);
+        if (revision.current === ticket) setError(message);
+        say(message);
+      } finally {
+        setBusy(false);
+      }
+    }, [adapter, busy, layer, say, view]);
+    const tags = (0, import_react.useMemo)(() => (view?.tags ?? []).map((tag) => ({
+      id: indexes.tag.number(tag.id),
+      name: tag.name,
+      kind: "time",
+      parentId: tag.parentId === void 0 ? void 0 : indexes.tag.number(tag.parentId),
+      color: tag.color
+    })), [indexes, view]);
+    const records = (0, import_react.useMemo)(() => {
+      const make = (list) => {
+        const map = /* @__PURE__ */ new Map();
+        for (const day of view?.days ?? []) map.set(day, []);
+        for (const block2 of list) {
+          const day = map.get(block2.date);
+          if (day === void 0) continue;
+          day.push({
+            id: indexes.block.number(block2.id),
+            start: block2.start,
+            end: block2.end,
+            timeTagId: indexes.tag.number(block2.tagId),
+            note: block2.note
+          });
+        }
+        for (const day of map.values()) day.sort((left, right) => left.start - right.start || left.id - right.id);
+        return map;
+      };
+      return {
+        actual: make(view?.blocks.actual ?? []),
+        plan: make(view?.blocks.plan ?? [])
+      };
+    }, [indexes, view]);
+    const deepWeek = (0, import_react.useMemo)(() => view === void 0 ? void 0 : {
+      weekStart: view.weekStart,
+      source: view.deep.source,
+      cells: view.deep.levels.map((level) => ({ level }))
+    }, [view]);
+    const today = productToday;
+    const titleSub = module === "time" ? layer === "plan" ? "\u8BA1\u5212" : "\u5B9E\u5F55" : "";
+    const subItems = module === "time" ? [{ id: "actual", name: "\u5B9E\u5F55" }, { id: "plan", name: "\u8BA1\u5212" }] : [];
+    const openSubMenu = () => {
+      if (subItems.length === 0) {
+        setDrawer(true);
+        return;
+      }
+      setSubMenu(true);
+    };
+    return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(
+      "div",
+      {
+        className: "tb-app",
+        "data-time-remote": true,
+        "data-remote-state": view === void 0 ? error === "" ? "loading" : "error" : "ready",
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("style", { children: timeStyles }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+            TimeHeader,
+            {
+              module,
+              titleSub,
+              dateLabel: module === "deep" ? weekLabel2(weekStart) : dayLabel(topDate),
+              canUndo: view?.canUndo[layer] === true,
+              busy,
+              subMenuOpen: subMenu,
+              pickerOpen: picker !== null,
+              action: headerAction,
+              onDrawer: () => setDrawer((value) => !value),
+              onSubMenu: () => subMenu ? setSubMenu(false) : openSubMenu(),
+              onPicker: () => setPicker(picker === null ? module : null),
+              onStep: step,
+              onUndo: () => void undo()
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "tb-views", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("section", { className: "tb-view on", style: { display: module === "time" && layer === "actual" ? "flex" : "none" }, children: view !== void 0 && module === "time" && layer === "actual" && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+              TimeCanvas,
+              {
+                layer: "actual",
+                days: view.days,
+                today: view.today,
+                nowMinute: view.nowMinute,
+                focus,
+                onExtend: extendRange,
+                onTopDateChange: setTopDate,
+                records: records.actual,
+                tags,
+                busy,
+                onAssign: (runs, tagId) => void paint("actual", runs, tagId),
+                onEdit: (date, record) => setSheet({ layer: "actual", date, record })
+              }
+            ) }),
+            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("section", { className: "tb-view on", style: { display: module === "time" && layer === "plan" ? "flex" : "none" }, children: view !== void 0 && module === "time" && layer === "plan" && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+              TimeCanvas,
+              {
+                layer: "plan",
+                days: view.days,
+                today: view.today,
+                nowMinute: view.nowMinute,
+                focus,
+                onExtend: extendRange,
+                onTopDateChange: setTopDate,
+                records: records.plan,
+                tags,
+                busy,
+                onAssign: (runs, tagId) => void paint("plan", runs, tagId),
+                onEdit: (date, record) => setSheet({ layer: "plan", date, record })
+              }
+            ) }),
+            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("section", { className: "tb-view on", style: { display: module === "deep" ? "flex" : "none" }, children: module === "deep" && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+              DeepWeekView,
+              {
+                week: deepWeek,
+                weekStart,
+                today,
+                busy,
+                onPaint: (rects, level) => void paintDeep(rects, level)
+              }
+            ) })
+          ] }),
+          picker !== null && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+            DatePicker,
+            {
+              mode: picker === "deep" ? "week" : "day",
+              value: picker === "deep" ? weekStart : topDate,
+              today,
+              onPick: (date) => {
+                if (picker === "deep") setWeekStart(weekStartOf(date));
+                else jumpTo(date);
+                setPicker(null);
+              },
+              onClose: () => setPicker(null)
+            }
+          ),
+          error !== "" && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "tb-toast on", style: { bottom: 52 }, children: error }),
+          subMenu && subItems.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "tb-smenu on", style: { left: 44, top: 42 }, children: subItems.map((item) => /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("button", { type: "button", className: layer === item.id ? "on" : "", onClick: () => {
+            switchLayer(item.id);
+            setSubMenu(false);
+          }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "1.8", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("path", { d: "M2.5 6.2l2.4 2.4L9.5 4" }) }),
+            item.name
+          ] }, item.id)) }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+            Drawer,
+            {
+              open: drawer,
+              module,
+              onModuleChange: (next) => {
+                setModule(next);
+                setDrawer(false);
+                setPicker(null);
+              },
+              onClose: () => setDrawer(false)
+            }
+          ),
+          sheet !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+            RecordSheet,
+            {
+              target: sheet,
+              tags,
+              busy,
+              onClose: () => setSheet(void 0),
+              onSave: (patch) => void saveSheet(sheet, patch),
+              onDelete: () => void deleteSheet(sheet)
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Toast, { message: toast })
+        ]
+      }
+    );
   }
 
   // time-block/src/fixtures.ts
   var FIXTURE_TODAY = "2026-11-06";
-  var YESTERDAY = addDays(FIXTURE_TODAY, -1);
-  var TOMORROW = addDays(FIXTURE_TODAY, 1);
+  var FIXTURE_NOW_MINUTE = 14 * 60 + 20;
+  var FIXTURE_YESTERDAY = timeMath.addDays(FIXTURE_TODAY, -1);
+  var FIXTURE_TOMORROW = timeMath.addDays(FIXTURE_TODAY, 1);
+  var FIXTURE_WEEK_START = timeMath.weekStartOf(FIXTURE_TODAY);
+  var FIXTURE_FROM = timeMath.addDays(FIXTURE_TODAY, -3);
+  var FIXTURE_TO = timeMath.addDays(FIXTURE_TODAY, 10);
+  var DEEP_CELLS = 7 * 24;
   var fixtureTags = [
     { id: "work", name: "\u5DE5\u4F5C", color: "var(--tb-tag-work)" },
-    { id: "focus", name: "\u6DF1\u5EA6\u5DE5\u4F5C", color: "var(--tb-tag-focus)", parentId: "work" },
-    { id: "collaboration", name: "\u534F\u4F5C\u6C9F\u901A", color: "var(--tb-tag-collaboration)", parentId: "work" },
+    { id: "focus", name: "\u6DF1\u5EA6\u5DE5\u4F5C", parentId: "work", color: "var(--tb-tag-focus)" },
+    { id: "collaboration", name: "\u534F\u4F5C\u6C9F\u901A", parentId: "work", color: "var(--tb-tag-collaboration)" },
     { id: "life", name: "\u751F\u6D3B", color: "var(--tb-tag-life)" },
-    { id: "meal", name: "\u7528\u9910", color: "var(--tb-tag-meal)", parentId: "life" },
-    { id: "exercise", name: "\u8FD0\u52A8", color: "var(--tb-tag-exercise)", parentId: "life" },
+    { id: "meal", name: "\u7528\u9910", parentId: "life", color: "var(--tb-tag-meal)" },
+    { id: "exercise", name: "\u8FD0\u52A8", parentId: "life", color: "var(--tb-tag-exercise)" },
     { id: "learning", name: "\u5B66\u4E60", color: "var(--tb-tag-learning)" },
-    { id: "reading", name: "\u9605\u8BFB", color: "var(--tb-tag-reading)", parentId: "learning" },
+    { id: "reading", name: "\u9605\u8BFB", parentId: "learning", color: "var(--tb-tag-reading)" },
     { id: "rest", name: "\u4F11\u606F\u6062\u590D", color: "var(--tb-tag-rest)" },
     { id: "errand", name: "\u65E5\u5E38\u4E8B\u52A1", color: "var(--tb-tag-errand)" }
   ];
@@ -14744,10 +16180,10 @@
     block("p-07", FIXTURE_TODAY, 900, 930, "rest"),
     block("p-08", FIXTURE_TODAY, 1080, 1140, "exercise"),
     block("p-09", FIXTURE_TODAY, 1260, 1320, "reading", "\u300A\u8BBE\u8BA1\u4E2D\u7684\u8BBE\u8BA1\u300B"),
-    block("p-10", YESTERDAY, 540, 630, "focus", "\u68B3\u7406\u4E00\u5468\u91CD\u70B9"),
-    block("p-11", YESTERDAY, 720, 780, "meal"),
-    block("p-12", TOMORROW, 540, 600, "collaboration", "\u9879\u76EE\u4F8B\u4F1A"),
-    block("p-13", TOMORROW, 600, 720, "focus", "\u51C6\u5907\u6F14\u793A")
+    block("p-10", FIXTURE_YESTERDAY, 540, 630, "focus", "\u68B3\u7406\u4E00\u5468\u91CD\u70B9"),
+    block("p-11", FIXTURE_YESTERDAY, 720, 780, "meal"),
+    block("p-12", FIXTURE_TOMORROW, 540, 600, "collaboration", "\u9879\u76EE\u4F8B\u4F1A"),
+    block("p-13", FIXTURE_TOMORROW, 600, 720, "focus", "\u51C6\u5907\u6F14\u793A")
   ];
   var actual = [
     block("a-01", FIXTURE_TODAY, 440, 470, "exercise"),
@@ -14759,70 +16195,158 @@
     block("a-07", FIXTURE_TODAY, 860, 900, "collaboration", "\u4E34\u65F6\u8BA8\u8BBA"),
     block("a-08", FIXTURE_TODAY, 920, 940, "rest"),
     block("a-09", FIXTURE_TODAY, 1140, 1180, "reading"),
-    block("a-10", YESTERDAY, 550, 650, "focus"),
-    block("a-11", YESTERDAY, 650, 680, "collaboration"),
-    block("a-12", TOMORROW, 540, 570, "focus", "\u5DF2\u6709\u5B9E\u5F55\u793A\u4F8B")
+    block("a-10", FIXTURE_YESTERDAY, 550, 650, "focus"),
+    block("a-11", FIXTURE_YESTERDAY, 650, 680, "collaboration"),
+    block("a-12", FIXTURE_TOMORROW, 540, 570, "focus", "\u5DF2\u6709\u5B9E\u5F55\u793A\u4F8B")
   ];
-  function createFixtureSnapshot() {
+  function createFixtureBlocks() {
     return {
-      today: FIXTURE_TODAY,
-      nowMinute: 14 * 60 + 20,
-      tags: fixtureTags,
-      blocks: { plan, actual },
-      canUndo: { plan: false, actual: false }
+      plan: plan.map((item) => ({ ...item })),
+      actual: actual.map((item) => ({ ...item }))
     };
+  }
+  function createFixtureDeep() {
+    const cells = Array.from({ length: DEEP_CELLS }, () => "unset");
+    const paint = (weekday, startHour, endHour, level) => {
+      for (let hour = startHour; hour <= endHour; hour += 1) {
+        const index = (weekday - 1) * 24 + hour;
+        if (index >= 0 && index < DEEP_CELLS) cells[index] = level;
+      }
+    };
+    paint(1, 9, 11, "high");
+    paint(2, 9, 11, "high");
+    paint(2, 14, 15, "medium");
+    paint(3, 9, 10, "medium");
+    paint(3, 15, 16, "low");
+    paint(4, 9, 11, "high");
+    paint(5, 10, 11, "medium");
+    paint(6, 15, 16, "low");
+    paint(7, 10, 11, "low");
+    return cells;
   }
   function block(id, date, start, end, tagId, note) {
     return note === void 0 ? { id, date, start, end, tagId } : { id, date, start, end, tagId, note };
   }
 
   // time-block/src/FixtureTimeAdapter.ts
+  var DEEP_CELLS2 = 7 * 24;
+  var HISTORY_LIMIT = 50;
+  function defaultQuery() {
+    return {
+      anchor: FIXTURE_TODAY,
+      from: FIXTURE_FROM,
+      to: FIXTURE_TO,
+      weekStart: FIXTURE_WEEK_START
+    };
+  }
+  function dayRange(from, to) {
+    const days = [];
+    for (let date = from; date <= to && days.length < 63; date = timeMath.addDays(date, 1)) days.push(date);
+    return days;
+  }
+  function sortBlocks(blocks) {
+    return [...blocks].sort((left, right) => left.date.localeCompare(right.date) || left.start - right.start || left.id.localeCompare(right.id));
+  }
   var FixtureTimeAdapter = class {
-    snapshot = createFixtureSnapshot();
+    blocks = createFixtureBlocks();
+    deepWeeks = /* @__PURE__ */ new Map([[FIXTURE_WEEK_START, createFixtureDeep()]]);
     history = { plan: [], actual: [] };
+    query;
     nextId = 1;
-    async load() {
-      return this.snapshot;
+    async load(query) {
+      this.query = query;
+      return this.view();
     }
     async paint(command) {
-      return this.write(command.layer, command.runs, command.tagId);
-    }
-    async erase(command) {
-      return this.write(command.layer, command.runs, null);
+      this.write(command.layer, command.runs, command.tagId);
+      return this.view();
     }
     async undo(layer) {
-      const entry = this.history[layer].shift();
+      const entry = this.history[layer][0];
       if (entry === void 0) return void 0;
+      this.history[layer] = this.history[layer].slice(1);
       const dates = new Set(entry.days.map((day) => day.date));
-      const untouched = this.snapshot.blocks[layer].filter((block2) => !dates.has(block2.date));
+      const untouched = this.blocks[layer].filter((block2) => !dates.has(block2.date));
       const restored = entry.days.flatMap((day) => day.before);
-      this.replaceLayer(layer, [...untouched, ...restored]);
-      return { date: entry.days[0].date, snapshot: this.snapshot };
+      this.blocks[layer] = sortBlocks([...untouched, ...restored]);
+      return this.view();
     }
+    async paintDeep(command) {
+      const cells = [...this.deepWeeks.get(command.weekStart) ?? blankDeep()];
+      for (const rect of command.rects) this.paintRect(cells, rect, command.level);
+      this.deepWeeks.set(command.weekStart, cells);
+      if (this.query !== void 0) this.query = { ...this.query, weekStart: command.weekStart };
+      return this.view();
+    }
+    async updateBlock(command) {
+      this.blocks[command.layer] = sortBlocks(this.blocks[command.layer].map((block2) => block2.id === command.id ? {
+        ...block2,
+        date: command.date,
+        start: command.start,
+        end: command.end,
+        tagId: command.tagId,
+        note: command.note
+      } : block2));
+      return this.view();
+    }
+    async deleteBlock(command) {
+      this.blocks[command.layer] = this.blocks[command.layer].filter((block2) => block2.id !== command.id);
+      return this.view();
+    }
+    view() {
+      const query = this.query ?? defaultQuery();
+      return {
+        today: FIXTURE_TODAY,
+        nowMinute: FIXTURE_NOW_MINUTE,
+        from: query.from,
+        to: query.to,
+        days: dayRange(query.from, query.to),
+        weekStart: query.weekStart,
+        tags: fixtureTags,
+        blocks: {
+          plan: [...this.blocks.plan],
+          actual: [...this.blocks.actual]
+        },
+        deep: this.deepOf(query.weekStart),
+        canUndo: {
+          plan: this.history.plan.length > 0,
+          actual: this.history.actual.length > 0
+        }
+      };
+    }
+    deepOf(weekStart) {
+      const painted = this.deepWeeks.get(weekStart);
+      if (painted !== void 0) return { source: "own", levels: [...painted] };
+      return { source: "seed", levels: blankDeep() };
+    }
+    paintRect(cells, rect, level) {
+      for (let weekday = rect.startWeekday; weekday <= rect.endWeekday; weekday += 1) {
+        for (let hour = rect.startHour; hour <= rect.endHour; hour += 1) {
+          const index = (weekday - 1) * 24 + hour;
+          if (index >= 0 && index < DEEP_CELLS2) cells[index] = level ?? "unset";
+        }
+      }
+    }
+    /** Paint or erase runs on one layer, keeping the pre-write days for Undo. */
     write(layer, runs, tagId) {
-      if (runs.length === 0) return this.snapshot;
+      if (runs.length === 0) return;
       const dates = new Set(runs.map((run) => run.date));
-      const current = this.snapshot.blocks[layer];
+      const current = this.blocks[layer];
       const entry = {
-        days: [...dates].map((date) => ({ date, before: current.filter((block2) => block2.date === date) }))
+        days: [...dates].map((date) => ({
+          date,
+          before: current.filter((block2) => block2.date === date).map((block2) => ({ ...block2 }))
+        }))
       };
       const next = current.filter((block2) => !dates.has(block2.date));
       for (const date of dates) {
-        let day = current.filter((block2) => block2.date === date);
+        let day = current.filter((block2) => block2.date === date).map((block2) => ({ ...block2 }));
         const dayRuns = runs.filter((run) => run.date === date).sort((left, right) => left.start - right.start);
         for (const run of dayRuns) day = overwrite(day, run, tagId, () => this.createId());
         next.push(...mergeAdjacent(day));
       }
-      this.history[layer] = [entry, ...this.history[layer]].slice(0, 50);
-      this.replaceLayer(layer, next);
-      return this.snapshot;
-    }
-    replaceLayer(layer, blocks) {
-      this.snapshot = {
-        ...this.snapshot,
-        blocks: { ...this.snapshot.blocks, [layer]: blocks },
-        canUndo: { ...this.snapshot.canUndo, [layer]: this.history[layer].length > 0 }
-      };
+      this.blocks[layer] = sortBlocks(next);
+      this.history[layer] = [entry, ...this.history[layer]].slice(0, HISTORY_LIMIT);
     }
     createId() {
       const id = `fixture-${this.nextId}`;
@@ -14830,6 +16354,9 @@
       return id;
     }
   };
+  function blankDeep() {
+    return Array.from({ length: DEEP_CELLS2 }, () => "unset");
+  }
   function overwrite(blocks, run, tagId, createId) {
     const next = [];
     for (const block2 of blocks) {
@@ -14857,438 +16384,67 @@
     return result;
   }
 
-  // time-block/src/TimeBlockPage.tsx
-  var import_react3 = __toESM(require_react(), 1);
-
-  // shared/components/SelectionBar.tsx
-  var import_jsx_runtime2 = __toESM(require_jsx_runtime(), 1);
-  function SelectionBar({ count, busy, onClear, onErase }) {
-    const minutes = count * CELL_MINUTES;
-    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("footer", { className: `tb-selection-bar${count > 0 ? " has-selection" : ""}`, "data-testid": "selection-bar", "data-minutes": minutes, children: count > 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_jsx_runtime2.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "tb-selection-summary", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("strong", { children: formatDuration(minutes) }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { children: [
-          count,
-          " \u683C"
-        ] })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "tb-selection-spacer" }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", "data-testid": "clear-selection", disabled: busy, onClick: onClear, children: "\u4E0D\u9009" }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("button", { type: "button", className: "tb-erase-button", "data-testid": "erase-selection", disabled: busy, onClick: onErase, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.35", "aria-hidden": "true", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("path", { d: "M5.5 3h7v9h-7L2 7.5 5.5 3Z" }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("path", { d: "m8 6 3 3M11 6l-3 3" })
-        ] }),
-        "\u6A61\u76AE"
-      ] })
-    ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_jsx_runtime2.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { children: "\u70B9\u9009\u6216\u62D6\u52A8\u65F6\u95F4\u683C" }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "tb-selection-spacer" }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "tb-grid-unit", children: "10 \u5206\u949F / \u683C" })
-    ] }) });
-  }
-
-  // shared/components/TagShelf.tsx
-  var import_react = __toESM(require_react(), 1);
-  var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
-  function TagShelf({ tags, hasSelection, busy, onPaint }) {
-    const [mini, setMini] = (0, import_react.useState)(false);
-    const [collapsed, setCollapsed] = (0, import_react.useState)(() => /* @__PURE__ */ new Set());
-    const roots = tags.filter((tag) => tag.parentId === void 0);
-    const toggleCategory = (id) => {
-      setCollapsed((previous) => {
-        const next = new Set(previous);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-        return next;
-      });
-    };
-    return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("aside", { className: `tb-tag-shelf${mini ? " is-mini" : ""}`, "aria-label": "\u65F6\u95F4\u6807\u7B7E\u67B6", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
-        "button",
-        {
-          className: "tb-shelf-toggle",
-          type: "button",
-          "aria-label": mini ? "\u5C55\u5F00\u6807\u7B7E\u67B6" : "\u6536\u8D77\u6807\u7B7E\u67B6",
-          "aria-expanded": !mini,
-          onClick: () => setMini((value) => !value),
-          children: [
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "1.4", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "m3 2.5 3 3.5-3 3.5M7 2.5l3 3.5-3 3.5" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "\u65F6\u95F4\u6807\u7B7E" })
-          ]
-        }
-      ),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "tb-shelf-list", children: roots.map((root2) => {
-        const children = tags.filter((tag) => tag.parentId === root2.id);
-        const open = !collapsed.has(root2.id);
-        return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("section", { className: "tb-tag-category", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "tb-tag-root-row", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
-              "button",
-              {
-                type: "button",
-                className: "tb-tag-root",
-                style: tagStyle(root2.color),
-                "data-testid": `tag-${root2.id}`,
-                disabled: !hasSelection || busy,
-                onClick: () => onPaint(root2),
-                children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "tb-tag-dot" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: root2.name })
-                ]
-              }
-            ),
-            children.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-              "button",
-              {
-                type: "button",
-                className: "tb-category-toggle",
-                "aria-label": `${open ? "\u6536\u8D77" : "\u5C55\u5F00"}${root2.name}\u5206\u7C7B`,
-                "aria-expanded": open,
-                onClick: () => toggleCategory(root2.id),
-                children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "1.5", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "m3.5 4.5 2.5 3 2.5-3" }) })
-              }
-            )
-          ] }),
-          open && children.map((tag) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
-            "button",
-            {
-              type: "button",
-              className: "tb-tag-child",
-              style: tagStyle(tag.color),
-              "data-testid": `tag-${tag.id}`,
-              disabled: !hasSelection || busy,
-              onClick: () => onPaint(tag),
-              children: [
-                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "tb-tag-dot" }),
-                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: tag.name })
-              ]
-            },
-            tag.id
-          ))
-        ] }, root2.id);
-      }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "tb-shelf-hint", children: hasSelection ? "\u70B9\u6807\u7B7E\u5199\u5165\u9009\u533A" : "\u5148\u5728\u5DE6\u4FA7\u9009\u62E9\u65F6\u95F4" })
-    ] });
-  }
-  function tagStyle(color) {
-    return { "--tag-color": color };
-  }
-
-  // time-block/src/components/TimeCanvas.tsx
-  var import_react2 = __toESM(require_react(), 1);
-  var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
-  function TimeCanvas({
-    layer,
-    date,
-    today,
-    nowMinute,
-    blocks,
-    tags,
-    selected,
-    busy,
-    onSelectionChange
-  }) {
-    const dragRef = (0, import_react2.useRef)(null);
-    const selectedRef = (0, import_react2.useRef)(selected);
-    selectedRef.current = selected;
-    (0, import_react2.useEffect)(() => {
-      const move = (event) => {
-        const drag = dragRef.current;
-        if (drag === null) return;
-        const hit = document.elementFromPoint(event.clientX, event.clientY)?.closest(".tb-cell");
-        const minute = Number(hit?.dataset.minute);
-        if (hit?.dataset.date !== date || !Number.isFinite(minute) || minute === drag.start && !drag.moved) return;
-        drag.moved = true;
-        const next = /* @__PURE__ */ new Set();
-        for (let value = Math.min(drag.start, minute); value <= Math.max(drag.start, minute); value += CELL_MINUTES) {
-          next.add(value);
-        }
-        onSelectionChange(next);
-      };
-      const up = () => {
-        const drag = dragRef.current;
-        dragRef.current = null;
-        if (drag === null || drag.moved) return;
-        const next = new Set(selectedRef.current);
-        if (drag.wasSelected) next.delete(drag.start);
-        else next.add(drag.start);
-        onSelectionChange(next);
-      };
-      window.addEventListener("pointermove", move);
-      window.addEventListener("pointerup", up);
-      window.addEventListener("pointercancel", up);
-      return () => {
-        dragRef.current = null;
-        window.removeEventListener("pointermove", move);
-        window.removeEventListener("pointerup", up);
-        window.removeEventListener("pointercancel", up);
-      };
-    }, [date, onSelectionChange]);
-    const toggleFromKeyboard = (minute) => {
-      const next = new Set(selectedRef.current);
-      if (next.has(minute)) next.delete(minute);
-      else next.add(minute);
-      onSelectionChange(next);
-    };
-    return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("section", { className: "tb-canvas", "aria-label": "\u5171\u4EAB\u65F6\u95F4\u683C\u753B\u5E03", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "tb-minute-head", "aria-hidden": "true", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { children: "\u65F6\u523B" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { children: Array.from({ length: CELLS_PER_HOUR }, (_, index) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { children: String(index * 10).padStart(2, "0") }, index)) })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
-        "div",
-        {
-          className: "tb-canvas-scroll",
-          "data-testid": "time-canvas",
-          "data-layer": layer,
-          "data-date": date,
-          "aria-busy": busy,
-          children: [
-            Array.from({ length: 24 }, (_, hour) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "tb-hour-row", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "tb-hour-label", children: [
-                String(hour).padStart(2, "0"),
-                ":00"
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "tb-hour-cells", children: Array.from({ length: CELLS_PER_HOUR }, (_2, index) => {
-                const minute = hour * 60 + index * CELL_MINUTES;
-                const block2 = blocks.find((item) => item.start <= minute && minute < item.end);
-                const tag = block2 === void 0 ? void 0 : tags.find((item) => item.id === block2.tagId);
-                const label = block2 === void 0 ? "" : block2.note ?? tag?.name ?? "\u672A\u547D\u540D\u6807\u7B7E";
-                const showLabel = block2 !== void 0 && (block2.start === minute || index === 0);
-                const isNow = date === today && nowMinute >= minute && nowMinute < minute + CELL_MINUTES;
-                const classes = ["tb-cell"];
-                if (block2 !== void 0) classes.push("is-filled");
-                if (selected.has(minute)) classes.push("is-selected");
-                if (isNow) classes.push("is-now");
-                return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-                  "button",
-                  {
-                    type: "button",
-                    className: classes.join(" "),
-                    style: cellStyle(tag?.color),
-                    "data-testid": `cell-${minute}`,
-                    "data-date": date,
-                    "data-minute": minute,
-                    "data-tag-id": block2?.tagId,
-                    "data-selected": selected.has(minute) ? "true" : "false",
-                    "aria-label": `${formatClock(minute)}${block2 === void 0 ? "\uFF0C\u7A7A\u767D" : `\uFF0C${label}`}`,
-                    "aria-pressed": selected.has(minute),
-                    title: block2 === void 0 ? formatClock(minute) : `${formatClock(block2.start)}\u2013${formatClock(block2.end)} \xB7 ${label}`,
-                    disabled: busy,
-                    onPointerDown: (event) => {
-                      if (event.button !== 0) return;
-                      event.preventDefault();
-                      dragRef.current = { start: minute, wasSelected: selectedRef.current.has(minute), moved: false };
-                    },
-                    onClick: (event) => {
-                      if (event.detail === 0) toggleFromKeyboard(minute);
-                    },
-                    children: showLabel && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "tb-block-label", children: label })
-                  },
-                  minute
-                );
-              }) })
-            ] }, hour)),
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "tb-day-end", children: "24:00 \xB7 \u4E00\u65E5\u7ED3\u675F" })
-          ]
-        }
-      )
-    ] });
-  }
-  function cellStyle(color) {
-    return color === void 0 ? {} : { "--cell-color": color };
-  }
-
-  // time-block/src/TimeBlockPage.tsx
-  var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
-  function TimeBlockPage({ layer, date, snapshot, busy, onPaint, onErase }) {
-    const [selected, setSelected] = (0, import_react3.useState)(() => /* @__PURE__ */ new Set());
-    const runs = (0, import_react3.useMemo)(() => runsOfSelection(date, selected), [date, selected]);
-    const blocks = (0, import_react3.useMemo)(
-      () => snapshot.blocks[layer].filter((block2) => block2.date === date),
-      [date, layer, snapshot.blocks]
-    );
-    (0, import_react3.useEffect)(() => {
-      setSelected(/* @__PURE__ */ new Set());
-    }, [date, layer]);
-    const paint = async (tagId) => {
-      if (runs.length === 0 || busy) return;
-      await onPaint(runs, tagId);
-      setSelected(/* @__PURE__ */ new Set());
-    };
-    const erase = async () => {
-      if (runs.length === 0 || busy) return;
-      await onErase(runs);
-      setSelected(/* @__PURE__ */ new Set());
-    };
-    (0, import_react3.useEffect)(() => {
-      const onKey = (event) => {
-        const target = event.target;
-        if (target !== null && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
-        if (event.key === "Escape") {
-          setSelected(/* @__PURE__ */ new Set());
-          return;
-        }
-        if (event.key !== "Delete" && event.key !== "Backspace" || selected.size === 0) return;
-        event.preventDefault();
-        void erase();
-      };
-      window.addEventListener("keydown", onKey);
-      return () => window.removeEventListener("keydown", onKey);
-    });
-    return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(import_jsx_runtime5.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("main", { className: "tb-page", role: "tabpanel", "aria-labelledby": `tab-${layer}`, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
-          TimeCanvas,
-          {
-            layer,
-            date,
-            today: snapshot.today,
-            nowMinute: snapshot.nowMinute,
-            blocks,
-            tags: snapshot.tags,
-            selected,
-            busy,
-            onSelectionChange: setSelected
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
-          TagShelf,
-          {
-            tags: snapshot.tags,
-            hasSelection: selected.size > 0,
-            busy,
-            onPaint: (tag) => {
-              void paint(tag.id);
-            }
-          }
-        )
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(SelectionBar, { count: selected.size, busy, onClear: () => setSelected(/* @__PURE__ */ new Set()), onErase: () => {
-        void erase();
-      } })
-    ] });
-  }
-
   // time-block/src/App.tsx
-  var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime11 = __toESM(require_jsx_runtime(), 1);
+  var PREVIEW_BADGE = {
+    padding: "1px 5px",
+    border: "1px solid var(--tb-border-strong)",
+    borderRadius: "var(--tb-radius-sm)",
+    color: "var(--tb-text-tertiary)",
+    fontSize: "9px",
+    letterSpacing: "0.04em",
+    whiteSpace: "nowrap"
+  };
+  var PREVIEW_ROW = {
+    display: "flex",
+    flex: "0 0 100%",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 5,
+    paddingTop: 3,
+    borderTop: "1px solid var(--tb-border-subtle)"
+  };
+  function ThemeToggle({ theme, onToggle }) {
+    const dark = theme === "dark";
+    return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
+      "button",
+      {
+        className: "tb-hbtn",
+        type: "button",
+        title: "\u5207\u6362\u4E3B\u9898",
+        "aria-label": dark ? "\u5207\u6362\u5230\u6D45\u8272\u4E3B\u9898" : "\u5207\u6362\u5230\u6DF1\u8272\u4E3B\u9898",
+        onClick: onToggle,
+        children: dark ? /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.4", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("circle", { cx: "8", cy: "8", r: "3.2" }),
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("path", { d: "M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1" })
+        ] }) : /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.4", children: /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("path", { d: "M12.8 9.6A5.2 5.2 0 016.4 3.2a5.4 5.4 0 106.4 6.4z" }) })
+      }
+    );
+  }
   function App() {
-    const adapter = (0, import_react4.useMemo)(() => new FixtureTimeAdapter(), []);
-    const [snapshot, setSnapshot] = (0, import_react4.useState)();
-    const [layer, setLayer] = (0, import_react4.useState)("plan");
-    const [date, setDate] = (0, import_react4.useState)("");
-    const [theme, setTheme] = (0, import_react4.useState)("dark");
-    const [busy, setBusy] = (0, import_react4.useState)(false);
-    const [notice, setNotice] = (0, import_react4.useState)("");
-    (0, import_react4.useEffect)(() => {
-      let active = true;
-      void adapter.load().then((next) => {
-        if (!active) return;
-        setSnapshot(next);
-        setDate((current) => current === "" ? next.today : current);
-      });
-      return () => {
-        active = false;
-      };
-    }, [adapter]);
-    (0, import_react4.useEffect)(() => {
+    const adapter = (0, import_react7.useMemo)(() => new FixtureTimeAdapter(), []);
+    const [theme, setTheme] = (0, import_react7.useState)("dark");
+    (0, import_react7.useEffect)(() => {
       document.documentElement.dataset.theme = theme;
     }, [theme]);
-    (0, import_react4.useEffect)(() => {
-      if (notice === "") return;
-      const timer = window.setTimeout(() => setNotice(""), 1800);
-      return () => window.clearTimeout(timer);
-    }, [notice]);
-    (0, import_react4.useEffect)(() => {
-      const onKey = (event) => {
-        if (snapshot === void 0) return;
-        const target = event.target;
-        if (target !== null && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
-        const offsets = { ArrowLeft: -1, ArrowRight: 1, PageUp: -7, PageDown: 7 };
-        const offset = offsets[event.key];
-        if (offset === void 0) return;
-        event.preventDefault();
-        setDate((current) => addDays(current, offset));
-      };
-      window.addEventListener("keydown", onKey);
-      return () => window.removeEventListener("keydown", onKey);
-    }, [snapshot]);
-    const paint = (0, import_react4.useCallback)(async (runs, tagId) => {
-      setBusy(true);
-      try {
-        const next = await adapter.paint({ layer, runs, tagId });
-        setSnapshot(next);
-        setNotice(`\u5DF2\u4E0A\u8272 \xB7 ${next.tags.find((tag) => tag.id === tagId)?.name ?? "\u65F6\u95F4\u6807\u7B7E"}`);
-      } finally {
-        setBusy(false);
-      }
-    }, [adapter, layer]);
-    const erase = (0, import_react4.useCallback)(async (runs) => {
-      setBusy(true);
-      try {
-        setSnapshot(await adapter.erase({ layer, runs }));
-        setNotice("\u5DF2\u64E6\u9664\u9009\u533A");
-      } finally {
-        setBusy(false);
-      }
-    }, [adapter, layer]);
-    const undo = (0, import_react4.useCallback)(async () => {
-      setBusy(true);
-      try {
-        const result = await adapter.undo(layer);
-        if (result === void 0) return;
-        setSnapshot(result.snapshot);
-        setDate(result.date);
-        setNotice("\u5DF2\u64A4\u9500\u4E0A\u4E00\u6B65");
-      } finally {
-        setBusy(false);
-      }
-    }, [adapter, layer]);
-    if (snapshot === void 0 || date === "") {
-      return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "tb-loading", role: "status", children: "\u6B63\u5728\u88C5\u5165\u8BBE\u8BA1 Fixtures\u2026" });
-    }
-    return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
-      RailShell,
+    return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
+      TimeProduct,
       {
-        layer,
-        date,
-        today: snapshot.today,
-        theme,
-        canUndo: snapshot.canUndo[layer],
-        busy,
-        onLayerChange: (next) => {
-          setLayer(next);
-          setNotice("");
-        },
-        onDateChange: setDate,
-        onUndo: () => {
-          void undo();
-        },
-        onThemeToggle: () => setTheme((current) => current === "dark" ? "light" : "dark"),
-        children: [
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
-            TimeBlockPage,
-            {
-              layer,
-              date,
-              snapshot,
-              busy,
-              onPaint: paint,
-              onErase: erase
-            }
-          ),
-          notice !== "" && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "tb-toast", "data-testid": "toast", role: "status", children: notice })
-        ]
+        adapter,
+        today: FIXTURE_TODAY,
+        headerAction: /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("span", { style: PREVIEW_ROW, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("span", { style: PREVIEW_BADGE, title: "OpenDesign Fixture \u9884\u89C8", children: "\u8BBE\u8BA1\u9884\u89C8" }),
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(ThemeToggle, { theme, onToggle: () => setTheme((value) => value === "dark" ? "light" : "dark") })
+        ] })
       }
     );
   }
 
   // time-block/src/index.tsx
-  var import_jsx_runtime7 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime12 = __toESM(require_jsx_runtime(), 1);
   var root = document.getElementById("root");
   if (root === null) throw new Error("\u7F3A\u5C11\u8BBE\u8BA1\u9884\u89C8\u6302\u8F7D\u70B9 #root");
-  (0, import_client.createRoot)(root).render(/* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_react5.StrictMode, { children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(App, {}) }));
+  (0, import_client.createRoot)(root).render(/* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_react8.StrictMode, { children: /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(App, {}) }));
 })();
 /*! Bundled license information:
 

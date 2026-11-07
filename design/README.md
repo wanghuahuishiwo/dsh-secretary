@@ -1,19 +1,25 @@
 # 设计资产
 
-`design/` 保存 DSH Secretary 各产品模块的可运行设计稿。DSH 与 OpenDesign 读取同一份源文件，OpenDesign 以仓库根为项目目录。当前视觉与组件契约见 [DESIGN.md](../DESIGN.md)，语义 token 见 [tokens.css](../tokens.css)。产品模块地图见 [AGENTS.md](../AGENTS.md#产品模块)；本表只列已有设计资产。
+`design/` 保存 DSH Secretary 各产品模块的可运行设计稿。DSH 与 OpenDesign 读取同一份源文件，OpenDesign 以仓库根为项目目录。项目级设计契约见 [DESIGN.md](../DESIGN.md)，产品模块地图见 [AGENTS.md](../AGENTS.md#产品模块)；本表只列已有设计资产。
 
 ## 模块
 
-| 模块 | 入口 | 说明 |
-|---|---|---|
-| [time-block](time-block/README.md) | `time-block/index.html` | 小秘书-时间块右栏 |
-| [gtd](gtd/README.md) | `gtd/omnifocus-mac.html` | 小秘书-事项独立主区 |
+| 模块 | 设计契约 | 入口 | 说明 |
+|---|---|---|---|
+| [time-block](time-block/README.md) | [DESIGN.md](time-block/DESIGN.md) | `time-block/index.html` | 小秘书-时间块右栏；完整 `TimeProduct` + Fixture Adapter |
+| [gtd](gtd/README.md) | 待建 | `gtd/omnifocus-mac.html` | 小秘书-事项独立主区设计稿 |
 
-每个模块的 README 记录交互范围、数据边界和验收方式。
+每个模块的 `README.md` 记录交互范围、数据边界和验收方式；`DESIGN.md` 记录模块视觉、组件组合与 token 契约（已有模块按需补齐）。
 
 ## 待设计模块
 
-Goal 与 Tag 的模块边界和当前范围见 [AGENTS.md](../AGENTS.md#产品模块)；设计开始时再建对应模块目录、README、入口与场景。
+Goal 与 Tag 的模块边界和当前范围见 [AGENTS.md](../AGENTS.md#产品模块)。Goal 仍是空壳入口，不冒充已完成设计；设计开始时再建对应模块目录、`README.md`、`DESIGN.md`、入口与场景。
+
+## Token
+
+- 根 [`tokens.css`](../tokens.css)：项目级 `--sec-*` foundation（颜色 / 字阶 / 间距 / 圆角），不含模块尺寸。
+- 模块 token：`design/<module>/tokens.css`，使用模块命名空间（时间块为 `--tb-*`），颜色 / 字阶 / 间距 / 圆角 alias 到根 token，模块尺寸与 fixture 调色板使用字面值。
+- 组件只消费模块 token；生产由 client 的宿主绑定提供同一组值。
 
 ## 构建与预览
 
@@ -21,6 +27,12 @@ Goal 与 Tag 的模块边界和当前范围见 [AGENTS.md](../AGENTS.md#产品�
 
 ```bash
 pnpm install
+pnpm build          # 先构建设计依赖的包（如 time-panel），再构建 design
+```
+
+只重建设计侧时，先确保依赖包已构建，再执行：
+
+```bash
 pnpm --dir design build
 ```
 
@@ -46,7 +58,8 @@ pnpm --dir design od
 
 1. 创建 `<module>/src/index.tsx` 和 `<module>/index.html`，HTML 引用 `./assets/index.js` 与 `./assets/index.css`。
 2. 在 `<module>/README.md` 写交互范围、数据边界与验收方式；需要浏览器回归时添加 `<module>/scenarios.json`。
-3. 将模块加入上表。
-4. 执行 `pnpm --dir design build` 生成 `<module>/assets/`。
+3. 在 `<module>/DESIGN.md` 写模块视觉、组件与 token 契约；需要模块 token 时新增 `<module>/tokens.css`。
+4. 将模块加入上表，并在根 `DESIGN.md` 的模块索引登记。
+5. 执行 `pnpm --dir design build` 生成 `<module>/assets/`。
 
-可复用模型和组件放在 `shared/`，产品模块页面放在各自的 `src/`。
+产品 UI 属于对应 package 的 `src/ui`，设计侧只 import 该包的公开 `/ui` 入口；不要把可复用组件再复制到 `design/` 下。

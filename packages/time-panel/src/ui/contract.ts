@@ -120,4 +120,10 @@ export interface TimeProductProps {
   readonly adapter: TimeAdapter
   /** Host-owned control rendered in the product header. */
   readonly headerAction?: ReactNode
+  /**
+   * The product day this surface opens on. Production omits it and follows the
+   * host's local day; a fixture preview pins one so screenshots and scenarios
+   * stay reproducible. The adapter's `TimeView.today` stays authoritative.
+   */
+  readonly today?: string
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { addDays, localDate, weekStartOf } from './model.ts'
+import { addDays, weekStartOf } from './model.ts'
 
 interface Props {
   /** `day` picks one date; `week` highlights the whole week and returns its Monday. */
@@ -69,24 +69,24 @@ export function DatePicker({ mode, value, today, onPick, onClose }: Props) {
   const selectedWeek = weekStartOf(value)
 
   return (
-    <div className="sec-picker" ref={root} role="dialog" aria-label={mode === 'week' ? '选择一周' : '选择日期'}>
-      <div className="sec-picker-head">
-        <button type="button" aria-label="上一月" className="sec-picker-nav" onClick={() => setMonth(previous => shiftMonth(previous, -1))}>
+    <div className="tb-picker" ref={root} role="dialog" aria-label={mode === 'week' ? '选择一周' : '选择日期'}>
+      <div className="tb-picker-head">
+        <button type="button" aria-label="上一月" className="tb-picker-nav" onClick={() => setMonth(previous => shiftMonth(previous, -1))}>
           <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M7.5 2.5L4 6l3.5 3.5" /></svg>
         </button>
-        <span className="sec-picker-title">{monthLabel(month)}</span>
-        <button type="button" aria-label="下一月" className="sec-picker-nav" onClick={() => setMonth(previous => shiftMonth(previous, 1))}>
+        <span className="tb-picker-title">{monthLabel(month)}</span>
+        <button type="button" aria-label="下一月" className="tb-picker-nav" onClick={() => setMonth(previous => shiftMonth(previous, 1))}>
           <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M4.5 2.5L8 6l-3.5 3.5" /></svg>
         </button>
       </div>
-      <div className="sec-picker-weekdays">
+      <div className="tb-picker-weekdays">
         {WEEKDAYS.map(day => <span key={day}>{day}</span>)}
       </div>
-      <div className="sec-picker-grid">
+      <div className="tb-picker-grid">
         {matrix.map(row => row.map(day => {
           const inMonth = day.slice(0, 7) === month
           const selected = mode === 'week' ? weekStartOf(day) === selectedWeek : day === value
-          const classes = ['sec-picker-day']
+          const classes = ['tb-picker-day']
           if (!inMonth) classes.push('out')
           if (selected) classes.push('on')
           if (selected && mode === 'week' && day === selectedWeek) classes.push('wstart')
@@ -107,12 +107,12 @@ export function DatePicker({ mode, value, today, onPick, onClose }: Props) {
           )
         }))}
       </div>
-      <div className="sec-picker-foot">
+      <div className="tb-picker-foot">
         <span>{mode === 'week' ? weekLabel(selectedWeek) : '点一天'}</span>
         <button
           type="button"
-          className="sec-picker-now"
-          onClick={() => onPick(mode === 'week' ? weekStartOf(localDate()) : localDate())}
+          className="tb-picker-now"
+          onClick={() => onPick(mode === 'week' ? weekStartOf(today) : today)}
         >{mode === 'week' ? '本周' : '今天'}</button>
       </div>
     </div>

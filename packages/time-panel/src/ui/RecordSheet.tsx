@@ -31,24 +31,24 @@ export function RecordSheet({ target, tags, busy, onClose, onSave, onDelete }: R
   }, [onClose])
 
   return (
-    <div className="sec-sheet on" role="dialog" aria-label="编辑记录">
+    <div className="tb-sheet on" role="dialog" aria-label="编辑记录">
       <div className="grab" />
       <div className="row">
         <span className="time">{clock(start)} – {clock(end)}</span>
         <span className="dur">{durationLabel(end - start)}</span>
         <span className="grow" />
-        <button className="sec-step" type="button" disabled={end - start <= CELL} onClick={() => setStart(Math.max(0, start - CELL))}>−</button>
-        <button className="sec-step" type="button" disabled={end >= 1440} onClick={() => setEnd(Math.min(1440, end + CELL))}>＋</button>
+        <button className="tb-step" type="button" disabled={end - start <= CELL} onClick={() => setStart(Math.max(0, start - CELL))}>−</button>
+        <button className="tb-step" type="button" disabled={end >= 1440} onClick={() => setEnd(Math.min(1440, end + CELL))}>＋</button>
       </div>
-      <div className="sec-picks">
+      <div className="tb-picks">
         {timeTags.map(tag => (
           <button key={tag.id} type="button" className={tag.id === tagId ? 'on' : ''} style={{ background: tag.color ?? '#477bc7' }} onClick={() => setTagId(tag.id)}>{tag.name}</button>
         ))}
       </div>
-      <input className="sec-note" placeholder="备注（可空）" value={note} onChange={event => setNote(event.target.value)} />
-      <div className="sec-acts">
-        <button className="sec-btn danger" type="button" disabled={busy} onClick={onDelete}>删除</button>
-        <button className="sec-btn primary" type="button" disabled={busy} onClick={() => onSave({ start, end, timeTagId: tagId, note: note === '' ? undefined : note })}>完成</button>
+      <input className="tb-note" placeholder="备注（可空）" value={note} onChange={event => setNote(event.target.value)} />
+      <div className="tb-acts">
+        <button className="tb-btn danger" type="button" disabled={busy} onClick={onDelete}>删除</button>
+        <button className="tb-btn primary" type="button" disabled={busy} onClick={() => onSave({ start, end, timeTagId: tagId, note: note === '' ? undefined : note })}>完成</button>
       </div>
     </div>
   )

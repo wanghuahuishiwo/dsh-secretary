@@ -11,12 +11,12 @@ interface DrawerProps {
 export function Drawer({ open, module, onModuleChange, onClose }: DrawerProps) {
   return (
     <>
-      <div className={`sec-scrim${open ? ' on' : ''}`} onClick={onClose} />
-      <nav className={`sec-drawer${open ? ' on' : ''}`}>
+      <div className={`tb-scrim${open ? ' on' : ''}`} onClick={onClose} />
+      <nav className={`tb-drawer${open ? ' on' : ''}`}>
         <div className="cap">小秘书</div>
         {MODULES.map(item => (
           <button
-            key={item.id} className={`sec-mrow${module === item.id ? ' on' : ''}`} type="button"
+            key={item.id} className={`tb-mrow${module === item.id ? ' on' : ''}`} type="button"
             onClick={() => onModuleChange(item.id)}
           >
             {item.icon}

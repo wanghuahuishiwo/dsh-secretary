@@ -1,114 +1,68 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { RailShell } from '../../shared/components/RailShell.tsx'
-import type { TimeBlockAdapter } from '../../shared/model/adapter.ts'
-import { addDays } from '../../shared/model/time.ts'
-import type { Theme, TimeBlockSnapshot, TimeLayer, TimeRun } from '../../shared/model/types.ts'
+import { useEffect, useMemo, useState } from 'react'
+import { TimeProduct } from 'dsh-secretary-time-panel/ui'
 import { FixtureTimeAdapter } from './FixtureTimeAdapter.ts'
-import { TimeBlockPage } from './TimeBlockPage.tsx'
+import { FIXTURE_TODAY } from './fixtures.ts'
 
+type Theme = 'dark' | 'light'
+
+const PREVIEW_BADGE = {
+  padding: '1px 5px',
+  border: '1px solid var(--tb-border-strong)',
+  borderRadius: 'var(--tb-radius-sm)',
+  color: 'var(--tb-text-tertiary)',
+  fontSize: '9px',
+  letterSpacing: '0.04em',
+  whiteSpace: 'nowrap',
+} as const
+
+const PREVIEW_ROW = {
+  display: 'flex',
+  flex: '0 0 100%',
+  alignItems: 'center',
+  justifyContent: 'flex-end',
+  gap: 5,
+  paddingTop: 3,
+  borderTop: '1px solid var(--tb-border-subtle)',
+} as const
+
+/** The OD-only theme control; the product header just receives it in its slot. */
+function ThemeToggle({ theme, onToggle }: { readonly theme: Theme; readonly onToggle: () => void }) {
+  const dark = theme === 'dark'
+  return (
+    <button
+      className="tb-hbtn"
+      type="button"
+      title="切换主题"
+      aria-label={dark ? '切换到浅色主题' : '切换到深色主题'}
+      onClick={onToggle}
+    >
+      {dark
+        ? <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><circle cx="8" cy="8" r="3.2" /><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1" /></svg>
+        : <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M12.8 9.6A5.2 5.2 0 016.4 3.2a5.4 5.4 0 106.4 6.4z" /></svg>}
+    </button>
+  )
+}
+
+/**
+ * OpenDesign shell: it owns only the fixture adapter, the review theme and the
+ * preview marker. The complete product UI comes from the shared TimeProduct.
+ */
 export function App() {
-  // 组合根可以选择 Fixture；页面与组件不感知具体 Adapter。
-  const adapter = useMemo<TimeBlockAdapter>(() => new FixtureTimeAdapter(), [])
-  const [snapshot, setSnapshot] = useState<TimeBlockSnapshot>()
-  const [layer, setLayer] = useState<TimeLayer>('plan')
-  const [date, setDate] = useState('')
+  const adapter = useMemo(() => new FixtureTimeAdapter(), [])
   const [theme, setTheme] = useState<Theme>('dark')
-  const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState('')
-
-  useEffect(() => {
-    let active = true
-    void adapter.load().then(next => {
-      if (!active) return
-      setSnapshot(next)
-      setDate(current => current === '' ? next.today : current)
-    })
-    return () => { active = false }
-  }, [adapter])
 
   useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
 
-  useEffect(() => {
-    if (notice === '') return
-    const timer = window.setTimeout(() => setNotice(''), 1800)
-    return () => window.clearTimeout(timer)
-  }, [notice])
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (snapshot === undefined) return
-      const target = event.target as HTMLElement | null
-      if (target !== null && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
-      const offsets: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, PageUp: -7, PageDown: 7 }
-      const offset = offsets[event.key]
-      if (offset === undefined) return
-      event.preventDefault()
-      setDate(current => addDays(current, offset))
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [snapshot])
-
-  const paint = useCallback(async (runs: readonly TimeRun[], tagId: string) => {
-    setBusy(true)
-    try {
-      const next = await adapter.paint({ layer, runs, tagId })
-      setSnapshot(next)
-      setNotice(`已上色 · ${next.tags.find(tag => tag.id === tagId)?.name ?? '时间标签'}`)
-    } finally {
-      setBusy(false)
-    }
-  }, [adapter, layer])
-
-  const erase = useCallback(async (runs: readonly TimeRun[]) => {
-    setBusy(true)
-    try {
-      setSnapshot(await adapter.erase({ layer, runs }))
-      setNotice('已擦除选区')
-    } finally {
-      setBusy(false)
-    }
-  }, [adapter, layer])
-
-  const undo = useCallback(async () => {
-    setBusy(true)
-    try {
-      const result = await adapter.undo(layer)
-      if (result === undefined) return
-      setSnapshot(result.snapshot)
-      setDate(result.date)
-      setNotice('已撤销上一步')
-    } finally {
-      setBusy(false)
-    }
-  }, [adapter, layer])
-
-  if (snapshot === undefined || date === '') {
-    return <div className="tb-loading" role="status">正在装入设计 Fixtures…</div>
-  }
-
   return (
-    <RailShell
-      layer={layer}
-      date={date}
-      today={snapshot.today}
-      theme={theme}
-      canUndo={snapshot.canUndo[layer]}
-      busy={busy}
-      onLayerChange={next => { setLayer(next); setNotice('') }}
-      onDateChange={setDate}
-      onUndo={() => { void undo() }}
-      onThemeToggle={() => setTheme(current => current === 'dark' ? 'light' : 'dark')}
-    >
-      <TimeBlockPage
-        layer={layer}
-        date={date}
-        snapshot={snapshot}
-        busy={busy}
-        onPaint={paint}
-        onErase={erase}
-      />
-      {notice !== '' && <div className="tb-toast" data-testid="toast" role="status">{notice}</div>}
-    </RailShell>
+    <TimeProduct
+      adapter={adapter}
+      today={FIXTURE_TODAY}
+      headerAction={(
+        <span style={PREVIEW_ROW}>
+          <span style={PREVIEW_BADGE} title="OpenDesign Fixture 预览">设计预览</span>
+          <ThemeToggle theme={theme} onToggle={() => setTheme(value => (value === 'dark' ? 'light' : 'dark'))} />
+        </span>
+      )}
+    />
   )
 }
