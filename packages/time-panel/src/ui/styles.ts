@@ -10,8 +10,8 @@ export const timeStyles = `.tb-app {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--tb-surface-rail, #16181c);
-  color: var(--tb-text-primary, #eceff3);
+  background: var(--tb-surface-page, #0a0a0b);
+  color: var(--tb-text-primary, #f2f3f4);
   font-family: var(--tb-font-family, -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, sans-serif);
   font-size: var(--tb-font-body, 12px);
   line-height: 1.45;
@@ -23,7 +23,8 @@ export const timeStyles = `.tb-app {
 .tb-app :focus-visible { outline: 2px solid var(--tb-accent, #82aaff); outline-offset: 1px; }
 
 /* ---------- header ---------- */
-.tb-head { flex: none; height: 42px; display: flex; align-items: center; gap: 2px; padding: 0 8px; }
+.tb-head { flex: none; height: 42px; display: flex; align-items: center; gap: 2px; padding: 0 8px;
+  background: var(--tb-surface-rail, #151515); }
 /* A host action (OD theme/preview) gets its own compact row; production keeps the 42px row. */
 .tb-head.has-action { height: auto; min-height: 42px; flex-wrap: wrap; gap: 1px; padding: 7px 6px; }
 .tb-head.has-action .tb-daylabel { padding: 0 7px; }
@@ -81,7 +82,7 @@ export const timeStyles = `.tb-app {
 .tb-view.on { display: flex; flex-direction: column; }
 
 /* ---------- 时间块 ---------- */
-.tb-tb { flex: 1; min-height: 0; display: flex; }
+.tb-tb { flex: 1; min-height: 0; display: flex; background: var(--tb-surface-page, #0a0a0b); }
 .tb-tb-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
 .tb-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overflow-anchor: auto; }
 .tb-scroll { scrollbar-width: thin; scrollbar-color: transparent transparent; }
@@ -95,21 +96,22 @@ export const timeStyles = `.tb-app {
 .tb-day { position: relative; display: flex; }
 .tb-day + .tb-day { border-top: 1px dashed var(--tb-border-strong, rgba(255, 255, 255, 0.14)); }
 .tb-gutter { width: 46px; flex: none; position: relative; }
-.tb-datemark { position: absolute; left: 6px; top: 5px; display: flex; flex-direction: column; gap: 1px; pointer-events: none; }
-.tb-datemark .m { font-size: var(--tb-font-caption, 10px); color: var(--tb-text-tertiary, #727a88); letter-spacing: .3px; }
-.tb-datemark .d { font-size: 21px; line-height: 1.05; font-weight: 600; color: var(--tb-text-primary, #eceff3); font-variant-numeric: tabular-nums; letter-spacing: -.2px; }
-.tb-datemark .w { font-size: var(--tb-font-caption, 10px); color: var(--tb-text-secondary, #a3a9b4); }
-.tb-datemark .t { font-size: var(--tb-font-caption, 10px); color: var(--tb-text-tertiary, #727a88); }
-.tb-datemark .t.today { color: var(--tb-accent, #82aaff); }
-.tb-hours { width: 22px; flex: none; position: relative; }
-.tb-hours span { position: absolute; right: 5px; font-size: var(--tb-font-caption, 10px); color: var(--tb-text-tertiary, #727a88); font-variant-numeric: tabular-nums; letter-spacing: -.1px; }
+.tb-datemark { position: absolute; left: 0; right: 0; top: 6px; display: flex; flex-direction: column; align-items: center; gap: 0; pointer-events: none; text-align: center; }
+.tb-datemark .m { font-size: var(--tb-font-caption, 10px); color: var(--tb-text-secondary, #a6a9ad); letter-spacing: .5px; }
+.tb-datemark .d { font-size: var(--tb-font-date, 34px); line-height: 1.02; font-weight: 600; color: var(--tb-text-primary, #f2f3f4); font-variant-numeric: tabular-nums; letter-spacing: -.6px; }
+.tb-datemark .w { font-size: var(--tb-font-label, 11px); color: var(--tb-text-secondary, #a6a9ad); }
+.tb-datemark .t { font-size: var(--tb-font-caption, 10px); color: var(--tb-text-tertiary, #767a80); }
+.tb-datemark .t.today { color: var(--tb-text-secondary, #a6a9ad); }
+.tb-datemark.today::after { content: ''; width: 38px; height: 2px; margin-top: 6px; background: var(--tb-text-primary, #f2f3f4); }
+.tb-hours { width: var(--tb-hour-width, 26px); flex: none; position: relative; }
+.tb-hours span { position: absolute; right: 5px; font-size: var(--tb-font-caption, 10px); color: var(--tb-text-secondary, #a6a9ad); font-variant-numeric: tabular-nums; letter-spacing: -.1px; white-space: nowrap; }
 .tb-hours span.now { color: var(--tb-text-primary, #eceff3); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
 .tb-grid { flex: 1; position: relative; min-width: 0; }
 .tb-cells { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(6, 1fr); }
-.tb-cell { border-right: 1px solid var(--tb-border-subtle, rgba(255, 255, 255, 0.07)); border-bottom: 1px solid var(--tb-border-subtle, rgba(255, 255, 255, 0.07)); cursor: crosshair; }
+.tb-cell { background: var(--tb-grid-cell, #4a4c50); border-right: 1px solid var(--tb-surface-page, #0a0a0b); border-bottom: 1px solid var(--tb-surface-page, #0a0a0b); cursor: crosshair; }
 .tb-cell:nth-child(6n) { border-right: 0; }
-.tb-cell.hourlast { border-bottom: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); }
-.tb-cell:hover { background: var(--tb-surface-hover, #252931); }
+.tb-cell.hourlast { border-bottom: 1px solid var(--tb-surface-page, #0a0a0b); }
+.tb-cell:hover { background: color-mix(in srgb, var(--tb-grid-cell, #4a4c50) 85%, var(--tb-text-primary, #f2f3f4) 15%); }
 .tb-blocks, .tb-sel { position: absolute; inset: 0; pointer-events: none; }
 .tb-blk { position: absolute; overflow: hidden; display: flex; align-items: center; padding: 0 4px;
   font-size: var(--tb-font-caption, 10px); font-weight: 600; letter-spacing: .1px; color: #fff; white-space: nowrap; }
@@ -153,9 +155,9 @@ export const timeStyles = `.tb-app {
 .tb-shelf-more { flex: none; height: 30px; color: var(--tb-text-tertiary, #727a88); font-size: var(--tb-font-label, 11px); text-align: left; padding: 0 14px; }
 .tb-shelf-more:hover { color: var(--tb-text-secondary, #a3a9b4); }
 .tb-brush { width: 20px; height: 20px; border-radius: 4px; margin: 6px auto 0; }
-.tb-cat { flex: none; height: 33px; border-radius: 5px; color: #fff; font-size: var(--tb-font-body, 12px); font-weight: 600;
-  letter-spacing: .2px; padding: 0 8px; display: flex; align-items: center; gap: 5px; text-align: left;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07); transition: filter .12s; }
+.tb-cat { flex: none; height: 33px; border-radius: 7px; color: #fff; font-size: var(--tb-font-cat, 13px); font-weight: 500;
+  letter-spacing: .1px; padding: 0 10px; display: flex; align-items: center; gap: 5px; text-align: left;
+  transition: filter .12s; }
 .tb-cat:hover { filter: brightness(1.07); }
 .tb-cat.sub { height: 28px; font-size: var(--tb-font-label, 11px); margin-left: 7px; }
 .tb-cat .caret { margin-left: auto; width: 10px; height: 10px; opacity: .65; transition: transform .15s; }

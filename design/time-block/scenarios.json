@@ -222,8 +222,8 @@
         "再次点击 .tb-head button[title=\"切换主题\"]"
       ],
       "expected": [
-        "初始 html[data-theme]=dark，.tb-app 背景为 rgb(22, 24, 28)",
-        "第一次点击后 html[data-theme]=light，.tb-app 背景变为 rgb(247, 248, 250)",
+        "初始 html[data-theme]=dark，.tb-app 背景为 rgb(10, 10, 11)",
+        "第一次点击后 html[data-theme]=light，.tb-app 背景变为 rgb(236, 238, 241)",
         "主题切换不改变结构：.tb-day 仍 14 列、.tb-cell 仍 2016 格",
         "第二次点击回到 dark，背景恢复；全程控制台错误 0"
       ]

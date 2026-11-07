@@ -29,6 +29,7 @@
 
 - [timeblock-app.md](research/timeblock-app.md)：iPhone App「时间块」概念模型。
 - [timeblocks-interaction.md](research/timeblocks-interaction.md)：「时间块」交互证据。
+- [timeblocks-visual.md](research/timeblocks-visual.md)：「时间块」深色界面视觉提取与可迁移边界。
 - [omnifocus.md](research/omnifocus.md)：OmniFocus 核心模型与日期语义。
 - [gtd-theory-review.md](research/gtd-theory-review.md)：GTD 理论核查。
 - [omnifocus-mac.md](research/omnifocus-mac.md)：OmniFocus Mac 交互与视觉证据。

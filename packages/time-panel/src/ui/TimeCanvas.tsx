@@ -30,6 +30,7 @@ interface DragState {
 }
 
 const FALLBACK_COLOR = '#477bc7'
+const MONTH_LABELS = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
 const SUPERSCRIPT = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹']
 
 /** The count badge stays a single glyph up to nine records. */
@@ -132,8 +133,8 @@ const DayColumn = memo(function DayColumn({
   return (
     <div className="tb-day" data-day={day} style={{ height }}>
       <div className="tb-gutter">
-        <div className="tb-datemark">
-          <span className="m">{date.getMonth() + 1}月</span>
+        <div className={`tb-datemark${day === today ? ' today' : ''}`}>
+          <span className="m">{MONTH_LABELS[date.getMonth()]}</span>
           <span className="d">{date.getDate()}</span>
           <span className="w">{WEEKDAY_LABELS[(date.getDay() + 6) % 7]}</span>
           {day === today && <span className="t today">今天</span>}
@@ -141,7 +142,7 @@ const DayColumn = memo(function DayColumn({
       </div>
       <div className="tb-hours" style={{ height }}>
         {Array.from({ length: 24 }, (_, hour) => (
-          <span key={hour} className={nowMin !== undefined && hour === Math.floor(nowMin / 60) ? 'now' : ''} style={{ top: hour * rowH + 4 }}>{hour}</span>
+          <span key={hour} className={nowMin !== undefined && hour === Math.floor(nowMin / 60) ? 'now' : ''} style={{ top: hour * rowH + 4 }}>{hour}:00</span>
         ))}
       </div>
       <div className="tb-grid" data-day={day} style={{ height }}>

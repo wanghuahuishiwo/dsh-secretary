@@ -14,10 +14,10 @@ export const hostTokens = `.tb-host {
   flex-direction: column;
 
   --tb-surface-page: var(--dsw-alias-bg-layer-1, #0e0f12);
-  --tb-surface-rail: var(--dsw-alias-bg-layer-1, #16181c);
+  --tb-surface-rail: var(--dsw-alias-bg-layer-2, #1d2025);
   --tb-surface-raised: var(--dsw-alias-bg-layer-2, #1d2025);
   --tb-surface-hover: var(--dsw-alias-bg-module-platform, #252931);
-  --tb-grid-cell: var(--dsw-alias-bg-layer-2, #191c21);
+  --tb-grid-cell: color-mix(in srgb, var(--dsw-alias-bg-layer-2, #1d2025) 70%, var(--dsw-alias-label-tertiary, #727a88) 30%);
   --tb-text-primary: var(--dsw-alias-label-primary, #eceff3);
   --tb-text-secondary: var(--dsw-alias-label-secondary, #a3a9b4);
   --tb-text-tertiary: var(--dsw-alias-label-tertiary, #727a88);
@@ -36,6 +36,9 @@ export const hostTokens = `.tb-host {
   --tb-control-height: 30px;
   --tb-shelf-width: 116px;
   --tb-status-height: 42px;
+  --tb-hour-width: 26px;
+  --tb-font-date: 34px;
+  --tb-font-cat: 13px;
 
   /* fonts */
   --tb-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, sans-serif;
