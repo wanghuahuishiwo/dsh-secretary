@@ -14959,8 +14959,8 @@
               return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "tb-deep-col", style: { height: 24 * rowH }, children: [
                 Array.from({ length: 24 }, (_, hour) => {
                   const cell = levelOf(cells, weekday, hour);
-                  const prev = hour > 0 ? levelOf(cells, weekday, hour - 1) : "unset";
-                  const isFirstOfRun = cell !== "unset" && cell !== prev;
+                  const left = weekday > 1 ? levelOf(cells, weekday - 1, hour) : "unset";
+                  const isFirstOfRun = cell !== "unset" && cell !== left;
                   const label = cell === "high" ? "\u9AD8" : cell === "medium" ? "\u4E2D" : cell === "low" ? "\u4F4E" : "";
                   return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
                     "div",

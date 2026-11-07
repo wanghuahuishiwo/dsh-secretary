@@ -185,8 +185,8 @@ export function DeepWeekView({ week, weekStart, today, busy, onPaint }: Props) {
                   <div key={day} className="tb-deep-col" style={{ height: 24 * rowH }}>
                     {Array.from({ length: 24 }, (_, hour) => {
                       const cell = levelOf(cells, weekday, hour)
-                      const prev = hour > 0 ? levelOf(cells, weekday, hour - 1) : 'unset'
-                      const isFirstOfRun = cell !== 'unset' && cell !== prev
+                      const left = weekday > 1 ? levelOf(cells, weekday - 1, hour) : 'unset'
+                      const isFirstOfRun = cell !== 'unset' && cell !== left
                       const label = cell === 'high' ? '高' : cell === 'medium' ? '中' : cell === 'low' ? '低' : ''
                       return (
                         <div
