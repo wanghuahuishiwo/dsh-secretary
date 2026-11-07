@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CELL, MAX_ROW_H, MIN_ROW_H, PER_HOUR, WEEKDAY_LABELS,
-  durationLabel, minutesOfRecord, recordAt, runsOf, snapDown, tagInitials,
+  durationLabel, minutesOfRecord, recordAt, runsOf, snapDown,
   type DayRecord, type Run, type TimeTag,
 } from './model.ts'
 import { TagShelf } from './TagShelf.tsx'
@@ -103,12 +103,12 @@ const DayColumn = memo(function DayColumn({
         </div>
         <div className="tb-blocks">
           {records.map(record => {
-            const fullName = tagName(record.timeTagId)
-            const shortLabel = record.note === undefined || record.note === '' ? tagInitials(fullName) : record.note
-            const tooltip = record.note === undefined || record.note === '' ? fullName : `${fullName} · ${record.note}`
+            const label = record.note === undefined || record.note === '' ? tagName(record.timeTagId) : record.note
+            const tooltip = record.note === undefined || record.note === '' ? tagName(record.timeTagId) : `${tagName(record.timeTagId)} · ${record.note}`
             const color = tagColor(record.timeTagId)
             const nodes = []
             for (let minute = snapDown(record.start); minute < record.end; minute += CELL) {
+              const isFirstOfSegment = minute === snapDown(record.start) || minute % 60 === 0
               nodes.push(
                 <div
                   key={`${record.id}:${minute}`}
@@ -122,7 +122,7 @@ const DayColumn = memo(function DayColumn({
                   }}
                   title={tooltip}
                 >
-                  <span>{shortLabel}</span>
+                  {isFirstOfSegment && <span>{label}</span>}
                 </div>,
               )
             }

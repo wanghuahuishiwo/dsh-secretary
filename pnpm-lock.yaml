@@ -188,9 +188,6 @@ importers:
       dsh-secretary-time-block:
         specifier: workspace:*
         version: link:../time-block
-      pinyin-pro:
-        specifier: ^3.29.5
-        version: 3.29.5
       zod:
         specifier: 4.4.3
         version: 4.4.3
@@ -515,9 +512,6 @@ packages:
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
 
-  pinyin-pro@3.29.5:
-    resolution: {integrity: sha512-Fk5YoRmtdHqJWqAuzYVG/NzvzeCbaG+ZEwbY6Nbps3QAIrvQQEtcm49frcyCM8i2b5najnzPDtYqrHRYTTiuwQ==}
-
   playwright-core@1.62.1:
     resolution: {integrity: sha512-wPYSwEBJY9GHraISXqyqtx0na0LpO3XEX7jNDhntbex7tzUS7kLnZsOlFruFJB4Hi/rhDMjXGqHewDZ68nYZVw==}
     engines: {node: '>=20'}
@@ -786,8 +780,6 @@ snapshots:
 
   fsevents@2.3.2:
     optional: true
-
-  pinyin-pro@3.29.5: {}
 
   playwright-core@1.62.1: {}
 

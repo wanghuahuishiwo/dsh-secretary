@@ -6,7 +6,6 @@ export const PER_HOUR = 60 / CELL
 export const MIN_ROW_H = 22
 export const MAX_ROW_H = 64
 
-import { pinyin } from 'pinyin-pro'
 
 /** The shape of a tag as the pure UI sees it — structurally compatible with the domain Tag. */
 export interface TimeTag {
@@ -181,16 +180,6 @@ export function durationLabel(minutes: number): string {
 
 export const WEEKDAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
-/**
- * Convert a (Chinese) tag name to its pinyin initials in uppercase.
- * 深度工作 → SDGZ, 用餐 → YC, Work → W. Used for compact block labels.
- */
-export function tagInitials(name: string): string {
-  const letters = pinyin(name, { pattern: 'first', type: 'array' })
-    .filter(item => item.length > 0)
-    .map(item => item[0].toUpperCase())
-  return letters.join('') || name
-}
 
 /**
  * The pure date/time toolkit as one object. Fixtures, tests and boundary code
@@ -219,5 +208,4 @@ export const timeMath = {
   runsOf,
   minutesOfRecord,
   durationLabel,
-  tagInitials,
 }

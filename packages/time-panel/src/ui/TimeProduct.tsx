@@ -204,17 +204,17 @@ export function TimeProduct({ adapter, headerAction, today: openingDay }: TimePr
 
   const saveSheet = useCallback(async (
     target: SheetTarget,
-    patch: { start: number; end: number; timeTagId: number; note?: string },
+    note: string | undefined,
   ) => {
     const ok = await runWrite(
       () => adapter.updateBlock({
         layer: target.layer,
         id: indexes.block.string(target.record.id),
         date: target.date,
-        start: patch.start,
-        end: patch.end,
-        tagId: indexes.tag.string(patch.timeTagId),
-        note: patch.note,
+        start: target.record.start,
+        end: target.record.end,
+        tagId: indexes.tag.string(target.record.timeTagId),
+        note,
       }),
       '已保存',
     )
@@ -385,8 +385,8 @@ export function TimeProduct({ adapter, headerAction, today: openingDay }: TimePr
 
       {sheet !== undefined && (
         <RecordSheet
-          target={sheet} tags={tags} busy={busy} onClose={() => setSheet(undefined)}
-          onSave={patch => void saveSheet(sheet, patch)} onDelete={() => void deleteSheet(sheet)}
+          target={sheet} busy={busy} onClose={() => setSheet(undefined)}
+          onSave={note => void saveSheet(sheet, note)} onDelete={() => void deleteSheet(sheet)}
         />
       )}
       <Toast message={toast} />
