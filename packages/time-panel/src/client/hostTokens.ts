@@ -34,6 +34,8 @@ export const hostTokens = `.tb-host {
   /* sizes */
   --tb-hour-height: 26px;
   --tb-control-height: 30px;
+  --tb-shelf-width: 116px;
+  --tb-status-height: 42px;
 
   /* fonts */
   --tb-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, sans-serif;

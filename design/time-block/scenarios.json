@@ -165,7 +165,7 @@
         "点击 .tb-head button[aria-label=\"一级模块\"]",
         "点击 .tb-drawer .tb-mrow 中“深度时间”，等待 .tb-drawer 移出可视区",
         "从 .tb-hc[data-k=\"1-12\"] 拖到 .tb-hc[data-k=\"2-13\"]",
-        "点击 .tb-deep .tb-shelf .tb-cat 中“high”",
+        "点击 .tb-deep .tb-shelf .tb-cat 中“高”",
         "再次打开一级模块抽屉，点击“时间块”"
       ],
       "expected": [

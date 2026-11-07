@@ -4,7 +4,7 @@ import { timeMath } from '../lib/ui-model.js'
 
 const {
   addDays, clock, durationLabel, localDate, minutesOfRecord, recordsOfDay,
-  runsOf, runsOfSelection, snapDown, snapUp, timeZoneOf, weekStartOf,
+  runsOf, snapDown, snapUp, timeZoneOf, weekStartOf,
 } = timeMath
 
 test('date math moves whole local days and finds the Monday of a week', () => {
@@ -37,10 +37,6 @@ test('runsOf merges contiguous ten-minute cells and splits gaps', () => {
   assert.deepEqual(runsOf('2026-11-02', [620, 600, 610, 650, 640, 600]), [
     { date: '2026-11-02', start: 600, end: 630 },
     { date: '2026-11-02', start: 640, end: 660 },
-  ])
-  assert.deepEqual(runsOfSelection('2026-11-02', new Set([0, 10, 30])), [
-    { date: '2026-11-02', start: 0, end: 20 },
-    { date: '2026-11-02', start: 30, end: 40 },
   ])
   assert.deepEqual(runsOf('2026-11-02', []), [])
   assert.deepEqual(runsOf('2026-11-02', [10, 20, 25]), [

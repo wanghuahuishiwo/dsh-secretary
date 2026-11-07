@@ -6,7 +6,7 @@
 
 - 预览：`index.html`
 - 场景：`scenarios.json`
-- 视觉基线：`baselines/select-390-dark.png`（历史基线，组件切换后的对照在验收阶段更新）
+- 视觉基线：`baselines/select-390-dark.png` 仅作历史存档（单日设计时期产物，已不代表当前界面）；当前验收以 `scenarios.json` 与浏览器回归为准
 - 模块 token：[tokens.css](tokens.css)
 
 ## 交互

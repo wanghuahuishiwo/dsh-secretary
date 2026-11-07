@@ -6,11 +6,6 @@ export const PER_HOUR = 60 / CELL
 export const MIN_ROW_H = 22
 export const MAX_ROW_H = 64
 
-/** Aliases kept for design-side parity; same values as the production names. */
-export const CELL_MINUTES = CELL
-export const CELLS_PER_HOUR = PER_HOUR
-export const MINUTES_PER_DAY = 24 * 60
-
 /** The shape of a tag as the pure UI sees it — structurally compatible with the domain Tag. */
 export interface TimeTag {
   readonly id: number
@@ -62,9 +57,6 @@ export function clock(minute: number): string {
   const value = ((minute % 1440) + 1440) % 1440
   return `${pad(Math.floor(value / 60))}:${pad(value % 60)}`
 }
-
-/** Design-side alias for {@link clock}. */
-export const formatClock = clock
 
 export function localDate(date = new Date()): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
@@ -172,11 +164,6 @@ export function runsOf(day: string, minutes: readonly number[]): Run[] {
   return runs
 }
 
-/** Design-side alias for {@link runsOf}: merge a Set of minutes into runs. */
-export function runsOfSelection(date: string, selected: ReadonlySet<number>): Run[] {
-  return runsOf(date, [...selected])
-}
-
 /** Every minute a record covers. */
 export function minutesOfRecord(record: DayRecord): number[] {
   const minutes: number[] = []
@@ -190,9 +177,6 @@ export function durationLabel(minutes: number): string {
   return minutes % 60 === 0 ? `${hours} 小时` : `${hours} 小时 ${minutes % 60} 分`
 }
 
-/** Design-side alias for {@link durationLabel}. */
-export const formatDuration = durationLabel
-
 export const WEEKDAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
 /**
@@ -202,14 +186,10 @@ export const WEEKDAY_LABELS = ['周一', '周二', '周三', '周四', '周五',
 export const timeMath = {
   CELL,
   PER_HOUR,
-  CELL_MINUTES,
-  CELLS_PER_HOUR,
-  MINUTES_PER_DAY,
   MIN_ROW_H,
   MAX_ROW_H,
   WEEKDAY_LABELS,
   clock,
-  formatClock,
   localDate,
   addDays,
   timeZoneOf,
@@ -224,8 +204,6 @@ export const timeMath = {
   recordsOfDay,
   recordAt,
   runsOf,
-  runsOfSelection,
   minutesOfRecord,
   durationLabel,
-  formatDuration,
 }

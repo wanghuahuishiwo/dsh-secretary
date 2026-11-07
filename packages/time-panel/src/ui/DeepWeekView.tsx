@@ -19,9 +19,9 @@ export interface DeepRect {
 }
 
 const LEVELS: { id: DeepLevel; name: string; color: string }[] = [
-  { id: 'high', name: 'high', color: 'var(--tb-deep-high, #5aa86a)' },
-  { id: 'medium', name: 'medium', color: 'var(--tb-deep-medium, #b99530)' },
-  { id: 'low', name: 'low', color: 'var(--tb-deep-low, #79808c)' },
+  { id: 'high', name: '高', color: 'var(--tb-deep-high, #5aa86a)' },
+  { id: 'medium', name: '中', color: 'var(--tb-deep-medium, #b99530)' },
+  { id: 'low', name: '低', color: 'var(--tb-deep-low, #79808c)' },
 ]
 
 function levelOf(cells: readonly DeepCellLevel[] | undefined, weekday: number, hour: number): DeepCellLevel {
@@ -223,7 +223,7 @@ export function DeepWeekView({ week, weekStart, today, busy, onPaint }: Props) {
             </button>
           ))}
           {week !== undefined && week.source !== 'own' && (
-            <div style={{ marginTop: 'auto', padding: '0 10px 10px', fontSize: 10.5, color: 'var(--txt-4)', lineHeight: 1.6 }}>
+            <div style={{ marginTop: 'auto', padding: '0 10px 10px', fontSize: 'var(--tb-font-caption, 10px)', color: 'var(--tb-text-tertiary, #727a88)', lineHeight: 1.6 }}>
               {week.source === 'inherited' ? '继承自更早一周，改这一周只影响这一周' : '还没有画过，改这一周从空白开始'}
             </div>
           )}

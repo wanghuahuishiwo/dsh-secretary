@@ -17,9 +17,7 @@ Goal 与 Tag 的模块边界和当前范围见 [AGENTS.md](../AGENTS.md#产品�
 
 ## Token
 
-- 根 [`tokens.css`](../tokens.css)：项目级 `--sec-*` foundation（颜色 / 字阶 / 间距 / 圆角），不含模块尺寸。
-- 模块 token：`design/<module>/tokens.css`，使用模块命名空间（时间块为 `--tb-*`），颜色 / 字阶 / 间距 / 圆角 alias 到根 token，模块尺寸与 fixture 调色板使用字面值。
-- 组件只消费模块 token；生产由 client 的宿主绑定提供同一组值。
+根 `--sec-*` 与模块 token 的分层、消费规则见 [DESIGN.md#token-分层](../DESIGN.md#token-分层)。
 
 ## 构建与预览
 
@@ -59,7 +57,7 @@ pnpm --dir design od
 1. 创建 `<module>/src/index.tsx` 和 `<module>/index.html`，HTML 引用 `./assets/index.js` 与 `./assets/index.css`。
 2. 在 `<module>/README.md` 写交互范围、数据边界与验收方式；需要浏览器回归时添加 `<module>/scenarios.json`。
 3. 在 `<module>/DESIGN.md` 写模块视觉、组件与 token 契约；需要模块 token 时新增 `<module>/tokens.css`。
-4. 将模块加入上表，并在根 `DESIGN.md` 的模块索引登记。
+4. 将模块加入上表。
 5. 执行 `pnpm --dir design build` 生成 `<module>/assets/`。
 
 产品 UI 属于对应 package 的 `src/ui`，设计侧只 import 该包的公开 `/ui` 入口；不要把可复用组件再复制到 `design/` 下。

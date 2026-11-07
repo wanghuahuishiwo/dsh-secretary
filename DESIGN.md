@@ -67,14 +67,7 @@ UI 只通过 Adapter 契约读数据、发命令：
 
 ## 模块索引
 
-| 模块 | 设计契约 | 预览入口 | 当前状态 |
-|---|---|---|---|
-| 小秘书-时间块 | [design/time-block/DESIGN.md](design/time-block/DESIGN.md) | `design/time-block/index.html` | 生产 UI + Remote；OpenDesign 完整产品壳 |
-| 小秘书-事项 | [design/gtd/README.md](design/gtd/README.md) | `design/gtd/omnifocus-mac.html` | 左栏入口与空白主区；完整界面后置 |
-| 小秘书-目标 | 未建立 | 无 | 空壳入口；实体、模型、Remote、UI 后置 |
-| Tag | 无独立产品入口 | 无 | 共享 Tag Service 与 TagManager 待实现 |
-
-设计资产总览与构建方式见 [design/README.md](design/README.md)。每个模块的视觉与 token 契约分别在 `design/<module>/DESIGN.md` 与 `design/<module>/tokens.css`；已有模块从 [design/time-block/tokens.css](design/time-block/tokens.css) 开始。新增模块先建 `design/<module>/DESIGN.md` 与 `README.md`，再登记到上表。
+各产品模块的设计资产、当前清单与新增模块步骤见 [design/README.md#模块](design/README.md#模块)。
 
 ## 验收规则
 
