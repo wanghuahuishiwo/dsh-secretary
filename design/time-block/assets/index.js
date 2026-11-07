@@ -15637,6 +15637,7 @@
   line-height: 1.45;
 }
 .tb-app *, .tb-app *::before, .tb-app *::after { box-sizing: border-box; }
+.tb-app:focus { outline: none; }
 .tb-app button, .tb-app input, .tb-app textarea { font: inherit; color: inherit; }
 .tb-app button { background: none; border: 0; cursor: pointer; }
 .tb-app :focus-visible { outline: 2px solid var(--tb-accent, #82aaff); outline-offset: 1px; }
@@ -15903,6 +15904,7 @@
   var FALLBACK_TODAY = localDate();
   function TimeProduct({ adapter, headerAction, today: openingDay }) {
     const openingDate = openingDay ?? FALLBACK_TODAY;
+    const appRef = (0, import_react.useRef)(null);
     const [module, setModule] = (0, import_react.useState)("actual");
     const [anchor] = (0, import_react.useState)(() => openingDate);
     const [range, setRange] = (0, import_react.useState)(() => ({ from: addDays(openingDate, -3), to: addDays(openingDate, 10) }));
@@ -16099,6 +16101,13 @@
         className: "tb-app",
         "data-time-remote": true,
         "data-remote-state": view === void 0 ? error === "" ? "loading" : "error" : "ready",
+        ref: appRef,
+        tabIndex: -1,
+        onPointerDownCapture: (event) => {
+          const target = event.target;
+          if (target.closest('input, textarea, select, [contenteditable="true"]') !== null) return;
+          appRef.current?.focus({ preventScroll: true });
+        },
         children: [
           /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("style", { children: timeStyles }),
           /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(

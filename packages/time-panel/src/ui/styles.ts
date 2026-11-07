@@ -17,6 +17,7 @@ export const timeStyles = `.tb-app {
   line-height: 1.45;
 }
 .tb-app *, .tb-app *::before, .tb-app *::after { box-sizing: border-box; }
+.tb-app:focus { outline: none; }
 .tb-app button, .tb-app input, .tb-app textarea { font: inherit; color: inherit; }
 .tb-app button { background: none; border: 0; cursor: pointer; }
 .tb-app :focus-visible { outline: 2px solid var(--tb-accent, #82aaff); outline-offset: 1px; }

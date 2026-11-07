@@ -67,6 +67,7 @@ const FALLBACK_TODAY = localDate()
  */
 export function TimeProduct({ adapter, headerAction, today: openingDay }: TimeProductProps) {
   const openingDate = openingDay ?? FALLBACK_TODAY
+  const appRef = useRef<HTMLDivElement | null>(null)
   const [module, setModule] = useState<TimeModule>('actual')
   const [anchor] = useState(() => openingDate)
   const [range, setRange] = useState(() => ({ from: addDays(openingDate, -3), to: addDays(openingDate, 10) }))
@@ -294,6 +295,14 @@ export function TimeProduct({ adapter, headerAction, today: openingDay }: TimePr
       className="tb-app"
       data-time-remote
       data-remote-state={view === undefined ? (error === '' ? 'loading' : 'error') : 'ready'}
+      ref={appRef}
+      tabIndex={-1}
+      /** Clicking the canvas must move focus here, otherwise the host's input keeps Esc/Delete. */
+      onPointerDownCapture={(event) => {
+        const target = event.target as HTMLElement
+        if (target.closest('input, textarea, select, [contenteditable="true"]') !== null) return
+        appRef.current?.focus({ preventScroll: true })
+      }}
     >
       <style>{timeStyles}</style>
       <TimeHeader
