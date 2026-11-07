@@ -7,6 +7,7 @@
 | [prd/README.md](prd/README.md) | 全局产品原则、共享边界与非目标。 |
 | [prd/time-block.md](prd/time-block.md) | TimeBlock 当前功能、完整画布交互、Undo 与 DeepTime。 |
 | [prd/gtd.md](prd/gtd.md) | GTD 当前入口、空白页面与领域能力边界。 |
+| [prd/goal.md](prd/goal.md) | Goal 当前为空壳入口，业务模型与 UI 后置。 |
 | [architecture.md](architecture.md) | 当前装配、依赖、Host／Client、Remote 与验证入口。 |
 | [data-model.md](data-model.md) | 当前事实、关系、标签、日期与持久化不变式。 |
 | [glossary.md](glossary.md) | 当前领域术语。 |
@@ -19,7 +20,7 @@
 ## 决策、设计与操作
 
 - [adr/](adr/)：架构决策及 supersede 关系。
-- [../design/omnifocus-mac-brief.md](../design/omnifocus-mac-brief.md)：当前 GTD 原型与实施边界。
+- [../design/gtd/README.md](../design/gtd/README.md)：当前 GTD 原型与实施边界。
 - [agents/issue-tracker.md](agents/issue-tracker.md)：GitHub Issues、规格和验收证据的操作约定。
 
 ## 研究资料
@@ -35,3 +36,4 @@
 - [dsh-plugin-development.md](research/dsh-plugin-development.md)：DSH 插件依赖、装配与 Host／Client 边界。
 - [dsh-product-api-architecture.md](research/dsh-product-api-architecture.md)：DSH 产品 API、Typert Remote 与 Fetch routes。
 - [plan-actual-comparison.md](research/plan-actual-comparison.md)：计划与实录对照研究。
+- [design-workflow-oss.md](research/design-workflow-oss.md)：GitHub 开源设计 skill、DESIGN.md 与长期设计工作流调研。

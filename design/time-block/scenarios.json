@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "entry": "design/time-block/index.html",
+  "viewport": { "width": 390, "height": 844 },
+  "adapter": "fixture",
+  "fixtureToday": "2026-11-06",
+  "defaults": {
+    "theme": "dark",
+    "layer": "plan",
+    "reset": "reload the static entry so every scenario starts from in-memory fixtures",
+    "consoleErrors": 0,
+    "externalRequests": 0
+  },
+  "scenarios": [
+    {
+      "id": "plan-default",
+      "title": "默认打开计划页",
+      "steps": ["打开静态入口"],
+      "expected": [
+        "[data-testid=plan-tab] 的 aria-selected=true",
+        "[data-testid=time-canvas] 的 data-layer=plan、data-date=2026-11-06",
+        "[data-testid=cell-540] 的 data-tag-id=focus",
+        "[data-testid=undo] 禁用"
+      ]
+    },
+    {
+      "id": "plan-actual-switch",
+      "title": "计划与实录独立切换",
+      "steps": ["点击 actual-tab", "再点击 plan-tab"],
+      "expected": [
+        "实录页 data-layer=actual，日期保持不变",
+        "实录 cell-550 为 focus，计划 cell-540 仍为 focus",
+        "切层不改写另一层 fixtures"
+      ]
+    },
+    {
+      "id": "select",
+      "title": "追加与取消格阵选择",
+      "steps": ["点击 cell-360", "点击 cell-370", "再次点击 cell-370"],
+      "expected": [
+        "前两步 selection-bar data-minutes=20，两格 aria-pressed=true",
+        "取消后 data-minutes=10，cell-360 仍选中，cell-370 不选中",
+        "不修改任何 data-tag-id"
+      ]
+    },
+    {
+      "id": "paint",
+      "title": "点标签给选区上色",
+      "steps": ["选择 cell-360 与 cell-370", "点击 tag-focus"],
+      "expected": [
+        "cell-360 与 cell-370 的 data-tag-id=focus",
+        "选区清空，selection-bar data-minutes=0",
+        "toast 显示已上色，undo 可用"
+      ]
+    },
+    {
+      "id": "erase",
+      "title": "橡皮擦除当前层事实",
+      "steps": ["选择已有计划的 cell-540", "点击 erase-selection"],
+      "expected": [
+        "cell-540 不再有 data-tag-id",
+        "选区清空，toast 显示已擦除",
+        "undo 可用，实录数据不变"
+      ]
+    },
+    {
+      "id": "undo",
+      "title": "Undo 恢复擦除前的上色结果",
+      "steps": ["选择 cell-360", "点击 tag-focus", "选择 cell-360", "点击 erase-selection", "点击 undo"],
+      "expected": [
+        "上色后 cell-360 为 focus，擦除后为空",
+        "Undo 后 cell-360 恢复 data-tag-id=focus",
+        "toast 显示已撤销上一步"
+      ]
+    },
+    {
+      "id": "date-navigation",
+      "title": "日期前后与回到演示今天",
+      "steps": ["点击 next-day", "点击 previous-day", "再次点击 next-day", "点击 today"],
+      "expected": [
+        "第一次 next-day 后 current-date data-date=2026-11-07，计划 cell-540 为 collaboration",
+        "previous-day 返回 2026-11-06",
+        "today 最终返回 2026-11-06"
+      ]
+    },
+    {
+      "id": "theme-switch",
+      "title": "明暗主题使用同一语义 token",
+      "steps": ["点击 theme-toggle", "再次点击 theme-toggle"],
+      "expected": [
+        "第一次后 html data-theme=light，组件结构不变",
+        "第二次后 html data-theme=dark",
+        "全程无控制台错误"
+      ]
+    },
+    {
+      "id": "drag-select",
+      "title": "同日拖动形成连续选区",
+      "steps": ["从 cell-360 按下并拖动到 cell-380", "释放鼠标"],
+      "expected": [
+        "selection-bar data-minutes=30",
+        "cell-360、cell-370、cell-380 均为 aria-pressed=true",
+        "未修改任何 data-tag-id"
+      ]
+    }
+  ]
+}

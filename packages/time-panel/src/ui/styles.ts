@@ -3,7 +3,7 @@
  * iPhone 时间块 app. Every colour comes from a host token, so light and dark
  * follow the DSH theme instead of defining a palette here.
  */
-export const productStyles = `.sec-shell {
+export const timeStyles = `.sec-shell {
   position: relative;
   height: 100%;
   min-width: 0;

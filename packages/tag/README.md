@@ -9,6 +9,8 @@ kind: "package-reference"
 
 本包让 Time 和 GTD 共用一棵可持续保存的标签树。Agent 可以列出、创建、重命名、移动和删除标签；数字 ID 用于精确关联，`time` 与 `context` 两种用途不会因同名而合并。
 
+Tag 是一个共享模块：唯一 `TagService`、唯一 `tags` 表，`time` / `context` 只是 `kind`。GTD 和 TimeBlock 将按 `kind` 使用同一套共享 `TagManager` UI 管理同一批标签；本包当前只提供 Service 与 Agent tools，TagManager UI/Remote 尚未实现。
+
 ## 目录
 
 - [使用本包](#使用本包)
@@ -66,4 +68,5 @@ Tag 保存 `id / name / kind / parentId? / color?`。GTD 与 Time 通过 `tagRef
 ## 已知限制与后续工作
 
 - 当前只有 `time` 和 `context` 两种 `kind`。
-- 没有独立 Tag 产品 UI 或浏览器写入 Remote；Time 产品只读取时间标签树。
+- TagManager UI 和浏览器写入 Remote 尚未实现；Time 产品当前只读取时间标签树。
+- Tag 不是独立产品入口；共享 UI/Remote 的边界由后续设计和实现承接。

@@ -19,7 +19,7 @@
 | Waiting For | 等待 | 下一步由别人或外部条件推进的事项。 |
 | Someday / Maybe | 将来也许 | 暂不承诺，但保留以后考虑的事项。 |
 | Context | 情境 | 地点、工具、人员等执行条件，用于选择当前适合做什么。 |
-| Tag | 标签 | 独立 Tag 模块中的分类对象；GTD 可使用 `time` 与 `context`，TimeBlock 只使用 `time`，不改变 Project 归属。 |
+| Tag | 标签 | 共享 Tag 模块中的分类对象；GTD 可使用 `time` 与 `context`，TimeBlock 只使用 `time`，不改变 Project 归属。 |
 | 有效 Tags | 有效标签 | 对象自己的 Tags 与所有 GTD 祖先 Tags 的累加结果，按 Tag id 去重；自己设置不会覆盖或阻断继承。 |
 
 ## 2. 日期、状态与可用性

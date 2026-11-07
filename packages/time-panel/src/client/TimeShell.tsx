@@ -1,46 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
-import type { Tag } from 'dsh-secretary-tag/contract'
 import type { DeepLevel } from 'dsh-secretary-time-block/contract'
 import type { TimeWindowProjection } from '../types.ts'
-import { DatePicker } from './DatePicker.tsx'
-import { DeepWeekView, type DeepRect } from './DeepWeekView.tsx'
-import {
-  CELL, addDays, atMinute, clock, durationLabel, localDate, recordsOfDay, weekStartOf,
-  type DayRecord, type Run,
-} from './model.ts'
-import { productStyles } from './productStyles.ts'
-import { TimeCanvas } from './TimeCanvas.tsx'
+import { DatePicker } from '../ui/DatePicker.tsx'
+import { DeepWeekView, type DeepRect } from '../ui/DeepWeekView.tsx'
+import { Drawer } from '../ui/Drawer.tsx'
+import { RecordSheet, type SheetTarget } from '../ui/RecordSheet.tsx'
+import { TimeCanvas } from '../ui/TimeCanvas.tsx'
+import { TimeHeader, dayLabel, weekLabel, type TimeModule } from '../ui/TimeHeader.tsx'
+import { Toast } from '../ui/Toast.tsx'
+import { addDays, atMinute, localDate, recordsOfDay, weekStartOf } from '../ui/model.ts'
+import type { DayRecord, Run } from '../ui/model.ts'
+import { timeStyles } from '../ui/styles.ts'
 
-type Module = 'time' | 'deep'
 type TimeView = 'actual' | 'plan'
 
 interface UndoEntry {
   readonly layer: TimeView
   readonly dates: readonly { date: string; records: readonly DayRecord[] }[]
-}
-
-interface SheetTarget {
-  readonly layer: TimeView
-  readonly date: string
-  readonly record: DayRecord
-}
-
-const MODULES: { id: Module; name: string; icon: React.ReactNode }[] = [
-  { id: 'time', name: '时间块', icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="2" width="12" height="12" rx="3" /><path d="M2 6h12M6 6v8" /></svg> },
-  { id: 'deep', name: '深度时间', icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M2 12l3.5-5 3 3.5L12 4" /><path d="M2 14h12" /></svg> },
-]
-
-function dayLabel(date: string): string {
-  const value = new Date(`${date}T12:00:00`)
-  return `${value.getMonth() + 1}月${value.getDate()}日 ${['周日', '周一', '周二', '周三', '周四', '周五', '周六'][value.getDay()]}`
-}
-
-function weekLabel(weekStart: string): string {
-  const start = new Date(`${weekStart}T12:00:00`)
-  const end = new Date(`${addDays(weekStart, 6)}T12:00:00`)
-  return `${start.getMonth() + 1}月${start.getDate()}日 – ${end.getMonth() + 1}月${end.getDate()}日`
 }
 
 function timeZoneOf(): string {
@@ -54,7 +32,7 @@ function messageOf(reason: unknown): string {
 /** The complete Time-only product; every domain operation uses its generated Remote client. */
 export function TimeShell({ ctx }: { readonly ctx: Context }) {
   const timeZone = useMemo(timeZoneOf, [])
-  const [module, setModule] = useState<Module>('time')
+  const [module, setModule] = useState<TimeModule>('time')
   const [timeView, setTimeView] = useState<TimeView>('actual')
   const [today] = useState(() => localDate())
   const [range, setRange] = useState(() => ({ from: addDays(localDate(), -3), to: addDays(localDate(), 10) }))
@@ -70,9 +48,7 @@ export function TimeShell({ ctx }: { readonly ctx: Context }) {
   const [toast, setToast] = useState('')
   const [error, setError] = useState('')
   const toastTimer = useRef<number>(0)
-  const titleRef = useRef<HTMLButtonElement | null>(null)
   const [picker, setPicker] = useState<'time' | 'deep' | null>(null)
-  const shellRef = useRef<HTMLDivElement | null>(null)
 
   const say = useCallback((message: string) => {
     setToast(message)
@@ -133,9 +109,10 @@ export function TimeShell({ ctx }: { readonly ctx: Context }) {
     return layer === 'plan' ? state.plan : state.actual
   }, [state])
 
-  const recordsOf = useCallback((layer: TimeView, date: string) => (
-    state === undefined ? [] : recordsOfDay(layerBlocks(layer), date, timeZone, state.nowMs)
-  ), [layerBlocks, state, timeZone])
+  const recordsOf = useCallback((layer: TimeView, date: string) => {
+    if (state === undefined) return [] as DayRecord[]
+    return recordsOfDay(layerBlocks(layer), date, timeZone, state.nowMs)
+  }, [layerBlocks, state, timeZone])
 
   const paint = useCallback(async (layer: TimeView, runs: readonly Run[], tagId: number | null) => {
     if (state === undefined || runs.length === 0) return
@@ -229,37 +206,25 @@ export function TimeShell({ ctx }: { readonly ctx: Context }) {
 
   return (
     <div
-      className="sec-shell" ref={shellRef} data-time-remote
+      className="sec-shell"
+      data-time-remote
       data-remote-state={state === undefined ? (error === '' ? 'loading' : 'error') : 'ready'}
     >
-      <style>{productStyles}</style>
-      <header className="sec-head">
-        <button className="sec-hbtn" type="button" aria-label="一级模块" onClick={() => setDrawer(value => !value)}>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2.5 4h11M2.5 8h11M2.5 12h11" /></svg>
-        </button>
-        <button ref={titleRef} className="sec-title" type="button" aria-expanded={subMenu} onClick={() => (subMenu ? setSubMenu(false) : openSubMenu())}>
-          <span>{MODULES.find(item => item.id === module)?.name ?? ''}</span>
-          <span className="tsub">{titleSub}</span>
-          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M2.5 4.5L6 8l3.5-3.5" /></svg>
-        </button>
-        <span className="grow" />
-        <button className="sec-hbtn" type="button" aria-label={module === 'deep' ? '上一周' : '上一天'} onClick={() => step(module === 'deep' ? -7 : -1)}>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M9.5 4L5.5 8l4 4" /></svg>
-        </button>
-        <button
-          className="sec-daylabel" type="button" aria-label={module === 'deep' ? '选择一周' : '选择日期'}
-          aria-expanded={picker !== null} onClick={() => setPicker(picker === null ? module : null)}
-        >
-          {module === 'deep' ? weekLabel(weekStart) : dayLabel(topDate)}
-        </button>
-        <button className="sec-hbtn" type="button" aria-label={module === 'deep' ? '下一周' : '下一天'} onClick={() => step(module === 'deep' ? 7 : 1)}>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M6.5 4l4 4-4 4" /></svg>
-        </button>
-        <button className="sec-now" type="button" onClick={() => step(0)}>{module === 'deep' ? '本周' : '今天'}</button>
-        <button className="sec-hbtn" type="button" title="撤销" disabled={undoStack.length === 0 || busy} onClick={() => void undo()}>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M3 7h6.5a3.5 3.5 0 010 7H6" /><path d="M5.5 4L2.5 7l3 3" /></svg>
-        </button>
-      </header>
+      <style>{timeStyles}</style>
+      <TimeHeader
+        module={module}
+        titleSub={titleSub}
+        dateLabel={module === 'deep' ? weekLabel(weekStart) : dayLabel(topDate)}
+        canUndo={undoStack.length > 0}
+        busy={busy}
+        subMenuOpen={subMenu}
+        pickerOpen={picker !== null}
+        onDrawer={() => setDrawer(value => !value)}
+        onSubMenu={() => (subMenu ? setSubMenu(false) : openSubMenu())}
+        onPicker={() => setPicker(picker === null ? module : null)}
+        onStep={step}
+        onUndo={() => void undo()}
+      />
 
       <div className="sec-views">
         <section className="sec-view on" style={{ display: module === 'time' && timeView === 'actual' ? 'flex' : 'none' }}>
@@ -315,19 +280,12 @@ export function TimeShell({ ctx }: { readonly ctx: Context }) {
         </div>
       )}
 
-      <div className={`sec-scrim${drawer ? ' on' : ''}`} onClick={() => setDrawer(false)} />
-      <nav className={`sec-drawer${drawer ? ' on' : ''}`}>
-        <div className="cap">小秘书</div>
-        {MODULES.map(item => (
-          <button
-            key={item.id} className={`sec-mrow${module === item.id ? ' on' : ''}`} type="button"
-            onClick={() => { setModule(item.id); setDrawer(false); setPicker(null) }}
-          >
-            {item.icon}
-            {item.name}
-          </button>
-        ))}
-      </nav>
+      <Drawer
+        open={drawer}
+        module={module}
+        onModuleChange={next => { setModule(next); setDrawer(false); setPicker(null) }}
+        onClose={() => setDrawer(false)}
+      />
 
       {sheet !== undefined && (
         <RecordSheet
@@ -335,53 +293,7 @@ export function TimeShell({ ctx }: { readonly ctx: Context }) {
           onSave={patch => void saveSheet(sheet, patch)} onDelete={() => void deleteRecord(sheet)}
         />
       )}
-      <div className={`sec-toast${toast === '' ? '' : ' on'}`}>{toast}</div>
-    </div>
-  )
-}
-
-interface SheetProps {
-  readonly target: SheetTarget
-  readonly tags: readonly Tag[]
-  readonly busy: boolean
-  readonly onClose: () => void
-  readonly onSave: (patch: { start: number; end: number; timeTagId: number; note?: string }) => void
-  readonly onDelete: () => void
-}
-
-function RecordSheet({ target, tags, busy, onClose, onSave, onDelete }: SheetProps) {
-  const [start, setStart] = useState(target.record.start)
-  const [end, setEnd] = useState(target.record.end)
-  const [tagId, setTagId] = useState(target.record.timeTagId)
-  const [note, setNote] = useState(target.record.note ?? '')
-  const timeTags = tags.filter(tag => tag.kind === 'time')
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => { window.removeEventListener('keydown', onKey) }
-  }, [onClose])
-
-  return (
-    <div className="sec-sheet on" role="dialog" aria-label="编辑记录">
-      <div className="grab" />
-      <div className="row">
-        <span className="time">{clock(start)} – {clock(end)}</span>
-        <span className="dur">{durationLabel(end - start)}</span>
-        <span className="grow" />
-        <button className="sec-step" type="button" disabled={end - start <= CELL} onClick={() => setStart(Math.max(0, start - CELL))}>−</button>
-        <button className="sec-step" type="button" disabled={end >= 1440} onClick={() => setEnd(Math.min(1440, end + CELL))}>＋</button>
-      </div>
-      <div className="sec-picks">
-        {timeTags.map(tag => (
-          <button key={tag.id} type="button" className={tag.id === tagId ? 'on' : ''} style={{ background: tag.color ?? '#477bc7' }} onClick={() => setTagId(tag.id)}>{tag.name}</button>
-        ))}
-      </div>
-      <input className="sec-note" placeholder="备注（可空）" value={note} onChange={event => setNote(event.target.value)} />
-      <div className="sec-acts">
-        <button className="sec-btn danger" type="button" disabled={busy} onClick={onDelete}>删除</button>
-        <button className="sec-btn primary" type="button" disabled={busy} onClick={() => onSave({ start, end, timeTagId: tagId, note: note === '' ? undefined : note })}>完成</button>
-      </div>
+      <Toast message={toast} />
     </div>
   )
 }

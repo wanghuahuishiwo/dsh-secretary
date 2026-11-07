@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { DeepCellLevel, DeepLevel, DeepWeek } from 'dsh-secretary-time-block/contract'
+import type { DeepCellLevel, DeepLevel, DeepWeekData } from './model.ts'
 import { WEEKDAY_LABELS, addDays, weekStartOf } from './model.ts'
 
 interface Props {
-  readonly week: DeepWeek | undefined
+  readonly week: DeepWeekData | undefined
   readonly weekStart: string
   readonly today: string
   readonly busy: boolean

@@ -2,7 +2,13 @@
 
 ## 形态
 
-仓库是 pnpm workspace，发布一个 `dsh-secretary` bundle。GTD、Tag、Time Services、空 Goal Provider 在 bundle 根层挂载；公共 tools、GTD／Secretary skills 在 Secretary preset 中组合。Tag、Goal 是上游共享模块，Time／GTD 通过 Cordis `inject` 消费它们；运行时等待与重载由 service 可用性驱动，patch 行序没有启动语义。浏览器不获得 Host Cordis Context，也不直接写 SQLite；它只通过所属产品的 Host API adapter 调用同一批领域 Services，没有浏览器私有事实源。仓库结构见根 [AGENTS.md](../AGENTS.md)，逐包入口见各自 README。
+仓库是 pnpm workspace，发布一个 `dsh-secretary` bundle。GTD、Tag、Time Services、空 Goal Provider 在 bundle 根层挂载；公共 tools、GTD／Secretary skills 在 Secretary preset 中组合。Tag 与 GoalService 是上游共享能力，Time／GTD 通过 Cordis `inject` 消费它们；Goal 产品空壳不消费 `goals`。运行时等待与重载由 service 可用性驱动，patch 行序没有启动语义。浏览器不获得 Host Cordis Context，也不直接写 SQLite；它只通过所属产品的 Host API adapter 调用同一批领域 Services，没有浏览器私有事实源。仓库结构见根 [AGENTS.md](../AGENTS.md)，逐包入口见各自 README。
+
+## 模块装配
+
+产品模块、入口和共享边界只维护在 [AGENTS.md](../AGENTS.md#产品模块)；本节只描述当前实现的装配。
+
+当前产品交付插件只有 `time-panel` 与 `gtd-panel`。`TagService`、`GoalService` 是 bundle 级共享服务；`goal-panel` 空壳和共享 `TagManager` UI/Remote 尚未实现，不能据此声称已经运行。
 
 Secretary preset 的通用插件底座与官方 standard preset 对齐。升级 DSH 时应重新 diff preset；bundle 兼容范围以实际 manifest 为准，不使用版本豁免代替兼容验证。
 
@@ -35,6 +41,8 @@ dsh-secretary bundle：composition / preset / skills
             当前没有 Remote namespace，也不依赖 Time
 ```
 
+当前树只列已实现的产品插件；目标产品的 `goal-panel` 空壳和共享 `TagManager` UI/Remote 尚未实现，不能据此声称已经运行。
+
 Time 的浏览器 Remote 与 Agent tools 是平级 adapters，不是上下层：
 
 ```text
@@ -56,10 +64,10 @@ Time 的 `./client` 是 DSH Client 插件，运行于桌面端的 Chromium rende
 默认数据库为 `$DSH_HOME/storages/secretary.db`。`dsh-secretary-storage` 提供专用 `secretaryStorageDomain`，只路由本项目 domains，不改变宿主全局 `storage-domain` 的默认 backend 或其他 routes：
 
 - `secretary_gtd`：`projects`、`actions`、`inbox`。
-- `secretary_tag`：`tags`。
+- `secretary_tag`：`tags`（唯一表；`kind` 区分 `time` / `context`）。
 - `secretary_time`：`plan_blocks`、`actual_blocks`、`plan_template_blocks`、`plan_template_undos`、`deep_templates`。
 
-各 domain 的 next-id、串行写队列、日期与标签不变式见 [data-model.md](data-model.md)。空 Goal Provider 不打开 domain，也没有 Goal 表。
+各 domain 的 next-id、串行写队列、日期与标签不变式见 [data-model.md](data-model.md)。GoalService 空 Provider 不打开 domain，也没有 Goal 表。
 
 ## 验证入口
 

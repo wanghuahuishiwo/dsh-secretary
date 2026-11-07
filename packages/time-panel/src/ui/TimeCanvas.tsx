@@ -1,10 +1,11 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Tag } from 'dsh-secretary-tag/contract'
 import {
   CELL, MAX_ROW_H, MIN_ROW_H, PER_HOUR, WEEKDAY_LABELS,
   minutesOfRecord, recordAt, recordsOfDay, runsOf, snapDown,
-  type BlockLike, type DayRecord, type Run,
+  type BlockLike, type DayRecord, type Run, type TimeTag,
 } from './model.ts'
+import { SelectionBar } from './SelectionBar.tsx'
+import { TagShelf } from './TagShelf.tsx'
 
 interface Props {
   readonly layer: 'actual' | 'plan'
@@ -16,7 +17,7 @@ interface Props {
   readonly onExtend: (side: 'before' | 'after') => void
   readonly onTopDateChange: (date: string) => void
   readonly blocks: readonly BlockLike[]
-  readonly tags: readonly Tag[]
+  readonly tags: readonly TimeTag[]
   readonly busy: boolean
   readonly onAssign: (runs: readonly Run[], tagId: number | null) => void
   readonly onEdit: (date: string, record: DayRecord) => void
@@ -31,8 +32,6 @@ interface DragState {
 
 const FALLBACK_COLOR = '#477bc7'
 const CHECK = <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M2.5 6.4l2.3 2.3L9.5 3.7" /></svg>
-const ERASER = <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M5.5 3h7v9h-7l-3.5-4.5z" /><path d="M8 6l3 3M11 6l-3 3" /></svg>
-const CHEVRONS = <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 5.2L6 2.4l3 2.8M3 9.5L6 6.7l3 2.8" /></svg>
 
 /** Selection runs never cross an hour boundary: each hour row draws its own box. */
 function splitByHour(runs: readonly Run[]): Run[] {
@@ -169,14 +168,10 @@ export function TimeCanvas(props: Props) {
   const selectedRef = useRef<Map<string, Set<number>>>(new Map())
   const [rowH, setRowH] = useState(40)
   const [selected, setSelected] = useState<Map<string, Set<number>>>(() => new Map())
-  const [shelfMini, setShelfMini] = useState(false)
-  const [collapsed, setCollapsed] = useState<Record<number, boolean>>({})
-  const [brushTagId, setBrushTagId] = useState<number | undefined>(undefined)
   const [jumpVisible, setJumpVisible] = useState(false)
   void layer
 
   const timeTags = useMemo(() => tags.filter(tag => tag.kind === 'time'), [tags])
-  const roots = useMemo(() => timeTags.filter(tag => tag.parentId === undefined), [timeTags])
   const tagOf = useCallback((id: number) => timeTags.find(tag => tag.id === id), [timeTags])
   const tagName = useCallback((id: number) => tagOf(id)?.name ?? `标签 ${id}`, [tagOf])
   const tagColor = useCallback((id: number) => tagOf(id)?.color ?? FALLBACK_COLOR, [tagOf])
@@ -390,7 +385,6 @@ export function TimeCanvas(props: Props) {
 
   const assign = (tagId: number) => {
     if (runs.length === 0) return
-    setBrushTagId(tagId)
     onAssign(runs, tagId)
     clearSelection()
   }
@@ -421,69 +415,19 @@ export function TimeCanvas(props: Props) {
             <button className={`sec-jump${jumpVisible ? ' on' : ''}`} type="button" onClick={() => scrollToDate(today, true)}>回到今天</button>
           </div>
         </div>
-        <aside className={`sec-shelf${shelfMini ? ' mini' : ''}`} aria-label="时间标签架">
-          {shelfMini && <span className="sec-brush" style={{ background: brushTagId === undefined ? FALLBACK_COLOR : tagColor(brushTagId) }} />}
-          <button className="sec-shelf-head" type="button" onClick={() => setShelfMini(value => !value)}>
-            {CHEVRONS}
-            <span>合上所有内容</span>
-          </button>
-          <div className="sec-shelf-list">
-            {roots.map(tag => {
-              const kids = timeTags.filter(item => item.parentId === tag.id)
-              const open = collapsed[tag.id] !== true
-              return (
-                <div key={tag.id} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <button
-                    className="sec-cat"
-                    type="button"
-                    style={{ background: tag.color ?? FALLBACK_COLOR }}
-                    aria-expanded={kids.length > 0 ? open : undefined}
-                    onClick={event => {
-                      if (kids.length > 0 && (event.target as HTMLElement).closest('.caret') !== null) {
-                        setCollapsed(previous => ({ ...previous, [tag.id]: open }))
-                        return
-                      }
-                      assign(tag.id)
-                      if (kids.length > 0) setCollapsed(previous => ({ ...previous, [tag.id]: false }))
-                    }}
-                  >
-                    <span>{tag.name}</span>
-                    {kids.length > 0 && (
-                      <svg className="caret" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M4 2.5L7.5 6 4 9.5" /></svg>
-                    )}
-                  </button>
-                  {open && kids.map(kid => (
-                    <button key={kid.id} className="sec-cat sub" type="button" style={{ background: kid.color ?? FALLBACK_COLOR }} onClick={() => assign(kid.id)}>
-                      <span>{kid.name}</span>
-                    </button>
-                  ))}
-                </div>
-              )
-            })}
-          </div>
-        </aside>
+        <TagShelf tags={timeTags} onAssign={assign} />
       </div>
-      <div className="sec-status" style={{ visibility: totalMinutes > 0 ? 'visible' : 'hidden' }} aria-hidden={totalMinutes === 0}>
-        <span>
-          {whole === undefined
-            ? <>选择了 <b>{totalMinutes}</b> 分钟</>
-            : (
-              <span className="sec-chip">
-                <i style={{ background: tagColor(whole.record.timeTagId) }} />
-                {tagName(whole.record.timeTagId)}{whole.record.note === undefined || whole.record.note === '' ? '' : ` · ${whole.record.note}`}
-              </span>
-            )}
-        </span>
-        <span className="grow" />
-        {whole !== undefined && (
-          <button className="sec-sb" type="button" disabled={busy} onClick={() => onEdit(whole.date, whole.record)}>备注</button>
-        )}
-        <button className="sec-sb" type="button" onClick={clearSelection}>不选</button>
-        <button className="sec-sb erase" type="button" disabled={busy || runs.length === 0} onClick={() => {
-          onAssign(runs, null)
-          clearSelection()
-        }}>{ERASER}橡皮</button>
-      </div>
+      <SelectionBar
+        totalMinutes={totalMinutes}
+        whole={whole}
+        busy={busy}
+        hasRuns={runs.length > 0}
+        tagName={tagName}
+        tagColor={tagColor}
+        onEdit={onEdit}
+        onClear={clearSelection}
+        onErase={() => { onAssign(runs, null); clearSelection() }}
+      />
     </>
   )
 }

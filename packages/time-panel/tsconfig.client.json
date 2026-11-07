@@ -7,15 +7,12 @@
     "emitDeclarationOnly": true,
     "types": []
   },
-  "files": [
+  "include": [
     "src/client/index.tsx",
     "src/client/TimeShell.tsx",
-    "src/client/TimeCanvas.tsx",
-    "src/client/DeepWeekView.tsx",
-    "src/client/DatePicker.tsx",
-    "src/client/model.ts",
-    "src/client/productStyles.ts",
-    "src/types.ts"
+    "src/types.ts",
+    "src/ui/**/*.ts",
+    "src/ui/**/*.tsx"
   ],
   "references": [{ "path": "../tag" }, { "path": "../time-block" }]
 }

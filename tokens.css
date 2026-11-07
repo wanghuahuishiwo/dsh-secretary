@@ -1,0 +1,81 @@
+/* DSH Secretary 设计预览的语义 token。DESIGN.md 使用同名 token（去掉 CSS 的 -- 前缀）。 */
+:root {
+  color-scheme: dark;
+
+  --tb-surface-page: #0e0f12;
+  --tb-surface-rail: #16181c;
+  --tb-surface-raised: #1d2025;
+  --tb-surface-hover: #252931;
+  --tb-grid-cell: #191c21;
+  --tb-text-primary: #eceff3;
+  --tb-text-secondary: #a3a9b4;
+  --tb-text-tertiary: #727a88;
+  --tb-border-subtle: rgba(255, 255, 255, 0.07);
+  --tb-border-strong: rgba(255, 255, 255, 0.14);
+  --tb-accent: #82aaff;
+  --tb-accent-soft: rgba(102, 141, 222, 0.16);
+  --tb-danger: #ef8c84;
+  --tb-selection: #f4f7fb;
+
+  --tb-tag-work: #6479c8;
+  --tb-tag-focus: #547ec4;
+  --tb-tag-collaboration: #8870bd;
+  --tb-tag-life: #50856c;
+  --tb-tag-meal: #a27a4c;
+  --tb-tag-exercise: #4f927b;
+  --tb-tag-learning: #a0704e;
+  --tb-tag-reading: #737fb5;
+  --tb-tag-rest: #737985;
+  --tb-tag-errand: #a26978;
+
+  --tb-font-caption: 10px;
+  --tb-font-label: 11px;
+  --tb-font-body: 12px;
+  --tb-font-title: 15px;
+
+  --tb-space-1: 4px;
+  --tb-space-2: 8px;
+  --tb-space-3: 12px;
+  --tb-space-4: 16px;
+  --tb-space-5: 20px;
+  --tb-space-6: 24px;
+
+  --tb-radius-sm: 5px;
+  --tb-radius-md: 8px;
+  --tb-radius-lg: 12px;
+
+  --tb-control-height: 30px;
+  --tb-hour-height: 26px;
+  --tb-rail-width: 390px;
+  --tb-shelf-width: 116px;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --tb-surface-page: #e7e9ed;
+  --tb-surface-rail: #f7f8fa;
+  --tb-surface-raised: #ffffff;
+  --tb-surface-hover: #e9edf3;
+  --tb-grid-cell: #f1f3f6;
+  --tb-text-primary: #20242b;
+  --tb-text-secondary: #59616e;
+  --tb-text-tertiary: #818a98;
+  --tb-border-subtle: rgba(28, 35, 46, 0.09);
+  --tb-border-strong: rgba(28, 35, 46, 0.17);
+  --tb-accent: #3568b8;
+  --tb-accent-soft: rgba(53, 104, 184, 0.11);
+  --tb-danger: #b84c46;
+  --tb-selection: #263243;
+
+  --tb-tag-work: #4c62aa;
+  --tb-tag-focus: #3e6fae;
+  --tb-tag-collaboration: #72589f;
+  --tb-tag-life: #3d7257;
+  --tb-tag-meal: #886238;
+  --tb-tag-exercise: #3e7962;
+  --tb-tag-learning: #875b39;
+  --tb-tag-reading: #59679c;
+  --tb-tag-rest: #626875;
+  --tb-tag-errand: #8d5262;
+}

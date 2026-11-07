@@ -6,6 +6,31 @@ export const PER_HOUR = 60 / CELL
 export const MIN_ROW_H = 22
 export const MAX_ROW_H = 64
 
+/** Aliases kept for design-side parity; same values as the production names. */
+export const CELL_MINUTES = CELL
+export const CELLS_PER_HOUR = PER_HOUR
+export const MINUTES_PER_DAY = 24 * 60
+
+/** The shape of a tag as the pure UI sees it — structurally compatible with the domain Tag. */
+export interface TimeTag {
+  readonly id: number
+  readonly name: string
+  readonly kind: 'time' | 'context'
+  readonly parentId?: number
+  readonly color?: string
+}
+
+export type DeepLevel = 'high' | 'medium' | 'low'
+export type DeepCellLevel = DeepLevel | 'unset'
+export type DeepWeekSource = 'own' | 'inherited' | 'seed'
+
+/** The deep-week grid data as the pure UI sees it — structurally compatible with the domain DeepWeek. */
+export interface DeepWeekData {
+  readonly weekStart: string
+  readonly source: DeepWeekSource
+  readonly cells: readonly { readonly level: DeepCellLevel }[]
+}
+
 export interface DayRecord {
   readonly id: number
   readonly start: number
@@ -38,6 +63,9 @@ export function clock(minute: number): string {
   return `${pad(Math.floor(value / 60))}:${pad(value % 60)}`
 }
 
+/** Design-side alias for {@link clock}. */
+export const formatClock = clock
+
 export function localDate(date = new Date()): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
@@ -46,6 +74,13 @@ export function addDays(date: string, amount: number): string {
   const value = new Date(`${date}T12:00:00`)
   value.setDate(value.getDate() + amount)
   return localDate(value)
+}
+
+/** `11月6日 周五` for one local date. */
+export function formatDateLabel(date: string): string {
+  const value = new Date(`${date}T12:00:00`)
+  const weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][value.getDay()]
+  return `${value.getMonth() + 1}月${value.getDate()}日 ${weekday}`
 }
 
 /** Weekday of a local date, Monday = 1 … Sunday = 7. */
@@ -132,6 +167,11 @@ export function runsOf(day: string, minutes: readonly number[]): Run[] {
   return runs
 }
 
+/** Design-side alias for {@link runsOf}: merge a Set of minutes into runs. */
+export function runsOfSelection(date: string, selected: ReadonlySet<number>): Run[] {
+  return runsOf(date, [...selected])
+}
+
 /** Every minute a record covers. */
 export function minutesOfRecord(record: DayRecord): number[] {
   const minutes: number[] = []
@@ -144,5 +184,8 @@ export function durationLabel(minutes: number): string {
   const hours = Math.floor(minutes / 60)
   return minutes % 60 === 0 ? `${hours} 小时` : `${hours} 小时 ${minutes % 60} 分`
 }
+
+/** Design-side alias for {@link durationLabel}. */
+export const formatDuration = durationLabel
 
 export const WEEKDAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']

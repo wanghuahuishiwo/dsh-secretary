@@ -1,0 +1,18 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "types": [],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  },
+  "include": [
+    "global.d.ts",
+    "shared/**/*.ts",
+    "shared/**/*.tsx",
+    "*/src/**/*.ts",
+    "*/src/**/*.tsx"
+  ]
+}
