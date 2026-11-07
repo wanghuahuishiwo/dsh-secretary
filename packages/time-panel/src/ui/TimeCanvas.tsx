@@ -1,8 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CELL, MAX_ROW_H, MIN_ROW_H, PER_HOUR, WEEKDAY_LABELS,
-  minutesOfRecord, recordAt, recordsOfDay, runsOf, snapDown,
-  type BlockLike, type DayRecord, type Run, type TimeTag,
+  minutesOfRecord, recordAt, runsOf, snapDown,
+  type DayRecord, type Run, type TimeTag,
 } from './model.ts'
 import { SelectionBar } from './SelectionBar.tsx'
 import { TagShelf } from './TagShelf.tsx'
@@ -11,12 +11,12 @@ interface Props {
   readonly layer: 'actual' | 'plan'
   readonly days: readonly string[]
   readonly today: string
-  readonly nowMs: number
-  readonly timeZone: string
+  readonly nowMinute: number
   readonly focus: { readonly date: string; readonly token: number }
   readonly onExtend: (side: 'before' | 'after') => void
   readonly onTopDateChange: (date: string) => void
-  readonly blocks: readonly BlockLike[]
+  /** Already sliced onto each local day by the Adapter; the canvas never re-derives days. */
+  readonly records: ReadonlyMap<string, readonly DayRecord[]>
   readonly tags: readonly TimeTag[]
   readonly busy: boolean
   readonly onAssign: (runs: readonly Run[], tagId: number | null) => void
@@ -46,13 +46,6 @@ function splitByHour(runs: readonly Run[]): Run[] {
     }
   }
   return out
-}
-
-/** Minutes from local midnight for an instant. */
-function minuteOfDay(ms: number, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(ms))
-  const field = (type: string) => Number(parts.find(part => part.type === type)?.value ?? 0)
-  return field('hour') * 60 + field('minute')
 }
 
 /** One day column: the date mark, the hour scale, the ten-minute grid, its blocks and its selection. */
@@ -162,7 +155,7 @@ const DayColumn = memo(function DayColumn({
 })
 
 export function TimeCanvas(props: Props) {
-  const { layer, days, today, nowMs, timeZone, focus, onExtend, onTopDateChange, blocks, tags, busy, onAssign, onEdit } = props
+  const { layer, days, today, nowMinute, focus, onExtend, onTopDateChange, records, tags, busy, onAssign, onEdit } = props
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef<DragState | null>(null)
   const selectedRef = useRef<Map<string, Set<number>>>(new Map())
@@ -175,12 +168,6 @@ export function TimeCanvas(props: Props) {
   const tagOf = useCallback((id: number) => timeTags.find(tag => tag.id === id), [timeTags])
   const tagName = useCallback((id: number) => tagOf(id)?.name ?? `标签 ${id}`, [tagOf])
   const tagColor = useCallback((id: number) => tagOf(id)?.color ?? FALLBACK_COLOR, [tagOf])
-
-  const byDay = useMemo(() => {
-    const map = new Map<string, DayRecord[]>()
-    for (const day of days) map.set(day, recordsOfDay(blocks, day, timeZone, nowMs))
-    return map
-  }, [blocks, days, timeZone, nowMs])
 
   /** One screen holds one day: fit 24 hours into the visible height. */
   useEffect(() => {
@@ -349,19 +336,19 @@ export function TimeCanvas(props: Props) {
   const whole = useMemo(() => {
     if (selected.size !== 1) return undefined
     const [date, minutes] = [...selected][0]
-    const records = byDay.get(date) ?? []
+    const dayRecords = records.get(date) ?? []
     const hit = new Set<number>()
     for (const minute of minutes) {
-      const record = recordAt(records, minute)
+      const record = recordAt(dayRecords, minute)
       if (record !== undefined) hit.add(record.id)
     }
     if (hit.size !== 1) return undefined
-    const record = records.find(item => item.id === [...hit][0])
+    const record = dayRecords.find(item => item.id === [...hit][0])
     if (record === undefined) return undefined
     const covered = minutesOfRecord(record)
     if (covered.length !== minutes.size || !covered.every(minute => minutes.has(minute))) return undefined
     return { date, record }
-  }, [selected, byDay])
+  }, [selected, records])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -389,7 +376,7 @@ export function TimeCanvas(props: Props) {
     clearSelection()
   }
 
-  const nowMin = days.includes(today) ? minuteOfDay(nowMs, timeZone) : undefined
+  const nowMin = days.includes(today) ? nowMinute : undefined
 
   return (
     <>
@@ -403,7 +390,7 @@ export function TimeCanvas(props: Props) {
                   day={day}
                   rowH={rowH}
                   today={today}
-                  records={byDay.get(day) ?? []}
+                  records={records.get(day) ?? []}
                   selected={selected.get(day)}
                   nowMin={day === today ? nowMin : undefined}
                   tagName={tagName}

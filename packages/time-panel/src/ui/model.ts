@@ -76,6 +76,11 @@ export function addDays(date: string, amount: number): string {
   return localDate(value)
 }
 
+/** The host's IANA time zone, with a stable fallback when the runtime omits it. */
+export function timeZoneOf(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Shanghai'
+}
+
 /** `11月6日 周五` for one local date. */
 export function formatDateLabel(date: string): string {
   const value = new Date(`${date}T12:00:00`)
@@ -111,7 +116,7 @@ export function localDateOf(instant: string | number, timeZone: string): string 
 }
 
 /** Minutes from local midnight for an instant. */
-export function minuteOf(instant: string, timeZone: string): number {
+export function minuteOf(instant: string | number, timeZone: string): number {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
   }).formatToParts(new Date(instant))
@@ -189,3 +194,38 @@ export function durationLabel(minutes: number): string {
 export const formatDuration = durationLabel
 
 export const WEEKDAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+
+/**
+ * The pure date/time toolkit as one object. Fixtures, tests and boundary code
+ * reuse it instead of copying date math or depending on an internal module.
+ */
+export const timeMath = {
+  CELL,
+  PER_HOUR,
+  CELL_MINUTES,
+  CELLS_PER_HOUR,
+  MINUTES_PER_DAY,
+  MIN_ROW_H,
+  MAX_ROW_H,
+  WEEKDAY_LABELS,
+  clock,
+  formatClock,
+  localDate,
+  addDays,
+  timeZoneOf,
+  formatDateLabel,
+  weekdayOf,
+  weekStartOf,
+  snapDown,
+  snapUp,
+  localDateOf,
+  minuteOf,
+  atMinute,
+  recordsOfDay,
+  recordAt,
+  runsOf,
+  runsOfSelection,
+  minutesOfRecord,
+  durationLabel,
+  formatDuration,
+}

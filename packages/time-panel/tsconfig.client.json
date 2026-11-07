@@ -8,11 +8,14 @@
     "types": []
   },
   "include": [
-    "src/client/index.tsx",
-    "src/client/TimeShell.tsx",
+    "src/client/**/*.ts",
+    "src/client/**/*.tsx",
     "src/types.ts",
     "src/ui/**/*.ts",
     "src/ui/**/*.tsx"
   ],
-  "references": [{ "path": "../tag" }, { "path": "../time-block" }]
+  "references": [
+    { "path": "../tag" },
+    { "path": "../time-block" }
+  ]
 }

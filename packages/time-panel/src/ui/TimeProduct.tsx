@@ -1,0 +1,390 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type {
+  DeepLevel, DeepRect, TimeAdapter, TimeBlockView, TimeLayer, TimeProductProps, TimeView,
+} from './contract.ts'
+import { DatePicker } from './DatePicker.tsx'
+import { DeepWeekView } from './DeepWeekView.tsx'
+import { Drawer } from './Drawer.tsx'
+import { RecordSheet, type SheetTarget } from './RecordSheet.tsx'
+import { TimeCanvas } from './TimeCanvas.tsx'
+import { TimeHeader, dayLabel, weekLabel, type TimeModule } from './TimeHeader.tsx'
+import { Toast } from './Toast.tsx'
+import {
+  addDays, localDate, weekStartOf,
+  type DayRecord, type Run, type TimeTag,
+} from './model.ts'
+import { timeStyles } from './styles.ts'
+
+/**
+ * A stable string↔number index for the still numeric T1 components. The UI
+ * contract uses string ids; assigning a number the first time an id is seen
+ * keeps the components untouched and keeps an id stable across reloads.
+ */
+interface IdIndex {
+  readonly number: (id: string) => number
+  readonly string: (id: number) => string
+}
+
+interface IdIndexes {
+  readonly tag: IdIndex
+  readonly block: IdIndex
+}
+
+function createIdIndex(): IdIndex {
+  const toNumber = new Map<string, number>()
+  const toString = new Map<number, string>()
+  let next = 0
+  return {
+    number(id) {
+      let value = toNumber.get(id)
+      if (value === undefined) {
+        next += 1
+        value = next
+        toNumber.set(id, value)
+        toString.set(value, id)
+      }
+      return value
+    },
+    string(id) {
+      const known = toString.get(id)
+      if (known === undefined) throw new Error(`未知 UI 标识：${id}`)
+      return known
+    },
+  }
+}
+
+function messageOf(reason: unknown): string {
+  return reason instanceof Error ? reason.message : String(reason)
+}
+
+const FALLBACK_TODAY = localDate()
+
+/**
+ * The complete Time product UI: it owns module/layer/date/range/overlays/busy
+ * state and talks to its host only through the `TimeAdapter` prop. Panels are
+ * rendered from the `TimeView` returned by every command, so no write is
+ * assumed to have succeeded before the host answered.
+ */
+export function TimeProduct({ adapter, headerAction }: TimeProductProps) {
+  const [module, setModule] = useState<TimeModule>('time')
+  const [layer, setLayer] = useState<TimeLayer>('actual')
+  const [anchor] = useState(() => FALLBACK_TODAY)
+  const [range, setRange] = useState(() => ({ from: addDays(FALLBACK_TODAY, -3), to: addDays(FALLBACK_TODAY, 10) }))
+  const [focus, setFocus] = useState(() => ({ date: FALLBACK_TODAY, token: 1 }))
+  const [topDate, setTopDate] = useState(() => FALLBACK_TODAY)
+  const [weekStart, setWeekStart] = useState(() => weekStartOf(FALLBACK_TODAY))
+  const [view, setView] = useState<TimeView>()
+  const [drawer, setDrawer] = useState(false)
+  const [subMenu, setSubMenu] = useState(false)
+  const [sheet, setSheet] = useState<SheetTarget>()
+  const [busy, setBusy] = useState(false)
+  const [toast, setToast] = useState('')
+  const [error, setError] = useState('')
+  const [picker, setPicker] = useState<'time' | 'deep' | null>(null)
+  const toastTimer = useRef<number>(0)
+  const revision = useRef(0)
+
+  // The T1 components still use numeric ids; the maps live for the product's
+  // whole lifetime so a reload never re-identifies a tag or a block.
+  const indexesRef = useRef<IdIndexes | undefined>(undefined)
+  if (indexesRef.current === undefined) {
+    indexesRef.current = { tag: createIdIndex(), block: createIdIndex() }
+  }
+  const indexes = indexesRef.current
+
+  const say = useCallback((message: string) => {
+    setToast(message)
+    window.clearTimeout(toastTimer.current)
+    toastTimer.current = window.setTimeout(() => setToast(''), 1600)
+  }, [])
+
+  const load = useCallback(async () => {
+    const ticket = revision.current + 1
+    revision.current = ticket
+    const next = await adapter.load({ anchor, from: range.from, to: range.to, weekStart })
+    if (revision.current !== ticket) return
+    setView(next)
+    setError('')
+  }, [adapter, anchor, range, weekStart])
+
+  useEffect(() => {
+    void load().catch((reason: unknown) => { setError(messageOf(reason)) })
+  }, [load])
+
+  const runWrite = useCallback(async (
+    operation: () => Promise<TimeView>, message: string,
+  ): Promise<boolean> => {
+    const ticket = revision.current + 1
+    revision.current = ticket
+    setBusy(true)
+    try {
+      const next = await operation()
+      if (revision.current === ticket) {
+        setView(next)
+        setError('')
+      }
+      say(message)
+      return true
+    } catch (reason) {
+      const text = messageOf(reason)
+      if (revision.current === ticket) setError(text)
+      say(text)
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }, [say])
+
+  const extendRange = useCallback((side: 'before' | 'after') => {
+    setRange(previous => {
+      const next = side === 'before'
+        ? { from: addDays(previous.from, -7), to: previous.to }
+        : { from: previous.from, to: addDays(previous.to, 7) }
+      const span = (Date.parse(`${next.to}T00:00:00`) - Date.parse(`${next.from}T00:00:00`)) / 86_400_000 + 1
+      if (span <= 63) return next
+      return side === 'before' ? { from: next.from, to: addDays(next.to, -7) } : { from: addDays(next.from, 7), to: next.to }
+    })
+  }, [])
+
+  const jumpTo = useCallback((date: string) => {
+    setRange({ from: addDays(date, -3), to: addDays(date, 10) })
+    setTopDate(date)
+    setFocus(previous => ({ date, token: previous.token + 1 }))
+  }, [])
+
+  const switchLayer = useCallback((next: TimeLayer) => {
+    setLayer(next)
+    setFocus(previous => ({ date: topDate, token: previous.token + 1 }))
+  }, [topDate])
+
+  const step = useCallback((amount: number) => {
+    if (module === 'deep') {
+      setWeekStart(amount === 0 ? weekStartOf(localDate()) : addDays(weekStart, amount))
+      return
+    }
+    jumpTo(amount === 0 ? localDate() : addDays(topDate, amount))
+  }, [jumpTo, module, topDate, weekStart])
+
+  // One day with the arrows, one week with PageUp / PageDown; typing wins.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target !== null && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
+      const unit = module === 'deep' ? 7 : 1
+      const map: Record<string, number> = { ArrowLeft: -unit, ArrowRight: unit, PageUp: -7, PageDown: 7 }
+      const amount = map[event.key]
+      if (amount === undefined) return
+      event.preventDefault()
+      step(amount)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => { window.removeEventListener('keydown', onKey) }
+  }, [module, step])
+
+  const paint = useCallback(async (next: TimeLayer, runs: readonly Run[], tagId: number | null) => {
+    if (runs.length === 0) return
+    await runWrite(
+      () => adapter.paint({ layer: next, tagId: tagId === null ? null : indexes.tag.string(tagId), runs }),
+      tagId === null ? '已擦除' : '已上色',
+    )
+  }, [adapter, indexes, runWrite])
+
+  const paintDeep = useCallback(async (rects: readonly DeepRect[], level: DeepLevel | null) => {
+    if (rects.length === 0) return
+    await runWrite(
+      () => adapter.paintDeep({ weekStart, level, rects }),
+      level === null ? '已擦除' : '已记录',
+    )
+  }, [adapter, runWrite, weekStart])
+
+  const saveSheet = useCallback(async (
+    target: SheetTarget,
+    patch: { start: number; end: number; timeTagId: number; note?: string },
+  ) => {
+    const ok = await runWrite(
+      () => adapter.updateBlock({
+        layer: target.layer,
+        id: indexes.block.string(target.record.id),
+        date: target.date,
+        start: patch.start,
+        end: patch.end,
+        tagId: indexes.tag.string(patch.timeTagId),
+        note: patch.note,
+      }),
+      '已保存',
+    )
+    if (ok) setSheet(undefined)
+  }, [adapter, indexes, runWrite])
+
+  const deleteSheet = useCallback(async (target: SheetTarget) => {
+    const ok = await runWrite(
+      () => adapter.deleteBlock({ layer: target.layer, id: indexes.block.string(target.record.id) }),
+      '已删除',
+    )
+    if (ok) setSheet(undefined)
+  }, [adapter, indexes, runWrite])
+
+  const undo = useCallback(async () => {
+    if (busy || view === undefined || view.canUndo[layer] !== true) return
+    const ticket = revision.current + 1
+    revision.current = ticket
+    setBusy(true)
+    try {
+      const next = await adapter.undo(layer)
+      if (next === undefined) return
+      if (revision.current === ticket) {
+        setView(next)
+        setError('')
+      }
+      say('已撤销')
+    } catch (reason) {
+      const message = messageOf(reason)
+      if (revision.current === ticket) setError(message)
+      say(message)
+    } finally {
+      setBusy(false)
+    }
+  }, [adapter, busy, layer, say, view])
+
+  const tags = useMemo<TimeTag[]>(() => (view?.tags ?? []).map(tag => ({
+    id: indexes.tag.number(tag.id),
+    name: tag.name,
+    kind: 'time',
+    parentId: tag.parentId === undefined ? undefined : indexes.tag.number(tag.parentId),
+    color: tag.color,
+  })), [indexes, view])
+
+  const records = useMemo(() => {
+    const make = (list: readonly TimeBlockView[]): Map<string, DayRecord[]> => {
+      const map = new Map<string, DayRecord[]>()
+      for (const day of view?.days ?? []) map.set(day, [])
+      for (const block of list) {
+        const day = map.get(block.date)
+        if (day === undefined) continue
+        day.push({
+          id: indexes.block.number(block.id),
+          start: block.start,
+          end: block.end,
+          timeTagId: indexes.tag.number(block.tagId),
+          note: block.note,
+        })
+      }
+      for (const day of map.values()) day.sort((left, right) => left.start - right.start || left.id - right.id)
+      return map
+    }
+    return {
+      actual: make(view?.blocks.actual ?? []),
+      plan: make(view?.blocks.plan ?? []),
+    } as Readonly<Record<TimeLayer, ReadonlyMap<string, readonly DayRecord[]>>>
+  }, [indexes, view])
+
+  const deepWeek = useMemo(() => view === undefined ? undefined : {
+    weekStart: view.weekStart,
+    source: view.deep.source,
+    cells: view.deep.levels.map(level => ({ level })),
+  }, [view])
+
+  const today = view?.today ?? FALLBACK_TODAY
+  const titleSub = module === 'time' ? (layer === 'plan' ? '计划' : '实录') : ''
+  const subItems = module === 'time'
+    ? [{ id: 'actual' as const, name: '实录' }, { id: 'plan' as const, name: '计划' }]
+    : []
+  const openSubMenu = () => {
+    if (subItems.length === 0) { setDrawer(true); return }
+    setSubMenu(true)
+  }
+
+  return (
+    <div
+      className="sec-shell"
+      data-time-remote
+      data-remote-state={view === undefined ? (error === '' ? 'loading' : 'error') : 'ready'}
+    >
+      <style>{timeStyles}</style>
+      <TimeHeader
+        module={module}
+        titleSub={titleSub}
+        dateLabel={module === 'deep' ? weekLabel(weekStart) : dayLabel(topDate)}
+        canUndo={view?.canUndo[layer] === true}
+        busy={busy}
+        subMenuOpen={subMenu}
+        pickerOpen={picker !== null}
+        action={headerAction}
+        onDrawer={() => setDrawer(value => !value)}
+        onSubMenu={() => (subMenu ? setSubMenu(false) : openSubMenu())}
+        onPicker={() => setPicker(picker === null ? module : null)}
+        onStep={step}
+        onUndo={() => void undo()}
+      />
+
+      <div className="sec-views">
+        <section className="sec-view on" style={{ display: module === 'time' && layer === 'actual' ? 'flex' : 'none' }}>
+          {view !== undefined && module === 'time' && layer === 'actual' && (
+            <TimeCanvas
+              layer="actual" days={view.days} today={view.today} nowMinute={view.nowMinute}
+              focus={focus} onExtend={extendRange} onTopDateChange={setTopDate} records={records.actual} tags={tags}
+              busy={busy} onAssign={(runs, tagId) => void paint('actual', runs, tagId)}
+              onEdit={(date, record) => setSheet({ layer: 'actual', date, record })}
+            />
+          )}
+        </section>
+        <section className="sec-view on" style={{ display: module === 'time' && layer === 'plan' ? 'flex' : 'none' }}>
+          {view !== undefined && module === 'time' && layer === 'plan' && (
+            <TimeCanvas
+              layer="plan" days={view.days} today={view.today} nowMinute={view.nowMinute}
+              focus={focus} onExtend={extendRange} onTopDateChange={setTopDate} records={records.plan} tags={tags}
+              busy={busy} onAssign={(runs, tagId) => void paint('plan', runs, tagId)}
+              onEdit={(date, record) => setSheet({ layer: 'plan', date, record })}
+            />
+          )}
+        </section>
+        <section className="sec-view on" style={{ display: module === 'deep' ? 'flex' : 'none' }}>
+          {module === 'deep' && <DeepWeekView
+            week={deepWeek} weekStart={weekStart} today={today} busy={busy}
+            onPaint={(rects, level) => void paintDeep(rects, level)}
+          />}
+        </section>
+      </div>
+
+      {picker !== null && (
+        <DatePicker
+          mode={picker === 'deep' ? 'week' : 'day'} value={picker === 'deep' ? weekStart : topDate} today={today}
+          onPick={date => {
+            if (picker === 'deep') setWeekStart(weekStartOf(date))
+            else jumpTo(date)
+            setPicker(null)
+          }}
+          onClose={() => setPicker(null)}
+        />
+      )}
+
+      {error !== '' && <div className="sec-toast on" style={{ bottom: 52 }}>{error}</div>}
+
+      {subMenu && subItems.length > 0 && (
+        <div className="sec-smenu on" style={{ left: 44, top: 42 }}>
+          {subItems.map(item => (
+            <button key={item.id} type="button" className={layer === item.id ? 'on' : ''} onClick={() => { switchLayer(item.id); setSubMenu(false) }}>
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M2.5 6.2l2.4 2.4L9.5 4" /></svg>
+              {item.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <Drawer
+        open={drawer}
+        module={module}
+        onModuleChange={next => { setModule(next); setDrawer(false); setPicker(null) }}
+        onClose={() => setDrawer(false)}
+      />
+
+      {sheet !== undefined && (
+        <RecordSheet
+          target={sheet} tags={tags} busy={busy} onClose={() => setSheet(undefined)}
+          onSave={patch => void saveSheet(sheet, patch)} onDelete={() => void deleteSheet(sheet)}
+        />
+      )}
+      <Toast message={toast} />
+    </div>
+  )
+}

@@ -5,12 +5,12 @@ import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import contribution from 'dsh-secretary-time-panel/remote'
-import { TimeShell } from './TimeShell.tsx'
+import { TimeClient } from './TimeClient.tsx'
 
 const TAB_ID = 'dsh-secretary-time-panel'
 
 function registerUi(ctx: Context): void {
-  const Product = () => <TimeShell ctx={ctx} />
+  const Product = () => <TimeClient ctx={ctx} />
   ctx.effect(() => ctx.sidebarRightTabs.register({
     id: TAB_ID,
     kind: 'secretary-time-block',

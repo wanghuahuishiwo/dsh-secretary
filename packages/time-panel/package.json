@@ -12,6 +12,10 @@
       "default": "./lib/index.js"
     },
     "./client": "./lib/client.js",
+    "./ui": {
+      "types": "./lib/ui-types/index.d.ts",
+      "default": "./lib/ui.js"
+    },
     "./types": {
       "types": "./lib/types/types.d.ts",
       "default": "./lib/types.js"
@@ -29,6 +33,9 @@
   "files": [
     "lib/index.js",
     "lib/client.js",
+    "lib/ui.js",
+    "lib/ui.js.map",
+    "lib/ui-types/**/*.d.ts",
     "lib/types.js",
     "lib/types/**/*.d.ts",
     "lib/typert.host.js",
@@ -71,7 +78,7 @@
     "typescript": "^6.0.3"
   },
   "scripts": {
-    "build": "tsc -b tsconfig.host.json tsconfig.client.json && node build.mjs",
+    "build": "tsc -b tsconfig.host.json tsconfig.ui.json tsconfig.client.json && node build.mjs",
     "dev": "node build.mjs --watch",
     "prepare": "node ../../scripts/generate-typert.mjs && node build.mjs",
     "test": "node --test tests/*.mjs"

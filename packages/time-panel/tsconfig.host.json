@@ -6,6 +6,11 @@
     "noEmit": false,
     "emitDeclarationOnly": true
   },
-  "files": ["src/index.ts", "src/types.ts"],
+  "files": [
+    "src/index.ts",
+    "src/types.ts",
+    "src/ui/contract.ts",
+    "src/ui-types/index.ts"
+  ],
   "references": [{ "path": "../tag" }, { "path": "../time-block" }]
 }

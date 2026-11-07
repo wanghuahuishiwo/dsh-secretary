@@ -31,6 +31,7 @@ kind: "package-reference"
 | `./remote` | 官方生成的浏览器 Remote contribution |
 | `./types` | 浏览器安全的请求与 projection 类型 |
 | `./client` | product-local Remote 装配与右栏 UI |
+| `./ui` | 与宿主无关的 `TimeProduct`、Adapter 契约与纯 `timeMath`，供 OpenDesign 等外部壳复用 |
 
 本包没有 Config。Remote 签名、namespace、错误词汇或 exports 变化后，从仓库根运行 `pnpm generate:typert`，再构建并验证真实链路。
 
