@@ -15561,6 +15561,11 @@
       const onKey = (event) => {
         const target = event.target;
         if (target !== null && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+        if (event.key === "Tab" && overlapsExisting) {
+          event.preventDefault();
+          setParallel((value) => !value);
+          return;
+        }
         if (event.key === "Escape") {
           if (selectedRef.current.size > 0) clearSelection();
           return;
@@ -15577,7 +15582,7 @@
       return () => {
         window.removeEventListener("keydown", onKey);
       };
-    }, [onAssign, clearSelection]);
+    }, [onAssign, clearSelection, overlapsExisting]);
     const assign = (tagId) => {
       if (runs.length === 0) return;
       onAssign(runs, tagId, parallel ? "parallel" : "overwrite");
@@ -15613,7 +15618,7 @@
       ] }),
       totalMinutes > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: `tb-sel-badge${overlapsExisting ? " split" : ""}`, children: [
         /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { role: "status", children: durationLabel(totalMinutes) }),
-        overlapsExisting && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "tb-sel-mode", role: "group", "aria-label": "\u5199\u5165\u65B9\u5F0F", children: [
+        overlapsExisting && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "tb-sel-mode", role: "group", "aria-label": "\u5199\u5165\u65B9\u5F0F", title: "\u6309 Tab \u5207\u6362\u8986\u76D6\uFF0F\u5E76\u884C", "aria-keyshortcuts": "Tab", children: [
           /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { type: "button", className: parallel ? "" : "on", "aria-pressed": !parallel, onClick: () => setParallel(false), children: "\u8986\u76D6" }),
           /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { type: "button", className: parallel ? "on" : "", "aria-pressed": parallel, onClick: () => setParallel(true), children: "\u5E76\u884C" })
         ] })

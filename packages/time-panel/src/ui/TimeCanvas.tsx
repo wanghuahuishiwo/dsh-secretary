@@ -446,6 +446,11 @@ export function TimeCanvas(props: Props) {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
       if (target !== null && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
+      if (event.key === 'Tab' && overlapsExisting) {
+        event.preventDefault()
+        setParallel(value => !value)
+        return
+      }
       if (event.key === 'Escape') {
         if (selectedRef.current.size > 0) clearSelection()
         return
@@ -460,7 +465,7 @@ export function TimeCanvas(props: Props) {
     }
     window.addEventListener('keydown', onKey)
     return () => { window.removeEventListener('keydown', onKey) }
-  }, [onAssign, clearSelection])
+  }, [onAssign, clearSelection, overlapsExisting])
 
   const assign = (tagId: number) => {
     if (runs.length === 0) return
@@ -506,7 +511,7 @@ export function TimeCanvas(props: Props) {
         <div className={`tb-sel-badge${overlapsExisting ? ' split' : ''}`}>
           <span role="status">{durationLabel(totalMinutes)}</span>
           {overlapsExisting && (
-            <span className="tb-sel-mode" role="group" aria-label="写入方式">
+            <span className="tb-sel-mode" role="group" aria-label="写入方式" title="按 Tab 切换覆盖／并行" aria-keyshortcuts="Tab">
               <button type="button" className={parallel ? '' : 'on'} aria-pressed={!parallel} onClick={() => setParallel(false)}>覆盖</button>
               <button type="button" className={parallel ? 'on' : ''} aria-pressed={parallel} onClick={() => setParallel(true)}>并行</button>
             </span>
