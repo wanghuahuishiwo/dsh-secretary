@@ -1,10 +1,9 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CELL, MAX_ROW_H, MIN_ROW_H, PER_HOUR, WEEKDAY_LABELS,
-  minutesOfRecord, recordAt, runsOf, snapDown,
+  durationLabel, minutesOfRecord, recordAt, runsOf, snapDown, tagInitials,
   type DayRecord, type Run, type TimeTag,
 } from './model.ts'
-import { SelectionBar } from './SelectionBar.tsx'
 import { TagShelf } from './TagShelf.tsx'
 
 interface Props {
@@ -50,7 +49,7 @@ function splitByHour(runs: readonly Run[]): Run[] {
 
 /** One day column: the date mark, the hour scale, the ten-minute grid, its blocks and its selection. */
 const DayColumn = memo(function DayColumn({
-  day, rowH, today, records, selected, nowMin, tagName, tagColor, onCellDown,
+  day, rowH, today, records, selected, nowMin, tagName, tagColor, onCellDown, onBlockEdit,
 }: {
   day: string
   rowH: number
@@ -61,6 +60,7 @@ const DayColumn = memo(function DayColumn({
   tagName: (id: number) => string
   tagColor: (id: number) => string
   onCellDown: (event: React.PointerEvent<HTMLDivElement>) => void
+  onBlockEdit: (date: string, record: DayRecord) => void
 }) {
   const date = new Date(`${day}T12:00:00`)
   const height = 24 * rowH
@@ -69,6 +69,14 @@ const DayColumn = memo(function DayColumn({
     last: index % PER_HOUR === PER_HOUR - 1,
   }))
   const selRuns = selected === undefined ? [] : splitByHour(runsOf(day, [...selected]))
+
+  const onCellDoubleClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement
+    const minute = Number(target.dataset.min)
+    if (!Number.isFinite(minute)) return
+    const record = recordAt(records, minute)
+    if (record !== undefined) onBlockEdit(day, record)
+  }, [records, day, onBlockEdit])
 
   return (
     <div className="tb-day" data-day={day} style={{ height }}>
@@ -86,14 +94,16 @@ const DayColumn = memo(function DayColumn({
         ))}
       </div>
       <div className="tb-grid" data-day={day} style={{ height }}>
-        <div className="tb-cells" style={{ gridAutoRows: `${rowH}px` }} onPointerDown={onCellDown}>
+        <div className="tb-cells" style={{ gridAutoRows: `${rowH}px` }} onPointerDown={onCellDown} onDoubleClick={onCellDoubleClick}>
           {cells.map(cell => (
             <div key={cell.minute} className={`tb-cell${cell.last ? ' hourlast' : ''}`} data-day={day} data-min={cell.minute} />
           ))}
         </div>
         <div className="tb-blocks">
           {records.map(record => {
-            const label = record.note === undefined || record.note === '' ? tagName(record.timeTagId) : record.note
+            const fullName = tagName(record.timeTagId)
+            const shortLabel = record.note === undefined || record.note === '' ? tagInitials(fullName) : record.note
+            const tooltip = record.note === undefined || record.note === '' ? fullName : `${fullName} · ${record.note}`
             const color = tagColor(record.timeTagId)
             const nodes = []
             for (let minute = snapDown(record.start); minute < record.end; minute += CELL) {
@@ -108,9 +118,9 @@ const DayColumn = memo(function DayColumn({
                     height: rowH - 1,
                     background: color,
                   }}
-                  title={label}
+                  title={tooltip}
                 >
-                  <span>{label}</span>
+                  <span>{shortLabel}</span>
                 </div>,
               )
             }
@@ -191,11 +201,8 @@ export function TimeCanvas(props: Props) {
     element.scrollTo({ top: day.offsetTop, behavior: smooth ? 'smooth' : 'auto' })
   }, [])
 
-  // Scroll to a requested day once it is actually on the canvas: the window may
-  // still be loading the days around it, so retry as days and row height arrive.
   const appliedFocus = useRef(0)
   const focusedDay = useRef(focus.date)
-  /** The day under the top edge, kept so growing the window cannot scroll the view. */
   const anchor = useRef<{ date: string; offset: number } | null>(null)
   useEffect(() => {
     if (appliedFocus.current === focus.token) return
@@ -208,7 +215,6 @@ export function TimeCanvas(props: Props) {
     element.scrollTo({ top: day.offsetTop, behavior: 'auto' })
   }, [focus, days, rowH])
 
-  // The window grows and trims as you scroll; hold the day you were reading in place.
   useEffect(() => {
     const held = anchor.current
     const element = scrollRef.current
@@ -218,7 +224,6 @@ export function TimeCanvas(props: Props) {
     element.scrollTop = day.offsetTop + held.offset
   }, [days])
 
-  // Row height settles after the first paint; the focused day has to stay put through it.
   useEffect(() => {
     const element = scrollRef.current
     const day = element?.querySelector<HTMLElement>(`.tb-day[data-day="${focusedDay.current}"]`)
@@ -235,7 +240,6 @@ export function TimeCanvas(props: Props) {
     if (element === null) return
     const day = element.querySelector<HTMLElement>(`.tb-day[data-day="${today}"]`)
     if (day !== null && day !== undefined) setJumpVisible(Math.abs(element.scrollTop - day.offsetTop) > 12)
-    // The header date follows the day under the top edge, so it always says where you are.
     const columns = element.querySelectorAll<HTMLElement>('.tb-day')
     let top = ''
     let topOffset = 0
@@ -333,23 +337,6 @@ export function TimeCanvas(props: Props) {
     return total
   }, [selected])
 
-  const whole = useMemo(() => {
-    if (selected.size !== 1) return undefined
-    const [date, minutes] = [...selected][0]
-    const dayRecords = records.get(date) ?? []
-    const hit = new Set<number>()
-    for (const minute of minutes) {
-      const record = recordAt(dayRecords, minute)
-      if (record !== undefined) hit.add(record.id)
-    }
-    if (hit.size !== 1) return undefined
-    const record = dayRecords.find(item => item.id === [...hit][0])
-    if (record === undefined) return undefined
-    const covered = minutesOfRecord(record)
-    if (covered.length !== minutes.size || !covered.every(minute => minutes.has(minute))) return undefined
-    return { date, record }
-  }, [selected, records])
-
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
@@ -376,6 +363,11 @@ export function TimeCanvas(props: Props) {
     clearSelection()
   }
 
+  const handleBlockEdit = useCallback((date: string, record: DayRecord) => {
+    clearSelection()
+    onEdit(date, record)
+  }, [clearSelection, onEdit])
+
   const nowMin = days.includes(today) ? nowMinute : undefined
 
   return (
@@ -396,6 +388,7 @@ export function TimeCanvas(props: Props) {
                   tagName={tagName}
                   tagColor={tagColor}
                   onCellDown={onCellDown}
+                  onBlockEdit={handleBlockEdit}
                 />
               ))}
             </div>
@@ -404,17 +397,11 @@ export function TimeCanvas(props: Props) {
         </div>
         <TagShelf tags={timeTags} onAssign={assign} />
       </div>
-      <SelectionBar
-        totalMinutes={totalMinutes}
-        whole={whole}
-        busy={busy}
-        hasRuns={runs.length > 0}
-        tagName={tagName}
-        tagColor={tagColor}
-        onEdit={onEdit}
-        onClear={clearSelection}
-        onErase={() => { onAssign(runs, null); clearSelection() }}
-      />
+      {totalMinutes > 0 && (
+        <div className="tb-sel-badge" role="status">
+          {durationLabel(totalMinutes)}
+        </div>
+      )}
     </>
   )
 }

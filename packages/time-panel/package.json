@@ -57,6 +57,7 @@
   "dependencies": {
     "dsh-secretary-tag": "workspace:*",
     "dsh-secretary-time-block": "workspace:*",
+    "pinyin-pro": "^3.29.5",
     "zod": "4.4.3"
   },
   "peerDependencies": {

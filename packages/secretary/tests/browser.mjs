@@ -386,19 +386,18 @@ test('selecting cells then a category paints them; 不选, Delete and 撤销 beh
     await openTimeRemote(page, server.url)
 
     await dragCells(page, today, 480, 530)
-    assert.match(await page.locator('.tb-status').innerText(), /选择了\s*60\s*分钟/, 'dragging selects ten-minute cells')
+    assert.match(await page.locator('.tb-sel-badge').innerText(), /1 小时/, 'dragging selects ten-minute cells')
     assert.equal(await page.locator('.tb-selbox').count(), 1, 'one hour of selection is one ring')
 
     await page.locator('.tb-cat').filter({ hasText: '工作' }).first().click()
     await page.waitForFunction(() => document.querySelectorAll('.tb-blk').length === 6)
-    assert.equal(await page.locator('.tb-blk span').first().innerText(), '工作', 'every painted cell carries the label')
-
+    assert.equal(await page.locator('.tb-blk span').first().innerText(), 'GZ', 'every painted cell carries the pinyin initials')
     await page.reload({ waitUntil: 'domcontentloaded' })
     await openTimeRemote(page, server.url)
     await page.waitForFunction(() => document.querySelectorAll('.tb-blk').length === 6, undefined, { timeout: 30_000 })
 
     await dragCells(page, today, 480, 530)
-    await page.locator('.tb-sb').filter({ hasText: '不选' }).click()
+    await page.keyboard.press('Escape')
     assert.equal(await page.locator('.tb-selbox').count(), 0, '不选 clears the ring')
 
     await dragCells(page, today, 480, 530)
@@ -436,8 +435,7 @@ test('the 备注 sheet changes a record, and 计划 paints its own layer without
     await page.waitForFunction(() => document.querySelectorAll('.tb-blk').length === 6)
 
     await dragCells(page, today, 480, 530)
-    assert.match(await page.locator('.tb-status').innerText(), /工作/, 'a whole record shows its category')
-    await page.locator('.tb-sb').filter({ hasText: '备注' }).click()
+    await page.locator(`.tb-cell[data-day="${today}"][data-min="480"]`).dblclick()
     const sheet = page.locator('.tb-sheet')
     await sheet.waitFor()
     await sheet.locator('.tb-picks button').filter({ hasText: '吃饭' }).click()
@@ -751,7 +749,7 @@ test('Time Remote product covers cold-start real-canvas read/paint, strict error
     await product.locator('.tb-cat').filter({ hasText: '工作' }).click()
     await product.locator('.tb-blk').waitFor()
     assert.equal(await product.locator('.tb-blk').count(), 1)
-    assert.equal(await product.locator('.tb-blk span').innerText(), '工作')
+    assert.equal(await product.locator('.tb-blk span').innerText(), 'GZ')
 
     await openTimeRemote(page, server.url)
     assert.equal(await page.locator('[data-time-remote] .tb-blk').count(), 1)
@@ -784,7 +782,7 @@ test('Time Remote product covers cold-start real-canvas read/paint, strict error
     assert.equal(await product.locator('.tb-blk').count(), 1, 'failed paint leaves the last successful projection intact')
 
     await dragCells(page, today, 540, 540)
-    await product.locator('.tb-sb').filter({ hasText: '备注' }).click()
+    await product.locator(`.tb-cell[data-day="${today}"][data-min="540"]`).dblclick()
     const failedSheet = product.locator('.tb-sheet')
     await failedSheet.locator('.tb-note').fill('失败时保留编辑')
     await failedSheet.getByRole('button', { name: '完成' }).click()
@@ -856,7 +854,7 @@ test('Time Remote product preserves editing, multi-day Undo, date navigation, an
     await product.locator('.tb-cat').filter({ hasText: '工作' }).first().click()
     await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .tb-blk').length === 6)
     await dragCells(page, today, 480, 530)
-    await product.locator('.tb-sb').filter({ hasText: '备注' }).click()
+    await product.locator(`.tb-cell[data-day="${today}"][data-min="480"]`).dblclick()
     const sheet = product.locator('.tb-sheet')
     await sheet.locator('.tb-step').nth(1).click()
     await sheet.locator('.tb-picks button').filter({ hasText: '吃饭' }).click()
@@ -873,7 +871,7 @@ test('Time Remote product preserves editing, multi-day Undo, date navigation, an
     await product.locator('.tb-cat').filter({ hasText: '生活' }).first().click()
     await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .tb-blk').length === 6)
     await dragCells(page, today, 600, 650)
-    await product.locator('.tb-sb').filter({ hasText: '备注' }).click()
+    await product.locator(`.tb-cell[data-day="${today}"][data-min="600"]`).dblclick()
     await sheet.getByRole('button', { name: '删除' }).click()
     await sheet.waitFor({ state: 'detached' })
     assert.equal(await product.locator('.tb-blk').count(), 0)
@@ -882,7 +880,7 @@ test('Time Remote product preserves editing, multi-day Undo, date navigation, an
 
     await product.locator(`.tb-cell[data-day="${today}"][data-min="620"]`).click()
     await product.locator(`.tb-cell[data-day="${tomorrow}"][data-min="620"]`).click()
-    assert.match(await product.locator('.tb-status').innerText(), /选择了\s*20\s*分钟/)
+    assert.match(await product.locator('.tb-sel-badge').innerText(), /20 分/)
     await product.locator('.tb-cat').filter({ hasText: '工作' }).first().click()
     await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .tb-blk').length === 9)
     await product.locator(`.tb-cell[data-day="${today}"][data-min="620"]`).click()

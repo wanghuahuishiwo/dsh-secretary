@@ -136,11 +136,12 @@ export const timeStyles = `.tb-app {
 .tb-cat[aria-expanded="true"] .caret { transform: rotate(90deg); }
 .tb-cat span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ---------- 底部状态栏 ---------- */
-.tb-status { flex: none; display: flex; align-items: center; gap: 8px; height: var(--tb-status-height, 42px); padding: 0 8px 0 12px;
-  border-top: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); background: var(--tb-surface-raised, #1d2025); font-size: var(--tb-font-body, 12px); color: var(--tb-text-secondary, #a3a9b4); }
-.tb-status b { color: var(--tb-text-primary, #eceff3); font-weight: 600; font-variant-numeric: tabular-nums; }
-.tb-status .grow { flex: 1; }
+/* ---------- 选区徽章（替代底部状态栏） ---------- */
+.tb-sel-badge { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 10;
+  padding: 4px 12px; border-radius: var(--tb-radius-md, 8px); border: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14));
+  background: var(--tb-surface-raised, #1d2025); color: var(--tb-text-primary, #eceff3);
+  font-size: var(--tb-font-label, 11px); font-weight: 600; font-variant-numeric: tabular-nums;
+  pointer-events: none; white-space: nowrap; }
 .tb-sb { height: 24px; border-radius: 6px; color: var(--tb-text-secondary, #a3a9b4); font-size: var(--tb-font-label, 11px); padding: 0 8px;
   display: inline-flex; align-items: center; gap: 5px; }
 .tb-sb[hidden] { display: none; }
