@@ -179,8 +179,8 @@ const DayColumn = memo(function DayColumn({
               type="button"
               className="tb-more"
               style={{
-                left: `calc(${((((cell.minute % 60) / CELL) + 1) / PER_HOUR) * 100}% - 18px)`,
-                top: Math.floor(cell.minute / 60) * rowH + 2,
+                left: `calc(${((((cell.minute % 60) / CELL) + 1) / PER_HOUR) * 100}% - 14px)`,
+                top: Math.floor(cell.minute / 60) * rowH,
               }}
               aria-label={`${cell.count} 条并行记录`}
               title={`${cell.count} 条并行记录`}

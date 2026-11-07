@@ -115,11 +115,10 @@ export const timeStyles = `.tb-app {
 .tb-blk span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Overlap stays in the data but not in the cell: one record plus a count badge. */
 /* A bare superscript keeps the badge quiet on top of the tag colour. */
-.tb-more { position: absolute; z-index: 4; width: 14px; height: 14px; display: grid; place-items: center; padding: 0;
-  border: 0; background: transparent; color: #fff; font-size: 12px; font-weight: 700; line-height: 1;
+.tb-more { position: absolute; z-index: 4; width: 12px; height: 12px; display: grid; place-items: center; padding: 0;
+  border: 0; background: transparent; color: #fff; font-size: 11px; font-weight: 700; line-height: 1;
   text-shadow: 0 1px 2px rgba(0, 0, 0, .55), 0 0 1px rgba(0, 0, 0, .6);
   pointer-events: auto; cursor: pointer; opacity: .88; }
-.tb-more::before { content: ''; position: absolute; inset: -4px; }
 .tb-more:hover { opacity: 1; }
 .tb-pop { position: absolute; z-index: 6; left: 6px; right: 6px; display: flex; flex-direction: column; gap: 1px;
   padding: 5px; border: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); border-radius: 8px;
