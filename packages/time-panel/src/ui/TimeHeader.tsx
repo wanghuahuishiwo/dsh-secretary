@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
 import { WEEKDAY_LABELS, addDays } from './model.ts'
 
-export type TimeModule = 'time' | 'deep'
+export type TimeModule = 'actual' | 'plan' | 'deep'
 
 export const MODULES: { id: TimeModule; name: string; icon: ReactNode }[] = [
-  { id: 'time', name: '时间块', icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="2" width="12" height="12" rx="3" /><path d="M2 6h12M6 6v8" /></svg> },
-  { id: 'deep', name: '深度时间', icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M2 12l3.5-5 3 3.5L12 4" /><path d="M2 14h12" /></svg> },
+  { id: 'actual', name: '实录', icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="8" cy="8" r="6" /><path d="M8 4.5V8l2.5 1.5" /></svg> },
+  { id: 'plan', name: '计划', icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="3.5" width="12" height="10.5" rx="2" /><path d="M2 6.5h12M5 2v2.5M11 2v2.5" /><path d="M5 9.5l1.5 1.5L11 7.5" /></svg> },
+  { id: 'deep', name: '深度时间', icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M2 4.5h12M4 8h8M6 11.5h4" /></svg> },
 ]
 
 export function dayLabel(date: string): string {
@@ -21,33 +22,28 @@ export function weekLabel(weekStart: string): string {
 
 interface TimeHeaderProps {
   readonly module: TimeModule
-  readonly titleSub: string
   readonly dateLabel: string
   readonly canUndo: boolean
   readonly busy: boolean
-  readonly subMenuOpen: boolean
   readonly pickerOpen: boolean
   /** Host-owned control rendered in the header's trailing slot. */
   readonly action?: ReactNode
   readonly onDrawer: () => void
-  readonly onSubMenu: () => void
   readonly onPicker: () => void
   readonly onStep: (amount: number) => void
   readonly onUndo: () => void
 }
 
-/** 产品头部：菜单、标题/层切换、日期导航、今天、撤销。 */
-export function TimeHeader({ module, titleSub, dateLabel, canUndo, busy, subMenuOpen, pickerOpen, action, onDrawer, onSubMenu, onPicker, onStep, onUndo }: TimeHeaderProps) {
+/** 产品头部：菜单、模块名、日期导航、今天、撤销。 */
+export function TimeHeader({ module, dateLabel, canUndo, busy, pickerOpen, action, onDrawer, onPicker, onStep, onUndo }: TimeHeaderProps) {
   return (
     <header className={`tb-head${action === undefined || action === null ? '' : ' has-action'}`}>
       <button className="tb-hbtn" type="button" aria-label="一级模块" onClick={onDrawer}>
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2.5 4h11M2.5 8h11M2.5 12h11" /></svg>
       </button>
-      <button className="tb-title" type="button" aria-expanded={subMenuOpen} onClick={onSubMenu}>
-        <span>{MODULES.find(item => item.id === module)?.name ?? ''}</span>
-        <span className="tsub">{titleSub}</span>
-        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M2.5 4.5L6 8l3.5-3.5" /></svg>
-      </button>
+      <span className="tb-title">
+        {MODULES.find(item => item.id === module)?.name ?? ''}
+      </span>
       <span className="grow" />
       <button className="tb-hbtn" type="button" aria-label={module === 'deep' ? '上一周' : '上一天'} onClick={() => onStep(module === 'deep' ? -7 : -1)}>
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M9.5 4L5.5 8l4 4" /></svg>

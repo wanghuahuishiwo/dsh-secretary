@@ -114,8 +114,7 @@ async function openModule(page, name) {
 }
 
 async function chooseTimeView(page, name) {
-  await page.locator('.tb-title').click()
-  await page.locator('.tb-smenu button').filter({ hasText: name }).click()
+  await openModule(page, name)
 }
 
 function overlaySource(home) {
@@ -285,13 +284,11 @@ test('the product is a right-Sidebar tab: one day per screen, the drawer as leve
 
     await openModule(page, '深度时间')
     assert.equal(await page.locator('.tb-hc').count(), 7 * 24, '深度时间 draws seven days by twenty-four hours')
-    await openModule(page, '时间块')
-    assert.equal(await page.locator('.tb-cell').count(), 14 * 144, 'the drawer returns to 时间块')
+    await openModule(page, '实录')
+    assert.equal(await page.locator('.tb-cell').count(), 14 * 144, 'the drawer returns to 实录')
 
     await chooseTimeView(page, '计划')
-    await page.locator('.tb-title .tsub', { hasText: '计划' }).waitFor()
     await chooseTimeView(page, '实录')
-    await page.locator('.tb-title .tsub', { hasText: '实录' }).waitFor()
 
     assert.deepEqual(errors, [])
   } finally {
@@ -720,7 +717,7 @@ test('Time Remote product covers cold-start real-canvas read/paint, strict error
     assert.equal(await product.locator('.tb-day').count(), 14)
     await openModule(page, '深度时间')
     assert.equal(await product.locator('.tb-hc').count(), 168)
-    await openModule(page, '时间块')
+    await openModule(page, '实录')
     assert.equal(await product.locator('.tb-cat').filter({ hasText: '工作' }).count(), 1)
     const wrongWireType = await remoteCall(page, 'secretaryTime/paint', {
       input: {
@@ -862,7 +859,6 @@ test('Time Remote product preserves editing, multi-day Undo, date navigation, an
     assert.equal(await product.locator('.tb-blk span').first().innerText(), 'Remote 午饭')
 
     await chooseTimeView(page, '计划')
-    await product.locator('.tb-title .tsub').filter({ hasText: '计划' }).waitFor()
     assert.equal(await product.locator('.tb-blk').count(), 0)
     await dragCells(page, today, 600, 650)
     await product.locator('.tb-cat').filter({ hasText: '生活' }).first().click()
@@ -952,7 +948,7 @@ test('Time Remote product preserves DeepTime inheritance, restart, host themes, 
     await page.getByRole('button', { name: '下一周' }).click()
     await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .tb-hc.H').length === 3)
 
-    await openModule(page, '时间块')
+    await openModule(page, '实录')
     const read = () => product.evaluate(element => getComputedStyle(element).backgroundColor)
     const light = await read()
     await page.getByRole('button', { name: /^(Account menu|账户菜单)$/ }).first().click()

@@ -60,15 +60,14 @@ function messageOf(reason: unknown): string {
 const FALLBACK_TODAY = localDate()
 
 /**
- * The complete Time product UI: it owns module/layer/date/range/overlays/busy
- * state and talks to its host only through the `TimeAdapter` prop. Panels are
+ * The complete Time product UI: it owns module/date/range/overlays/busy state
+ * and talks to its host only through the `TimeAdapter` prop. Panels are
  * rendered from the `TimeView` returned by every command, so no write is
  * assumed to have succeeded before the host answered.
  */
 export function TimeProduct({ adapter, headerAction, today: openingDay }: TimeProductProps) {
   const openingDate = openingDay ?? FALLBACK_TODAY
-  const [module, setModule] = useState<TimeModule>('time')
-  const [layer, setLayer] = useState<TimeLayer>('actual')
+  const [module, setModule] = useState<TimeModule>('actual')
   const [anchor] = useState(() => openingDate)
   const [range, setRange] = useState(() => ({ from: addDays(openingDate, -3), to: addDays(openingDate, 10) }))
   const [focus, setFocus] = useState(() => ({ date: openingDate, token: 1 }))
@@ -76,14 +75,16 @@ export function TimeProduct({ adapter, headerAction, today: openingDay }: TimePr
   const [weekStart, setWeekStart] = useState(() => weekStartOf(openingDate))
   const [view, setView] = useState<TimeView>()
   const [drawer, setDrawer] = useState(false)
-  const [subMenu, setSubMenu] = useState(false)
   const [sheet, setSheet] = useState<SheetTarget>()
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState('')
   const [error, setError] = useState('')
-  const [picker, setPicker] = useState<'time' | 'deep' | null>(null)
+  const [picker, setPicker] = useState<TimeModule | null>(null)
   const toastTimer = useRef<number>(0)
   const revision = useRef(0)
+
+  /** The time layer this module maps to; deep has no layer. */
+  const layer: TimeLayer = module === 'plan' ? 'plan' : 'actual'
 
   // The T1 components still use numeric ids; the maps live for the product's
   // whole lifetime so a reload never re-identifies a tag or a block.
@@ -152,11 +153,6 @@ export function TimeProduct({ adapter, headerAction, today: openingDay }: TimePr
     setTopDate(date)
     setFocus(previous => ({ date, token: previous.token + 1 }))
   }, [])
-
-  const switchLayer = useCallback((next: TimeLayer) => {
-    setLayer(next)
-    setFocus(previous => ({ date: topDate, token: previous.token + 1 }))
-  }, [topDate])
 
   // The adapter's `today` is authoritative once loaded, so 今天 / 本周 land on the
   // product day even when the host clock and a pinned fixture disagree.
@@ -290,14 +286,6 @@ export function TimeProduct({ adapter, headerAction, today: openingDay }: TimePr
   }, [view])
 
   const today = productToday
-  const titleSub = module === 'time' ? (layer === 'plan' ? '计划' : '实录') : ''
-  const subItems = module === 'time'
-    ? [{ id: 'actual' as const, name: '实录' }, { id: 'plan' as const, name: '计划' }]
-    : []
-  const openSubMenu = () => {
-    if (subItems.length === 0) { setDrawer(true); return }
-    setSubMenu(true)
-  }
 
   return (
     <div
@@ -308,47 +296,37 @@ export function TimeProduct({ adapter, headerAction, today: openingDay }: TimePr
       <style>{timeStyles}</style>
       <TimeHeader
         module={module}
-        titleSub={titleSub}
         dateLabel={module === 'deep' ? weekLabel(weekStart) : dayLabel(topDate)}
         canUndo={view?.canUndo[layer] === true}
         busy={busy}
-        subMenuOpen={subMenu}
         pickerOpen={picker !== null}
         action={headerAction}
         onDrawer={() => setDrawer(value => !value)}
-        onSubMenu={() => (subMenu ? setSubMenu(false) : openSubMenu())}
         onPicker={() => setPicker(picker === null ? module : null)}
         onStep={step}
         onUndo={() => void undo()}
       />
 
       <div className="tb-views">
-        <section className="tb-view on" style={{ display: module === 'time' && layer === 'actual' ? 'flex' : 'none' }}>
-          {view !== undefined && module === 'time' && layer === 'actual' && (
+        {module !== 'deep' && view !== undefined && (
+          <section className="tb-view on">
             <TimeCanvas
-              layer="actual" days={view.days} today={view.today} nowMinute={view.nowMinute}
-              focus={focus} onExtend={extendRange} onTopDateChange={setTopDate} records={records.actual} tags={tags}
-              busy={busy} onAssign={(runs, tagId) => void paint('actual', runs, tagId)}
-              onEdit={(date, record) => setSheet({ layer: 'actual', date, record })}
+              key={module}
+              layer={layer} days={view.days} today={view.today} nowMinute={view.nowMinute}
+              focus={focus} onExtend={extendRange} onTopDateChange={setTopDate} records={records[layer]} tags={tags}
+              busy={busy} onAssign={(runs, tagId) => void paint(layer, runs, tagId)}
+              onEdit={(date, record) => setSheet({ layer, date, record })}
             />
-          )}
-        </section>
-        <section className="tb-view on" style={{ display: module === 'time' && layer === 'plan' ? 'flex' : 'none' }}>
-          {view !== undefined && module === 'time' && layer === 'plan' && (
-            <TimeCanvas
-              layer="plan" days={view.days} today={view.today} nowMinute={view.nowMinute}
-              focus={focus} onExtend={extendRange} onTopDateChange={setTopDate} records={records.plan} tags={tags}
-              busy={busy} onAssign={(runs, tagId) => void paint('plan', runs, tagId)}
-              onEdit={(date, record) => setSheet({ layer: 'plan', date, record })}
+          </section>
+        )}
+        {module === 'deep' && (
+          <section className="tb-view on">
+            <DeepWeekView
+              week={deepWeek} weekStart={weekStart} today={today} busy={busy}
+              onPaint={(rects, level) => void paintDeep(rects, level)}
             />
-          )}
-        </section>
-        <section className="tb-view on" style={{ display: module === 'deep' ? 'flex' : 'none' }}>
-          {module === 'deep' && <DeepWeekView
-            week={deepWeek} weekStart={weekStart} today={today} busy={busy}
-            onPaint={(rects, level) => void paintDeep(rects, level)}
-          />}
-        </section>
+          </section>
+        )}
       </div>
 
       {picker !== null && (
@@ -365,21 +343,15 @@ export function TimeProduct({ adapter, headerAction, today: openingDay }: TimePr
 
       {error !== '' && <div className="tb-toast on" style={{ bottom: 52 }}>{error}</div>}
 
-      {subMenu && subItems.length > 0 && (
-        <div className="tb-smenu on" style={{ left: 44, top: 42 }}>
-          {subItems.map(item => (
-            <button key={item.id} type="button" className={layer === item.id ? 'on' : ''} onClick={() => { switchLayer(item.id); setSubMenu(false) }}>
-              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M2.5 6.2l2.4 2.4L9.5 4" /></svg>
-              {item.name}
-            </button>
-          ))}
-        </div>
-      )}
-
       <Drawer
         open={drawer}
         module={module}
-        onModuleChange={next => { setModule(next); setDrawer(false); setPicker(null) }}
+        onModuleChange={next => {
+          setModule(next)
+          setDrawer(false)
+          setPicker(null)
+          if (next !== 'deep') setFocus(previous => ({ date: topDate, token: previous.token + 1 }))
+        }}
         onClose={() => setDrawer(false)}
       />
 

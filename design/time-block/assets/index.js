@@ -14959,12 +14959,17 @@
               return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "tb-deep-col", style: { height: 24 * rowH }, children: [
                 Array.from({ length: 24 }, (_, hour) => {
                   const cell = levelOf(cells, weekday, hour);
+                  const prev = hour > 0 ? levelOf(cells, weekday, hour - 1) : "unset";
+                  const isFirstOfRun = cell !== "unset" && cell !== prev;
+                  const label = cell === "high" ? "\u9AD8" : cell === "medium" ? "\u4E2D" : cell === "low" ? "\u4F4E" : "";
                   return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
                     "div",
                     {
                       className: `tb-hc${cell === "unset" ? "" : ` ${cell === "high" ? "H" : cell === "medium" ? "M" : "L"}`}`,
                       "data-k": `${weekday}-${hour}`,
-                      style: { top: hour * rowH + 0.5, height: rowH - 1 }
+                      "data-level": cell,
+                      style: { top: hour * rowH + 0.5, height: rowH - 1 },
+                      children: isFirstOfRun && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: { fontSize: 10, fontWeight: 600, paddingLeft: 4, color: "#fff", overflow: "hidden", whiteSpace: "nowrap" }, children: label })
                     },
                     hour
                   );
@@ -14996,14 +15001,16 @@
     ] });
   }
   var MODULES = [
-    { id: "time", name: "\u65F6\u95F4\u5757", icon: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.3", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("rect", { x: "2", y: "2", width: "12", height: "12", rx: "3" }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2 6h12M6 6v8" })
+    { id: "actual", name: "\u5B9E\u5F55", icon: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.3", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("circle", { cx: "8", cy: "8", r: "6" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M8 4.5V8l2.5 1.5" })
     ] }) },
-    { id: "deep", name: "\u6DF1\u5EA6\u65F6\u95F4", icon: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.3", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2 12l3.5-5 3 3.5L12 4" }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2 14h12" })
-    ] }) }
+    { id: "plan", name: "\u8BA1\u5212", icon: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.3", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("rect", { x: "2", y: "3.5", width: "12", height: "10.5", rx: "2" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2 6.5h12M5 2v2.5M11 2v2.5" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M5 9.5l1.5 1.5L11 7.5" })
+    ] }) },
+    { id: "deep", name: "\u6DF1\u5EA6\u65F6\u95F4", icon: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.3", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2 4.5h12M4 8h8M6 11.5h4" }) }) }
   ];
   function dayLabel(date) {
     const value = /* @__PURE__ */ new Date(`${date}T12:00:00`);
@@ -15014,14 +15021,10 @@
     const end = /* @__PURE__ */ new Date(`${addDays(weekStart, 6)}T12:00:00`);
     return `${start.getMonth() + 1}\u6708${start.getDate()}\u65E5 \u2013 ${end.getMonth() + 1}\u6708${end.getDate()}\u65E5`;
   }
-  function TimeHeader({ module, titleSub, dateLabel, canUndo, busy, subMenuOpen, pickerOpen, action, onDrawer, onSubMenu, onPicker, onStep, onUndo }) {
+  function TimeHeader({ module, dateLabel, canUndo, busy, pickerOpen, action, onDrawer, onPicker, onStep, onUndo }) {
     return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("header", { className: `tb-head${action === void 0 || action === null ? "" : " has-action"}`, children: [
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "tb-hbtn", type: "button", "aria-label": "\u4E00\u7EA7\u6A21\u5757", onClick: onDrawer, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.5", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2.5 4h11M2.5 8h11M2.5 12h11" }) }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("button", { className: "tb-title", type: "button", "aria-expanded": subMenuOpen, onClick: onSubMenu, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: MODULES.find((item) => item.id === module)?.name ?? "" }),
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "tsub", children: titleSub }),
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "1.7", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2.5 4.5L6 8l3.5-3.5" }) })
-      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "tb-title", children: MODULES.find((item) => item.id === module)?.name ?? "" }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "grow" }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "tb-hbtn", type: "button", "aria-label": module === "deep" ? "\u4E0A\u4E00\u5468" : "\u4E0A\u4E00\u5929", onClick: () => onStep(module === "deep" ? -7 : -1), children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.6", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M9.5 4L5.5 8l4 4" }) }) }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "tb-daylabel", type: "button", "aria-label": module === "deep" ? "\u9009\u62E9\u4E00\u5468" : "\u9009\u62E9\u65E5\u671F", "aria-expanded": pickerOpen, onClick: onPicker, children: dateLabel }),
@@ -15736,8 +15739,7 @@
   var FALLBACK_TODAY = localDate();
   function TimeProduct({ adapter, headerAction, today: openingDay }) {
     const openingDate = openingDay ?? FALLBACK_TODAY;
-    const [module, setModule] = (0, import_react.useState)("time");
-    const [layer, setLayer] = (0, import_react.useState)("actual");
+    const [module, setModule] = (0, import_react.useState)("actual");
     const [anchor] = (0, import_react.useState)(() => openingDate);
     const [range, setRange] = (0, import_react.useState)(() => ({ from: addDays(openingDate, -3), to: addDays(openingDate, 10) }));
     const [focus, setFocus] = (0, import_react.useState)(() => ({ date: openingDate, token: 1 }));
@@ -15745,7 +15747,6 @@
     const [weekStart, setWeekStart] = (0, import_react.useState)(() => weekStartOf(openingDate));
     const [view, setView] = (0, import_react.useState)();
     const [drawer, setDrawer] = (0, import_react.useState)(false);
-    const [subMenu, setSubMenu] = (0, import_react.useState)(false);
     const [sheet, setSheet] = (0, import_react.useState)();
     const [busy, setBusy] = (0, import_react.useState)(false);
     const [toast, setToast] = (0, import_react.useState)("");
@@ -15753,6 +15754,7 @@
     const [picker, setPicker] = (0, import_react.useState)(null);
     const toastTimer = (0, import_react.useRef)(0);
     const revision = (0, import_react.useRef)(0);
+    const layer = module === "plan" ? "plan" : "actual";
     const indexesRef = (0, import_react.useRef)(void 0);
     if (indexesRef.current === void 0) {
       indexesRef.current = { tag: createIdIndex(), block: createIdIndex() };
@@ -15810,10 +15812,6 @@
       setTopDate(date);
       setFocus((previous) => ({ date, token: previous.token + 1 }));
     }, []);
-    const switchLayer = (0, import_react.useCallback)((next) => {
-      setLayer(next);
-      setFocus((previous) => ({ date: topDate, token: previous.token + 1 }));
-    }, [topDate]);
     const productToday = view?.today ?? openingDate;
     const step = (0, import_react.useCallback)((amount) => {
       if (module === "deep") {
@@ -15931,15 +15929,6 @@
       cells: view.deep.levels.map((level) => ({ level }))
     }, [view]);
     const today = productToday;
-    const titleSub = module === "time" ? layer === "plan" ? "\u8BA1\u5212" : "\u5B9E\u5F55" : "";
-    const subItems = module === "time" ? [{ id: "actual", name: "\u5B9E\u5F55" }, { id: "plan", name: "\u8BA1\u5212" }] : [];
-    const openSubMenu = () => {
-      if (subItems.length === 0) {
-        setDrawer(true);
-        return;
-      }
-      setSubMenu(true);
-    };
     return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(
       "div",
       {
@@ -15952,56 +15941,37 @@
             TimeHeader,
             {
               module,
-              titleSub,
               dateLabel: module === "deep" ? weekLabel2(weekStart) : dayLabel(topDate),
               canUndo: view?.canUndo[layer] === true,
               busy,
-              subMenuOpen: subMenu,
               pickerOpen: picker !== null,
               action: headerAction,
               onDrawer: () => setDrawer((value) => !value),
-              onSubMenu: () => subMenu ? setSubMenu(false) : openSubMenu(),
               onPicker: () => setPicker(picker === null ? module : null),
               onStep: step,
               onUndo: () => void undo()
             }
           ),
           /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "tb-views", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("section", { className: "tb-view on", style: { display: module === "time" && layer === "actual" ? "flex" : "none" }, children: view !== void 0 && module === "time" && layer === "actual" && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+            module !== "deep" && view !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("section", { className: "tb-view on", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
               TimeCanvas,
               {
-                layer: "actual",
+                layer,
                 days: view.days,
                 today: view.today,
                 nowMinute: view.nowMinute,
                 focus,
                 onExtend: extendRange,
                 onTopDateChange: setTopDate,
-                records: records.actual,
+                records: records[layer],
                 tags,
                 busy,
-                onAssign: (runs, tagId) => void paint("actual", runs, tagId),
-                onEdit: (date, record) => setSheet({ layer: "actual", date, record })
-              }
+                onAssign: (runs, tagId) => void paint(layer, runs, tagId),
+                onEdit: (date, record) => setSheet({ layer, date, record })
+              },
+              module
             ) }),
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("section", { className: "tb-view on", style: { display: module === "time" && layer === "plan" ? "flex" : "none" }, children: view !== void 0 && module === "time" && layer === "plan" && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
-              TimeCanvas,
-              {
-                layer: "plan",
-                days: view.days,
-                today: view.today,
-                nowMinute: view.nowMinute,
-                focus,
-                onExtend: extendRange,
-                onTopDateChange: setTopDate,
-                records: records.plan,
-                tags,
-                busy,
-                onAssign: (runs, tagId) => void paint("plan", runs, tagId),
-                onEdit: (date, record) => setSheet({ layer: "plan", date, record })
-              }
-            ) }),
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("section", { className: "tb-view on", style: { display: module === "deep" ? "flex" : "none" }, children: module === "deep" && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+            module === "deep" && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("section", { className: "tb-view on", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
               DeepWeekView,
               {
                 week: deepWeek,
@@ -16027,13 +15997,6 @@
             }
           ),
           error !== "" && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "tb-toast on", style: { bottom: 52 }, children: error }),
-          subMenu && subItems.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "tb-smenu on", style: { left: 44, top: 42 }, children: subItems.map((item) => /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("button", { type: "button", className: layer === item.id ? "on" : "", onClick: () => {
-            switchLayer(item.id);
-            setSubMenu(false);
-          }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "1.8", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("path", { d: "M2.5 6.2l2.4 2.4L9.5 4" }) }),
-            item.name
-          ] }, item.id)) }),
           /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
             Drawer,
             {
@@ -16043,6 +16006,7 @@
                 setModule(next);
                 setDrawer(false);
                 setPicker(null);
+                if (next !== "deep") setFocus((previous) => ({ date: topDate, token: previous.token + 1 }));
               },
               onClose: () => setDrawer(false)
             }

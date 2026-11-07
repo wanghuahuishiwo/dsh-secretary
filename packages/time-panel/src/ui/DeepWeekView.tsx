@@ -185,13 +185,19 @@ export function DeepWeekView({ week, weekStart, today, busy, onPaint }: Props) {
                   <div key={day} className="tb-deep-col" style={{ height: 24 * rowH }}>
                     {Array.from({ length: 24 }, (_, hour) => {
                       const cell = levelOf(cells, weekday, hour)
+                      const prev = hour > 0 ? levelOf(cells, weekday, hour - 1) : 'unset'
+                      const isFirstOfRun = cell !== 'unset' && cell !== prev
+                      const label = cell === 'high' ? '高' : cell === 'medium' ? '中' : cell === 'low' ? '低' : ''
                       return (
                         <div
                           key={hour}
                           className={`tb-hc${cell === 'unset' ? '' : ` ${cell === 'high' ? 'H' : cell === 'medium' ? 'M' : 'L'}`}`}
                           data-k={`${weekday}-${hour}`}
+                          data-level={cell}
                           style={{ top: hour * rowH + 0.5, height: rowH - 1 }}
-                        />
+                        >
+                          {isFirstOfRun && <span style={{ fontSize: 10, fontWeight: 600, paddingLeft: 4, color: '#fff', overflow: 'hidden', whiteSpace: 'nowrap' }}>{label}</span>}
+                        </div>
                       )
                     })}
                     {[...selection].filter(key => key.startsWith(`${weekday}-`)).map(key => {
