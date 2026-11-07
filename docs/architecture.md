@@ -33,13 +33,15 @@ dsh-secretary bundle：composition / preset / skills
     │   ├── TimeProductService extends TypertRemoteService
     │   │   ├── @Remote：readWindow / paint / replaceDay / updateBlock / deleteBlock / paintDeep
     │   │   └── 调用 TimeService + TagService
-    │   ├── ./typert + ./remote + ./types + ./client
-    │   └── Browser：product-local $mount → child remote.secretaryTime + UI
-    │       └── 小秘书-时间块右栏；现有实录 / 计划 / 深度时间原样保留
+    │   ├── ./typert + ./remote + ./types + ./ui + ./client
+    │   └── Browser：product-local $mount → RemoteTimeAdapter → TimeProduct (./ui)
+    │       └── 小秘书-时间块右栏；Time/Deep/编辑/多日/Undo 完整保留
     └── gtd-panel
         └── Browser → 小秘书-事项左栏 sidebar.panellist + 空白 main
             当前没有 Remote namespace，也不依赖 Time
 ```
+
+`time-panel` 的 `src/ui` 是与宿主无关的纯 React UI：只公开 `./ui`（`TimeProduct`、`timeMath`、`TimeAdapter` 契约类型），不 import 宿主、Remote 或产品包；`src/client` 只负责 `RemoteTimeAdapter`（Remote 映射与 Undo）、DSH 生命周期和 `hostTokens`。设计稿 `design/time-block` 复用同一个 `./ui`，用 `FixtureTimeAdapter` 提供固定 fixture 与主题切换，只服务 OpenDesign 预览，不访问生产 Remote 或 SQLite。
 
 当前树只列已实现的产品插件；目标产品的 `goal-panel` 空壳和共享 `TagManager` UI/Remote 尚未实现，不能据此声称已经运行。
 

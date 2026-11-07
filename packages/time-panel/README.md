@@ -31,7 +31,7 @@ kind: "package-reference"
 | `./remote` | 官方生成的浏览器 Remote contribution |
 | `./types` | 浏览器安全的请求与 projection 类型 |
 | `./client` | product-local Remote 装配与右栏 UI |
-| `./ui` | 与宿主无关的 `TimeProduct`、Adapter 契约与纯 `timeMath`，供 OpenDesign 等外部壳复用 |
+| `./ui` | 纯 React UI：`TimeProduct`、`timeMath`、`TimeAdapter` 契约类型 |
 
 本包没有 Config。Remote 签名、namespace、错误词汇或 exports 变化后，从仓库根运行 `pnpm generate:typert`，再构建并验证真实链路。
 
@@ -42,7 +42,14 @@ kind: "package-reference"
 
 `TimeProductService` 提供 `readWindow / paint / replaceDay / updateBlock / deleteBlock / paintDeep`，调用既有 TimeService／TagService。
 
+源码分两层，UI 不接触宿主：
+
+- `src/ui/`：纯显示组件、`TimeAdapter` 契约类型与纯 `timeMath`；只通过 `./ui` 公开，不 import 宿主、Remote 或产品包。
+- `src/client/`：`RemoteTimeAdapter`（Remote 映射与 Undo）、`TimeClient`（DSH 生命周期）与 `hostTokens`（`--dsw-*` → `--tb-*`）。
+
 Client 先 `$mount()` 自己的 `/remote`，再在 child Context 等待 `remote.secretaryTime` 并注册 UI。卸载按 UI → Remote 清理；child 激活失败会同时撤销 Remote。
+
+Design 的 `design/time-block` 复用同一个 `./ui`，只把 `RemoteTimeAdapter` 换成 `FixtureTimeAdapter`，用于 OpenDesign 静态预览。
 
 </details>
 
