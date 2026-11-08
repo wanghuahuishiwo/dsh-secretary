@@ -14,7 +14,6 @@ export const hostTokens = `.tb-host {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding-top: 12px;
   background: var(--tb-surface-page, #0a0a0b);
 
   --tb-surface-page: var(--dsw-alias-bg-layer-1, #0e0f12);
@@ -56,7 +55,7 @@ export const hostTokens = `.tb-host {
   --tb-font-title: 15px;
 }
 .tb-host > .tb-app { flex: 1 1 auto; min-height: 0; }
-.tb-host .tb-head { height: 52px; }
+.tb-host .tb-head { height: 60px; }
 /* The module keeps the reference's near-black material in DSH dark mode. */
 .tb-host-dark {
   --tb-surface-page: #0a0a0b;

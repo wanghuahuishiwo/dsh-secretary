@@ -87,14 +87,8 @@ export const timeStyles = `.tb-app {
 /* The reference's gradient is a fixed layer: it must not move with vertical scrolling. */
 .tb-canvas-bg { position: absolute; top: 0; bottom: 0; left: calc(var(--tb-gutter-width, 46px) + var(--tb-hour-width, 26px)); right: 0; z-index: 0; pointer-events: none;
   background: linear-gradient(180deg, var(--tb-grid-top, #202020) 0%, var(--tb-grid-mid, #505050) 55%, var(--tb-grid-bottom, #303030) 100%); }
-.tb-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overflow-anchor: auto; position: relative; z-index: 1; }
-.tb-scroll { scrollbar-width: thin; scrollbar-color: transparent transparent; }
-.tb-scroll:hover { scrollbar-color: rgba(128, 128, 128, 0.25) transparent; }
-.tb-scroll::-webkit-scrollbar { width: 4px; }
-.tb-scroll::-webkit-scrollbar-track { background: transparent; }
-.tb-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 2px; }
-.tb-scroll:hover::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.25); }
-.tb-scroll:hover::-webkit-scrollbar-thumb:hover { background: rgba(128, 128, 128, 0.45); }
+.tb-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overflow-anchor: auto; position: relative; z-index: 1; scrollbar-width: none; }
+.tb-scroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
 .tb-days { position: relative; }
 .tb-day { position: relative; display: flex; }
 .tb-day + .tb-day { border-top: 1px dashed var(--tb-border-strong, rgba(255, 255, 255, 0.14)); }
