@@ -27,8 +27,8 @@
     "deepLabel": "每行连续同级别仅最左一格含级别名 span（高 / 中 / 低）",
     "datePicker": ".tb-picker[role=\"dialog\"] → .tb-picker-day[data-day]",
     "toast": ".tb-toast（文案出现时带 .on）",
-    "theme": "html[data-theme]；设计壳按钮 .tb-head button[title=\"切换主题\"]",
-    "previewBadge": "“设计预览”标识（仅设计壳，位于 headerAction 插槽）"
+    "theme": "html[data-theme]；设计壳按钮 .od-preview button[title=\"切换主题\"]（产品框外）",
+    "previewBadge": "“设计预览”标识（仅设计壳，位于产品框外的 .od-preview 浮层）"
   },
   "defaults": {
     "theme": "dark",
@@ -51,7 +51,7 @@
         ".tb-daylabel 为“11月6日 周五”，.tb-day[data-day=\"2026-11-06\"] 的 .tb-datemark .today 存在",
         ".tb-day 共 14 列，.tb-cell 共 2016 格（14 × 24 × 6）",
         ".tb-head button[title=\"撤销\"] 为 disabled；.tb-sel-badge 不存在",
-        ".tb-toast 为空；headerAction 中“设计预览”标识存在",
+        ".tb-toast 为空；.tb-head 内无预览专有控件（无 .has-action）；.od-preview 中“设计预览”标识存在且在 .tb-app 之外",
         "html[data-theme]=dark；控制台错误 0，外部请求 0"
       ]
     },
@@ -234,8 +234,8 @@
       "title": "明暗主题使用同一语义 token",
       "steps": [
         "读取 html[data-theme] 与 .tb-app 计算背景色",
-        "点击 .tb-head button[title=\"切换主题\"]",
-        "再次点击 .tb-head button[title=\"切换主题\"]"
+        "点击 .od-preview button[title=\"切换主题\"]",
+        "再次点击 .od-preview button[title=\"切换主题\"]"
       ],
       "expected": [
         "初始 html[data-theme]=dark，.tb-app 背景为 rgb(10, 10, 11)",

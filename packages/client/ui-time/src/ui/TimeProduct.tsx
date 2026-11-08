@@ -65,7 +65,7 @@ const FALLBACK_TODAY = localDate()
  * rendered from the `TimeView` returned by every command, so no write is
  * assumed to have succeeded before the host answered.
  */
-export function TimeProduct({ adapter, headerAction, today: openingDay }: TimeProductProps) {
+export function TimeProduct({ adapter, today: openingDay }: TimeProductProps) {
   const openingDate = openingDay ?? FALLBACK_TODAY
   const appRef = useRef<HTMLDivElement | null>(null)
   const [module, setModule] = useState<TimeModule>('actual')
@@ -312,7 +312,6 @@ export function TimeProduct({ adapter, headerAction, today: openingDay }: TimePr
         busy={busy}
         pickerOpen={picker !== null}
         drawerOpen={drawer}
-        action={headerAction}
         onDrawer={() => setDrawer(value => !value)}
         onPicker={() => setPicker(picker === null ? module : null)}
         onStep={step}

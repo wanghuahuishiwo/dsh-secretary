@@ -78,6 +78,7 @@ UI 只通过 Adapter 契约读数据、发命令：
 - 纯 UI 目录不出现宿主/Remote/产品包 import，也不出现宿主 token；组件只消费模块 token。
 - 每个模块只有一份产品 UI：设计壳 import 公开 UI 入口，不保留设计侧重复组件。
 - 设计预览加载完整产品 UI，fixture 可复现，主题可切换，控制台错误与外部请求为 0。
+- 设计预览与生产同结构：预览专有控件只出现在产品框外的页面浮层，不进入产品布局；布局差异按 bug 处理。
 - 生产验收必须经过真实 DSH + Remote + SQLite；OpenDesign 场景通过只代表设计壳确认。
 - 文档链接有效；`pnpm build`、`pnpm test`、`pnpm --dir design build`、`git diff --check` 通过。
 

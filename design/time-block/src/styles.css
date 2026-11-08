@@ -60,3 +60,65 @@ body {
   height: 32px;
   background: var(--sec-color-border-strong);
 }
+
+/*
+ * 预览专有控件：页面级浮层，位于产品框外，不参与产品布局。
+ * 宽视口放在右侧栏左侧的空白区；窄视口移到右下角，避免挡住产品头部。
+ */
+.od-preview {
+  position: fixed;
+  left: 8px;
+  top: 8px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.od-preview > * {
+  pointer-events: auto;
+}
+
+.od-badge {
+  padding: 2px 6px;
+  border: 1px solid var(--tb-border-strong);
+  border-radius: var(--tb-radius-sm);
+  background: var(--sec-color-surface-rail);
+  color: var(--tb-text-tertiary);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.od-theme {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 7px;
+  background: var(--sec-color-surface-rail);
+  color: var(--tb-text-secondary);
+}
+
+.od-theme:hover {
+  background: var(--sec-color-surface-hover);
+  color: var(--tb-text-primary);
+}
+
+.od-theme svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 440px) {
+  .od-preview {
+    left: auto;
+    right: 8px;
+    top: auto;
+    bottom: 8px;
+    align-items: flex-end;
+  }
+}

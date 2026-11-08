@@ -6,8 +6,6 @@
  * the Typert Remote, the OpenDesign shell maps an in-memory fixture. IDs are
  * strings here so a fixture is not forced to invent numeric identities.
  */
-import type { ReactNode } from 'react'
-
 export type TimeLayer = 'plan' | 'actual'
 
 export interface TimeTagView {
@@ -123,8 +121,6 @@ export interface TimeAdapter {
 
 export interface TimeProductProps {
   readonly adapter: TimeAdapter
-  /** Host-owned control rendered in the product header. */
-  readonly headerAction?: ReactNode
   /**
    * The product day this surface opens on. Production omits it and follows the
    * host's local day; a fixture preview pins one so screenshots and scenarios

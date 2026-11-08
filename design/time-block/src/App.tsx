@@ -9,32 +9,12 @@ const MIN_RAIL = 320
 const MAX_RAIL = 720
 const DEFAULT_RAIL = 390
 
-const PREVIEW_BADGE = {
-  padding: '1px 5px',
-  border: '1px solid var(--tb-border-strong)',
-  borderRadius: 'var(--tb-radius-sm)',
-  color: 'var(--tb-text-tertiary)',
-  fontSize: '9px',
-  letterSpacing: '0.04em',
-  whiteSpace: 'nowrap',
-} as const
-
-const PREVIEW_ROW = {
-  display: 'flex',
-  flex: '0 0 100%',
-  alignItems: 'center',
-  justifyContent: 'flex-end',
-  gap: 5,
-  paddingTop: 3,
-  borderTop: '1px solid var(--tb-border-subtle)',
-} as const
-
-/** The OD-only theme control; the product header just receives it in its slot. */
+/** The OD-only theme control; it lives outside the product frame. */
 function ThemeToggle({ theme, onToggle }: { readonly theme: Theme; readonly onToggle: () => void }) {
   const dark = theme === 'dark'
   return (
     <button
-      className="tb-hbtn"
+      className="od-theme"
       type="button"
       title="切换主题"
       aria-label={dark ? '切换到浅色主题' : '切换到深色主题'}
@@ -49,7 +29,8 @@ function ThemeToggle({ theme, onToggle }: { readonly theme: Theme; readonly onTo
 
 /**
  * OpenDesign shell: it owns the fixture adapter, the review theme, the preview
- * marker and the resizable rail width (mimicking the DSH host sidebar resize).
+ * toolbar outside the product frame and the resizable rail width (mimicking the
+ * DSH host sidebar resize). The product frame itself is production-identical.
  */
 export function App() {
   const adapter = useMemo(() => new FixtureTimeAdapter(), [])
@@ -79,18 +60,16 @@ export function App() {
   }, [])
 
   return (
-    <div className="od-rail" style={{ width: `min(100vw, ${railWidth}px)` }}>
-      <div className="od-resize" role="separator" aria-orientation="vertical" aria-label="调整预览栏宽度" onPointerDown={startResize} />
-      <TimeProduct
-        adapter={adapter}
-        today={FIXTURE_TODAY}
-        headerAction={(
-          <span style={PREVIEW_ROW}>
-            <span style={PREVIEW_BADGE} title="OpenDesign Fixture 预览">设计预览</span>
-            <ThemeToggle theme={theme} onToggle={() => setTheme(value => (value === 'dark' ? 'light' : 'dark'))} />
-          </span>
-        )}
-      />
-    </div>
+    <>
+      {/* 预览专有控件在页面级浮层，位于产品框外，不进入产品布局。 */}
+      <div className="od-preview">
+        <span className="od-badge" title="OpenDesign Fixture 预览">设计预览</span>
+        <ThemeToggle theme={theme} onToggle={() => setTheme(value => (value === 'dark' ? 'light' : 'dark'))} />
+      </div>
+      <div className="od-rail" style={{ width: `min(100vw, ${railWidth}px)` }}>
+        <div className="od-resize" role="separator" aria-orientation="vertical" aria-label="调整预览栏宽度" onPointerDown={startResize} />
+        <TimeProduct adapter={adapter} today={FIXTURE_TODAY} />
+      </div>
+    </>
   )
 }

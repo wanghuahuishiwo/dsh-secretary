@@ -23,11 +23,8 @@ export const timeStyles = `.tb-app {
 .tb-app :focus-visible { outline: 2px solid var(--tb-accent, #82aaff); outline-offset: 1px; }
 
 /* ---------- header ---------- */
-.tb-head { flex: none; height: 42px; display: flex; align-items: center; gap: 2px; padding: 0 8px;
+.tb-head { flex: none; height: var(--tb-head-height, 60px); display: flex; align-items: center; gap: 2px; padding: 0 8px;
   background: var(--tb-surface-rail, #151515); }
-/* A host action (OD theme/preview) gets its own compact row; production keeps the 42px row. */
-.tb-head.has-action { height: auto; min-height: 42px; flex-wrap: wrap; gap: 1px; padding: 7px 6px; }
-.tb-head.has-action .tb-daylabel { padding: 0 7px; }
 .tb-hbtn { width: 28px; height: 28px; border-radius: 7px; color: var(--tb-text-secondary, #a3a9b4); display: grid; place-items: center; padding: 0; }
 .tb-hbtn:hover { background: var(--tb-surface-hover, #252931); color: var(--tb-text-primary, #eceff3); }
 .tb-hbtn:disabled { opacity: .28; cursor: default; }
