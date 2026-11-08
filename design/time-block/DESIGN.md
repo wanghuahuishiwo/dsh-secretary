@@ -4,11 +4,11 @@
 
 ## 视觉契约
 
-时间块藏在 DSH 窄右栏里，是一个安静、紧凑的时间工具，不是独立工作台。视觉目标是让“这一天的时间去了哪里”成为唯一主角：**近黑底、中灰满格、低饱和暖色大色块**；不使用阴影、卡片、渐变或第二种强调色。参考提取与取值证据见 [docs/research/timeblocks-visual.md](../../docs/research/timeblocks-visual.md)。
+时间块藏在 DSH 窄右栏里，是一个安静、紧凑的时间工具，不是独立工作台。视觉目标是让“这一天的时间去了哪里”成为唯一主角：**近黑底、中灰满格、低饱和暖色大色块**；不使用阴影、卡片、装饰渐变或第二种强调色；唯一的渐变是固定的网格背景层。参考提取与取值证据见 [docs/research/timeblocks-visual.md](../../docs/research/timeblocks-visual.md)。
 
 - **画布**：多日 24 小时 × 每小时六格（每格 10 分钟）；网格区域是一层**固定**的纵向渐变（暗色约 `#202020` → `#505050` → `#303030`），不随日期滚动移动；格子透明，单元格之间只留页面底色的 1–1.5px 细缝（记录块也被同一层细缝切开），形成有深度的连续矩阵而不是平灰描边表格。日期列由大日号、月份、星期和“今天”引导；小时刻度写 `H:00`，等宽数字右对齐。连续块只在首个可见格显示一次标签，标签为备注或标签名，完整信息保留在 tooltip；跨小时行仍算同一块，不重复标签；被更早记录遮住的并行记录从它第一次可见的格子开始显示标签。
 - **日期块**：月份 / 大日号 / 星期 / “今天”四行居中，当天在下方加一条白色短线；不使用卡片、边框或彩色高亮。
-- **类别架**：没有容器背景，类别按钮直接浮在页面黑底上；同色相上下渐变、无描边、无阴影、6–7px 圆角，按钮文字 13px；渐变只做极轻的高光/暗边，不形成明显光泽。类别色只表达类别，不表达优先级。
+- **类别架**：没有容器背景，类别按钮直接浮在页面黑底上；纯色、无描边、无阴影、6–7px 圆角，按钮文字 13px。类别色只表达类别，不表达优先级。
 - **层级与焦点**：画布底 / 顶栏 / 空格 / 记录构成明度层级；选中、当前时刻、当天标记统一使用白色，不引入第二种强调色。已上色块使用类别色实底，选中态用实线内框和勾选符号表达，不能只靠颜色变化。
 - **计划与实录**：同一日期、两种数据层；切层不改日期，也不把一层的写入复制到另一层。Undo 只恢复当前层。
 - **选区写入**：默认覆盖选区内容；只有选区碰到已有记录时，浮动选区徽章才出现 `覆盖｜并行`，并行写入保留旧记录并在整个选区新增一条，写入后回到覆盖。
@@ -51,7 +51,7 @@ TimeProduct                      UI 根：模块/层/日期/范围/选择/浮层
 | 字阶 | `--tb-font-family` / `--tb-font-caption` / `--tb-font-label` / `--tb-font-body` / `--tb-font-title` | alias 到根 token |
 | 间距 | `--tb-space-1` … `--tb-space-6` | alias 到根 token |
 | 圆角 | `--tb-radius-sm` / `--tb-radius-md` / `--tb-radius-lg` | alias 到根 token |
-| 模块尺寸 | `--tb-control-height: 30px` / `--tb-hour-height: 26px` / `--tb-rail-width: 390px` / `--tb-shelf-width: 116px` / `--tb-status-height: 42px` / `--tb-hour-width: 26px` / `--tb-font-date: 34px` / `--tb-font-cat: 13px` | 字面值 |
+| 模块尺寸 | `--tb-control-height: 30px` / `--tb-hour-height: 26px` / `--tb-rail-width: 390px` / `--tb-shelf-width: 116px` / `--tb-status-height: 42px` / `--tb-gutter-width: 46px` / `--tb-hour-width: 26px` / `--tb-font-date: 34px` / `--tb-font-cat: 13px` | 字面值 |
 | 网格背景渐变 | `--tb-grid-top` / `--tb-grid-mid` / `--tb-grid-bottom` | 字面值，明暗各一套 |
 | 深度级别 | `--tb-deep-high` / `--tb-deep-medium` / `--tb-deep-low` | 字面值，明暗各一套 |
 | Fixture 标签 | `--tb-tag-work` / `--tb-tag-focus` / `--tb-tag-collaboration` / `--tb-tag-life` / `--tb-tag-meal` / `--tb-tag-exercise` / `--tb-tag-learning` / `--tb-tag-reading` / `--tb-tag-rest` / `--tb-tag-errand` | 字面值，明暗各一套；仅服务设计 fixture |
@@ -78,6 +78,7 @@ OpenDesign 组合根是 `design/time-block/src/App.tsx`：创建 `FixtureTimeAda
 - 主题切换可用，控制台错误与外部请求为 0。
 - `design/time-block/scenarios.json` 的场景可在固定 fixture 上复现。
 - 重叠记录默认收起为数量角标；点角标才显示该格全部记录，且不改变行高、不切分格子。
+- DSH 深色材质、固定背景渐变、隐藏滚动条和 60px 头部通过真实宿主截图/探针校验，不只依赖 OD fixture。
 - 选区碰到已有记录才出现 `覆盖｜并行`，`Tab` 切换；并行写入保留旧记录并在整个选区新增一条，写入后回到覆盖。
 - `--tb-*` 之外不出现组件宿主 token；设计侧不复制产品组件。
 - 生产验收仍需真实 DSH + Remote + SQLite，不以本预览替代。
