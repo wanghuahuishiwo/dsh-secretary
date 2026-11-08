@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { GtdService } from './contract.ts'
-import { noConfig, OUTPUT, registerTool } from 'dsh-secretary-core/tooling'
+import { noConfig, OUTPUT, registerTool } from 'dsh-secretary-tooling'
 
 export interface Config {}
 export const Config = noConfig('dsh-secretary-gtd-tools')

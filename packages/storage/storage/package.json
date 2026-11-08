@@ -9,8 +9,12 @@
     ".": "./lib/index.js",
     "./package.json": "./package.json"
   },
-  "files": ["lib/**/*.js"],
-  "engines": { "node": "^22.19.0 || >=24.0.0" },
+  "files": [
+    "lib/**/*.js"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
   "scripts": {
     "build": "node build.mjs",
     "dev": "node build.mjs --watch",
@@ -20,7 +24,7 @@
     "@deepseek-ai/cordis": "4.0.5",
     "@deepseek-ai/dsh-storage": "0.2.1-rc.5",
     "@deepseek-ai/dsh-storage-domain": "0.2.1-rc.5",
-    "dsh-secretary-core": "workspace:*"
+    "dsh-secretary-tooling": "workspace:*"
   },
   "devDependencies": {
     "esbuild": "^0.25.10"

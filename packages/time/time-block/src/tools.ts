@@ -1,5 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
-import { noConfig, OUTPUT, registerTool } from 'dsh-secretary-core/tooling'
+import { noConfig, OUTPUT, registerTool } from 'dsh-secretary-tooling'
 import { FOCUS_LEVELS, FOCUS_LABELS, type TimeService } from './contract.ts'
 
 export interface Config {}

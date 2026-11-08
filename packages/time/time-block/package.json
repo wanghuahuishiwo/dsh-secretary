@@ -11,8 +11,12 @@
     "./tools": "./lib/tools.js",
     "./package.json": "./package.json"
   },
-  "files": ["lib/**/*.js"],
-  "engines": { "node": "^22.19.0 || >=24.0.0" },
+  "files": [
+    "lib/**/*.js"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
   "scripts": {
     "build": "node build.mjs",
     "dev": "node build.mjs --watch",
@@ -20,8 +24,9 @@
   },
   "dependencies": {
     "@deepseek-ai/cordis": "4.0.5",
-    "dsh-secretary-core": "workspace:*",
-    "dsh-secretary-tag": "workspace:*"
+    "dsh-secretary-tag": "workspace:*",
+    "dsh-secretary-validation": "workspace:*",
+    "dsh-secretary-tooling": "workspace:*"
   },
   "devDependencies": {
     "esbuild": "^0.25.10"

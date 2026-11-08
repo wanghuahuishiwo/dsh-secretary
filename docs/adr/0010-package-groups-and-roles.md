@@ -15,7 +15,9 @@ ADR 0004 把单包 subpath 改成了 pnpm workspace，但只搬了 `packages/` �
 
 ```text
 packages/
-├── core/core/            dsh-secretary-core：共享校验、工具与 skill 资源
+├── core/validation/      dsh-secretary-validation：共享输入校验
+├── core/tooling/         dsh-secretary-tooling：tool 注册
+├── core/skill-resources/ dsh-secretary-skill-resources：skill 资源注册
 ├── storage/storage/      dsh-secretary-storage：Secretary SQLite domain 路由
 ├── goal/goal/            dsh-secretary-goal：上游空 GoalService Provider
 ├── tag/tag/              dsh-secretary-tag：统一 TagService + Agent tools

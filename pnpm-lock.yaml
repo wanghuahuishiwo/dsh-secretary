@@ -79,15 +79,15 @@ importers:
       '@deepseek-ai/dsh-storage-sqlite':
         specifier: 0.2.1-rc.5
         version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-storage@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5))
-      dsh-secretary-core:
-        specifier: workspace:*
-        version: link:../../core/core
       dsh-secretary-goal:
         specifier: workspace:*
         version: link:../../goal/goal
       dsh-secretary-gtd:
         specifier: workspace:*
         version: link:../../gtd/gtd
+      dsh-secretary-skill-resources:
+        specifier: workspace:*
+        version: link:../../core/skill-resources
       dsh-secretary-storage:
         specifier: workspace:*
         version: link:../../storage/storage
@@ -167,11 +167,27 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
-  packages/core/core:
+  packages/core/skill-resources:
     dependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.5
         version: 4.0.5
+    devDependencies:
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
+
+  packages/core/tooling:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5
+    devDependencies:
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
+
+  packages/core/validation:
     devDependencies:
       esbuild:
         specifier: ^0.25.10
@@ -192,12 +208,18 @@ importers:
       '@deepseek-ai/cordis':
         specifier: 4.0.5
         version: 4.0.5
-      dsh-secretary-core:
+      dsh-secretary-skill-resources:
         specifier: workspace:*
-        version: link:../../core/core
+        version: link:../../core/skill-resources
       dsh-secretary-tag:
         specifier: workspace:*
         version: link:../../tag/tag
+      dsh-secretary-tooling:
+        specifier: workspace:*
+        version: link:../../core/tooling
+      dsh-secretary-validation:
+        specifier: workspace:*
+        version: link:../../core/validation
     devDependencies:
       esbuild:
         specifier: ^0.25.10
@@ -214,9 +236,9 @@ importers:
       '@deepseek-ai/dsh-storage-domain':
         specifier: 0.2.1-rc.5
         version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-storage@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5))
-      dsh-secretary-core:
+      dsh-secretary-tooling:
         specifier: workspace:*
-        version: link:../../core/core
+        version: link:../../core/tooling
     devDependencies:
       esbuild:
         specifier: ^0.25.10
@@ -227,9 +249,12 @@ importers:
       '@deepseek-ai/cordis':
         specifier: 4.0.5
         version: 4.0.5
-      dsh-secretary-core:
+      dsh-secretary-tooling:
         specifier: workspace:*
-        version: link:../../core/core
+        version: link:../../core/tooling
+      dsh-secretary-validation:
+        specifier: workspace:*
+        version: link:../../core/validation
     devDependencies:
       esbuild:
         specifier: ^0.25.10
@@ -240,12 +265,15 @@ importers:
       '@deepseek-ai/cordis':
         specifier: 4.0.5
         version: 4.0.5
-      dsh-secretary-core:
-        specifier: workspace:*
-        version: link:../../core/core
       dsh-secretary-tag:
         specifier: workspace:*
         version: link:../../tag/tag
+      dsh-secretary-tooling:
+        specifier: workspace:*
+        version: link:../../core/tooling
+      dsh-secretary-validation:
+        specifier: workspace:*
+        version: link:../../core/validation
     devDependencies:
       esbuild:
         specifier: ^0.25.10

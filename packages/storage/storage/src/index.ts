@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { storageBackendServiceKey } from '@deepseek-ai/dsh-storage'
 import { DomainFacility } from '@deepseek-ai/dsh-storage-domain'
-import { noConfig } from 'dsh-secretary-core/tooling'
+import { noConfig } from 'dsh-secretary-tooling'
 
 export interface Config {}
 export const Config = noConfig('dsh-secretary-storage')

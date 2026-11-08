@@ -13,7 +13,7 @@ kind: "package-group"
 
 | 组 | 职责 |
 |---|---|
-| [`core/`](core/README.md) | 共享校验、工具与 skill 资源 |
+| [`core/`](core/README.md) | 共享基础设施：校验、工具注册与 skill 资源注册 |
 | [`storage/`](storage/README.md) | Secretary SQLite domain 持久化路由 |
 | [`goal/`](goal/README.md) | 上游 GoalService 空 Provider，只建立 seam |
 | [`tag/`](tag/README.md) | 统一 TagService 与 Agent tools |
@@ -27,7 +27,9 @@ kind: "package-group"
 
 | 包 | 能力族 | 角色 | 对外出口 |
 |---|---|---|---|
-| [`core/core`](core/core/README.md) | core | 共享校验、工具、skill 资源 | `./validation`、`./tooling`、`./skill-resources` |
+| [`core/validation`](core/validation/README.md) | core | 共享输入校验 | `.` |
+| [`core/tooling`](core/tooling/README.md) | core | tool 注册与 no-config schema | `.` |
+| [`core/skill-resources`](core/skill-resources/README.md) | core | skill 资源注册 | `.` |
 | [`storage/storage`](storage/storage/README.md) | storage | `secretaryStorageDomain` facility | `.` |
 | [`goal/goal`](goal/goal/README.md) | goal | 空 `GoalService` Provider | `.` |
 | [`tag/tag`](tag/tag/README.md) | tag | `TagService` + `secretary_tag` | `.`、`./contract`、`./tools` |
@@ -43,7 +45,7 @@ kind: "package-group"
 ```text
 bundle/secretary → client/ui-time ─┐
                                      ├→ api/time-controller → time/time-block + tag/tag
-bundle/secretary → client/ui-gtd     │                          └→ goal/goal → storage/storage → core/core
+bundle/secretary → client/ui-gtd     │                          └→ goal/goal → storage/storage → core/*
                                      └→ gtd/gtd ─────────────────┘
 ```
 

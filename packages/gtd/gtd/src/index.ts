@@ -13,7 +13,7 @@ import {
   type UpdateProjectInput,
   type UpdateActionInput,
 } from 'dsh-secretary-gtd/contract'
-import { normalizeName, objectOf, optionalString, parseInstant, withoutUndefined } from 'dsh-secretary-core/validation'
+import { normalizeName, objectOf, optionalString, parseInstant, withoutUndefined } from 'dsh-secretary-validation'
 import type { TagReferenceRegistry, TagService } from 'dsh-secretary-tag/contract'
 
 interface Table<Record> {

@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
-import { registerSkill } from 'dsh-secretary-core/skill-resources'
-import { noConfig } from 'dsh-secretary-core/tooling'
+import { registerSkill } from 'dsh-secretary-skill-resources'
+import { noConfig } from 'dsh-secretary-tooling'
 
 export interface Config {}
 export const Config = noConfig('dsh-secretary-gtd-agent')

@@ -1,5 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
-import { normalizeName, objectOf, optionalString, withoutUndefined } from 'dsh-secretary-core/validation'
+import { normalizeName, objectOf, optionalString, withoutUndefined } from 'dsh-secretary-validation'
 import { TagService, type CreateTagInput, type Tag, type TagKind, type TagReferenceInspector, type UpdateTagInput } from 'dsh-secretary-tag/contract'
 
 interface Table<Record> {

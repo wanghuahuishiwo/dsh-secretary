@@ -20,7 +20,7 @@ Secretary preset 的通用插件底座与官方 standard preset 对齐。升级 
 dsh-secretary bundle：composition / preset / skills
 │
 ├── 上游共享
-│   ├── storage / core
+│   ├── storage + core（validation / tooling / skill-resources）
 │   ├── tag        → TagService + Agent tools
 │   └── goal       → 空 GoalService Provider
 │

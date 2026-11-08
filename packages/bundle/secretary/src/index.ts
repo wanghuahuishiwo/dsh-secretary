@@ -1,7 +1,7 @@
 import { isAbsolute } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
-import { registerSkill } from 'dsh-secretary-core/skill-resources'
+import { registerSkill } from 'dsh-secretary-skill-resources'
 
 export interface Config {
   defaultTimeZone?: string

@@ -37,8 +37,10 @@
 
 ```text
 packages/
-├── core/          共享校验、工具与 skill 资源
-│   └── core/
+├── core/          共享基础设施子模块
+│   ├── validation/
+│   ├── tooling/
+│   └── skill-resources/
 ├── storage/       Secretary SQLite domain 路由
 │   └── storage/
 ├── goal/         上游空 Goal Provider
@@ -52,8 +54,8 @@ packages/
 ├── api/          Host 产品 API
 │   └── time-controller/ TimeProductService、./typert 与 ./remote
 ├── client/       浏览器产品 UI
-│   ├── time-ui/         纯 React UI、TimeAdapter 契约与右栏插件
-│   └── gtd-ui/          左栏入口与空白 main
+│   ├── ui-time/         纯 React UI、TimeAdapter 契约与右栏插件
+│   └── ui-gtd/          左栏入口与空白 main
 └── bundle/       可安装装配
     └── secretary/       bundle、Preset 与 Secretary 技能
 

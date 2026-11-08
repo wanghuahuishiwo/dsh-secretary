@@ -1,17 +1,20 @@
 {
-  "name": "dsh-secretary-core",
+  "name": "dsh-secretary-tooling",
   "version": "0.1.0",
-  "description": "Shared helpers for dsh-secretary packages: validation, tooling, skill registration.",
+  "description": "Shared Cordis tool-registration helpers and the no-config schema.",
   "license": "MIT",
   "type": "module",
+  "main": "lib/index.js",
   "exports": {
-    "./validation": "./lib/validation.js",
-    "./tooling": "./lib/tooling.js",
-    "./skill-resources": "./lib/skill-resources.js",
+    ".": "./lib/index.js",
     "./package.json": "./package.json"
   },
-  "files": ["lib/**/*.js"],
-  "engines": { "node": "^22.19.0 || >=24.0.0" },
+  "files": [
+    "lib/**/*.js"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
   "scripts": {
     "build": "node build.mjs",
     "dev": "node build.mjs --watch",
