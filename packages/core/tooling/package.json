@@ -1,0 +1,29 @@
+{
+  "name": "dsh-secretary-tooling",
+  "version": "0.1.0",
+  "description": "Shared Cordis tool-registration helpers and the no-config schema.",
+  "license": "MIT",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/**/*.js"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch",
+    "prepare": "node build.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "4.0.5"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.10"
+  }
+}

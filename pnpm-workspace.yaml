@@ -1,0 +1,7 @@
+packages:
+  - 'packages/*/*'
+  - 'design'
+
+allowBuilds:
+  esbuild: true
+  lefthook: true

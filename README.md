@@ -1,32 +1,32 @@
 # dsh-secretary
 
-个人 Secretary Agent：读取你已有的时间规划，通过对话创建具体 Action，到点前准备材料，并保存实际时间与完成结果。
+DeepSeek Harness 的私人 Secretary Agent：以 GTD 管理承诺，以独立 Tag 分类，以 TimeBlock 管理具体日期计划、实录、计划模板和深度时间。安装入口是 [packages/bundle/secretary](packages/bundle/secretary/README.md)。
 
-首版只包含 **Action + TimeCategory** 两类业务数据。每次具体活动都是独立子 Action，计划时间、实际时间和完成状态保存在它自身；不引入独立 Schedule／Execution／Budget 模型。
+## 产品与模块
 
-## 构建与验证
+产品模块、入口、领域服务和共享边界的唯一地图在 [AGENTS.md](AGENTS.md#产品模块)；产品范围见 [prd/](docs/prd/README.md)，设计资产见 [design/](design/README.md)。规格、工单与验收证据由 [GitHub Issues](docs/agents/issue-tracker.md) 保存。
+
+## 安装与验证
 
 ```sh
+pnpm install --frozen-lockfile
 pnpm build
 pnpm test
+dsh plugin --profile <name> add <本仓>/packages/bundle/secretary
 ```
 
-## 安装
+运行要求 DSH `0.2.1-rc.5` 或兼容的 `0.2.x`。默认业务数据在 `$DSH_HOME/storages/secretary.db`。本仓测试只使用临时 `DSH_HOME`，不修改真实用户 profile。
 
-先构建，再在 DSH 会话内用 `plugin_manager`（`action: install_bundle`，`target` 填本目录绝对路径），或终端：
+## 开发导航
 
-```sh
-dsh plugin --profile <name> add /绝对路径
-```
-
-不要手写 profile 依赖。安装后新建会话并选择 **Secretary** preset；既有会话仍保留原来的 preset。运行环境必须是带 `agentPresets` 与 Schedule 服务的 Web/Desktop 宿主，首版不支持 headless 组合。
-
-Secretary 通过 `secretary_action` 与 `secretary_time_category` 工具读写数据，通过宿主 `schedule_*` 工具设置到点准备。已有时间规划默认作为只读上下文；未配置 `timePlanPath` 时，Agent 会在需要时询问路径。
-
-## 已知限制
-
-- 首版没有独立 UI、周期统计或 Review 页面。
-- DSH 宿主必须运行，定时提醒才能投递到原会话；投递不代表 Agent 已完成准备。
-- 多次活动通过多个具体子 Action 表达，首版没有 recurring 模板。
-- 计划修改不改写实际；准备与定时投递不写实际、不自动完成 Action。
-- 首版不包含外部 IM、通用 Tag、Energy 或时间预算同步。
+| 你要做什么 | 去哪 |
+|---|---|
+| 改代码（仓库结构、行为准则） | [AGENTS.md](AGENTS.md) |
+| 做产品设计或查看交互稿 | [design/](design/README.md) |
+| 理解当前产品范围与交互边界 | [prd/](docs/prd/README.md) |
+| 理解包、依赖、产品 API 与 Remote 终点 | [architecture.md](docs/architecture.md) |
+| 找某个包属于哪个能力族 | [packages/README.md](packages/README.md) |
+| 理解领域事实与数据所有权 | [data-model.md](docs/data-model.md) |
+| 改某个包（exports、Config、限制） | 该包自己的 README |
+| 查看工单、规格与验收证据 | [GitHub Issues](docs/agents/issue-tracker.md) |
+| 查看文档索引、ADR 与调研 | [docs/README.md](docs/README.md) |

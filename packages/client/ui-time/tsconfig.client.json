@@ -1,0 +1,19 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/client-types",
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "types": []
+  },
+  "include": [
+    "src/client/**/*.ts",
+    "src/client/**/*.tsx",
+    "src/ui/**/*.ts",
+    "src/ui/**/*.tsx"
+  ],
+  "references": [
+    { "path": "../../api/time-controller/tsconfig.host.json" }
+  ]
+}

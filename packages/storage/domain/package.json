@@ -1,0 +1,32 @@
+{
+  "name": "dsh-secretary-storage-domain",
+  "version": "0.1.0",
+  "description": "Secretary-owned storage domain facility routing secretary domains to SQLite.",
+  "license": "MIT",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/**/*.js"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch",
+    "prepare": "node build.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/dsh-storage": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-storage-domain": "0.2.1-rc.5",
+    "dsh-secretary-tooling": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.10"
+  }
+}

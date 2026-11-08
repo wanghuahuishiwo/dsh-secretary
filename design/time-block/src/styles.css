@@ -1,0 +1,62 @@
+/*
+ * OpenDesign 入口样式：只负责 token import、reset 和预览壳布局。
+ * 产品组件样式由 packages/client/ui-time/src/ui/styles.ts 注入，这里不复制。
+ */
+@import '../../../tokens.css';
+@import '../tokens.css';
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  background: var(--sec-color-surface-page);
+  color: var(--sec-color-text-primary);
+  font-family: var(--sec-font-family);
+  font-size: var(--sec-font-body);
+  line-height: 1.4;
+}
+
+/* 可拖拽宽度的窄右栏：宽视口靠右，拖左边把手调宽。 */
+.od-rail {
+  height: 100%;
+  margin-left: auto;
+  position: relative;
+  overflow: hidden;
+  border-left: 1px solid var(--sec-color-border-subtle);
+}
+
+.od-resize {
+  position: absolute;
+  left: -3px;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: col-resize;
+  z-index: 100;
+  touch-action: none;
+}
+
+.od-resize:hover,
+.od-resize:active {
+  background: var(--sec-color-accent-soft);
+}
+
+.od-resize::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 32px;
+  background: var(--sec-color-border-strong);
+}

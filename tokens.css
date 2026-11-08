@@ -1,0 +1,67 @@
+/*
+ * DSH Secretary 项目级语义 token（--sec-*）。
+ *
+ * 这里只放跨产品模块共享的 foundation：颜色、字阶、间距、圆角。
+ * 模块专属尺寸、调色板与语义放在 design/<module>/tokens.css，
+ * 不进入根 token。
+ */
+:root {
+  color-scheme: dark;
+
+  --sec-color-surface-page: #0a0a0b;
+  --sec-color-surface-rail: #151515;
+  --sec-color-surface-raised: #1d1e20;
+  --sec-color-surface-hover: #26272a;
+  --sec-color-surface-grid-cell: #4a4c50;
+
+  --sec-color-text-primary: #f2f3f4;
+  --sec-color-text-secondary: #a6a9ad;
+  --sec-color-text-tertiary: #767a80;
+
+  --sec-color-border-subtle: rgba(255, 255, 255, 0.07);
+  --sec-color-border-strong: rgba(255, 255, 255, 0.14);
+
+  --sec-color-accent: #82aaff;
+  --sec-color-accent-soft: rgba(102, 141, 222, 0.16);
+  --sec-color-danger: #ef8c84;
+  --sec-color-selection: #f4f7fb;
+
+  --sec-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --sec-font-caption: 10px;
+  --sec-font-label: 11px;
+  --sec-font-body: 12px;
+  --sec-font-title: 15px;
+
+  --sec-space-1: 4px;
+  --sec-space-2: 8px;
+  --sec-space-3: 12px;
+  --sec-space-4: 16px;
+  --sec-space-5: 20px;
+  --sec-space-6: 24px;
+
+  --sec-radius-sm: 5px;
+  --sec-radius-md: 8px;
+  --sec-radius-lg: 12px;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --sec-color-surface-page: #eceef1;
+  --sec-color-surface-rail: #f7f8fa;
+  --sec-color-surface-raised: #ffffff;
+  --sec-color-surface-hover: #e4e7eb;
+  --sec-color-surface-grid-cell: #dfe2e6;
+
+  --sec-color-text-primary: #1c1f23;
+  --sec-color-text-secondary: #5a5f66;
+  --sec-color-text-tertiary: #84898f;
+
+  --sec-color-border-subtle: rgba(28, 35, 46, 0.09);
+  --sec-color-border-strong: rgba(28, 35, 46, 0.17);
+
+  --sec-color-accent: #3568b8;
+  --sec-color-accent-soft: rgba(53, 104, 184, 0.11);
+  --sec-color-danger: #b84c46;
+  --sec-color-selection: #263243;
+}

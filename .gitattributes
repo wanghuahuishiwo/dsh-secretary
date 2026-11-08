@@ -1,0 +1,6 @@
+# Canonical in-repo text form is LF on every host.
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.pdf binary
+
+design/**/assets/*.map linguist-generated=true

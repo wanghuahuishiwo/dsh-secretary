@@ -1,0 +1,14 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "noEmit": false,
+    "emitDeclarationOnly": true
+  },
+  "files": [
+    "src/index.ts",
+    "src/types.ts"
+  ],
+  "references": [{ "path": "../../tag/service" }, { "path": "../../time/time-block" }]
+}

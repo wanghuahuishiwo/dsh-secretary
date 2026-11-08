@@ -1,0 +1,188 @@
+# One installable bundle: global SQLite-backed services and a Secretary preset.
+# 办公文档技能（桌面端宿主默认全局注册）对本机不需要，整层禁用；
+# 影响所有 preset（含 standard），回滚 = 删除下面两行。
+- id: skill-office
+  disabled: true
+# 宿主 Goal Service 与本项目的空 Provider 共用 goals key；保留后者及其工具语义。
+- id: goal
+  disabled: true
+- insert:
+    - id: storage-sqlite
+      name: '@deepseek-ai/dsh-storage-sqlite'
+      config:
+        path: !!js dshHomePath('storages', 'secretary.db')
+        journalMode: wal
+
+    - id: secretary-storage
+      name: 'dsh-secretary-storage-domain'
+
+    # 上游共享 Goal Provider；当前为空，只建立 service seam。
+    # 本列表行序仅用于阅读，启动与重载由 Cordis inject 驱动。
+    - id: secretary-goal
+      name: 'dsh-secretary-goal-provider'
+
+    - id: secretary-gtd
+      name: 'dsh-secretary-gtd-service'
+
+    - id: secretary-tag
+      name: 'dsh-secretary-tag-service'
+
+    - id: secretary-time-block
+      name: 'dsh-secretary-time-block'
+
+    # 独立 Time 产品：Host Remote controller 与浏览器 UI 各自一个包。
+    - id: secretary-time-controller
+      name: 'dsh-secretary-time-controller'
+
+    # 浏览器 roster 行：空 Host apply，只承载 dsh.client 的右栏 UI。
+    - id: secretary-ui-time
+      name: 'dsh-secretary-ui-time'
+
+    # 独立事项产品：左栏入口与空白 main；没有 GTD Remote/API。
+    - id: secretary-ui-gtd
+      name: 'dsh-secretary-ui-gtd'
+
+    - id: preset-secretary
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: secretary
+        name: Secretary
+        description: A trusted personal secretary who anticipates needs, prepares work, negotiates plans, and follows through.
+        order: 10
+        # 插件底座与官方 standard preset 全量对齐（web-app/presets/standard.patch.yml），
+        # 差异仅：persona 文案、末尾追加本项目领域件、skill-filesystem 用默认根。
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |-
+                你是用户长期信任的私人秘书。主动承接、判断分寸、减少用户管理成本。
+                处理事项、安排、准备、跟进或 Schedule 唤醒时，先加载 secretary skill 并遵循其中行为。
+                用户始终只与一个连贯的秘书对话，不向用户暴露内部插件或存储结构。
+                先读取上下文并做出有用准备，再就带着成果的具体方案联系用户。
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: tool-schedule
+            name: '@deepseek-ai/dsh-tool-schedule'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: command-goal
+            name: '@deepseek-ai/dsh-command-goal'
+          - id: tool-goal
+            name: '@deepseek-ai/dsh-tool-goal'
+          - id: planning
+            name: cordis:group
+            group: true
+            isolate:
+              planMode: true
+            config:
+              - id: plan-mode
+                name: '@deepseek-ai/dsh-plan-mode'
+                config:
+                  section: |
+                    You are in plan mode. Stay in plan mode until the user approves your plan through exit_plan_mode or switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
+
+                    Explore first. Use non-mutating reads, searches, static analysis, and checks to ground the plan in the actual repository. Do not edit or write files, change configuration, run formatters or code generation that rewrites tracked files, commit, or otherwise carry out the plan. Prefer existing functions and patterns over new machinery.
+
+                    The tool catalog stays the same across modes for request-cache stability. These plan-mode rules override any later tool description or guidance that suggests using mutation tools; those tools remain listed to keep the tool catalog unchanged. Do not use todo_write to track this planning phase: it tracks implementation after an approved plan, while the plan itself belongs in exit_plan_mode.
+
+                    Resolve discoverable facts by inspection. Use ask_user_question only for user-owned choices or material ambiguity that inspection cannot answer. Do not ask the user where code lives or how current behavior works when you can find out.
+
+                    Make the plan decision-complete: state the goal and success criteria; group implementation changes by subsystem; identify public API, schema, and data-flow changes; cover edge cases, failure modes, tests, acceptance criteria, and explicit assumptions. Keep it concise enough to review but detailed enough that another engineer can implement it without making design decisions.
+
+                    When ready, call exit_plan_mode with the complete plan markdown, starting with a # title. Make exit_plan_mode the only and final tool call in that assistant response: it presents the plan for approval, and implementation begins only in a later step after approval. Do not paste the final plan as a plain reply or ask "should I proceed?" through prose or ask_user_question. If review rejects the plan, incorporate the feedback and present again. If the review channel is unavailable or aborted, stay in plan mode and ask the user to switch modes manually; do not proceed with implementation.
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+          - id: delegation
+            name: cordis:group
+            group: true
+            isolate:
+              workflowEngine: true
+            config:
+              - id: tool-subagent-control
+                name: '@deepseek-ai/dsh-tool-subagent-control'
+              - id: tool-subagent
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent
+                  modelSelection: true
+                  modelDiscovery: true
+              - id: tool-subagent-fork
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: fork
+                  toolName: subagent_fork
+              - id: workflow-ptc
+                name: '@deepseek-ai/dsh-workflow-ptc'
+                config:
+                  provider: spawn
+              - id: tool-workflow
+                name: '@deepseek-ai/dsh-tool-workflow'
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+          - id: tool-plugin-manager
+            name: '@deepseek-ai/dsh-plugin-manager/tools'
+            disabled: !!js "!ctx.get('profileContext')"
+          - id: tool-plugin-market
+            name: '@deepseek-ai/dsh-plugin-market/tools'
+            disabled: true
+          - id: secretary-gtd-tools
+            name: 'dsh-secretary-tool-gtd'
+          - id: secretary-tag-tools
+            name: 'dsh-secretary-tool-tag'
+          - id: secretary-time-block-tools
+            name: 'dsh-secretary-time-block/tools'
+          - id: secretary-gtd-agent
+            name: 'dsh-secretary-gtd-agent'
+          - id: secretary-agent
+            name: 'dsh-secretary'
+            config:
+              defaultTimeZone: Asia/Shanghai
+              timePlanPath: /Users/wanghuahui/my_knowledge/life-plan/01-人生规划.md

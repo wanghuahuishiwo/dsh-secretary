@@ -1,0 +1,100 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "types": [
+      "node"
+    ],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "paths": {
+      "@deepseek-ai/dsh-typert-protocol": [
+        "./types/typert-protocol.d.ts"
+      ],
+      "dsh-secretary-validation": [
+        "./packages/core/validation/src/index.ts"
+      ],
+      "dsh-secretary-tooling": [
+        "./packages/core/tooling/src/index.ts"
+      ],
+      "dsh-secretary-skill-resources": [
+        "./packages/core/skill-resources/src/index.ts"
+      ],
+      "dsh-secretary-storage-domain": [
+        "./packages/storage/domain/src/index.ts"
+      ],
+      "dsh-secretary-goal-provider": [
+        "./packages/goal/provider/src/index.ts"
+      ],
+      "dsh-secretary-goal-provider/contract": [
+        "./packages/goal/provider/src/contract.ts"
+      ],
+      "dsh-secretary-tag-service": [
+        "./packages/tag/service/src/index.ts"
+      ],
+      "dsh-secretary-tag-service/contract": [
+        "./packages/tag/service/src/contract.ts"
+      ],
+      "dsh-secretary-tool-tag": [
+        "./packages/tag/tool-tag/src/index.ts"
+      ],
+      "dsh-secretary-gtd-service": [
+        "./packages/gtd/service/src/index.ts"
+      ],
+      "dsh-secretary-gtd-service/contract": [
+        "./packages/gtd/service/src/contract.ts"
+      ],
+      "dsh-secretary-tool-gtd": [
+        "./packages/gtd/tool-gtd/src/index.ts"
+      ],
+      "dsh-secretary-gtd-agent": [
+        "./packages/gtd/agent/src/index.ts"
+      ],
+      "dsh-secretary-time-block": [
+        "./packages/time/time-block/src/index.ts"
+      ],
+      "dsh-secretary-time-block/contract": [
+        "./packages/time/time-block/src/contract.ts"
+      ],
+      "dsh-secretary-time-block/tools": [
+        "./packages/time/time-block/src/tools.ts"
+      ],
+      "dsh-secretary-time-controller": [
+        "./packages/api/time-controller/src/index.ts"
+      ],
+      "dsh-secretary-time-controller/types": [
+        "./packages/api/time-controller/src/types.ts"
+      ],
+      "dsh-secretary-time-controller/remote": [
+        "./packages/api/time-controller/lib/typert.remote-client.d.ts"
+      ],
+      "dsh-secretary-ui-time/ui": [
+        "./packages/client/ui-time/src/ui/index.ts"
+      ],
+      "dsh-secretary-ui-time/client": [
+        "./packages/client/ui-time/src/client/index.tsx"
+      ],
+      "dsh-secretary-ui-gtd/client": [
+        "./packages/client/ui-gtd/src/client/index.tsx"
+      ]
+    }
+  },
+  "include": [
+    "packages/*/*/src/**/*.ts",
+    "packages/*/*/src/**/*.tsx",
+    "design/*/src/**/*.ts",
+    "design/*/src/**/*.tsx",
+    "design/global.d.ts"
+  ],
+  "exclude": [
+    "**/node_modules/**",
+    "**/lib/**",
+    "design/**/assets/**"
+  ]
+}

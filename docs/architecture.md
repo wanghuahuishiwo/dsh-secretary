@@ -1,44 +1,83 @@
-# 架构
+# 运行架构
 
 ## 形态
 
-首版是 DSH **host-only** 插件。DSH 对话是主要界面；早期时间画布原型不属于首版运行时装配。运行需要带 `agentPresets` 与 Schedule 服务的 Web/Desktop 组合，headless 组合不提供这些服务。
+仓库是 pnpm workspace，发布一个 `dsh-secretary` bundle。GTD、Tag、Time Services、空 Goal Provider 在 bundle 根层挂载；公共 tools、GTD／Secretary skills 在 Secretary preset 中组合。Tag 与 GoalService 是上游共享能力，Time／GTD 通过 Cordis `inject` 消费它们；Goal 产品空壳不消费 `goals`。运行时等待与重载由 service 可用性驱动，patch 行序没有启动语义。浏览器不获得 Host Cordis Context，也不直接写 SQLite；它只通过所属产品的 Host API adapter 调用同一批领域 Services，没有浏览器私有事实源。仓库结构见根 [AGENTS.md](../AGENTS.md) 与 [packages/README.md](../packages/README.md)，逐包入口见各自 README。
 
-## 数据所有者
+## 模块装配
 
-`src/store.ts` 是 Action 与 TimeCategory 的唯一写入口。宿主 `storageDomain` 提供版本化、本地持久化存储：
+产品模块、入口和共享边界只维护在 [AGENTS.md](../AGENTS.md#产品模块)；本节只描述当前实现的装配。
 
-- domain：`secretary`
-- version：`1`
-- tables：`actions`、`time_categories`
-- 运行期文件：`$DSH_HOME/storages/secretary.json`
+当前产品交付由 `api/time-controller` + `client/ui-time`（时间块）与 `client/ui-gtd`（事项）组成。`TagService`、`GoalService` 是 bundle 级共享服务；`goal-panel` 空壳和共享 `TagManager` UI/Remote 尚未实现，不能据此声称已经运行。
 
-`src/model.ts` 负责记录与时间语义校验。Action 的父子关系、计划／实际时间独立、完成状态独立和 TimeCategory 两级约束都在同一写入路径执行。进程内所有变更进入共享 FIFO，引用检查与写入在同一个串行操作中完成；卸载时 Cordis disposer 返回并等待存储关闭 Promise。
+Secretary preset 的通用插件底座与官方 standard preset 对齐。升级 DSH 时应重新 diff preset；bundle 兼容范围以实际 manifest 为准，不使用版本豁免代替兼容验证。
 
-## 公开接缝
+## 产品交付与 API 层
 
-### 统一命令接口
+入口决定见 [ADR 0007](adr/0007-independent-product-entry-points.md)，API 归属见 [ADR 0008](adr/0008-product-owned-host-api-adapters.md)，官方推荐的传输终点见 [ADR 0009](adr/0009-product-api-typert-remote.md)。当前结构是：
 
-`src/commands.ts` 解析不可信输入并调用 store。Agent 工具与未来 UI 共用这一接口，测试也在这里验证数据行为，不绕过它直接写存储。
+```text
+dsh-secretary bundle：composition / preset / skills
+│
+├── 上游共享
+│   ├── storage + core（validation / tooling / skill-resources）
+│   ├── tag        → TagService（tag/service）+ Agent 工具（tag/tool-tag）
+│   └── goal       → 空 GoalService Provider
+│
+├── 下游领域
+│   ├── time-block → TimeService + Agent tools ──→ tag-service/contract + goal-provider/contract
+│   └── gtd        → GtdService（gtd/service）+ tools（gtd/tool-gtd）+ agent（gtd/agent）──→ tag-service/contract + goal-provider/contract
+│
+└── 产品交付
+    ├── api/time-controller
+    │   └── TimeProductService extends TypertRemoteService
+    │       ├── @Remote：readWindow / paint / replaceDay / updateBlock / deleteBlock / paintDeep
+    │       ├── 调用 TimeService + TagService
+    │       └── ./typert + ./remote + ./types
+    ├── client/ui-time
+    │   ├── ./ui：纯 React UI + TimeAdapter 契约（design/ 与生产共用）
+    │   └── ./client：product-local $mount → RemoteTimeAdapter → TimeProduct
+    │       └── 小秘书-时间块右栏；Time/Deep/编辑/多日/Undo 完整保留
+    └── client/ui-gtd
+        └── Browser → 小秘书-事项左栏 sidebar.panellist + 空白 main
+            当前没有 Remote namespace，也不依赖 Time
+```
 
-首版命令：
+`client/ui-time` 的 `src/ui` 是与宿主无关的纯 React UI：只公开 `./ui`（`TimeProduct`、`timeMath`、`TimeAdapter` 契约类型），不 import 宿主、Remote 或产品包；`src/client` 只负责 `RemoteTimeAdapter`（Remote 映射与 Undo）、DSH 生命周期和 `hostTokens`。`api/time-controller` 只拥有 Host Remote 方法，不含 UI 或浏览器代码。设计稿 `design/time-block` 复用同一个 `./ui`，用 `FixtureTimeAdapter` 提供固定 fixture 与主题切换，只服务 OpenDesign 预览，不访问生产 Remote 或 SQLite。
 
-- `action.list / get / create / update / complete / delete`
-- `timeCategory.list / get / create / update / delete`
+当前树只列已实现的产品交付；目标产品的 `goal-panel` 空壳和共享 `TagManager` UI/Remote 尚未实现，不能据此声称已经运行。包分组见 [packages/README.md](../packages/README.md)。
 
-### Agent 装配接口
+Time 的浏览器 Remote 与 Agent tools 是平级 adapters，不是上下层：
 
-`src/tools.ts` 将统一命令注册为 Agent 工具；`src/skills.ts` 与随包 `skills/` 提供 Secretary 行为。专用 Agent 使用 DSH 原生 preset 组合，不新建 AgentLoop。
+```text
+Time Browser → ctx.remote.secretaryTime → TimeProductService ─────────┐
+                                                                 ├→ TimeService / TagService → Storage
+Agent → secretary_time / secretary_tag ──────────────────────────┘
 
-Agent 通过宿主 `schedule_*` 工具创建准备提醒。提醒提示引用 Action ID；唤醒后读取 Action、完成材料准备并写回 `preparationResultRef`。宿主定时投递不直接修改 Action 的实际时间或完成状态。
+GTD 空页 → 仅注册左栏入口与 main，无 GTD Remote 调用
+```
 
-## 外部规划
+不保留统一 Secretary 业务代理、同时注入 GTD／Time 的父 adapter、跨产品 `domain + op` 命令总线、常驻中央产品 assembly，或手写的聚合 HTTP JSON API。每个产品的 assembly 只挂载自己的 Remote 并与该产品 UI 共同清理，不包含业务方法。Time 产品插件装卸不影响 GTD，也不卸载仍供 Agent 使用的 TimeService/tools。TimeService／GtdService 是独立于 UI 的下游领域 Services，并非天然常驻；实际装载由 bundle 装配和消费者决定。第一个真实 GTD 页面能力出现时，再在 GTD 产品包中建立最小 `GtdProductService`。
 
-用户已有的人生规划与时间规划是 Agent 的只读上下文，不复制为预算实体。`Config.timePlanPath` 可选配置当前规划文件，`Config.defaultTimeZone` 提供默认时区。
+exact Fetch 只用于流式上传、文件下载、原始字节或浏览器原生响应。常规业务调用的 Client 类型以 Remote 生成结果为唯一来源，不手写第二份重复声明。
 
-## 测试
+Time 的 `./client` 是 DSH Client 插件，运行于桌面端的 Chromium renderer／Web 客户端，不是独立网页应用。其 bundle inline 生成的 `/remote` 与 `typert-protocol/remote-info`；平台实际提供的 React、Cordis 和 UI 模块继续 external。
 
-- `tests/contracts.mjs` 在构建后的 `lib/index.js` 上运行。
-- 数据行为通过统一命令接口验证。
-- 工具、技能与准备链路通过 Agent 装配接口验证。
-- 不用内部函数、私有存储结构或原型截图替代行为验证。
+## 数据所有权
+
+默认数据库为 `$DSH_HOME/storages/secretary.db`。`dsh-secretary-storage-domain` 提供专用 `secretaryStorageDomain`，只路由本项目 domains，不改变宿主全局 `storage-domain` 的默认 backend 或其他 routes：
+
+- `secretary_gtd`：`projects`、`actions`、`inbox`。
+- `secretary_tag`：`tags`（唯一表；`kind` 区分 `time` / `context`）。
+- `secretary_time`：`plan_blocks`、`actual_blocks`、`plan_template_blocks`、`plan_template_undos`、`deep_templates`。
+
+各 domain 的 next-id、串行写队列、日期与标签不变式见 [data-model.md](data-model.md)。GoalService 空 Provider 不打开 domain，也没有 Goal 表。
+
+## 验证入口
+
+当前高层测试 seam 是：**生成产物 → Host Remote 注册 → product-local Client assembly → 真实浏览器 → 产品 application service → 领域 Service → 真实临时 SQLite**。冷启动必须证明 strict generated descriptor 生效，不能用 SRC fallback、固定 sleep 或内存 stub 替代真实链路。
+
+- `packages/bundle/secretary/tests/tracer.mjs`：公开 tools、TimeProductService、真实临时 SQLite、故障注入、Goal 晚就绪与 Provider 卸载清理、完整关闭／重开；反向断言 bundle 不含聚合 panel 与 routes。
+- `packages/bundle/secretary/tests/browser.mjs`：临时 `DSH_HOME` 中真实 `dsh web` 与 Chromium，覆盖三模块操作、日期导航、Undo、主题和窄栏。
+- `packages/bundle/secretary/tests/installed.mjs`：打包每个 workspace 包，经官方 `dsh plugin add` 与临时 profile file overrides 安装最终 tarballs；在全新 `DSH_HOME` 和空 SQLite 中验证服务激活、两个产品、第一次 Remote 读取与 paint 重开持久化，不使用产品源码 overlay。
+- `pnpm pack` 检查发布内容。所有测试使用临时环境，不修改真实用户 profile；验收证据记录到对应 Issue。

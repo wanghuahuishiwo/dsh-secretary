@@ -1,0 +1,15 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src/ui",
+    "outDir": "lib/ui-types",
+    "tsBuildInfoFile": "lib/tsconfig.ui.tsbuildinfo",
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "types": []
+  },
+  "include": [
+    "src/ui/**/*.ts",
+    "src/ui/**/*.tsx"
+  ]
+}

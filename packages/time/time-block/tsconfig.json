@@ -1,0 +1,11 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "noEmit": false,
+    "emitDeclarationOnly": true
+  },
+  "files": ["src/contract.ts"],
+  "references": [{ "path": "../../tag/service" }]
+}
