@@ -6,19 +6,9 @@
  * consumes `--tb-*` so OpenDesign can supply the same contract from
  * `design/time-block/tokens.css` without a host.
  */
-export const hostTokens = `.tb-host-shell {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  justify-content: center;
-  background: var(--dsw-alias-bg-layer-1, #f7f8fa);
-}
-.tb-host-shell.tb-host-dark { background: #0a0a0b; }
-.tb-host {
+export const hostTokens = `.tb-host {
   flex: 1 1 auto;
   width: 100%;
-  max-width: 430px;
   min-width: 0;
   min-height: 0;
   display: flex;
