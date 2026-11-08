@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { chromium } from 'playwright'
 import { openTimeRemote } from './open-time-product.mjs'
+import { seedWorkspace } from './workspace-fixture.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..')
 const exec = promisify(execFile)
@@ -101,6 +102,7 @@ test('final tarballs install into a fresh profile and serve Time/GTD with persis
   const home = join(work, 'home')
   const profile = join(home, 'profiles', 'web')
   const packs = await packWorkspace(join(work, 'packs'))
+  await seedWorkspace(home, ROOT)
   await mkdir(profile, { recursive: true })
   await writeFile(join(profile, 'pnpm-workspace.yaml'), [
     'packages:', '  - .', '', 'nodeLinker: hoisted', 'autoInstallPeers: false', '', 'overrides:',

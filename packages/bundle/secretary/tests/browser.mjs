@@ -8,6 +8,7 @@ import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import { clearDialogs, openTimeRemote } from './open-time-product.mjs'
+import { seedWorkspace } from './workspace-fixture.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..')
 
@@ -164,6 +165,7 @@ function overlaySource(home) {
 }
 
 async function prepareFixtures(home) {
+  await seedWorkspace(home, ROOT)
   const profile = join(home, 'profiles', 'web')
   await mkdir(join(profile, 'node_modules'), { recursive: true })
   const controllerDir = join(ROOT, 'packages/api/time-controller')
