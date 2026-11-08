@@ -15597,25 +15597,28 @@
     const nowMin = days.includes(today) ? nowMinute : void 0;
     return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_jsx_runtime7.Fragment, { children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-tb", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-tb-main", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-scroll", ref: scrollRef, onScroll, "aria-label": "\u65F6\u95F4\u5757\u753B\u5E03", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-days", children: days.map((day) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
-            DayColumn,
-            {
-              day,
-              rowH,
-              today,
-              records: records.get(day) ?? [],
-              selected: selected.get(day),
-              nowMin: day === today ? nowMin : void 0,
-              tagName,
-              tagColor,
-              onCellDown,
-              onBlockEdit: handleBlockEdit
-            },
-            day
-          )) }),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { className: `tb-jump${jumpVisible ? " on" : ""}`, type: "button", onClick: () => scrollToDate(today, true), children: "\u56DE\u5230\u4ECA\u5929" })
-        ] }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-tb-main", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-canvas-bg", "aria-hidden": "true" }),
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-scroll", ref: scrollRef, onScroll, "aria-label": "\u65F6\u95F4\u5757\u753B\u5E03", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-days", children: days.map((day) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+              DayColumn,
+              {
+                day,
+                rowH,
+                today,
+                records: records.get(day) ?? [],
+                selected: selected.get(day),
+                nowMin: day === today ? nowMin : void 0,
+                tagName,
+                tagColor,
+                onCellDown,
+                onBlockEdit: handleBlockEdit
+              },
+              day
+            )) }),
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { className: `tb-jump${jumpVisible ? " on" : ""}`, type: "button", onClick: () => scrollToDate(today, true), children: "\u56DE\u5230\u4ECA\u5929" })
+          ] })
+        ] }),
         /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(TagShelf, { tags: timeTags, onAssign: assign })
       ] }),
       totalMinutes > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: `tb-sel-badge${overlapsExisting ? " split" : ""}`, children: [
@@ -15710,8 +15713,11 @@
 
 /* ---------- \u65F6\u95F4\u5757 ---------- */
 .tb-tb { flex: 1; min-height: 0; display: flex; background: var(--tb-surface-page, #0a0a0b); }
-.tb-tb-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
-.tb-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overflow-anchor: auto; }
+.tb-tb-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; position: relative; }
+/* The reference's gradient is a fixed layer: it must not move with vertical scrolling. */
+.tb-canvas-bg { position: absolute; top: 0; bottom: 0; left: calc(var(--tb-gutter-width, 46px) + var(--tb-hour-width, 26px)); right: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(180deg, var(--tb-grid-top, #202020) 0%, var(--tb-grid-mid, #505050) 55%, var(--tb-grid-bottom, #303030) 100%); }
+.tb-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overflow-anchor: auto; position: relative; z-index: 1; }
 .tb-scroll { scrollbar-width: thin; scrollbar-color: transparent transparent; }
 .tb-scroll:hover { scrollbar-color: rgba(128, 128, 128, 0.25) transparent; }
 .tb-scroll::-webkit-scrollbar { width: 4px; }
@@ -15722,7 +15728,7 @@
 .tb-days { position: relative; }
 .tb-day { position: relative; display: flex; }
 .tb-day + .tb-day { border-top: 1px dashed var(--tb-border-strong, rgba(255, 255, 255, 0.14)); }
-.tb-gutter { width: 46px; flex: none; position: relative; }
+.tb-gutter { width: var(--tb-gutter-width, 46px); flex: none; position: relative; }
 .tb-datemark { position: absolute; left: 0; right: 0; top: 6px; display: flex; flex-direction: column; align-items: center; gap: 0; pointer-events: none; text-align: center; }
 .tb-datemark .m { font-size: var(--tb-font-caption, 10px); color: var(--tb-text-secondary, #a6a9ad); letter-spacing: .5px; }
 .tb-datemark .d { font-size: var(--tb-font-date, 34px); line-height: 1.02; font-weight: 600; color: var(--tb-text-primary, #f2f3f4); font-variant-numeric: tabular-nums; letter-spacing: -.6px; }
@@ -15733,8 +15739,7 @@
 .tb-hours { width: var(--tb-hour-width, 26px); flex: none; position: relative; }
 .tb-hours span { position: absolute; right: 5px; font-size: var(--tb-font-caption, 10px); color: var(--tb-text-secondary, #a6a9ad); font-variant-numeric: tabular-nums; letter-spacing: -.1px; white-space: nowrap; }
 .tb-hours span.now { color: var(--tb-text-primary, #eceff3); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
-.tb-grid { flex: 1; position: relative; min-width: 0;
-  background: linear-gradient(180deg, var(--tb-grid-top, #202020) 0%, var(--tb-grid-mid, #505050) 55%, var(--tb-grid-bottom, #303030) 100%); }
+.tb-grid { flex: 1; position: relative; min-width: 0; }
 .tb-cells { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(6, 1fr); }
 .tb-cell { background: transparent; cursor: crosshair; }
 .tb-cell:hover { background: color-mix(in srgb, var(--tb-grid-mid, #505050) 82%, var(--tb-text-primary, #f2f3f4) 18%); }

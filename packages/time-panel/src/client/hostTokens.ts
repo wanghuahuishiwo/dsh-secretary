@@ -53,6 +53,7 @@ export const hostTokens = `.tb-host-shell {
   --tb-control-height: 30px;
   --tb-shelf-width: 116px;
   --tb-status-height: 42px;
+  --tb-gutter-width: 46px;
   --tb-hour-width: 26px;
   --tb-font-date: 34px;
   --tb-font-cat: 13px;

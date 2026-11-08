@@ -488,6 +488,7 @@ export function TimeCanvas(props: Props) {
     <>
       <div className="tb-tb">
         <div className="tb-tb-main">
+          <div className="tb-canvas-bg" aria-hidden="true" />
           <div className="tb-scroll" ref={scrollRef} onScroll={onScroll} aria-label="时间块画布">
             <div className="tb-days">
               {days.map(day => (
