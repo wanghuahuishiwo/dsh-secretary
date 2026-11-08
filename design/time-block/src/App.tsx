@@ -68,7 +68,7 @@ export function App() {
       </div>
       <div className="od-rail" style={{ width: `min(100vw, ${railWidth}px)` }}>
         <div className="od-resize" role="separator" aria-orientation="vertical" aria-label="调整预览栏宽度" onPointerDown={startResize} />
-        <TimeProduct adapter={adapter} today={FIXTURE_TODAY} />
+        <TimeProduct adapter={adapter} theme={theme} today={FIXTURE_TODAY} />
       </div>
     </>
   )

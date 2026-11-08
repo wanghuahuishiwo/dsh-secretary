@@ -65,7 +65,7 @@ const FALLBACK_TODAY = localDate()
  * rendered from the `TimeView` returned by every command, so no write is
  * assumed to have succeeded before the host answered.
  */
-export function TimeProduct({ adapter, today: openingDay }: TimeProductProps) {
+export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: TimeProductProps) {
   const openingDate = openingDay ?? FALLBACK_TODAY
   const appRef = useRef<HTMLDivElement | null>(null)
   const [module, setModule] = useState<TimeModule>('actual')
@@ -293,6 +293,7 @@ export function TimeProduct({ adapter, today: openingDay }: TimeProductProps) {
   return (
     <div
       className="tb-app"
+      data-tb-theme={theme}
       data-time-remote
       data-remote-state={view === undefined ? (error === '' ? 'loading' : 'error') : 'ready'}
       ref={appRef}

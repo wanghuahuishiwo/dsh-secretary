@@ -57,50 +57,6 @@
 
 /* time-block/tokens.css */
 :root {
-  --tb-surface-page: var(--sec-color-surface-page);
-  --tb-surface-rail: var(--sec-color-surface-rail);
-  --tb-surface-raised: var(--sec-color-surface-raised);
-  --tb-surface-hover: var(--sec-color-surface-hover);
-  --tb-grid-cell: var(--sec-color-surface-grid-cell);
-  --tb-text-primary: var(--sec-color-text-primary);
-  --tb-text-secondary: var(--sec-color-text-secondary);
-  --tb-text-tertiary: var(--sec-color-text-tertiary);
-  --tb-border-subtle: var(--sec-color-border-subtle);
-  --tb-border-strong: var(--sec-color-border-strong);
-  --tb-accent: var(--sec-color-accent);
-  --tb-accent-soft: var(--sec-color-accent-soft);
-  --tb-danger: var(--sec-color-danger);
-  --tb-selection: var(--sec-color-selection);
-  --tb-font-family: var(--sec-font-family);
-  --tb-font-caption: var(--sec-font-caption);
-  --tb-font-label: var(--sec-font-label);
-  --tb-font-body: var(--sec-font-body);
-  --tb-font-title: var(--sec-font-title);
-  --tb-space-1: var(--sec-space-1);
-  --tb-space-2: var(--sec-space-2);
-  --tb-space-3: var(--sec-space-3);
-  --tb-space-4: var(--sec-space-4);
-  --tb-space-5: var(--sec-space-5);
-  --tb-space-6: var(--sec-space-6);
-  --tb-radius-sm: var(--sec-radius-sm);
-  --tb-radius-md: var(--sec-radius-md);
-  --tb-radius-lg: var(--sec-radius-lg);
-  --tb-head-height: 60px;
-  --tb-control-height: 30px;
-  --tb-hour-height: 26px;
-  --tb-rail-width: 390px;
-  --tb-shelf-width: 116px;
-  --tb-status-height: 42px;
-  --tb-gutter-width: 46px;
-  --tb-hour-width: 26px;
-  --tb-font-date: 34px;
-  --tb-font-cat: 13px;
-  --tb-grid-top: #202020;
-  --tb-grid-mid: #505050;
-  --tb-grid-bottom: #303030;
-  --tb-deep-high: #5aa86a;
-  --tb-deep-medium: #b99530;
-  --tb-deep-low: #79808c;
   --tb-tag-work: #852024;
   --tb-tag-focus: #e63643;
   --tb-tag-collaboration: #f06060;
@@ -113,12 +69,6 @@
   --tb-tag-errand: #6b6b6b;
 }
 :root[data-theme=light] {
-  --tb-grid-top: #f4f5f7;
-  --tb-grid-mid: #e2e5e9;
-  --tb-grid-bottom: #eceef1;
-  --tb-deep-high: #3f7d4c;
-  --tb-deep-medium: #8a6d1f;
-  --tb-deep-low: #5d636e;
   --tb-tag-work: #7a1e24;
   --tb-tag-focus: #c62f3b;
   --tb-tag-collaboration: #d04a4a;
@@ -196,10 +146,10 @@ body {
 }
 .od-badge {
   padding: 2px 6px;
-  border: 1px solid var(--tb-border-strong);
-  border-radius: var(--tb-radius-sm);
+  border: 1px solid var(--sec-color-border-strong);
+  border-radius: var(--sec-radius-sm);
   background: var(--sec-color-surface-rail);
-  color: var(--tb-text-tertiary);
+  color: var(--sec-color-text-tertiary);
   font-size: 9px;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -212,11 +162,11 @@ body {
   padding: 0;
   border-radius: 7px;
   background: var(--sec-color-surface-rail);
-  color: var(--tb-text-secondary);
+  color: var(--sec-color-text-secondary);
 }
 .od-theme:hover {
   background: var(--sec-color-surface-hover);
-  color: var(--tb-text-primary);
+  color: var(--sec-color-text-primary);
 }
 .od-theme svg {
   width: 16px;

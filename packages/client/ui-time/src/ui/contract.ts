@@ -8,6 +8,9 @@
  */
 export type TimeLayer = 'plan' | 'actual'
 
+/** The product palette selector. The host only reports light/dark; colours stay in the product. */
+export type TimeTheme = 'dark' | 'light'
+
 export interface TimeTagView {
   readonly id: string
   readonly name: string
@@ -121,6 +124,8 @@ export interface TimeAdapter {
 
 export interface TimeProductProps {
   readonly adapter: TimeAdapter
+  /** Palette selector; defaults to the dark reference material. */
+  readonly theme?: TimeTheme
   /**
    * The product day this surface opens on. Production omits it and follows the
    * host's local day; a fixture preview pins one so screenshots and scenarios

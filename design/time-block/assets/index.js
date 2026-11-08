@@ -15638,7 +15638,93 @@
   function Toast({ message }) {
     return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: `tb-toast${message === "" ? "" : " on"}`, children: message });
   }
-  var timeStyles = `.tb-app {
+  var timeStyles = `
+/* ---------- module tokens: the only palette source for both shells ---------- */
+.tb-app {
+  --tb-surface-page: #0a0a0b;
+  --tb-surface-rail: #151515;
+  --tb-surface-raised: #1d1e20;
+  --tb-surface-hover: #26272a;
+  --tb-grid-cell: #4a4c50;
+
+  --tb-text-primary: #f2f3f4;
+  --tb-text-secondary: #a6a9ad;
+  --tb-text-tertiary: #767a80;
+
+  --tb-border-subtle: rgba(255, 255, 255, 0.07);
+  --tb-border-strong: rgba(255, 255, 255, 0.14);
+
+  --tb-accent: #82aaff;
+  --tb-accent-soft: rgba(102, 141, 222, 0.16);
+  --tb-danger: #ef8c84;
+  --tb-selection: #f4f7fb;
+
+  --tb-grid-top: #202020;
+  --tb-grid-mid: #505050;
+  --tb-grid-bottom: #303030;
+
+  --tb-deep-high: #5aa86a;
+  --tb-deep-medium: #b99530;
+  --tb-deep-low: #79808c;
+
+  --tb-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --tb-font-caption: 10px;
+  --tb-font-label: 11px;
+  --tb-font-body: 12px;
+  --tb-font-title: 15px;
+
+  --tb-space-1: 4px;
+  --tb-space-2: 8px;
+  --tb-space-3: 12px;
+  --tb-space-4: 16px;
+  --tb-space-5: 20px;
+  --tb-space-6: 24px;
+
+  --tb-radius-sm: 5px;
+  --tb-radius-md: 8px;
+  --tb-radius-lg: 12px;
+
+  --tb-head-height: 60px;
+  --tb-control-height: 30px;
+  --tb-hour-height: 26px;
+  --tb-rail-width: 390px;
+  --tb-shelf-width: 116px;
+  --tb-status-height: 42px;
+  --tb-gutter-width: 46px;
+  --tb-hour-width: 26px;
+  --tb-font-date: 34px;
+  --tb-font-cat: 13px;
+}
+
+.tb-app[data-tb-theme='light'] {
+  --tb-surface-page: #eceef1;
+  --tb-surface-rail: #f7f8fa;
+  --tb-surface-raised: #ffffff;
+  --tb-surface-hover: #e4e7eb;
+  --tb-grid-cell: #dfe2e6;
+
+  --tb-text-primary: #1c1f23;
+  --tb-text-secondary: #5a5f66;
+  --tb-text-tertiary: #84898f;
+
+  --tb-border-subtle: rgba(28, 35, 46, 0.09);
+  --tb-border-strong: rgba(28, 35, 46, 0.17);
+
+  --tb-accent: #3568b8;
+  --tb-accent-soft: rgba(53, 104, 184, 0.11);
+  --tb-danger: #b84c46;
+  --tb-selection: #263243;
+
+  --tb-grid-top: #f4f5f7;
+  --tb-grid-mid: #e2e5e9;
+  --tb-grid-bottom: #eceef1;
+
+  --tb-deep-high: #3f7d4c;
+  --tb-deep-medium: #8a6d1f;
+  --tb-deep-low: #5d636e;
+}
+
+.tb-app {
   position: relative;
   height: 100%;
   min-width: 0;
@@ -15917,7 +16003,7 @@
     return reason instanceof Error ? reason.message : String(reason);
   }
   var FALLBACK_TODAY = localDate();
-  function TimeProduct({ adapter, today: openingDay }) {
+  function TimeProduct({ adapter, theme = "dark", today: openingDay }) {
     const openingDate = openingDay ?? FALLBACK_TODAY;
     const appRef = (0, import_react.useRef)(null);
     const [module, setModule] = (0, import_react.useState)("actual");
@@ -16114,6 +16200,7 @@
       "div",
       {
         className: "tb-app",
+        "data-tb-theme": theme,
         "data-time-remote": true,
         "data-remote-state": view === void 0 ? error === "" ? "loading" : "error" : "ready",
         ref: appRef,
@@ -16533,7 +16620,7 @@
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "od-rail", style: { width: `min(100vw, ${railWidth}px)` }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "od-resize", role: "separator", "aria-orientation": "vertical", "aria-label": "\u8C03\u6574\u9884\u89C8\u680F\u5BBD\u5EA6", onPointerDown: startResize }),
-        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(TimeProduct, { adapter, today: FIXTURE_TODAY })
+        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(TimeProduct, { adapter, theme, today: FIXTURE_TODAY })
       ] })
     ] });
   }

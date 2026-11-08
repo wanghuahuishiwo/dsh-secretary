@@ -43,7 +43,7 @@ dsh-secretary bundle：composition / preset / skills
             当前没有 Remote namespace，也不依赖 Time
 ```
 
-`client/ui-time` 的 `src/ui` 是与宿主无关的纯 React UI：只公开 `./ui`（`TimeProduct`、`timeMath`、`TimeAdapter` 契约类型），不 import 宿主、Remote 或产品包；`src/client` 只负责 `RemoteTimeAdapter`（Remote 映射与 Undo）、DSH 生命周期和 `hostTokens`。`api/time-controller` 只拥有 Host Remote 方法，不含 UI 或浏览器代码。设计稿 `design/time-block` 复用同一个 `./ui`，用 `FixtureTimeAdapter` 提供固定 fixture 与主题切换，只服务 OpenDesign 预览，不访问生产 Remote 或 SQLite。
+`client/ui-time` 的 `src/ui` 是与宿主无关的纯 React UI：只公开 `./ui`（`TimeProduct`、`timeMath`、`TimeAdapter` 契约类型），不 import 宿主、Remote 或产品包；`src/client` 只负责 `RemoteTimeAdapter`（Remote 映射与 Undo）、DSH 生命周期、宿主布局和明暗信号；模块色板 `--tb-*` 唯一定义在 `src/ui/styles.ts`。`api/time-controller` 只拥有 Host Remote 方法，不含 UI 或浏览器代码。设计稿 `design/time-block` 复用同一个 `./ui`，用 `FixtureTimeAdapter` 提供固定 fixture 与主题切换，只服务 OpenDesign 预览，不访问生产 Remote 或 SQLite。
 
 当前树只列已实现的产品交付；目标产品的 `goal-panel` 空壳和共享 `TagManager` UI/Remote 尚未实现，不能据此声称已经运行。包分组见 [packages/README.md](../packages/README.md)。
 

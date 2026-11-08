@@ -37,7 +37,7 @@ OpenDesign 的 `design/time-block` 只 import `./ui`，用 `FixtureTimeAdapter` 
 <details>
 <summary>实现说明与源码定位</summary>
 
-`src/ui/` 是纯显示层：画布、深度周、日期选择、Tag shelf、样式 token 与 `timeMath`；只通过 `./ui` 公开，不 import 宿主、Remote 或产品包。`src/client/` 负责 `RemoteTimeAdapter`（Remote 映射与 Undo）、`TimeClient`（DSH 生命周期）和 `hostTokens`（`--dsw-*` → `--tb-*`）。
+`src/ui/` 是纯显示层：画布、深度周、日期选择、Tag shelf、样式 token 与 `timeMath`；只通过 `./ui` 公开，不 import 宿主、Remote 或产品包。`src/client/` 负责 `RemoteTimeAdapter`（Remote 映射与 Undo）、`TimeClient`（DSH 生命周期与明暗信号）和 `hostTokens`（宿主布局）。模块色板 `--tb-*` 唯一定义在 `src/ui/styles.ts` 的 `.tb-app` token 块。
 
 Client 先 `$mount()` controller 的 `/remote`，再在 child Context 等待 `remote.secretaryTime` 并注册 UI。卸载按 UI → Remote 清理；child 激活失败会同时撤销 Remote。
 
