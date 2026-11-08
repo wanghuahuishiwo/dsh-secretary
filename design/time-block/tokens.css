@@ -42,6 +42,7 @@
   --tb-radius-lg: var(--sec-radius-lg);
 
   /* 模块尺寸：只属于 390px 时间块右栏，不下沉到根 token。 */
+  --tb-head-height: 60px;
   --tb-control-height: 30px;
   --tb-hour-height: 26px;
   --tb-rail-width: 390px;

@@ -27,8 +27,6 @@ interface TimeHeaderProps {
   readonly busy: boolean
   readonly pickerOpen: boolean
   readonly drawerOpen: boolean
-  /** Host-owned control rendered in the header's trailing slot. */
-  readonly action?: ReactNode
   readonly onDrawer: () => void
   readonly onPicker: () => void
   readonly onStep: (amount: number) => void
@@ -36,9 +34,9 @@ interface TimeHeaderProps {
 }
 
 /** 产品头部：菜单、模块名、日期导航、今天、撤销。 */
-export function TimeHeader({ module, dateLabel, canUndo, busy, pickerOpen, drawerOpen, action, onDrawer, onPicker, onStep, onUndo }: TimeHeaderProps) {
+export function TimeHeader({ module, dateLabel, canUndo, busy, pickerOpen, drawerOpen, onDrawer, onPicker, onStep, onUndo }: TimeHeaderProps) {
   return (
-    <header className={`tb-head${action === undefined || action === null ? '' : ' has-action'}`}>
+    <header className="tb-head">
       <button
         className="tb-module-switch"
         type="button"
@@ -65,7 +63,6 @@ export function TimeHeader({ module, dateLabel, canUndo, busy, pickerOpen, drawe
       <button className="tb-hbtn" type="button" title="撤销" disabled={!canUndo || busy} onClick={onUndo}>
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M3 7h6.5a3.5 3.5 0 010 7H6" /><path d="M5.5 4L2.5 7l3 3" /></svg>
       </button>
-      {action}
     </header>
   )
 }

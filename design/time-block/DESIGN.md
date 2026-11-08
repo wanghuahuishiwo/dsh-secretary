@@ -15,7 +15,7 @@
 - **深度时间**：7 × 24 周网格，按 高 / 中 / 低 三档上色；每行连续同级别只在最左一格显示级别名。深度周网格复用同一个固定背景渐变层，未设置格透明，日期列与级别架保持黑底。未绘制的一周显示空白来源提示，不冒充“已继承”。
 - **抽屉与浮层**：一级模块抽屉、日期/周选择、记录编辑浮层、Toast 是临时层级；只有这些浮层允许轻阴影。
 - **主题**：暗色是默认评审主题，浅色是同一语义结构的另一种表达；主题切换只改 token，不改组件结构。生产主题跟随 DSH，OpenDesign 由设计壳切换。DSH 深色主题固定使用参考材质（近黑页面、中灰空格），浅色主题继续继承宿主。
-- **宽侧栏**：内容随宿主侧栏宽度自适应，不设固定最大宽度；生产头部高度 60px、与宿主导航直接相接但内部留白，OD 预览保持自身壳层高度。画布可纵向滚动，但不显示滚动条。
+- **宽侧栏**：内容随宿主侧栏宽度自适应，不设固定最大宽度；头部高度由产品 token `--tb-head-height` 统一为 60px，生产与 OD 一致，不按壳层区分。画布可纵向滚动，但不显示滚动条。
 
 ## 组件组合
 
@@ -23,7 +23,7 @@
 
 ```text
 TimeProduct                      UI 根：模块/层/日期/范围/选择/浮层/busy/error
-├── TimeHeader                   模块切换（图标+标题打开抽屉）、日期导航、今天、Undo、headerAction 插槽
+├── TimeHeader                   模块切换（图标+标题打开抽屉）、日期导航、今天、Undo
 ├── CanvasGradient              固定网格背景渐变，TimeCanvas / DeepWeekView 共用
 ├── TimeCanvas                  多日画布 + 选择/拖动/滚动扩展/回到今天；选区徽章、覆盖/并行切换、重叠角标与记录浮层
 │   └── TagShelf                层级时间标签、收窄、上色
@@ -36,7 +36,7 @@ TimeProduct                      UI 根：模块/层/日期/范围/选择/浮层
 
 - `TimeProduct` 只通过 `TimeAdapter` 契约读写；不 import 宿主、Remote 或产品包。
 - 组件样式唯一来源是 `packages/client/ui-time/src/ui/styles.ts`，生产与 OpenDesign 共用；设计侧不复制组件 CSS。
-- `headerAction` 是宿主插槽：生产可留空，OpenDesign 用它放主题切换与“设计预览”标识。宿主动作在窄栏放不下时换行到头部第二行，不挤压产品控件。
+- 产品头部只承载产品控件（模块切换、日期导航、今天、撤销），不提供宿主控件插槽；`TimeProduct` 不接受 headerAction。OpenDesign 的主题切换与「设计预览」标识是产品框外的页面级浮层，不进入产品布局。
 - 记录编辑与删除、Undo、错误反馈都以 Adapter 返回的新视图为准；失败时保留上一次成功的视图并显示错误。
 
 ## Token 契约
@@ -52,7 +52,7 @@ TimeProduct                      UI 根：模块/层/日期/范围/选择/浮层
 | 字阶 | `--tb-font-family` / `--tb-font-caption` / `--tb-font-label` / `--tb-font-body` / `--tb-font-title` | alias 到根 token |
 | 间距 | `--tb-space-1` … `--tb-space-6` | alias 到根 token |
 | 圆角 | `--tb-radius-sm` / `--tb-radius-md` / `--tb-radius-lg` | alias 到根 token |
-| 模块尺寸 | `--tb-control-height: 30px` / `--tb-hour-height: 26px` / `--tb-rail-width: 390px` / `--tb-shelf-width: 116px` / `--tb-status-height: 42px` / `--tb-gutter-width: 46px` / `--tb-hour-width: 26px` / `--tb-font-date: 34px` / `--tb-font-cat: 13px` | 字面值 |
+| 模块尺寸 | `--tb-head-height: 60px` / `--tb-control-height: 30px` / `--tb-hour-height: 26px` / `--tb-rail-width: 390px` / `--tb-shelf-width: 116px` / `--tb-status-height: 42px` / `--tb-gutter-width: 46px` / `--tb-hour-width: 26px` / `--tb-font-date: 34px` / `--tb-font-cat: 13px` | 字面值 |
 | 网格背景渐变 | `--tb-grid-top` / `--tb-grid-mid` / `--tb-grid-bottom` | 字面值，明暗各一套 |
 | 深度级别 | `--tb-deep-high` / `--tb-deep-medium` / `--tb-deep-low` | 字面值，明暗各一套 |
 | Fixture 标签 | `--tb-tag-work` / `--tb-tag-focus` / `--tb-tag-collaboration` / `--tb-tag-life` / `--tb-tag-meal` / `--tb-tag-exercise` / `--tb-tag-learning` / `--tb-tag-reading` / `--tb-tag-rest` / `--tb-tag-errand` | 字面值，明暗各一套；仅服务设计 fixture |
@@ -61,7 +61,7 @@ TimeProduct                      UI 根：模块/层/日期/范围/选择/浮层
 
 ## 数据边界与 Fixture
 
-OpenDesign 组合根是 `design/time-block/src/App.tsx`：创建 `FixtureTimeAdapter`、持有主题状态、把主题切换与预览标识注入 `headerAction`，然后渲染 `TimeProduct`。设计侧只 import `dsh-secretary-ui-time/ui`，不 import 生产 client。
+OpenDesign 组合根是 `design/time-block/src/App.tsx`：创建 `FixtureTimeAdapter`、持有主题状态、在页面级浮层渲染主题切换与「设计预览」标识，产品框内只渲染 `TimeProduct`。设计侧只 import `dsh-secretary-ui-time/ui`，不 import 生产 client。
 
 `FixtureTimeAdapter` 实现 `TimeAdapter`，纯内存、无网络/SQLite/生产 DSH 依赖：
 
@@ -77,9 +77,10 @@ OpenDesign 组合根是 `design/time-block/src/App.tsx`：创建 `FixtureTimeAda
 
 - `design/time-block/index.html` 加载完整 `TimeProduct`：Time / Deep / 多日 / 日历 / 编辑 / 抽屉 / Undo。
 - 主题切换可用，控制台错误与外部请求为 0。
+- OD 与生产同结构：`TimeProduct` 头部控件相同、无预览专有元素；「设计预览」与主题切换位于产品框外的浮层。
 - `design/time-block/scenarios.json` 的场景可在固定 fixture 上复现。
 - 重叠记录默认收起为数量角标；点角标才显示该格全部记录，且不改变行高、不切分格子。
-- DSH 深色材质、固定背景渐变、隐藏滚动条和 60px 头部通过真实宿主截图/探针校验，不只依赖 OD fixture。
+- DSH 深色材质、固定背景渐变、隐藏滚动条和 60px 头部通过真实宿主截图/探针校验，不只依赖 OD fixture；OD 预览与生产头部结构一致。
 - 选区碰到已有记录才出现 `覆盖｜并行`，`Tab` 切换；并行写入保留旧记录并在整个选区新增一条，写入后回到覆盖。
 - `--tb-*` 之外不出现组件宿主 token；设计侧不复制产品组件。
 - 生产验收仍需真实 DSH + Remote + SQLite，不以本预览替代。

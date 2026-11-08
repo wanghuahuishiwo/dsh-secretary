@@ -38,6 +38,7 @@ export const hostTokens = `.tb-host {
   --tb-deep-low: #79808c;
 
   /* sizes */
+  --tb-head-height: 60px;
   --tb-hour-height: 26px;
   --tb-control-height: 30px;
   --tb-shelf-width: 116px;
@@ -55,7 +56,6 @@ export const hostTokens = `.tb-host {
   --tb-font-title: 15px;
 }
 .tb-host > .tb-app { flex: 1 1 auto; min-height: 0; }
-.tb-host .tb-head { height: 60px; }
 /* The module keeps the reference's near-black material in DSH dark mode. */
 .tb-host-dark {
   --tb-surface-page: #0a0a0b;

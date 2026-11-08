@@ -15044,8 +15044,8 @@
     const end = /* @__PURE__ */ new Date(`${addDays(weekStart, 6)}T12:00:00`);
     return `${start.getMonth() + 1}\u6708${start.getDate()}\u65E5 \u2013 ${end.getMonth() + 1}\u6708${end.getDate()}\u65E5`;
   }
-  function TimeHeader({ module, dateLabel, canUndo, busy, pickerOpen, drawerOpen, action, onDrawer, onPicker, onStep, onUndo }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("header", { className: `tb-head${action === void 0 || action === null ? "" : " has-action"}`, children: [
+  function TimeHeader({ module, dateLabel, canUndo, busy, pickerOpen, drawerOpen, onDrawer, onPicker, onStep, onUndo }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("header", { className: "tb-head", children: [
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
         "button",
         {
@@ -15070,8 +15070,7 @@
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { className: "tb-hbtn", type: "button", title: "\u64A4\u9500", disabled: !canUndo || busy, onClick: onUndo, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.4", children: [
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { d: "M3 7h6.5a3.5 3.5 0 010 7H6" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { d: "M5.5 4L2.5 7l3 3" })
-      ] }) }),
-      action
+      ] }) })
     ] });
   }
   function Drawer({ open, module, onModuleChange, onClose }) {
@@ -15659,11 +15658,8 @@
 .tb-app :focus-visible { outline: 2px solid var(--tb-accent, #82aaff); outline-offset: 1px; }
 
 /* ---------- header ---------- */
-.tb-head { flex: none; height: 42px; display: flex; align-items: center; gap: 2px; padding: 0 8px;
+.tb-head { flex: none; height: var(--tb-head-height, 60px); display: flex; align-items: center; gap: 2px; padding: 0 8px;
   background: var(--tb-surface-rail, #151515); }
-/* A host action (OD theme/preview) gets its own compact row; production keeps the 42px row. */
-.tb-head.has-action { height: auto; min-height: 42px; flex-wrap: wrap; gap: 1px; padding: 7px 6px; }
-.tb-head.has-action .tb-daylabel { padding: 0 7px; }
 .tb-hbtn { width: 28px; height: 28px; border-radius: 7px; color: var(--tb-text-secondary, #a3a9b4); display: grid; place-items: center; padding: 0; }
 .tb-hbtn:hover { background: var(--tb-surface-hover, #252931); color: var(--tb-text-primary, #eceff3); }
 .tb-hbtn:disabled { opacity: .28; cursor: default; }
@@ -15921,7 +15917,7 @@
     return reason instanceof Error ? reason.message : String(reason);
   }
   var FALLBACK_TODAY = localDate();
-  function TimeProduct({ adapter, headerAction, today: openingDay }) {
+  function TimeProduct({ adapter, today: openingDay }) {
     const openingDate = openingDay ?? FALLBACK_TODAY;
     const appRef = (0, import_react.useRef)(null);
     const [module, setModule] = (0, import_react.useState)("actual");
@@ -16138,7 +16134,6 @@
               busy,
               pickerOpen: picker !== null,
               drawerOpen: drawer,
-              action: headerAction,
               onDrawer: () => setDrawer((value) => !value),
               onPicker: () => setPicker(picker === null ? module : null),
               onStep: step,
@@ -16488,30 +16483,12 @@
   var MIN_RAIL = 320;
   var MAX_RAIL = 720;
   var DEFAULT_RAIL = 390;
-  var PREVIEW_BADGE = {
-    padding: "1px 5px",
-    border: "1px solid var(--tb-border-strong)",
-    borderRadius: "var(--tb-radius-sm)",
-    color: "var(--tb-text-tertiary)",
-    fontSize: "9px",
-    letterSpacing: "0.04em",
-    whiteSpace: "nowrap"
-  };
-  var PREVIEW_ROW = {
-    display: "flex",
-    flex: "0 0 100%",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 5,
-    paddingTop: 3,
-    borderTop: "1px solid var(--tb-border-subtle)"
-  };
   function ThemeToggle({ theme, onToggle }) {
     const dark = theme === "dark";
     return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
       "button",
       {
-        className: "tb-hbtn",
+        className: "od-theme",
         type: "button",
         title: "\u5207\u6362\u4E3B\u9898",
         "aria-label": dark ? "\u5207\u6362\u5230\u6D45\u8272\u4E3B\u9898" : "\u5207\u6362\u5230\u6DF1\u8272\u4E3B\u9898",
@@ -16549,19 +16526,15 @@
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", up);
     }, []);
-    return /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "od-rail", style: { width: `min(100vw, ${railWidth}px)` }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "od-resize", role: "separator", "aria-orientation": "vertical", "aria-label": "\u8C03\u6574\u9884\u89C8\u680F\u5BBD\u5EA6", onPointerDown: startResize }),
-      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
-        TimeProduct,
-        {
-          adapter,
-          today: FIXTURE_TODAY,
-          headerAction: /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("span", { style: PREVIEW_ROW, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("span", { style: PREVIEW_BADGE, title: "OpenDesign Fixture \u9884\u89C8", children: "\u8BBE\u8BA1\u9884\u89C8" }),
-            /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(ThemeToggle, { theme, onToggle: () => setTheme((value) => value === "dark" ? "light" : "dark") })
-          ] })
-        }
-      )
+    return /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)(import_jsx_runtime11.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "od-preview", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("span", { className: "od-badge", title: "OpenDesign Fixture \u9884\u89C8", children: "\u8BBE\u8BA1\u9884\u89C8" }),
+        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(ThemeToggle, { theme, onToggle: () => setTheme((value) => value === "dark" ? "light" : "dark") })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "od-rail", style: { width: `min(100vw, ${railWidth}px)` }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "od-resize", role: "separator", "aria-orientation": "vertical", "aria-label": "\u8C03\u6574\u9884\u89C8\u680F\u5BBD\u5EA6", onPointerDown: startResize }),
+        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(TimeProduct, { adapter, today: FIXTURE_TODAY })
+      ] })
     ] });
   }
 
