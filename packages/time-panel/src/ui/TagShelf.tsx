@@ -35,7 +35,7 @@ export function TagShelf({ tags, onAssign }: TagShelfProps) {
               <button
                 className="tb-cat"
                 type="button"
-                style={{ background: tag.color ?? FALLBACK_COLOR }}
+                style={{ backgroundColor: tag.color ?? FALLBACK_COLOR }}
                 aria-expanded={kids.length > 0 ? open : undefined}
                 onClick={event => {
                   if (kids.length > 0 && (event.target as HTMLElement).closest('.caret') !== null) {
@@ -53,7 +53,7 @@ export function TagShelf({ tags, onAssign }: TagShelfProps) {
                 )}
               </button>
               {open && kids.map(kid => (
-                <button key={kid.id} className="tb-cat sub" type="button" style={{ background: kid.color ?? FALLBACK_COLOR }} onClick={() => { setBrushTagId(kid.id); onAssign(kid.id) }}>
+                <button key={kid.id} className="tb-cat sub" type="button" style={{ backgroundColor: kid.color ?? FALLBACK_COLOR }} onClick={() => { setBrushTagId(kid.id); onAssign(kid.id) }}>
                   <span>{kid.name}</span>
                 </button>
               ))}

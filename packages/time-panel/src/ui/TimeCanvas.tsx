@@ -166,7 +166,7 @@ const DayColumn = memo(function DayColumn({
                   width: `${100 / PER_HOUR}%`,
                   top: Math.floor(minute / 60) * rowH + 0.5,
                   height: rowH - 1,
-                  background: tagColor(record.timeTagId),
+                  backgroundColor: tagColor(record.timeTagId),
                 }}
                 title={tooltip}
               >

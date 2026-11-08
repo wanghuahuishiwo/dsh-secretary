@@ -6,12 +6,26 @@
  * consumes `--tb-*` so OpenDesign can supply the same contract from
  * `design/time-block/tokens.css` without a host.
  */
-export const hostTokens = `.tb-host {
+export const hostTokens = `.tb-host-shell {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
   display: flex;
+  justify-content: center;
+  background: var(--dsw-alias-bg-layer-1, #f7f8fa);
+}
+.tb-host-shell.tb-host-dark { background: #0a0a0b; }
+.tb-host {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 430px;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  padding-top: 12px;
+  background: var(--tb-surface-page, #0a0a0b);
 
   --tb-surface-page: var(--dsw-alias-bg-layer-1, #0e0f12);
   --tb-surface-rail: var(--dsw-alias-bg-layer-2, #1d2025);
@@ -48,4 +62,19 @@ export const hostTokens = `.tb-host {
   --tb-font-title: 15px;
 }
 .tb-host > .tb-app { flex: 1 1 auto; min-height: 0; }
+.tb-host .tb-head { height: 52px; }
+/* The module keeps the reference's near-black material in DSH dark mode. */
+.tb-host-dark {
+  --tb-surface-page: #0a0a0b;
+  --tb-surface-rail: #151515;
+  --tb-surface-raised: #1d1e20;
+  --tb-surface-hover: #26272a;
+  --tb-grid-cell: #4a4c50;
+  --tb-text-primary: #f2f3f4;
+  --tb-text-secondary: #a6a9ad;
+  --tb-text-tertiary: #767a80;
+  --tb-border-subtle: rgba(255, 255, 255, 0.08);
+  --tb-border-strong: rgba(255, 255, 255, 0.16);
+  --tb-selection: #f4f7fb;
+}
 `

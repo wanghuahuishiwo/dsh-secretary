@@ -116,7 +116,8 @@ export const timeStyles = `.tb-app {
 .tb-lines i { border-right: 1.5px solid var(--tb-surface-page, #0a0a0b); border-bottom: 1.5px solid var(--tb-surface-page, #0a0a0b); }
 .tb-lines i:nth-child(6n) { border-right: 0; }
 .tb-blk { position: absolute; overflow: hidden; display: flex; align-items: center; padding: 0 4px;
-  font-size: var(--tb-font-caption, 10px); font-weight: 600; letter-spacing: .1px; color: #fff; white-space: nowrap; }
+  font-size: var(--tb-font-caption, 10px); font-weight: 600; letter-spacing: .1px; color: #fff; white-space: nowrap;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, 0) 46%, rgba(0, 0, 0, .08)); }
 .tb-blk span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Overlap stays in the data but not in the cell: one record plus a count badge. */
 /* A bare superscript keeps the badge quiet on top of the tag colour. */
@@ -160,6 +161,7 @@ export const timeStyles = `.tb-app {
 .tb-cat { flex: none; height: 33px; border-radius: 7px; color: #fff; font-size: var(--tb-font-cat, 13px); font-weight: 500;
   letter-spacing: .1px; padding: 0 10px; display: flex; align-items: center; gap: 5px; text-align: left;
   transition: filter .12s; }
+.tb-app .tb-cat { background-image: linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, 0) 46%, rgba(0, 0, 0, .08)); }
 .tb-cat:hover { filter: brightness(1.07); }
 .tb-cat.sub { height: 28px; font-size: var(--tb-font-label, 11px); margin-left: 7px; }
 .tb-cat .caret { margin-left: auto; width: 10px; height: 10px; opacity: .65; transition: transform .15s; }
