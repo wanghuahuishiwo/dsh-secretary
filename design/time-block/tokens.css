@@ -3,7 +3,7 @@
  *
  * 颜色 / 字阶 / 间距 / 圆角 alias 到项目级 --sec-*；只有时间块自己的
  * 尺寸、深度级别色和设计 fixture 调色板使用字面值。
- * 组件（packages/client/time-ui/src/ui）只消费 --tb-*。
+ * 组件（packages/client/ui-time/src/ui）只消费 --tb-*。
  */
 :root {
   --tb-surface-page: var(--sec-color-surface-page);

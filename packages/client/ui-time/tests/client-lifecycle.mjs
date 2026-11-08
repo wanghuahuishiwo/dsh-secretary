@@ -13,7 +13,7 @@ async function loadClient() {
   let registration
   const window = { __ModuleLoader__: { load(value) { registration = value } } }
   vm.runInNewContext(source, { window, console })
-  assert.equal(registration.id, 'dsh-secretary-time-ui')
+  assert.equal(registration.id, 'dsh-secretary-ui-time')
   const require = createRequire(import.meta.url)
   return registration.factory(require)
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { TimeProduct } from 'dsh-secretary-time-ui/ui'
+import { TimeProduct } from 'dsh-secretary-ui-time/ui'
 import { FixtureTimeAdapter } from './FixtureTimeAdapter.ts'
 import { FIXTURE_TODAY } from './fixtures.ts'
 

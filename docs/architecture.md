@@ -8,7 +8,7 @@
 
 产品模块、入口和共享边界只维护在 [AGENTS.md](../AGENTS.md#产品模块)；本节只描述当前实现的装配。
 
-当前产品交付由 `api/time-controller` + `client/time-ui`（时间块）与 `client/gtd-ui`（事项）组成。`TagService`、`GoalService` 是 bundle 级共享服务；`goal-panel` 空壳和共享 `TagManager` UI/Remote 尚未实现，不能据此声称已经运行。
+当前产品交付由 `api/time-controller` + `client/ui-time`（时间块）与 `client/ui-gtd`（事项）组成。`TagService`、`GoalService` 是 bundle 级共享服务；`goal-panel` 空壳和共享 `TagManager` UI/Remote 尚未实现，不能据此声称已经运行。
 
 Secretary preset 的通用插件底座与官方 standard preset 对齐。升级 DSH 时应重新 diff preset；bundle 兼容范围以实际 manifest 为准，不使用版本豁免代替兼容验证。
 
@@ -34,16 +34,16 @@ dsh-secretary bundle：composition / preset / skills
     │       ├── @Remote：readWindow / paint / replaceDay / updateBlock / deleteBlock / paintDeep
     │       ├── 调用 TimeService + TagService
     │       └── ./typert + ./remote + ./types
-    ├── client/time-ui
+    ├── client/ui-time
     │   ├── ./ui：纯 React UI + TimeAdapter 契约（design/ 与生产共用）
     │   └── ./client：product-local $mount → RemoteTimeAdapter → TimeProduct
     │       └── 小秘书-时间块右栏；Time/Deep/编辑/多日/Undo 完整保留
-    └── client/gtd-ui
+    └── client/ui-gtd
         └── Browser → 小秘书-事项左栏 sidebar.panellist + 空白 main
             当前没有 Remote namespace，也不依赖 Time
 ```
 
-`client/time-ui` 的 `src/ui` 是与宿主无关的纯 React UI：只公开 `./ui`（`TimeProduct`、`timeMath`、`TimeAdapter` 契约类型），不 import 宿主、Remote 或产品包；`src/client` 只负责 `RemoteTimeAdapter`（Remote 映射与 Undo）、DSH 生命周期和 `hostTokens`。`api/time-controller` 只拥有 Host Remote 方法，不含 UI 或浏览器代码。设计稿 `design/time-block` 复用同一个 `./ui`，用 `FixtureTimeAdapter` 提供固定 fixture 与主题切换，只服务 OpenDesign 预览，不访问生产 Remote 或 SQLite。
+`client/ui-time` 的 `src/ui` 是与宿主无关的纯 React UI：只公开 `./ui`（`TimeProduct`、`timeMath`、`TimeAdapter` 契约类型），不 import 宿主、Remote 或产品包；`src/client` 只负责 `RemoteTimeAdapter`（Remote 映射与 Undo）、DSH 生命周期和 `hostTokens`。`api/time-controller` 只拥有 Host Remote 方法，不含 UI 或浏览器代码。设计稿 `design/time-block` 复用同一个 `./ui`，用 `FixtureTimeAdapter` 提供固定 fixture 与主题切换，只服务 OpenDesign 预览，不访问生产 Remote 或 SQLite。
 
 当前树只列已实现的产品交付；目标产品的 `goal-panel` 空壳和共享 `TagManager` UI/Remote 尚未实现，不能据此声称已经运行。包分组见 [packages/README.md](../packages/README.md)。
 

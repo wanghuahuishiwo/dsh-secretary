@@ -2,6 +2,6 @@
   "extends": "./tsconfig.base.json",
   "files": [],
   "references": [
-    { "path": "./packages/client/time-ui/tsconfig.client.json" }
+    { "path": "./packages/client/ui-time/tsconfig.client.json" }
   ]
 }

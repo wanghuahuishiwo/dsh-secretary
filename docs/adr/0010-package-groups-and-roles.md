@@ -22,8 +22,8 @@ packages/
 ├── gtd/gtd/              dsh-secretary-gtd：GtdService、tools、agent 与技能
 ├── time/time-block/      dsh-secretary-time-block：TimeService + Agent tools
 ├── api/time-controller/  dsh-secretary-time-controller：TimeProductService + ./typert/./remote
-├── client/time-ui/       dsh-secretary-time-ui：纯 React UI + TimeAdapter 契约 + 浏览器插件
-├── client/gtd-ui/        dsh-secretary-gtd-ui：左栏入口 + 空白 main
+├── client/ui-time/       dsh-secretary-ui-time：纯 React UI + TimeAdapter 契约 + 浏览器插件
+├── client/ui-gtd/        dsh-secretary-ui-gtd：左栏入口 + 空白 main
 └── bundle/secretary/     dsh-secretary：可安装 bundle（preset/skills/patch）
 ```
 

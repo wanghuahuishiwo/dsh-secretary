@@ -7,7 +7,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包提供“小秘书-时间块”的 Host 产品服务 `TimeProductService`：把画布需要的三模块窗口、paint／replace／update／delete 与 DeepTime 批量操作暴露为六个 Typert Remote 方法，调用既有 `TimeService` 与 `TagService`。浏览器 UI 由 [`client/time-ui`](../../client/time-ui/README.md) 拥有，本包不含 React 或界面代码。
+本包提供“小秘书-时间块”的 Host 产品服务 `TimeProductService`：把画布需要的三模块窗口、paint／replace／update／delete 与 DeepTime 批量操作暴露为六个 Typert Remote 方法，调用既有 `TimeService` 与 `TagService`。浏览器 UI 由 [`client/ui-time`](../../client/ui-time/README.md) 拥有，本包不含 React 或界面代码。
 
 ## 目录
 
@@ -40,7 +40,7 @@ kind: "package-reference"
 
 `src/index.ts` 是唯一的 Host 实现：`TimeProductService` 提供 `readWindow / paint / replaceDay / updateBlock / deleteBlock / paintDeep`，调用既有 TimeService／TagService；`src/types.ts` 是浏览器安全的请求与 projection 词汇。
 
-`lib/typert.host.js`、`lib/typert.remote-client.js` 及声明由官方 Typert generator 生成，不入库。浏览器侧只在 `client/time-ui` 中通过 `./remote` 挂载，不复制第二份声明。
+`lib/typert.host.js`、`lib/typert.remote-client.js` 及声明由官方 Typert generator 生成，不入库。浏览器侧只在 `client/ui-time` 中通过 `./remote` 挂载，不复制第二份声明。
 
 </details>
 
@@ -49,7 +49,7 @@ kind: "package-reference"
 - [TimeBlock 功能与交互](../../docs/prd/time-block.md)
 - [运行架构](../../docs/architecture.md)
 - [Time 领域包](../../time/time-block/README.md)
-- [Time 产品 UI](../../client/time-ui/README.md)
+- [Time 产品 UI](../../client/ui-time/README.md)
 - [Secretary bundle](../../bundle/secretary/README.md)
 
 ## 模型体验
@@ -70,6 +70,6 @@ kind: "package-reference"
 
 ## 已知限制与后续工作
 
-- 不包含 React、样式或浏览器生命周期；UI 在 `client/time-ui`。
+- 不包含 React、样式或浏览器生命周期；UI 在 `client/ui-time`。
 - 不包含 GTD、Goal、Tag 管理或设置页面。
 - 不提供计划模板、Tag 写入、GTD 或开始／停止实录的额外 Remote 方法；这些领域能力不因未暴露 Remote 而被删除。

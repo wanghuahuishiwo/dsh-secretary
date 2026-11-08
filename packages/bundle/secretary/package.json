@@ -44,9 +44,9 @@
     "dsh-secretary-storage": "workspace:*",
     "dsh-secretary-tag": "workspace:*",
     "dsh-secretary-time-block": "workspace:*",
-    "dsh-secretary-gtd-ui": "workspace:*",
+    "dsh-secretary-ui-gtd": "workspace:*",
     "dsh-secretary-time-controller": "workspace:*",
-    "dsh-secretary-time-ui": "workspace:*"
+    "dsh-secretary-ui-time": "workspace:*"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.5",

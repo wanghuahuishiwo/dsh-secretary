@@ -3,7 +3,7 @@ description: "小秘书-事项左栏入口与空白主区；供需要检查独�
 kind: "package-reference"
 ---
 
-# dsh-secretary-gtd-ui
+# dsh-secretary-ui-gtd
 
 ## 概述
 

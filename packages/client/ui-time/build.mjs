@@ -2,7 +2,7 @@
 import { build, context } from 'esbuild'
 import { mkdir } from 'node:fs/promises'
 
-const ID = 'dsh-secretary-time-ui'
+const ID = 'dsh-secretary-ui-time'
 await mkdir('lib', { recursive: true })
 
 const host = {

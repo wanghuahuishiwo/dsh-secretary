@@ -150,7 +150,7 @@ function overlaySource(home) {
     "    - id: secretary-browser-time-controller",
     "      name: 'dsh-secretary-time-controller'",
     "    - id: secretary-browser-time-ui",
-    "      name: 'dsh-secretary-time-ui'",
+    "      name: 'dsh-secretary-ui-time'",
     "    - id: secretary-browser-time-tools",
     `      name: 'file://${join(ROOT, 'packages/time/time-block/lib/tools.js')}'`,
     "    - id: secretary-browser-time-lifecycle-fixture",
@@ -158,7 +158,7 @@ function overlaySource(home) {
     "    - id: secretary-browser-domain-fixture",
     `      name: 'file://${join(home, 'domain-fixture.mjs')}'`,
     "    - id: secretary-browser-gtd-ui",
-    `      name: 'file://${join(ROOT, 'packages/client/gtd-ui/lib/index.js')}'`,
+    `      name: 'file://${join(ROOT, 'packages/client/ui-gtd/lib/index.js')}'`,
     '',
   ].join('\n')
 }
@@ -167,15 +167,15 @@ async function prepareFixtures(home) {
   const profile = join(home, 'profiles', 'web')
   await mkdir(join(profile, 'node_modules'), { recursive: true })
   const controllerDir = join(ROOT, 'packages/api/time-controller')
-  const uiDir = join(ROOT, 'packages/client/time-ui')
-  for (const [name, directory] of [['dsh-secretary-time-controller', controllerDir], ['dsh-secretary-time-ui', uiDir]]) {
+  const uiDir = join(ROOT, 'packages/client/ui-time')
+  for (const [name, directory] of [['dsh-secretary-time-controller', controllerDir], ['dsh-secretary-ui-time', uiDir]]) {
     await symlink(directory, join(profile, 'node_modules', name), 'dir')
   }
   await writeFile(join(profile, 'package.json'), JSON.stringify({
     name: 'dsh-profile-web', private: true,
     dependencies: {
       'dsh-secretary-time-controller': `link:${controllerDir}`,
-      'dsh-secretary-time-ui': `link:${uiDir}`,
+      'dsh-secretary-ui-time': `link:${uiDir}`,
     },
     dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] } },
   }, null, 2))
@@ -187,7 +187,7 @@ async function prepareFixtures(home) {
         async fetch(request) {
           try {
             const input = await request.json()
-            const names = ['dsh-secretary-time-controller', 'dsh-secretary-time-ui']
+            const names = ['dsh-secretary-time-controller', 'dsh-secretary-ui-time']
             const bundleEntries = () => names.flatMap(name => [...ctx.loader.entries()].filter(item => item.options.name === name))
             if (input.op === 'remove') {
               const entries = bundleEntries()
@@ -825,7 +825,7 @@ test('Time Remote product covers cold-start real-canvas read/paint, strict error
 })
 
 test('Time Remote product preserves editing, multi-day Undo, date navigation, and Plan isolation', { timeout: 240_000 }, async (t) => {
-  const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-time-ui-'))
+  const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-ui-time-'))
   const overlay = await writeOverlay(home)
   const server = await boot(home, overlay)
   const browser = await chromium.launch()

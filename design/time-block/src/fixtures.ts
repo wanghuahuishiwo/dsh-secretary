@@ -1,5 +1,5 @@
-import type { DeepCellLevel, TimeBlockView, TimeLayer, TimeTagView } from 'dsh-secretary-time-ui/ui'
-import { timeMath } from 'dsh-secretary-time-ui/ui'
+import type { DeepCellLevel, TimeBlockView, TimeLayer, TimeTagView } from 'dsh-secretary-ui-time/ui'
+import { timeMath } from 'dsh-secretary-ui-time/ui'
 
 /**
  * The design fixture day. It is pinned so screenshots, scenarios and the

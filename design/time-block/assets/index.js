@@ -14579,7 +14579,7 @@
   // time-block/src/App.tsx
   var import_react7 = __toESM(require_react(), 1);
 
-  // ../packages/client/time-ui/lib/ui.js
+  // ../packages/client/ui-time/lib/ui.js
   var import_react = __toESM(require_react(), 1);
   var import_react2 = __toESM(require_react(), 1);
   var import_jsx_runtime = __toESM(require_jsx_runtime(), 1);

@@ -3,7 +3,7 @@ description: "小秘书-时间块的浏览器 UI：宿主无关的 React 画布�
 kind: "package-reference"
 ---
 
-# dsh-secretary-time-ui
+# dsh-secretary-ui-time
 
 ## 概述
 

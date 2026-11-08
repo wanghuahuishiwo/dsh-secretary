@@ -1,5 +1,5 @@
 {
-  "name": "dsh-secretary-time-ui",
+  "name": "dsh-secretary-ui-time",
   "version": "0.1.0",
   "description": "TimeBlock product UI: host-free React canvas, TimeAdapter contract, and the DSH right-Sidebar browser plugin.",
   "license": "MIT",

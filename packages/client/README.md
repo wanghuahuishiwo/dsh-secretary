@@ -13,8 +13,8 @@ kind: "package-group"
 
 | 包 | 名称 | 角色 |
 |---|---|---|
-| [`time-ui/`](time-ui/README.md) | `dsh-secretary-time-ui` | 纯 UI `./ui`、右栏插件 `./client` |
-| [`gtd-ui/`](gtd-ui/README.md) | `dsh-secretary-gtd-ui` | 左栏入口与空白 main |
+| [`time-ui/`](time-ui/README.md) | `dsh-secretary-ui-time` | 纯 UI `./ui`、右栏插件 `./client` |
+| [`gtd-ui/`](gtd-ui/README.md) | `dsh-secretary-ui-gtd` | 左栏入口与空白 main |
 
 ## 约束
 

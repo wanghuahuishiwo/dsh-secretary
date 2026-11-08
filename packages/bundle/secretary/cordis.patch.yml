@@ -36,11 +36,11 @@
 
     # 浏览器 roster 行：空 Host apply，只承载 dsh.client 的右栏 UI。
     - id: secretary-time-ui
-      name: 'dsh-secretary-time-ui'
+      name: 'dsh-secretary-ui-time'
 
     # 独立事项产品：左栏入口与空白 main；没有 GTD Remote/API。
     - id: secretary-gtd-ui
-      name: 'dsh-secretary-gtd-ui'
+      name: 'dsh-secretary-ui-gtd'
 
     - id: preset-secretary
       name: '@deepseek-ai/dsh-agent-preset'

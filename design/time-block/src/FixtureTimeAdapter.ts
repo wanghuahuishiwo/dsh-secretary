@@ -2,8 +2,8 @@ import type {
   DeepCellLevel, DeepLevel, DeepRect, DeepWeekData, DeleteBlockCommand, PaintCommand,
   PaintDeepCommand, TimeAdapter, TimeBlockView, TimeLayer, TimeQuery, TimeTagView,
   TimeView, UpdateBlockCommand,
-} from 'dsh-secretary-time-ui/ui'
-import { timeMath } from 'dsh-secretary-time-ui/ui'
+} from 'dsh-secretary-ui-time/ui'
+import { timeMath } from 'dsh-secretary-ui-time/ui'
 import {
   FIXTURE_FROM, FIXTURE_NOW_MINUTE, FIXTURE_TODAY, FIXTURE_TO, FIXTURE_WEEK_START,
   createFixtureBlocks, createFixtureDeep, fixtureTags,

@@ -34,22 +34,22 @@ kind: "package-group"
 | [`gtd/gtd`](gtd/gtd/README.md) | gtd | `GtdService` + `secretary_gtd` + GTD agent/skills | `.`、`./contract`、`./tools`、`./agent` |
 | [`time/time-block`](time/time-block/README.md) | time | `TimeService` + `secretary_time` | `.`、`./contract`、`./tools` |
 | [`api/time-controller`](api/time-controller/README.md) | api | `TimeProductService` 与浏览器 Remote 契约 | `.`、`./types`、`./typert`、`./remote` |
-| [`client/time-ui`](client/time-ui/README.md) | client | 纯 React UI + `TimeAdapter` 契约 + 右栏插件 | `./ui`、`./client` |
-| [`client/gtd-ui`](client/gtd-ui/README.md) | client | 左栏入口 + 空白 main | `.`、`./client` |
+| [`client/ui-time`](client/ui-time/README.md) | client | 纯 React UI + `TimeAdapter` 契约 + 右栏插件 | `./ui`、`./client` |
+| [`client/ui-gtd`](client/ui-gtd/README.md) | client | 左栏入口 + 空白 main | `.`、`./client` |
 | [`bundle/secretary`](bundle/secretary/README.md) | bundle | 唯一安装入口：preset、skills、cordis.patch | `.` |
 
 ## 依赖方向
 
 ```text
-bundle/secretary → client/time-ui ─┐
+bundle/secretary → client/ui-time ─┐
                                      ├→ api/time-controller → time/time-block + tag/tag
-bundle/secretary → client/gtd-ui     │                          └→ goal/goal → storage/storage → core/core
+bundle/secretary → client/ui-gtd     │                          └→ goal/goal → storage/storage → core/core
                                      └→ gtd/gtd ─────────────────┘
 ```
 
 - Host 产品 API 只依赖领域 Service contract，不 import 其他产品的 UI 或插件。
 - 浏览器插件只通过 `./client` 与产品自己的 Remote 契约通信，不直接接触 Host Cordis Context 或 SQLite。
-- `client/time-ui/ui` 是宿主无关的纯 UI 入口：生产右栏与 `design/time-block` 共用同一份组件与契约。
+- `client/ui-time/ui` 是宿主无关的纯 UI 入口：生产右栏与 `design/time-block` 共用同一份组件与契约。
 - 跨包能力只经 Service Definition／Remote 契约；不 import 其他包的内部源码。
 
 ## 维护规则

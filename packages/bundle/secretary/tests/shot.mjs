@@ -11,17 +11,17 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..')
 const home = await mkdtemp(join(tmpdir(), 'shot-'))
 const overlay = join(home, 'overlay.yml')
 const controllerDir = join(ROOT, 'packages/api/time-controller')
-const uiDir = join(ROOT, 'packages/client/time-ui')
+const uiDir = join(ROOT, 'packages/client/ui-time')
 const profile = join(home, 'profiles', 'web')
 await mkdir(join(profile, 'node_modules'), { recursive: true })
-for (const [name, directory] of [['dsh-secretary-time-controller', controllerDir], ['dsh-secretary-time-ui', uiDir]]) {
+for (const [name, directory] of [['dsh-secretary-time-controller', controllerDir], ['dsh-secretary-ui-time', uiDir]]) {
   await symlink(directory, join(profile, 'node_modules', name), 'dir')
 }
 await writeFile(join(profile, 'package.json'), JSON.stringify({
   name: 'dsh-profile-web', private: true,
   dependencies: {
     'dsh-secretary-time-controller': `link:${controllerDir}`,
-    'dsh-secretary-time-ui': `link:${uiDir}`,
+    'dsh-secretary-ui-time': `link:${uiDir}`,
   },
   dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] } },
 }, null, 2))
@@ -52,9 +52,9 @@ await writeFile(overlay, [
   "    - id: secretary-browser-gtd", `      name: 'file://${join(ROOT, 'packages/gtd/gtd/lib/index.js')}'`,
   "    - id: secretary-browser-time", `      name: 'file://${join(ROOT, 'packages/time/time-block/lib/index.js')}'`,
   "    - id: secretary-browser-time-controller", "      name: 'dsh-secretary-time-controller'",
-  "    - id: secretary-browser-time-ui", "      name: 'dsh-secretary-time-ui'",
+  "    - id: secretary-browser-time-ui", "      name: 'dsh-secretary-ui-time'",
   "    - id: secretary-browser-tag-fixture", `      name: 'file://${join(home, 'tag-fixture.mjs')}'`,
-  "    - id: secretary-browser-gtd-ui", `      name: 'file://${join(ROOT, 'packages/client/gtd-ui/lib/index.js')}'`, '',
+  "    - id: secretary-browser-gtd-ui", `      name: 'file://${join(ROOT, 'packages/client/ui-gtd/lib/index.js')}'`, '',
 ].join('\n'))
 const port = await new Promise(r => { const s = createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => r(p)) }) })
 const child = spawn('dsh', ['web', '--patch', overlay, '--port', String(port), '--no-open'], { env: { ...process.env, DSH_HOME: home, DEEPSEEK_API_KEY: 'x' }, stdio: ['ignore', 'pipe', 'pipe'] })
