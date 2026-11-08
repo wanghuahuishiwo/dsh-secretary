@@ -2,7 +2,7 @@
 import { build, context } from 'esbuild'
 import { mkdir } from 'node:fs/promises'
 
-const ID = 'dsh-secretary-gtd-panel'
+const ID = 'dsh-secretary-gtd-ui'
 
 await mkdir('lib', { recursive: true })
 

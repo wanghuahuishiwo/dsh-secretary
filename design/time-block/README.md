@@ -24,7 +24,7 @@
 
 ## 数据
 
-设计侧只 import `dsh-secretary-time-panel/ui`。组合根 [`src/App.tsx`](src/App.tsx) 创建 [`FixtureTimeAdapter`](src/FixtureTimeAdapter.ts)，它实现 `TimeAdapter`：纯内存，固定演示今天 `2026-11-06`、当前时刻 `14:20`，覆盖多日块、Deep 周数据、编辑与 Undo；重载页面恢复 fixture，不访问网络、SQLite 或生产数据。
+设计侧只 import `dsh-secretary-time-ui/ui`。组合根 [`src/App.tsx`](src/App.tsx) 创建 [`FixtureTimeAdapter`](src/FixtureTimeAdapter.ts)，它实现 `TimeAdapter`：纯内存，固定演示今天 `2026-11-06`、当前时刻 `14:20`，覆盖多日块、Deep 周数据、编辑与 Undo；重载页面恢复 fixture，不访问网络、SQLite 或生产数据。
 
 生产走 `RemoteTimeAdapter`，与 fixture 共享同一契约；设计稿不接线生产 Remote。
 

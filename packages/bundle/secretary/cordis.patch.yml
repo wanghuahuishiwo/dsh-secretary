@@ -30,13 +30,17 @@
     - id: secretary-time-block
       name: 'dsh-secretary-time-block'
 
-    # 独立 Time 产品：完整实录、计划与深度时间 Remote UI；领域 Service 独立挂载。
-    - id: secretary-time-panel
-      name: 'dsh-secretary-time-panel'
+    # 独立 Time 产品：Host Remote controller 与浏览器 UI 各自一个包。
+    - id: secretary-time-controller
+      name: 'dsh-secretary-time-controller'
+
+    # 浏览器 roster 行：空 Host apply，只承载 dsh.client 的右栏 UI。
+    - id: secretary-time-ui
+      name: 'dsh-secretary-time-ui'
 
     # 独立事项产品：左栏入口与空白 main；没有 GTD Remote/API。
-    - id: secretary-gtd-panel
-      name: 'dsh-secretary-gtd-panel'
+    - id: secretary-gtd-ui
+      name: 'dsh-secretary-gtd-ui'
 
     - id: preset-secretary
       name: '@deepseek-ai/dsh-agent-preset'

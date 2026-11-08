@@ -1,6 +1,6 @@
 /*
  * OpenDesign 入口样式：只负责 token import、reset 和预览壳布局。
- * 产品组件样式由 packages/time-panel/src/ui/styles.ts 注入，这里不复制。
+ * 产品组件样式由 packages/client/time-ui/src/ui/styles.ts 注入，这里不复制。
  */
 @import '../../../tokens.css';
 @import '../tokens.css';

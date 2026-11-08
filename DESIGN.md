@@ -37,8 +37,8 @@
 ```text
 根 tokens.css                    --sec-*   项目级 foundation（颜色/字阶/间距/圆角）
 design/<module>/tokens.css       模块 contract（alias 到 --sec-* + 模块尺寸/调色板）
-packages/<pkg>/src/ui            只消费模块 token
-packages/<pkg>/src/client        --dsw-* → 模块 token 的宿主绑定
+packages/<group>/<pkg>/src/ui            只消费模块 token
+packages/<group>/<pkg>/src/client        --dsw-* → 模块 token 的宿主绑定
 ```
 
 - 根 token 只放跨模块共享的 foundation，不放某个模块的尺寸、组件或业务调色板。
@@ -50,8 +50,8 @@ packages/<pkg>/src/client        --dsw-* → 模块 token 的宿主绑定
 
 | 层 | 位置 | 职责 | 不做什么 |
 |---|---|---|---|
-| 纯 UI | `packages/<pkg>/src/ui` | 产品根组件、内部组件、纯 model、组件样式、UI 数据契约 | 不 import 宿主、Remote、产品包或 client；不持有全局 store |
-| 宿主适配 | `packages/<pkg>/src/client` | Remote Adapter、DSH 生命周期、宿主 token 绑定 | 不复制 UI，不定义第二套样式 |
+| 纯 UI | `packages/<group>/<pkg>/src/ui` | 产品根组件、内部组件、纯 model、组件样式、UI 数据契约 | 不 import 宿主、Remote、产品包或 client；不持有全局 store |
+| 宿主适配 | `packages/<group>/<pkg>/src/client` | Remote Adapter、DSH 生命周期、宿主 token 绑定 | 不复制 UI，不定义第二套样式 |
 | 设计壳 | `design/<module>` | OpenDesign 壳、Fixture Adapter、主题与预览标识、场景 | 不复制产品 UI，不访问生产数据 |
 | 设计文档 | `design/<module>/DESIGN.md` | 模块视觉、组件组合、模块 token 契约 | 不重复项目级原则 |
 

@@ -1,7 +1,7 @@
 {
-  "name": "dsh-secretary-gtd-panel",
+  "name": "dsh-secretary-gtd-ui",
   "version": "0.1.0",
-  "description": "Independent GTD product entry for dsh-secretary: a left-Sidebar launcher and a deliberately blank main panel.",
+  "description": "GTD product browser entry: a left-Sidebar launcher and a deliberately blank main panel.",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",

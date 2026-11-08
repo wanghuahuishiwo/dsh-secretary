@@ -4,7 +4,7 @@ import type {} from '@deepseek-ai/dsh-api-gateway/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
-import contribution from 'dsh-secretary-time-panel/remote'
+import contribution from 'dsh-secretary-time-controller/remote'
 import { TimeClient } from './TimeClient.tsx'
 
 const TAB_ID = 'dsh-secretary-time-panel'
@@ -20,10 +20,10 @@ function registerUi(ctx: Context): void {
       id: 'product', order: 21, title: () => '小秘书-时间块',
       description: () => '实录、计划与深度时间',
     }],
-  }), 'time-panel: tab type')
+  }), 'time-ui: tab type')
   ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
     name: 'sidebar.right.pane.tab', key: TAB_ID,
-  }, Product)), 'time-panel: tab body')
+  }, Product)), 'time-ui: tab body')
 }
 
 /** The root waits only for Remote; the child owns every UI dependency. */

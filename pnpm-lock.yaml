@@ -20,9 +20,9 @@ importers:
 
   design:
     dependencies:
-      dsh-secretary-time-panel:
+      dsh-secretary-time-ui:
         specifier: workspace:*
-        version: link:../packages/api/time-controller
+        version: link:../packages/client/time-ui
       react:
         specifier: ^19.0.0
         version: 19.3.1
@@ -58,36 +58,15 @@ importers:
       '@deepseek-ai/cordis':
         specifier: 4.0.5
         version: 4.0.5
-      '@deepseek-ai/dsh-api-gateway':
-        specifier: '>=0.2.1-rc.5 <0.3.0'
-        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
-      '@deepseek-ai/dsh-client-ui-renderer':
-        specifier: '>=0.2.1-rc.5 <0.3.0'
-        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
-      '@deepseek-ai/dsh-client-ui-sidebar-right':
-        specifier: '>=0.2.1-rc.5 <0.3.0'
-        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
-      '@deepseek-ai/dsh-client-ui-slots':
-        specifier: '>=0.2.1-rc.5 <0.3.0'
-        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
       '@deepseek-ai/dsh-typert-protocol':
-        specifier: '>=0.2.1-rc.5 <0.3.0'
-        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
-      '@deepseek-ai/dsh-typert-registry':
         specifier: '>=0.2.1-rc.5 <0.3.0'
         version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.2
-      '@types/react':
-        specifier: ^19.0.0
-        version: 19.3.0
       esbuild:
         specifier: ^0.25.10
         version: 0.25.12
-      react:
-        specifier: ^19.0.0
-        version: 19.3.1
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -109,9 +88,9 @@ importers:
       dsh-secretary-gtd:
         specifier: workspace:*
         version: link:../../gtd/gtd
-      dsh-secretary-gtd-panel:
+      dsh-secretary-gtd-ui:
         specifier: workspace:*
-        version: link:../../client/ui-gtd
+        version: link:../../client/gtd-ui
       dsh-secretary-storage:
         specifier: workspace:*
         version: link:../../storage/storage
@@ -121,9 +100,12 @@ importers:
       dsh-secretary-time-block:
         specifier: workspace:*
         version: link:../../time/time-block
-      dsh-secretary-time-panel:
+      dsh-secretary-time-controller:
         specifier: workspace:*
         version: link:../../api/time-controller
+      dsh-secretary-time-ui:
+        specifier: workspace:*
+        version: link:../../client/time-ui
     devDependencies:
       '@deepseek-ai/dsh-storage':
         specifier: 0.2.1-rc.5
@@ -135,7 +117,7 @@ importers:
         specifier: 1.62.1
         version: 1.62.1
 
-  packages/client/ui-gtd:
+  packages/client/gtd-ui:
     dependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.5
@@ -144,6 +126,46 @@ importers:
       esbuild:
         specifier: ^0.25.10
         version: 0.25.12
+
+  packages/client/time-ui:
+    dependencies:
+      dsh-secretary-time-controller:
+        specifier: workspace:*
+        version: link:../../api/time-controller
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5
+      '@deepseek-ai/dsh-api-gateway':
+        specifier: '>=0.2.1-rc.5 <0.3.0'
+        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
+      '@deepseek-ai/dsh-client-ui-renderer':
+        specifier: '>=0.2.1-rc.5 <0.3.0'
+        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
+      '@deepseek-ai/dsh-client-ui-sidebar-right':
+        specifier: '>=0.2.1-rc.5 <0.3.0'
+        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: '>=0.2.1-rc.5 <0.3.0'
+        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
+      '@deepseek-ai/dsh-typert-protocol':
+        specifier: '>=0.2.1-rc.5 <0.3.0'
+        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
+      '@deepseek-ai/dsh-typert-registry':
+        specifier: '>=0.2.1-rc.5 <0.3.0'
+        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.3.0
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
+      react:
+        specifier: ^19.0.0
+        version: 19.3.1
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
 
   packages/core/core:
     dependencies:

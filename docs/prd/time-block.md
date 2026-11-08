@@ -1,6 +1,6 @@
 # 小秘书-时间块
 
-本文描述当前 TimeBlock 产品的功能与交互。产品入口、Remote 和装卸见 [Time 产品包 README](../../packages/time-panel/README.md)；日期、Tags、计划和实录的领域规则见 [Time 领域包 README](../../packages/time-block/README.md) 与 [数据模型](../data-model.md)。
+本文描述当前 TimeBlock 产品的功能与交互。产品入口与 UI 见 [Time 产品 UI README](../../packages/client/time-ui/README.md)，Host Remote 与装卸见 [Time Host API README](../../packages/api/time-controller/README.md)；日期、Tags、计划和实录的领域规则见 [Time 领域包 README](../../packages/time/time-block/README.md) 与 [数据模型](../data-model.md)。
 
 ## 入口与模块
 

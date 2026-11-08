@@ -3,7 +3,7 @@ description: "小秘书-事项左栏入口与空白主区；供需要检查独�
 kind: "package-reference"
 ---
 
-# dsh-secretary-gtd-panel
+# dsh-secretary-gtd-ui
 
 ## 概述
 
@@ -44,7 +44,7 @@ kind: "package-reference"
 
 ## 延伸阅读
 
-- [GTD 领域包](../gtd/README.md)
+- [GTD 领域包](../../gtd/gtd/README.md)
 - [当前 GTD 产品范围](../../docs/prd/gtd.md)
 - [OmniFocus 原型说明](../../design/gtd/README.md)
 

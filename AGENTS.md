@@ -21,13 +21,14 @@
 
 | 产品模块 | 入口 | 领域服务 | 当前范围 |
 |---|---|---|---|
-| 小秘书-时间块 | DSH 右侧栏 | `TimeService` | 生产 UI 与 Remote |
+| 小秘书-时间块 | DSH 右侧栏 | `TimeService` + `TimeProductService` | 生产 UI 与 Remote |
 | 小秘书-事项 | DSH 左侧栏 + `main` | `GtdService` | 入口与空白页，完整界面后置 |
 | 小秘书-目标 | 独立入口 + 空白 `main` | `GoalService`（bundle 级空实现） | 空壳入口；实体、模型、Remote、UI 后置 |
 
 - **Tag**：共享模块，唯一 `TagService` 与 `tags` 表；`time` / `context` 只是 `kind`。共享 `TagManager` UI/Remote 待实现，不是独立产品入口。
 - **Storage / Core**：基础设施。
 - **Secretary Agent / bundle**：工具、技能与装配，不是产品 UI。
+- **包分组**：`packages/<能力族>/<包>`，组只是容器；包地图见 [packages/README.md](packages/README.md)，结构与角色拆分决策见 [ADR 0010](docs/adr/0010-package-groups-and-roles.md)。
 - `goal-panel`、TagManager UI/Remote 尚未实现；空壳或规划不表示产品已完成。
 
 产品范围与交互见 [docs/prd/](docs/prd/README.md)，设计资产见 [design/](design/README.md)，技术装配见 [docs/architecture.md](docs/architecture.md)。
@@ -36,15 +37,25 @@
 
 ```text
 packages/
-├── core/        共享校验、工具与 skill 资源
-├── storage/     Secretary SQLite domain 路由
-├── goal/        上游空 Goal Provider
-├── tag/         统一 Tag Service 与 Agent tools
-├── gtd/         GTD Service、tools、agent 与技能资源
-├── time-block/  Time Service 与 Agent tools
-├── time-panel/  独立 Time 右栏、TimeProductService 与 Remote
-├── gtd-panel/   独立 GTD 左栏入口与空白 main
-└── secretary/   可安装 bundle、Preset 与 Secretary 技能
+├── core/          共享校验、工具与 skill 资源
+│   └── core/
+├── storage/       Secretary SQLite domain 路由
+│   └── storage/
+├── goal/         上游空 Goal Provider
+│   └── goal/
+├── tag/          统一 Tag Service 与 Agent tools
+│   └── tag/
+├── gtd/          GTD Service、tools、agent 与技能资源
+│   └── gtd/
+├── time/         Time 领域能力
+│   └── time-block/      Time Service 与 Agent tools
+├── api/          Host 产品 API
+│   └── time-controller/ TimeProductService、./typert 与 ./remote
+├── client/       浏览器产品 UI
+│   ├── time-ui/         纯 React UI、TimeAdapter 契约与右栏插件
+│   └── gtd-ui/          左栏入口与空白 main
+└── bundle/       可安装装配
+    └── secretary/       bundle、Preset 与 Secretary 技能
 
 docs/
 ├── prd/             当前产品范围与各产品交互

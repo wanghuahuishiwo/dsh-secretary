@@ -426,7 +426,7 @@ export class TimeProductService extends TypertRemoteService {
   }
 }
 
-export const name = 'dsh-secretary-time-panel'
+export const name = 'dsh-secretary-time-controller'
 export const inject = ['time', 'tags']
 
 export function apply(ctx: Context): void {

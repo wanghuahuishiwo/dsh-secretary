@@ -1,6 +1,6 @@
 # dsh-secretary
 
-DeepSeek Harness 的私人 Secretary Agent：以 GTD 管理承诺，以独立 Tag 分类，以 TimeBlock 管理具体日期计划、实录、计划模板和深度时间。安装入口是 [packages/secretary](packages/secretary/README.md)。
+DeepSeek Harness 的私人 Secretary Agent：以 GTD 管理承诺，以独立 Tag 分类，以 TimeBlock 管理具体日期计划、实录、计划模板和深度时间。安装入口是 [packages/bundle/secretary](packages/bundle/secretary/README.md)。
 
 ## 产品与模块
 
@@ -12,7 +12,7 @@ DeepSeek Harness 的私人 Secretary Agent：以 GTD 管理承诺，以独立 Ta
 pnpm install --frozen-lockfile
 pnpm build
 pnpm test
-dsh plugin --profile <name> add <本仓>/packages/secretary
+dsh plugin --profile <name> add <本仓>/packages/bundle/secretary
 ```
 
 运行要求 DSH `0.2.1-rc.5` 或兼容的 `0.2.x`。默认业务数据在 `$DSH_HOME/storages/secretary.db`。本仓测试只使用临时 `DSH_HOME`，不修改真实用户 profile。

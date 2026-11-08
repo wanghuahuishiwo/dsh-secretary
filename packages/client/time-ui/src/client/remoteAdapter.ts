@@ -1,11 +1,11 @@
 import type { TypertRemoteNamespaceMap } from '@deepseek-ai/dsh-typert-protocol'
-import type {} from 'dsh-secretary-time-panel/remote'
+import type {} from 'dsh-secretary-time-controller/remote'
 import type {
   DeepCellLevel, PaintCommand, PaintDeepCommand, TimeAdapter, TimeBlockView, TimeLayer,
   TimeQuery, TimeTagView, TimeView, UpdateBlockCommand, DeleteBlockCommand,
 } from '../ui/contract.ts'
 import { atMinute, minuteOf, recordsOfDay, type BlockLike, type DayRecord } from '../ui/model.ts'
-import type { TimeWindowProjection } from '../types.ts'
+import type { TimeWindowProjection } from 'dsh-secretary-time-controller/types'
 
 /** The generated `secretaryTime` browser client, without the plugin's own Context shape. */
 export type TimeRemote = TypertRemoteNamespaceMap['secretaryTime']

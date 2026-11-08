@@ -1,7 +1,7 @@
 {
-  "name": "dsh-secretary-time-panel",
+  "name": "dsh-secretary-time-controller",
   "version": "0.1.0",
-  "description": "Independent TimeBlock product with six product-local Typert Remote methods and the complete Time UI.",
+  "description": "Time product Host API: six product-local Typert Remote methods over TimeService and TagService.",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
@@ -10,11 +10,6 @@
     ".": {
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
-    },
-    "./client": "./lib/client.js",
-    "./ui": {
-      "types": "./lib/ui-types/index.d.ts",
-      "default": "./lib/ui.js"
     },
     "./types": {
       "types": "./lib/types/types.d.ts",
@@ -32,10 +27,6 @@
   },
   "files": [
     "lib/index.js",
-    "lib/client.js",
-    "lib/ui.js",
-    "lib/ui.js.map",
-    "lib/ui-types/**/*.d.ts",
     "lib/types.js",
     "lib/types/**/*.d.ts",
     "lib/typert.host.js",
@@ -43,17 +34,6 @@
     "lib/typert.remote-client.js",
     "lib/typert.remote-client.d.ts"
   ],
-  "dsh": {
-    "client": {
-      "inject": [
-        "@deepseek-ai/dsh-api-gateway",
-        "@deepseek-ai/dsh-client-ui-renderer",
-        "@deepseek-ai/dsh-client-ui-sidebar-right",
-        "@deepseek-ai/dsh-client-ui-slots"
-      ],
-      "platform": "web"
-    }
-  },
   "dependencies": {
     "dsh-secretary-tag": "workspace:*",
     "dsh-secretary-time-block": "workspace:*",
@@ -65,20 +45,13 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.5",
-    "@deepseek-ai/dsh-api-gateway": ">=0.2.1-rc.5 <0.3.0",
-    "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.1-rc.5 <0.3.0",
-    "@deepseek-ai/dsh-client-ui-sidebar-right": ">=0.2.1-rc.5 <0.3.0",
-    "@deepseek-ai/dsh-client-ui-slots": ">=0.2.1-rc.5 <0.3.0",
     "@deepseek-ai/dsh-typert-protocol": ">=0.2.1-rc.5 <0.3.0",
-    "@deepseek-ai/dsh-typert-registry": ">=0.2.1-rc.5 <0.3.0",
     "@types/node": "^24.0.0",
-    "@types/react": "^19.0.0",
     "esbuild": "^0.25.10",
-    "react": "^19.0.0",
     "typescript": "^6.0.3"
   },
   "scripts": {
-    "build": "tsc -b tsconfig.host.json tsconfig.ui.json tsconfig.client.json && node build.mjs",
+    "build": "tsc -b tsconfig.host.json && node build.mjs",
     "dev": "node build.mjs --watch",
     "prepare": "node ../../../scripts/generate-typert.mjs && node build.mjs",
     "test": "node --test tests/*.mjs"

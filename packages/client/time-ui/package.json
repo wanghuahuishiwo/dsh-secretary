@@ -1,0 +1,67 @@
+{
+  "name": "dsh-secretary-time-ui",
+  "version": "0.1.0",
+  "description": "TimeBlock product UI: host-free React canvas, TimeAdapter contract, and the DSH right-Sidebar browser plugin.",
+  "license": "MIT",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": "./lib/client.js",
+    "./ui": {
+      "types": "./lib/ui-types/index.d.ts",
+      "default": "./lib/ui.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "lib/ui.js",
+    "lib/ui-model.js",
+    "lib/ui.js.map",
+    "lib/ui-types/**/*.d.ts",
+    "lib/types/**/*.d.ts"
+  ],
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-api-gateway",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-sidebar-right",
+        "@deepseek-ai/dsh-client-ui-slots"
+      ],
+      "platform": "web"
+    }
+  },
+  "dependencies": {
+    "dsh-secretary-time-controller": "workspace:*"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/dsh-typert-protocol": ">=0.2.1-rc.5 <0.3.0"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/dsh-api-gateway": ">=0.2.1-rc.5 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.1-rc.5 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-sidebar-right": ">=0.2.1-rc.5 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-slots": ">=0.2.1-rc.5 <0.3.0",
+    "@deepseek-ai/dsh-typert-protocol": ">=0.2.1-rc.5 <0.3.0",
+    "@types/react": "^19.0.0",
+    "esbuild": "^0.25.10",
+    "react": "^19.0.0",
+    "typescript": "^6.0.3",
+    "@deepseek-ai/dsh-typert-registry": ">=0.2.1-rc.5 <0.3.0"
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.host.json tsconfig.ui.json tsconfig.client.json && node build.mjs",
+    "dev": "node build.mjs --watch",
+    "prepare": "node build.mjs",
+    "test": "node --test tests/*.mjs"
+  }
+}

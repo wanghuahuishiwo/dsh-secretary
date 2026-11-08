@@ -26,12 +26,12 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.slots.inject('main', () => ctx.slots.register({
     name: 'main',
     key: PANEL_ID,
-  }, EmptyGtdMain)), 'dsh-secretary-gtd-panel: blank main')
+  }, EmptyGtdMain)), 'dsh-secretary-gtd-ui: blank main')
 
   ctx.effect(() => ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
     name: 'sidebar.panellist',
     id: PANEL_ID,
     order: 20,
     label: '小秘书-事项',
-  }, GtdPanelIcon)), 'dsh-secretary-gtd-panel: Sidebar entry')
+  }, GtdPanelIcon)), 'dsh-secretary-gtd-ui: Sidebar entry')
 }

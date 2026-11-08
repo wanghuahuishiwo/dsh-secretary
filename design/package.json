@@ -9,9 +9,9 @@
     "od": "node scripts/import-open-design.mjs"
   },
   "dependencies": {
-    "dsh-secretary-time-panel": "workspace:*",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "dsh-secretary-time-ui": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

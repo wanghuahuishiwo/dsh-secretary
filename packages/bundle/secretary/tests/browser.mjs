@@ -147,16 +147,18 @@ function overlaySource(home) {
     `      name: 'file://${join(ROOT, 'packages/gtd/gtd/lib/index.js')}'`,
     "    - id: secretary-browser-time",
     `      name: 'file://${join(ROOT, 'packages/time/time-block/lib/index.js')}'`,
-    "    - id: secretary-browser-time-panel",
-    "      name: 'dsh-secretary-time-panel'",
+    "    - id: secretary-browser-time-controller",
+    "      name: 'dsh-secretary-time-controller'",
+    "    - id: secretary-browser-time-ui",
+    "      name: 'dsh-secretary-time-ui'",
     "    - id: secretary-browser-time-tools",
     `      name: 'file://${join(ROOT, 'packages/time/time-block/lib/tools.js')}'`,
     "    - id: secretary-browser-time-lifecycle-fixture",
     `      name: 'file://${join(home, 'time-product-lifecycle.mjs')}'`,
     "    - id: secretary-browser-domain-fixture",
     `      name: 'file://${join(home, 'domain-fixture.mjs')}'`,
-    "    - id: secretary-browser-gtd-panel",
-    `      name: 'file://${join(ROOT, 'packages/client/ui-gtd/lib/index.js')}'`,
+    "    - id: secretary-browser-gtd-ui",
+    `      name: 'file://${join(ROOT, 'packages/client/gtd-ui/lib/index.js')}'`,
     '',
   ].join('\n')
 }
@@ -164,11 +166,17 @@ function overlaySource(home) {
 async function prepareFixtures(home) {
   const profile = join(home, 'profiles', 'web')
   await mkdir(join(profile, 'node_modules'), { recursive: true })
-  const packageDir = join(ROOT, 'packages/api/time-controller')
-  await symlink(packageDir, join(profile, 'node_modules/dsh-secretary-time-panel'), 'dir')
+  const controllerDir = join(ROOT, 'packages/api/time-controller')
+  const uiDir = join(ROOT, 'packages/client/time-ui')
+  for (const [name, directory] of [['dsh-secretary-time-controller', controllerDir], ['dsh-secretary-time-ui', uiDir]]) {
+    await symlink(directory, join(profile, 'node_modules', name), 'dir')
+  }
   await writeFile(join(profile, 'package.json'), JSON.stringify({
     name: 'dsh-profile-web', private: true,
-    dependencies: { 'dsh-secretary-time-panel': `link:${packageDir}` },
+    dependencies: {
+      'dsh-secretary-time-controller': `link:${controllerDir}`,
+      'dsh-secretary-time-ui': `link:${uiDir}`,
+    },
     dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] } },
   }, null, 2))
   await writeFile(join(home, 'time-product-lifecycle.mjs'), `
@@ -179,16 +187,21 @@ async function prepareFixtures(home) {
         async fetch(request) {
           try {
             const input = await request.json()
-            const entry = [...ctx.loader.entries()].find(item => item.options.name === 'dsh-secretary-time-panel')
+            const names = ['dsh-secretary-time-controller', 'dsh-secretary-time-ui']
+            const bundleEntries = () => names.flatMap(name => [...ctx.loader.entries()].filter(item => item.options.name === name))
             if (input.op === 'remove') {
-              const fiber = entry?.fiber
-              if (entry) ctx.loader.remove(entry.id)
-              await fiber?.dispose()
+              const entries = bundleEntries()
+              const fibers = entries.map(item => item.fiber)
+              for (const item of entries) ctx.loader.remove(item.id)
+              for (const fiber of fibers) await fiber?.dispose()
               await ctx.loader.await()
             } else if (input.op === 'mount') {
-              if (!entry || entry.fiber?.state === 4) {
-                const id = await ctx.loader.create({ name: 'dsh-secretary-time-panel' })
-                await ctx.loader.resolve(id).fiber
+              for (const name of names) {
+                const entry = [...ctx.loader.entries()].find(item => item.options.name === name)
+                if (!entry || entry.fiber?.state === 4) {
+                  const id = await ctx.loader.create({ name })
+                  await ctx.loader.resolve(id).fiber
+                }
               }
               await ctx.loader.await()
             }
@@ -203,7 +216,7 @@ async function prepareFixtures(home) {
               time: ctx.get('time') !== undefined,
               tool: tool !== undefined,
               actual: fromTool?.blocks,
-              entries: [...ctx.loader.entries()].filter(item => item.options.name === 'dsh-secretary-time-panel').map(item => ({ id: item.id, state: item.fiber?.state, error: item.fiber?.error?.message })),
+              entries: bundleEntries().map(item => ({ id: item.id, state: item.fiber?.state, error: item.fiber?.error?.message })),
             })
           } catch (error) {
             return Response.json({ error: String(error), stack: error?.stack }, { status: 500 })
@@ -597,7 +610,7 @@ test('事项 product HMR unload and remount preserve Conversation, the Time prod
     let navigations = 0
     page.on('framenavigated', () => { navigations += 1 })
 
-    await writeFile(profile, `${overlaySource(home)}\n- id: secretary-browser-gtd-panel\n  disabled: true\n`)
+    await writeFile(profile, `${overlaySource(home)}\n- id: secretary-browser-gtd-ui\n  disabled: true\n`)
     await entry.waitFor({ state: 'detached', timeout: 30_000 })
     await main.waitFor({ state: 'detached' })
     assert.equal(await page.locator('[data-composer-input]').count(), 1,

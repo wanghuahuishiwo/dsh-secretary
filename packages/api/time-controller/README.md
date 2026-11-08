@@ -1,13 +1,13 @@
 ---
-description: "小秘书-时间块右栏产品；供需要使用完整 Time 画布、迁移 Remote 调用或排查产品生命周期的用户与维护者阅读。"
+description: "小秘书-时间块的 Host 产品 API：六个产品级 Typert Remote 方法；供迁移 Remote、排查产品生命周期或核对领域调用边界的用户与维护者阅读。"
 kind: "package-reference"
 ---
 
-# dsh-secretary-time-panel
+# dsh-secretary-time-controller
 
 ## 概述
 
-本包提供“小秘书-时间块”右栏，让你查看和编辑实录、计划与深度时间，完成日期导航、上色、擦除、删除和 Undo。浏览器通过官方 Typert Remote 调用自己的 Host 产品服务，不直接访问 SQLite。
+本包提供“小秘书-时间块”的 Host 产品服务 `TimeProductService`：把画布需要的三模块窗口、paint／replace／update／delete 与 DeepTime 批量操作暴露为六个 Typert Remote 方法，调用既有 `TimeService` 与 `TagService`。浏览器 UI 由 [`client/time-ui`](../../client/time-ui/README.md) 拥有，本包不含 React 或界面代码。
 
 ## 目录
 
@@ -22,7 +22,7 @@ kind: "package-reference"
 
 ### 组合与入口
 
-本包由 Secretary bundle 组合，不单独安装到 profile。右栏标题为“小秘书-时间块”，tab id 为 `dsh-secretary-time-panel`，kind 为 `secretary-time-block`。
+本包由 Secretary bundle 组合，不单独安装到 profile。bundle 的 `secretary-time-controller` 行挂载它；浏览器 roster 行与 UI 在另一个包。
 
 | 出口 | 作用 |
 |---|---|
@@ -30,8 +30,6 @@ kind: "package-reference"
 | `./typert` | 官方生成的 Host Remote 描述 |
 | `./remote` | 官方生成的浏览器 Remote contribution |
 | `./types` | 浏览器安全的请求与 projection 类型 |
-| `./client` | product-local Remote 装配与右栏 UI |
-| `./ui` | 纯 React UI：`TimeProduct`、`timeMath`、`TimeAdapter` 契约类型 |
 
 本包没有 Config。Remote 签名、namespace、错误词汇或 exports 变化后，从仓库根运行 `pnpm generate:typert`，再构建并验证真实链路。
 
@@ -40,16 +38,9 @@ kind: "package-reference"
 <details>
 <summary>实现说明与源码定位</summary>
 
-`TimeProductService` 提供 `readWindow / paint / replaceDay / updateBlock / deleteBlock / paintDeep`，调用既有 TimeService／TagService。
+`src/index.ts` 是唯一的 Host 实现：`TimeProductService` 提供 `readWindow / paint / replaceDay / updateBlock / deleteBlock / paintDeep`，调用既有 TimeService／TagService；`src/types.ts` 是浏览器安全的请求与 projection 词汇。
 
-源码分两层，UI 不接触宿主：
-
-- `src/ui/`：纯显示组件、`TimeAdapter` 契约类型与纯 `timeMath`；只通过 `./ui` 公开，不 import 宿主、Remote 或产品包。
-- `src/client/`：`RemoteTimeAdapter`（Remote 映射与 Undo）、`TimeClient`（DSH 生命周期）与 `hostTokens`（`--dsw-*` → `--tb-*`）。
-
-Client 先 `$mount()` 自己的 `/remote`，再在 child Context 等待 `remote.secretaryTime` 并注册 UI。卸载按 UI → Remote 清理；child 激活失败会同时撤销 Remote。
-
-Design 的 `design/time-block` 复用同一个 `./ui`，只把 `RemoteTimeAdapter` 换成 `FixtureTimeAdapter`，用于 OpenDesign 静态预览。
+`lib/typert.host.js`、`lib/typert.remote-client.js` 及声明由官方 Typert generator 生成，不入库。浏览器侧只在 `client/time-ui` 中通过 `./remote` 挂载，不复制第二份声明。
 
 </details>
 
@@ -57,8 +48,9 @@ Design 的 `design/time-block` 复用同一个 `./ui`，只把 `RemoteTimeAdapte
 
 - [TimeBlock 功能与交互](../../docs/prd/time-block.md)
 - [运行架构](../../docs/architecture.md)
-- [Time 领域包](../time-block/README.md)
-- [Secretary bundle](../secretary/README.md)
+- [Time 领域包](../../time/time-block/README.md)
+- [Time 产品 UI](../../client/time-ui/README.md)
+- [Secretary bundle](../../bundle/secretary/README.md)
 
 ## 模型体验
 
@@ -78,5 +70,6 @@ Design 的 `design/time-block` 复用同一个 `./ui`，只把 `RemoteTimeAdapte
 
 ## 已知限制与后续工作
 
+- 不包含 React、样式或浏览器生命周期；UI 在 `client/time-ui`。
 - 不包含 GTD、Goal、Tag 管理或设置页面。
 - 不提供计划模板、Tag 写入、GTD 或开始／停止实录的额外 Remote 方法；这些领域能力不因未暴露 Remote 而被删除。

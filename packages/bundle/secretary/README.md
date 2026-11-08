@@ -26,7 +26,7 @@ kind: "package-bundle"
 
 ```sh
 pnpm build
-dsh plugin --profile <name> add /绝对路径/dsh-secretary/packages/secretary
+dsh plugin --profile <name> add /绝对路径/dsh-secretary/packages/bundle/secretary
 ```
 
 也可以使用 `plugin_manager` 安装本包。不要安装到正在使用的真实 profile 来试验；验收脚本始终使用临时 `DSH_HOME`。

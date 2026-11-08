@@ -10,12 +10,10 @@
   "include": [
     "src/client/**/*.ts",
     "src/client/**/*.tsx",
-    "src/types.ts",
     "src/ui/**/*.ts",
     "src/ui/**/*.tsx"
   ],
   "references": [
-    { "path": "../../tag/tag" },
-    { "path": "../../time/time-block" }
+    { "path": "../../api/time-controller/tsconfig.host.json" }
   ]
 }

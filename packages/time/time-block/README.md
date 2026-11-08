@@ -22,7 +22,7 @@ kind: "package-reference"
 
 ### 组合与配置
 
-本包由 Secretary bundle 挂载。`dsh-secretary-time-block` 提供 `ctx.time`，`/tools` 注册公共工具 `secretary_time`；右栏 UI 由独立的 `time-panel` 包提供。
+本包由 Secretary bundle 挂载。`dsh-secretary-time-block` 提供 `ctx.time`，`/tools` 注册公共工具 `secretary_time`；右栏 UI 由 [`client/time-ui`](../../client/time-ui/README.md) 提供，Host 产品 API 在 [`api/time-controller`](../../api/time-controller/README.md)。
 
 | Config 字段 | 默认值 | 含义 |
 |---|---|---|
@@ -35,7 +35,7 @@ kind: "package-reference"
 - `actual.*`：补记、编辑、开始和停止实录。
 - `deep.*`：读取、设置和清除周模板中的单格或闭区间矩形。
 
-日期、时区和各操作的必填字段由 `contract` 与工具 schema 定义。画布手势和 Remote 产品方法属于 `time-panel`，不在本包重复定义。
+日期、时区和各操作的必填字段由 `contract` 与工具 schema 定义。画布手势属于 `client/time-ui`，Remote 产品方法属于 `api/time-controller`，不在本包重复定义。
 
 ## 理解实现
 
@@ -54,7 +54,8 @@ DeepTime 使用 7×24 周模板；未写入的周继承最近的有效更早周�
 
 - [TimeBlock 产品功能与交互](../../docs/prd/time-block.md)
 - [当前数据模型](../../docs/data-model.md)
-- [Time 产品包](../time-panel/README.md)
+- [Time 产品 UI](../../client/time-ui/README.md)
+- [Time Host API](../../api/time-controller/README.md)
 - [运行架构](../../docs/architecture.md)
 
 ## 模型体验

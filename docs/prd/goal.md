@@ -24,6 +24,6 @@ Goal 的定位、目标与 Project/Action 的关系、是否支持层级、进�
 ## 相关阅读
 
 - [Goal 空壳边界与模块地图](https://github.com/wanghuahuishiwo/dsh-secretary/issues/15)
-- [GoalService 包](../../packages/goal/README.md)
+- [GoalService 包](../../packages/goal/goal/README.md)
 - [运行架构](../architecture.md)
 - [数据模型](../data-model.md)

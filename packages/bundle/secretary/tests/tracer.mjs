@@ -79,7 +79,7 @@ async function sqliteHarness(t, databasePath, failOn, beforePlugins, includeGoal
     import('dsh-secretary-tag/tools'),
     import('dsh-secretary-time-block'),
     import('dsh-secretary-time-block/tools'),
-    import('dsh-secretary-time-panel'),
+    import('dsh-secretary-time-controller'),
     ...(includeGoal ? [import('dsh-secretary-goal')] : []),
   ])
   // Create every module before awaiting them, as the real Loader does. Cordis
@@ -1759,7 +1759,7 @@ test('GTD product composition and unload preserve domain Services, Agent tools, 
   const harness = await sqliteHarness(t)
   const gtd = harness.ctx.get('gtd')
   const time = harness.ctx.get('time')
-  const product = await harness.ctx.plugin(await import('dsh-secretary-gtd-panel'))
+  const product = await harness.ctx.plugin(await import('dsh-secretary-gtd-ui'))
   const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '独立装卸', kind: 'time' })
   const { action } = await execute(harness, 'secretary_gtd', { op: 'action.create', title: '装卸后继续存在', tagIds: [tag.id] })
   const tools = [...harness.tools.keys()]
@@ -1779,12 +1779,13 @@ test('GTD product composition and unload preserve domain Services, Agent tools, 
   assert.equal(actual.block.timeTagId, tag.id)
   assert.equal((await time.getActual(actual.block.id)).timeTagId, tag.id)
 
-  await harness.ctx.plugin(await import('dsh-secretary-gtd-panel'))
+  await harness.ctx.plugin(await import('dsh-secretary-gtd-ui'))
   assert.ok(harness.ctx.gtd instanceof GtdService)
   assert.ok(harness.ctx.time instanceof TimeService)
   const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
-  assert.ok(patch.includes("name: 'dsh-secretary-gtd-panel'"), 'the installable bundle mounts the independent GTD product')
-  assert.ok(patch.includes("name: 'dsh-secretary-time-panel'"), 'the installable bundle mounts the independent Time product')
+  assert.ok(patch.includes("name: 'dsh-secretary-gtd-ui'"), 'the installable bundle mounts the independent GTD product')
+  assert.ok(patch.includes("name: 'dsh-secretary-time-controller'"), 'the installable bundle mounts the independent Time Host API')
+  assert.ok(patch.includes("name: 'dsh-secretary-time-ui'"), 'the installable bundle mounts the independent Time browser UI')
   assert.doesNotMatch(patch, /dsh-secretary-panel|secretary\.state|secretary\.command/)
 })
 
@@ -1792,7 +1793,7 @@ test('Secretary composition registers one coherent assistant and user-only GTD s
   const harness = await sqliteHarness(t)
   const gtdAgent = await import('dsh-secretary-gtd/agent')
   const secretary = await import('dsh-secretary')
-  const timePanel = await import('dsh-secretary-time-panel')
+  const timePanel = await import('dsh-secretary-time-controller')
   assert.deepEqual(timePanel.inject, ['time', 'tags'], 'Time product must not inject GTD')
   await harness.ctx.plugin(gtdAgent)
   await harness.ctx.plugin(secretary, { defaultTimeZone: 'Asia/Shanghai' })
@@ -1825,8 +1826,9 @@ test('Secretary composition registers one coherent assistant and user-only GTD s
     "name: 'dsh-secretary-gtd'",
     "name: 'dsh-secretary-tag'",
     "name: 'dsh-secretary-time-block'",
-    "name: 'dsh-secretary-time-panel'",
-    "name: 'dsh-secretary-gtd-panel'",
+    "name: 'dsh-secretary-time-controller'",
+    "name: 'dsh-secretary-time-ui'",
+    "name: 'dsh-secretary-gtd-ui'",
     "name: 'dsh-secretary-gtd/tools'",
     "name: 'dsh-secretary-tag/tools'",
     "name: 'dsh-secretary-time-block/tools'",
@@ -1847,8 +1849,9 @@ test('Secretary composition registers one coherent assistant and user-only GTD s
   assert.doesNotMatch(patch, /dsh-secretary-panel|secretary-panel|secretary\.state|secretary\.command/)
   const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
   assert.equal(manifest.dependencies['dsh-secretary-panel'], undefined)
-  assert.equal(manifest.dependencies['dsh-secretary-time-panel'], 'workspace:*')
-  assert.equal(manifest.dependencies['dsh-secretary-gtd-panel'], 'workspace:*')
+  assert.equal(manifest.dependencies['dsh-secretary-time-controller'], 'workspace:*')
+  assert.equal(manifest.dependencies['dsh-secretary-time-ui'], 'workspace:*')
+  assert.equal(manifest.dependencies['dsh-secretary-gtd-ui'], 'workspace:*')
 })
 
 test('Tag deletion protects GTD references and shares its serial boundary with Action create/update', async (t) => {

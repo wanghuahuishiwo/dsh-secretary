@@ -25,7 +25,7 @@ Goal 与 Tag 的模块边界和当前范围见 [AGENTS.md](../AGENTS.md#产品�
 
 ```bash
 pnpm install
-pnpm build          # 先构建设计依赖的包（如 time-panel），再构建 design
+pnpm build          # 先构建设计依赖的包（如 time-ui），再构建 design
 ```
 
 只重建设计侧时，先确保依赖包已构建，再执行：

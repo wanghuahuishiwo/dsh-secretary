@@ -19,7 +19,7 @@
 
 ## 组件组合
 
-产品 UI 全部位于 `packages/time-panel/src/ui`，只有 `TimeProduct` 是对外组件；生产与 OpenDesign 渲染同一份实现。
+产品 UI 全部位于 `packages/client/time-ui/src/ui`，只有 `TimeProduct` 是对外组件；生产与 OpenDesign 渲染同一份实现。
 
 ```text
 TimeProduct                      UI 根：模块/层/日期/范围/选择/浮层/busy/error
@@ -35,13 +35,13 @@ TimeProduct                      UI 根：模块/层/日期/范围/选择/浮层
 ```
 
 - `TimeProduct` 只通过 `TimeAdapter` 契约读写；不 import 宿主、Remote 或产品包。
-- 组件样式唯一来源是 `packages/time-panel/src/ui/styles.ts`，生产与 OpenDesign 共用；设计侧不复制组件 CSS。
+- 组件样式唯一来源是 `packages/client/time-ui/src/ui/styles.ts`，生产与 OpenDesign 共用；设计侧不复制组件 CSS。
 - `headerAction` 是宿主插槽：生产可留空，OpenDesign 用它放主题切换与“设计预览”标识。宿主动作在窄栏放不下时换行到头部第二行，不挤压产品控件。
 - 记录编辑与删除、Undo、错误反馈都以 Adapter 返回的新视图为准；失败时保留上一次成功的视图并显示错误。
 
 ## Token 契约
 
-组件只消费 `--tb-*`。值统一定义在 [tokens.css](tokens.css)：颜色、字阶、间距和圆角 alias 到根 `--sec-*`；模块尺寸、深度级别色与 fixture 调色板使用字面值。生产由 `packages/time-panel/src/client/hostTokens.ts` 把 DSH 的宿主值绑到同一组 `--tb-*`。
+组件只消费 `--tb-*`。值统一定义在 [tokens.css](tokens.css)：颜色、字阶、间距和圆角 alias 到根 `--sec-*`；模块尺寸、深度级别色与 fixture 调色板使用字面值。生产由 `packages/client/time-ui/src/client/hostTokens.ts` 把 DSH 的宿主值绑到同一组 `--tb-*`。
 
 | 分组 | Token | 来源 |
 |---|---|---|
@@ -61,7 +61,7 @@ TimeProduct                      UI 根：模块/层/日期/范围/选择/浮层
 
 ## 数据边界与 Fixture
 
-OpenDesign 组合根是 `design/time-block/src/App.tsx`：创建 `FixtureTimeAdapter`、持有主题状态、把主题切换与预览标识注入 `headerAction`，然后渲染 `TimeProduct`。设计侧只 import `dsh-secretary-time-panel/ui`，不 import 生产 client。
+OpenDesign 组合根是 `design/time-block/src/App.tsx`：创建 `FixtureTimeAdapter`、持有主题状态、把主题切换与预览标识注入 `headerAction`，然后渲染 `TimeProduct`。设计侧只 import `dsh-secretary-time-ui/ui`，不 import 生产 client。
 
 `FixtureTimeAdapter` 实现 `TimeAdapter`，纯内存、无网络/SQLite/生产 DSH 依赖：
 
@@ -71,7 +71,7 @@ OpenDesign 组合根是 `design/time-block/src/App.tsx`：创建 `FixtureTimeAda
 - `paint` / `erase`（`tagId: null`）/ `undo` / `paintDeep` / `updateBlock` / `deleteBlock` 全部在内存完成，每个写命令返回新的 `TimeView`；Undo 只影响当前层。
 - 重载页面即恢复 fixture；不配置持久化，也不把预览写入当成生产事实。
 
-生产走 `RemoteTimeAdapter`（`packages/time-panel/src/client`），映射真实 Remote 与 Undo；两套 Adapter 共享同一契约。
+生产走 `RemoteTimeAdapter`（`packages/client/time-ui/src/client`），映射真实 Remote 与 Undo；两套 Adapter 共享同一契约。
 
 ## 验收
 

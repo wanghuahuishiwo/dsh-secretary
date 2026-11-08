@@ -1,6 +1,6 @@
 # ADR 0004 — pnpm workspace 多包结构（supersede 0003）
 
-- 状态：已接受（2026-10-29）
+- 状态：已被 [ADR 0010](0010-package-groups-and-roles.md) 取代（2026-11-08）
 - 取代：[ADR 0003](0003-single-bundle-multi-plugin.md)
 
 ## 背景
