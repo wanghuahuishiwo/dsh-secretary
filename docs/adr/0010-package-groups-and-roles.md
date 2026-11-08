@@ -30,9 +30,9 @@ packages/
 ```
 
 - `time-controller` 拥有 Host Remote 方法，不再包含 React 或 UI 契约；导出 `.`、`./types`、`./typert`、`./remote`。
-- `time-ui` 拥有 `./ui`（`TimeProduct`、`timeMath`、`TimeAdapter`）与 `./client` 浏览器插件；Host 侧只有空 `apply` 的 roster 行，供 Loader 寻址。
-- `gtd-ui` 只有左栏入口与空白 main，不创建 Host adapter 或 Remote namespace。
-- bundle 仍是唯一安装入口；`cordis.patch.yml` 同时挂 `secretary-time-controller`（Host 服务）与 `secretary-time-ui`（浏览器 roster 行）。
+- `ui-time` 拥有 `./ui`（`TimeProduct`、`timeMath`、`TimeAdapter`）与 `./client` 浏览器插件；Host 侧只有空 `apply` 的 roster 行，供 Loader 寻址。
+- `ui-gtd` 只有左栏入口与空白 main，不创建 Host adapter 或 Remote namespace。
+- bundle 仍是唯一安装入口；`cordis.patch.yml` 同时挂 `secretary-time-controller`（Host 服务）与 `secretary-ui-time`（浏览器 roster 行）。
 - 产品 tab id 与 kind 不改：`dsh-secretary-time-panel` / `secretary-time-block`、`dsh-secretary-gtd`，避免用户侧状态失效。
 
 ## 理由
