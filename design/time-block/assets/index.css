@@ -93,6 +93,9 @@
   --tb-hour-width: 26px;
   --tb-font-date: 34px;
   --tb-font-cat: 13px;
+  --tb-grid-top: #202020;
+  --tb-grid-mid: #505050;
+  --tb-grid-bottom: #303030;
   --tb-deep-high: #5aa86a;
   --tb-deep-medium: #b99530;
   --tb-deep-low: #79808c;
@@ -108,6 +111,9 @@
   --tb-tag-errand: #6b6b6b;
 }
 :root[data-theme=light] {
+  --tb-grid-top: #f4f5f7;
+  --tb-grid-mid: #e2e5e9;
+  --tb-grid-bottom: #eceef1;
   --tb-deep-high: #3f7d4c;
   --tb-deep-medium: #8a6d1f;
   --tb-deep-low: #5d636e;

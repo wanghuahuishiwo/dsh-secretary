@@ -50,6 +50,9 @@
   --tb-hour-width: 26px;
   --tb-font-date: 34px;
   --tb-font-cat: 13px;
+  --tb-grid-top: #202020;
+  --tb-grid-mid: #505050;
+  --tb-grid-bottom: #303030;
 
   /* 深度时间级别色。 */
   --tb-deep-high: #5aa86a;
@@ -70,6 +73,10 @@
 }
 
 :root[data-theme='light'] {
+  --tb-grid-top: #f4f5f7;
+  --tb-grid-mid: #e2e5e9;
+  --tb-grid-bottom: #eceef1;
+
   --tb-deep-high: #3f7d4c;
   --tb-deep-medium: #8a6d1f;
   --tb-deep-low: #5d636e;

@@ -15733,10 +15733,11 @@
 .tb-hours { width: var(--tb-hour-width, 26px); flex: none; position: relative; }
 .tb-hours span { position: absolute; right: 5px; font-size: var(--tb-font-caption, 10px); color: var(--tb-text-secondary, #a6a9ad); font-variant-numeric: tabular-nums; letter-spacing: -.1px; white-space: nowrap; }
 .tb-hours span.now { color: var(--tb-text-primary, #eceff3); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
-.tb-grid { flex: 1; position: relative; min-width: 0; }
+.tb-grid { flex: 1; position: relative; min-width: 0;
+  background: linear-gradient(180deg, var(--tb-grid-top, #202020) 0%, var(--tb-grid-mid, #505050) 55%, var(--tb-grid-bottom, #303030) 100%); }
 .tb-cells { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(6, 1fr); }
-.tb-cell { background: var(--tb-grid-cell, #4a4c50); cursor: crosshair; }
-.tb-cell:hover { background: color-mix(in srgb, var(--tb-grid-cell, #4a4c50) 85%, var(--tb-text-primary, #f2f3f4) 15%); }
+.tb-cell { background: transparent; cursor: crosshair; }
+.tb-cell:hover { background: color-mix(in srgb, var(--tb-grid-mid, #505050) 82%, var(--tb-text-primary, #f2f3f4) 18%); }
 .tb-blocks, .tb-sel { position: absolute; inset: 0; pointer-events: none; }
 /* 1px page-coloured seams above the blocks, matching the reference's filled matrix. */
 .tb-lines { position: absolute; inset: 0; z-index: 2; display: grid; grid-template-columns: repeat(6, 1fr); pointer-events: none; }
@@ -15744,7 +15745,7 @@
 .tb-lines i:nth-child(6n) { border-right: 0; }
 .tb-blk { position: absolute; overflow: hidden; display: flex; align-items: center; padding: 0 4px;
   font-size: var(--tb-font-caption, 10px); font-weight: 600; letter-spacing: .1px; color: #fff; white-space: nowrap;
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, 0) 46%, rgba(0, 0, 0, .08)); }
+}
 .tb-blk span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Overlap stays in the data but not in the cell: one record plus a count badge. */
 /* A bare superscript keeps the badge quiet on top of the tag colour. */
@@ -15788,7 +15789,6 @@
 .tb-cat { flex: none; height: 33px; border-radius: 7px; color: #fff; font-size: var(--tb-font-cat, 13px); font-weight: 500;
   letter-spacing: .1px; padding: 0 10px; display: flex; align-items: center; gap: 5px; text-align: left;
   transition: filter .12s; }
-.tb-app .tb-cat { background-image: linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, 0) 46%, rgba(0, 0, 0, .08)); }
 .tb-cat:hover { filter: brightness(1.07); }
 .tb-cat.sub { height: 28px; font-size: var(--tb-font-label, 11px); margin-left: 7px; }
 .tb-cat .caret { margin-left: auto; width: 10px; height: 10px; opacity: .65; transition: transform .15s; }

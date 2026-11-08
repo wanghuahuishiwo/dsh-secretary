@@ -32,6 +32,9 @@ export const hostTokens = `.tb-host-shell {
   --tb-surface-raised: var(--dsw-alias-bg-layer-2, #1d2025);
   --tb-surface-hover: var(--dsw-alias-bg-module-platform, #252931);
   --tb-grid-cell: color-mix(in srgb, var(--dsw-alias-bg-layer-2, #1d2025) 70%, var(--dsw-alias-label-tertiary, #727a88) 30%);
+  --tb-grid-top: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #f7f8fa) 70%, var(--dsw-alias-label-tertiary, #84898f) 30%);
+  --tb-grid-mid: color-mix(in srgb, var(--dsw-alias-bg-layer-2, #ffffff) 55%, var(--dsw-alias-label-tertiary, #84898f) 45%);
+  --tb-grid-bottom: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #f7f8fa) 75%, var(--dsw-alias-label-tertiary, #84898f) 25%);
   --tb-text-primary: var(--dsw-alias-label-primary, #eceff3);
   --tb-text-secondary: var(--dsw-alias-label-secondary, #a3a9b4);
   --tb-text-tertiary: var(--dsw-alias-label-tertiary, #727a88);
@@ -70,6 +73,9 @@ export const hostTokens = `.tb-host-shell {
   --tb-surface-raised: #1d1e20;
   --tb-surface-hover: #26272a;
   --tb-grid-cell: #4a4c50;
+  --tb-grid-top: #202020;
+  --tb-grid-mid: #505050;
+  --tb-grid-bottom: #303030;
   --tb-text-primary: #f2f3f4;
   --tb-text-secondary: #a6a9ad;
   --tb-text-tertiary: #767a80;
