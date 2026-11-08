@@ -3,7 +3,7 @@ pre-commit:
   jobs:
     - name: lint (staged)
       glob: '*.{ts,tsx,mjs,json,yml,yaml}'
-      run: node_modules/.bin/oxlint --fix {staged_files}
+      run: node_modules/.bin/oxlint --fix --no-error-on-unmatched-pattern {staged_files}
       stage_fixed: true
 
     - name: whitespace (staged)

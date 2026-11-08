@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   static:
-    name: static / node ${{ env.PRIMARY_NODE_VERSION }}
+    name: static
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
