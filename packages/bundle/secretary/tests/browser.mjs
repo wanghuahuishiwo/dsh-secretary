@@ -348,7 +348,7 @@ test('the day list keeps scrolling instead of stopping at a week, and the date f
       }
       return top
     })
-    const [year, month, day] = topDay.split('-').map(Number)
+    const [, month, day] = topDay.split('-').map(Number)
     assert.ok(anchored.includes(`${month}月${day}日`), `the header names the day at the top edge, got ${anchored} for ${topDay}`)
     assert.ok(topDay !== localDate(), 'scrolling away from today moves that label')
 

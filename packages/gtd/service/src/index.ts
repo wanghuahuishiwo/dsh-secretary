@@ -282,7 +282,7 @@ export class SQLiteGtdService extends GtdService {
           title: normalizeName(input.project.title, 'project title'),
           outcome: input.project.outcome === undefined ? undefined : optionalString(input.project.outcome, 'project outcome'),
           type: input.project.type,
-          status: 'active',
+          status: 'active' as const,
           tagIds: await this.validateProjectTagIds(input.project.tagIds ?? []),
           createdAt: now,
           updatedAt: now,
@@ -297,7 +297,7 @@ export class SQLiteGtdService extends GtdService {
         position: 0,
         title: normalizeName(input.action.title, 'action title'),
         note: optionalString(input.action.note, 'action note'),
-        status: 'active',
+        status: 'active' as const,
         tagIds: await this.validateTagIds(input.action.tagIds ?? []),
         deferAt: input.action.deferAt === undefined ? undefined : parseInstant(input.action.deferAt, 'deferAt'),
         plannedAt: input.action.plannedAt === undefined ? undefined : parseInstant(input.action.plannedAt, 'plannedAt'),
@@ -318,9 +318,16 @@ export class SQLiteGtdService extends GtdService {
         }
       } catch (error) {
         const rollbackErrors: unknown[] = []
-        for (const [table, id] of [['actions', action.id], ['projects', project?.id]] as const) {
+        const rollbackTargets = [
+          { table: 'actions' as const, id: action.id },
+          { table: 'projects' as const, id: project?.id },
+        ]
+        for (const { table, id } of rollbackTargets) {
           if (id === undefined) continue
-          try { await domain.table(table).delete(String(id)) } catch (rollbackError) { rollbackErrors.push(rollbackError) }
+          try {
+            const tableHandle = table === 'actions' ? domain.table('actions') : domain.table('projects')
+            await tableHandle.delete(String(id))
+          } catch (rollbackError) { rollbackErrors.push(rollbackError) }
         }
         if (rollbackErrors.length > 0) {
           throw new Error(`secretary: clarification failed (${String(error)}); rollback failed: ${rollbackErrors.map(String).join('; ')}`, { cause: error })
@@ -350,7 +357,7 @@ export class SQLiteGtdService extends GtdService {
       const project: Project = withoutUndefined({
         id: await this.allocateId(domain), title: normalizeName(input.title, 'project title'),
         outcome: input.outcome === undefined ? undefined : optionalString(input.outcome, 'project outcome'),
-        type: input.type, status: 'active', tagIds: await this.validateProjectTagIds(input.tagIds ?? []),
+        type: input.type, status: 'active' as const, tagIds: await this.validateProjectTagIds(input.tagIds ?? []),
         createdAt: now, updatedAt: now,
       })
       parseProject(project)
@@ -434,7 +441,7 @@ export class SQLiteGtdService extends GtdService {
         id: await this.allocateId(domain), projectId, parentActionId: parent?.id,
         position: siblings.length === 0 ? 0 : Math.max(...siblings.map(item => item.position)) + 1,
         title: normalizeName(input.title, 'action title'), note: optionalString(input.note, 'action note'),
-        status: 'active', tagIds,
+        status: 'active' as const, tagIds,
         deferAt: input.deferAt === undefined ? undefined : parseInstant(input.deferAt, 'deferAt'),
         plannedAt: input.plannedAt === undefined ? undefined : parseInstant(input.plannedAt, 'plannedAt'),
         dueAt: input.dueAt === undefined ? undefined : parseInstant(input.dueAt, 'dueAt'),
@@ -521,7 +528,7 @@ export class SQLiteGtdService extends GtdService {
       if (current === undefined) throw new Error(`secretary: no action "${id}"`)
       if (current.status !== 'active') throw new Error(`secretary: action "${id}" is not active`)
       const action: Action = withoutUndefined({
-        ...current, status: 'dropped', completedAt: undefined,
+        ...current, status: 'dropped' as const, completedAt: undefined,
         droppedAt: parseInstant(droppedAt, 'droppedAt'), updatedAt: new Date().toISOString(),
       })
       await domain.table('actions').put(String(id), action)

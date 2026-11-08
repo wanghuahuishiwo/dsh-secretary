@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CELL, MAX_ROW_H, MIN_ROW_H, PER_HOUR, WEEKDAY_LABELS,
-  cellRecords, clock, durationLabel, recordAt, runsOf, snapDown,
+  cellRecords, clock, durationLabel, recordAt, runsOf,
   type DayRecord, type Run, type TimeTag,
 } from './model.ts'
 import { CanvasGradient } from './CanvasGradient.tsx'
@@ -260,7 +260,7 @@ const DayColumn = memo(function DayColumn({
 })
 
 export function TimeCanvas(props: Props) {
-  const { layer, days, today, nowMinute, focus, onExtend, onTopDateChange, records, tags, busy, onAssign, onEdit } = props
+  const { layer, days, today, nowMinute, focus, onExtend, onTopDateChange, records, tags, onAssign, onEdit } = props
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef<DragState | null>(null)
   const selectedRef = useRef<Map<string, Set<number>>>(new Map())

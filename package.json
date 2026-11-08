@@ -2,7 +2,7 @@
   "name": "dsh-secretary-workspace",
   "version": "0.1.0",
   "private": true,
-  "description": "Personal Secretary Agent for DSH — pnpm workspace: domain packages plus the installable secretary bundle.",
+  "description": "Personal Secretary Agent for DSH \u2014 pnpm workspace: domain packages plus the installable secretary bundle.",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -10,11 +10,30 @@
     "build": "pnpm generate:typert && pnpm -r build",
     "dev": "pnpm -r --parallel dev",
     "test": "pnpm -r test",
-    "clean": "pnpm -r exec rm -rf lib"
+    "clean": "pnpm -r exec rm -rf lib",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint . --fix",
+    "constraints": "node scripts/check-workspace-constraints.mjs",
+    "check:docs": "node scripts/check-docs.mjs",
+    "typecheck": "pnpm generate:typert && tsc -p tsconfig.check.json",
+    "publint": "node scripts/publint-all.mjs",
+    "check": "pnpm lint && pnpm constraints && pnpm check:docs && pnpm typecheck",
+    "test:fast": "pnpm --filter dsh-secretary-time-controller test && pnpm --filter dsh-secretary-ui-time test && pnpm --filter dsh-secretary test:tracer",
+    "test:browser": "pnpm --filter dsh-secretary test:browser",
+    "test:installed": "pnpm --filter dsh-secretary test:installed",
+    "hooks:install": "node scripts/install-hooks.mjs",
+    "prepare": "node scripts/install-hooks.mjs"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-typert-generator": ">=0.2.1-rc.5 <0.3.0",
     "@types/node": "^24.0.0",
+    "lefthook": "^2.2.2",
+    "oxlint": "1.81.0",
+    "publint": "^0.3.25",
     "typescript": "^6.0.3"
+  },
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=24.9.0"
   }
 }

@@ -30,7 +30,7 @@ async function clientHarness(t) {
     state: { getSnapshot: () => undefined, subscribe: () => () => {} },
     reconnect: () => {},
     rpc: {
-      open: async function * () { throw new Error('unexpected stream') },
+      open: async function * () { yield* []; throw new Error('unexpected stream') },
       call: (_channel, _endpoint, _payload, signal) => new Promise(resolve => {
         pendingSignal = signal
         signal.addEventListener('abort', () => resolve({

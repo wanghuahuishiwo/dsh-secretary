@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DeepCellLevel, DeepLevel, DeepWeekData } from './model.ts'
 import { CanvasGradient } from './CanvasGradient.tsx'
-import { WEEKDAY_LABELS, addDays, durationLabel, weekStartOf } from './model.ts'
+import { WEEKDAY_LABELS, addDays, durationLabel } from './model.ts'
 
 interface Props {
   readonly week: DeepWeekData | undefined
@@ -59,7 +59,7 @@ function rectsOf(selection: ReadonlySet<string>): DeepRect[] {
 }
 
 /** The 深度时间 week grid: seven days by twenty-four hours, painted by level. */
-export function DeepWeekView({ week, weekStart, today, busy, onPaint }: Props) {
+export function DeepWeekView({ week, weekStart, today, onPaint }: Props) {
   const bodyRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef<{ key: string; moved: boolean; wasSelected: boolean } | null>(null)
   const selectionRef = useRef<Set<string>>(new Set())
@@ -159,8 +159,6 @@ export function DeepWeekView({ week, weekStart, today, busy, onPaint }: Props) {
     return () => { window.removeEventListener('keydown', onKey) }
   }, [clearSelection, onPaint])
 
-  const rangeLabel = `${new Date(`${weekStart}T12:00:00`).getMonth() + 1}月${new Date(`${weekStart}T12:00:00`).getDate()}日 – `
-    + `${new Date(`${addDays(weekStart, 6)}T12:00:00`).getMonth() + 1}月${new Date(`${addDays(weekStart, 6)}T12:00:00`).getDate()}日`
 
   return (
     <>

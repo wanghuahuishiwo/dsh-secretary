@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
-  DeepLevel, DeepRect, TimeAdapter, TimeBlockView, TimeLayer, TimeProductProps, TimeView,
+  DeepLevel, DeepRect, TimeBlockView, TimeLayer, TimeProductProps, TimeView,
 } from './contract.ts'
 import { DatePicker } from './DatePicker.tsx'
 import { DeepWeekView } from './DeepWeekView.tsx'

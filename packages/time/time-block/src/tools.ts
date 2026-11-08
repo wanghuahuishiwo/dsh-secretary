@@ -9,6 +9,9 @@ export const inject = ['tools', 'time']
 
 const nullable = (schema: Record<string, unknown>) => ({ anyOf: [schema, { type: 'null' }] })
 const FOCUS_LIST = FOCUS_LEVELS.map(focus => `${focus}=${FOCUS_LABELS[focus]}`).join(' / ')
+/** Tool inputs are schema-validated JSON; the Service contract is authoritative. */
+const inputOf = <T>(value: unknown): T => value as T
+
 
 export function apply(ctx: Context): void {
   const time = () => (ctx as Context & { time: TimeService }).time
@@ -53,29 +56,29 @@ export function apply(ctx: Context): void {
     async execute(raw: unknown) {
       const args = raw as Record<string, any>
       switch (args.op) {
-        case 'plan.create': return { block: await time().createPlan(args) }
+        case 'plan.create': return { block: await time().createPlan(inputOf(args)) }
         case 'plan.get': return { block: await time().getPlan(args.id) }
         case 'plan.list': return { blocks: await time().listPlan(args) }
         case 'plan.update': return { block: await time().updatePlan(args.id, args) }
         case 'plan.delete': return { block: await time().deletePlan(args.id) }
         case 'template.list': return { blocks: await time().listPlanTemplate(args) }
-        case 'template.create': return { block: await time().createPlanTemplate(args) }
+        case 'template.create': return { block: await time().createPlanTemplate(inputOf(args)) }
         case 'template.update': return { block: await time().updatePlanTemplate(args.id, args) }
         case 'template.delete': return { block: await time().deletePlanTemplate(args.id) }
-        case 'template.apply': return { blocks: await time().applyPlanTemplate(args) }
-        case 'template.undo': return { blocks: await time().undoPlanTemplate(args) }
-        case 'actual.create': return { block: await time().createActual(args) }
+        case 'template.apply': return { blocks: await time().applyPlanTemplate(inputOf(args)) }
+        case 'template.undo': return { blocks: await time().undoPlanTemplate(inputOf(args)) }
+        case 'actual.create': return { block: await time().createActual(inputOf(args)) }
         case 'actual.get': return { block: await time().getActual(args.id) }
         case 'actual.list': return { blocks: await time().listActual(args) }
         case 'actual.update': return { block: await time().updateActual(args.id, args) }
         case 'actual.delete': return { block: await time().deleteActual(args.id) }
-        case 'actual.start': return { block: await time().startActual(args) }
+        case 'actual.start': return { block: await time().startActual(inputOf(args)) }
         case 'actual.stop': return { block: await time().stopActual(args.id, args.endAt) }
-        case 'deep.getWeek': return { week: await time().getDeepWeek(args) }
-        case 'deep.setCell': return { week: await time().setDeepCell(args) }
-        case 'deep.clearCell': return { week: await time().clearDeepCell(args) }
-        case 'deep.setRange': return { week: await time().setDeepRange(args) }
-        case 'deep.clearRange': return { week: await time().clearDeepRange(args) }
+        case 'deep.getWeek': return { week: await time().getDeepWeek(inputOf(args)) }
+        case 'deep.setCell': return { week: await time().setDeepCell(inputOf(args)) }
+        case 'deep.clearCell': return { week: await time().clearDeepCell(inputOf(args)) }
+        case 'deep.setRange': return { week: await time().setDeepRange(inputOf(args)) }
+        case 'deep.clearRange': return { week: await time().clearDeepRange(inputOf(args)) }
         default: throw new Error(`secretary: unknown time operation ${JSON.stringify(args.op)}`)
       }
     },

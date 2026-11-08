@@ -14867,7 +14867,7 @@
     }
     return rects;
   }
-  function DeepWeekView({ week, weekStart, today, busy, onPaint }) {
+  function DeepWeekView({ week, weekStart, today, onPaint }) {
     const bodyRef = (0, import_react3.useRef)(null);
     const dragRef = (0, import_react3.useRef)(null);
     const selectionRef = (0, import_react3.useRef)(/* @__PURE__ */ new Set());
@@ -14962,7 +14962,6 @@
         window.removeEventListener("keydown", onKey);
       };
     }, [clearSelection, onPaint]);
-    const rangeLabel = `${(/* @__PURE__ */ new Date(`${weekStart}T12:00:00`)).getMonth() + 1}\u6708${(/* @__PURE__ */ new Date(`${weekStart}T12:00:00`)).getDate()}\u65E5 \u2013 ${(/* @__PURE__ */ new Date(`${addDays(weekStart, 6)}T12:00:00`)).getMonth() + 1}\u6708${(/* @__PURE__ */ new Date(`${addDays(weekStart, 6)}T12:00:00`)).getDate()}\u65E5`;
     return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_jsx_runtime3.Fragment, { children: [
       /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "tb-deep", children: [
         /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "tb-deep-main", children: [
@@ -15397,7 +15396,7 @@
     ] });
   });
   function TimeCanvas(props) {
-    const { layer, days, today, nowMinute, focus, onExtend, onTopDateChange, records, tags, busy, onAssign, onEdit } = props;
+    const { layer, days, today, nowMinute, focus, onExtend, onTopDateChange, records, tags, onAssign, onEdit } = props;
     const scrollRef = (0, import_react5.useRef)(null);
     const dragRef = (0, import_react5.useRef)(null);
     const selectedRef = (0, import_react5.useRef)(/* @__PURE__ */ new Map());

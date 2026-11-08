@@ -1,0 +1,18 @@
+# Local checkpoints stay fast; CI owns the full repository-wide gate matrix.
+pre-commit:
+  jobs:
+    - name: lint (staged)
+      glob: '*.{ts,tsx,mjs,json,yml,yaml}'
+      run: node_modules/.bin/oxlint --fix {staged_files}
+      stage_fixed: true
+
+    - name: whitespace (staged)
+      run: git diff --cached --check
+
+    - name: workspace constraints
+      run: node scripts/check-workspace-constraints.mjs
+
+pre-push:
+  jobs:
+    - name: typecheck
+      run: pnpm run typecheck

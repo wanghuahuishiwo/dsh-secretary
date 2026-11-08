@@ -33,7 +33,8 @@
     "prepare": "node build.mjs",
     "test": "node --test tests/tracer.mjs && node --test tests/browser.mjs",
     "test:browser": "node --test tests/browser.mjs",
-    "test:installed": "node --test tests/installed.mjs"
+    "test:installed": "node --test tests/installed.mjs",
+    "test:tracer": "node --test tests/tracer.mjs"
   },
   "dependencies": {
     "@deepseek-ai/cordis": "4.0.5",

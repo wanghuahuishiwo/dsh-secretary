@@ -8,6 +8,9 @@ export const name = 'dsh-secretary-tool-gtd'
 export const inject = ['tools', 'gtd']
 
 const nullable = (schema: Record<string, unknown>) => ({ anyOf: [schema, { type: 'null' }] })
+/** Tool inputs are schema-validated JSON; the Service contract is authoritative. */
+const inputOf = <T>(value: unknown): T => value as T
+
 const TAG_IDS = { type: 'array', items: { type: 'integer', minimum: 1 }, uniqueItems: true }
 const PROJECT = {
   type: 'object', additionalProperties: false,
@@ -77,26 +80,26 @@ export function apply(ctx: Context): void {
     async execute(raw: unknown) {
       const args = raw as Record<string, any>
       switch (args.op) {
-        case 'inbox.capture': return { item: await gtd().captureInbox(args) }
+        case 'inbox.capture': return { item: await gtd().captureInbox(inputOf(args)) }
         case 'inbox.list': return { items: await gtd().listInbox() }
-        case 'inbox.clarify': return gtd().clarifyInbox(args)
+        case 'inbox.clarify': return gtd().clarifyInbox(inputOf(args))
         case 'inbox.delete': return { item: await gtd().deleteInbox(args.id) }
         case 'project.list': return { projects: await gtd().listProjects() }
         case 'project.get': return { project: await gtd().getProject(args.id) }
-        case 'project.create': return { project: await gtd().createProject(args) }
-        case 'project.update': return { project: await gtd().updateProject(args.id, args) }
+        case 'project.create': return { project: await gtd().createProject(inputOf(args)) }
+        case 'project.update': return { project: await gtd().updateProject(args.id, inputOf(args)) }
         case 'project.delete': return { project: await gtd().deleteProject(args.id) }
         case 'action.list': return { actions: await gtd().listActions() }
-        case 'action.create': return { action: await gtd().createAction(args) }
+        case 'action.create': return { action: await gtd().createAction(inputOf(args)) }
         case 'action.get': return { action: await gtd().getAction(args.id) }
         case 'action.effectiveTags': return { tagIds: await gtd().getEffectiveTags(args.id) }
         case 'action.next': return { actions: await gtd().listNextActions() }
-        case 'action.forecast': return { actions: await gtd().listForecast(args) }
+        case 'action.forecast': return { actions: await gtd().listForecast(inputOf(args)) }
         case 'action.update':
           if (Object.hasOwn(args, 'action')) {
             throw new Error('secretary: action.update fields must be top-level; do not nest updates under action')
           }
-          return { action: await gtd().updateAction(args.id, args) }
+          return { action: await gtd().updateAction(args.id, inputOf(args)) }
         case 'action.delete': return { action: await gtd().deleteAction(args.id) }
         case 'action.complete': return { action: await gtd().completeAction(args.id, args.completedAt) }
         case 'action.drop': return { action: await gtd().dropAction(args.id, args.droppedAt) }
