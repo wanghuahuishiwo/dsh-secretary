@@ -14,7 +14,7 @@
     "todayButton": ".tb-now",
     "undoButton": ".tb-head button[title=\"撤销\"]",
     "canvas": ".tb-day[data-day]（14 列）→ .tb-cell[data-day][data-min]（每列 24 × 6 格）",
-    "canvasBackground": ".tb-canvas-bg（固定渐变浮层，不随 .tb-scroll 滚动）",
+    "canvasBackground": ".tb-canvas-bg（固定渐变浮层，不随 .tb-scroll 滚动；TimeCanvas 与 DeepWeekView 共用）",
     "block": ".tb-blk（title 为标签名或备注；span 只在每条记录首个可见格；重叠格只画一条）",
     "overlapBadge": ".tb-more（重叠格右上角数量角标，文本为 ²/³；aria-label 为“N 条并行记录”）",
     "overlapPopover": ".tb-pop[role=\"dialog\"]（只有点角标才出现；.tb-pop-row 每条记录，含颜色、名称与起止时间；点外部或 Esc 收起）",
@@ -66,7 +66,8 @@
       "expected": [
         ".tb-canvas-bg 覆盖网格区域（left 在日期/小时列之后，right 到类别架之前），两侧仍是黑底",
         "滚动前后 .tb-canvas-bg 的 top/height 不变，屏幕同一位置的渐变色不变；只有 .tb-scroll 的内容和 scrollTop 变化",
-        "渐变从顶部深灰过渡到中部中灰、再回落到底部深灰，日期列和类别架不参与渐变"
+        "渐变从顶部深灰过渡到中部中灰、再回落到底部深灰，日期列和类别架不参与渐变",
+        "切到深度时间后 .tb-deep-cols 内也有且仅有一个 .tb-canvas-bg，同样覆盖七天周网格，未设置格透出渐变"
       ]
     },
     {

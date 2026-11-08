@@ -4,6 +4,7 @@ import {
   cellRecords, clock, durationLabel, recordAt, runsOf, snapDown,
   type DayRecord, type Run, type TimeTag,
 } from './model.ts'
+import { CanvasGradient } from './CanvasGradient.tsx'
 import { TagShelf } from './TagShelf.tsx'
 
 interface Props {
@@ -488,7 +489,7 @@ export function TimeCanvas(props: Props) {
     <>
       <div className="tb-tb">
         <div className="tb-tb-main">
-          <div className="tb-canvas-bg" aria-hidden="true" />
+          <CanvasGradient />
           <div className="tb-scroll" ref={scrollRef} onScroll={onScroll} aria-label="时间块画布">
             <div className="tb-days">
               {days.map(day => (

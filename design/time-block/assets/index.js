@@ -14587,14 +14587,15 @@
   var import_jsx_runtime2 = __toESM(require_jsx_runtime(), 1);
   var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
   var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
-  var import_react4 = __toESM(require_react(), 1);
   var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
+  var import_react4 = __toESM(require_react(), 1);
+  var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
   var import_react5 = __toESM(require_react(), 1);
   var import_react6 = __toESM(require_react(), 1);
-  var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
   var import_jsx_runtime7 = __toESM(require_jsx_runtime(), 1);
   var import_jsx_runtime8 = __toESM(require_jsx_runtime(), 1);
   var import_jsx_runtime9 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime10 = __toESM(require_jsx_runtime(), 1);
   var CELL = 10;
   var PER_HOUR = 60 / CELL;
   var MIN_ROW_H = 22;
@@ -14828,6 +14829,9 @@
       ] })
     ] });
   }
+  function CanvasGradient() {
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "tb-canvas-bg", "aria-hidden": "true" });
+  }
   var LEVELS = [
     { id: "high", name: "\u9AD8", color: "var(--tb-deep-high, #5aa86a)" },
     { id: "medium", name: "\u4E2D", color: "var(--tb-deep-medium, #b99530)" },
@@ -14959,75 +14963,78 @@
       };
     }, [clearSelection, onPaint]);
     const rangeLabel = `${(/* @__PURE__ */ new Date(`${weekStart}T12:00:00`)).getMonth() + 1}\u6708${(/* @__PURE__ */ new Date(`${weekStart}T12:00:00`)).getDate()}\u65E5 \u2013 ${(/* @__PURE__ */ new Date(`${addDays(weekStart, 6)}T12:00:00`)).getMonth() + 1}\u6708${(/* @__PURE__ */ new Date(`${addDays(weekStart, 6)}T12:00:00`)).getDate()}\u65E5`;
-    return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_jsx_runtime2.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "tb-deep", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "tb-deep-main", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "tb-deep-head", children: days.map((day) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: `d${day === today ? " today" : ""}`, children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_jsx_runtime3.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "tb-deep", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "tb-deep-main", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "tb-deep-head", children: days.map((day) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { className: `d${day === today ? " today" : ""}`, children: [
             (/* @__PURE__ */ new Date(`${day}T12:00:00`)).getMonth() + 1,
             "/",
             (/* @__PURE__ */ new Date(`${day}T12:00:00`)).getDate(),
             " ",
             WEEKDAY_LABELS[((/* @__PURE__ */ new Date(`${day}T12:00:00`)).getDay() + 6) % 7]
           ] }, day)) }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "tb-deep-body", ref: bodyRef, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "tb-deep-hours", style: { height: 24 * rowH }, children: Array.from({ length: 24 }, (_, hour) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: { top: hour * rowH + 3 }, children: hour % 2 === 0 ? hour : "" }, hour)) }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "tb-deep-cols", onPointerDown: onCellDown, children: days.map((day, index) => {
-              const weekday = index + 1;
-              return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "tb-deep-col", style: { height: 24 * rowH }, children: [
-                Array.from({ length: 24 }, (_, hour) => {
-                  const cell = levelOf(cells, weekday, hour);
-                  const left = weekday > 1 ? levelOf(cells, weekday - 1, hour) : "unset";
-                  const isFirstOfRun = cell !== "unset" && cell !== left;
-                  const label = cell === "high" ? "\u9AD8" : cell === "medium" ? "\u4E2D" : cell === "low" ? "\u4F4E" : "";
-                  return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-                    "div",
-                    {
-                      className: `tb-hc${cell === "unset" ? "" : ` ${cell === "high" ? "H" : cell === "medium" ? "M" : "L"}`}`,
-                      "data-k": `${weekday}-${hour}`,
-                      "data-level": cell,
-                      style: { top: hour * rowH + 0.5, height: rowH - 1 },
-                      children: isFirstOfRun && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: { fontSize: 10, fontWeight: 600, paddingLeft: 4, color: "#fff", overflow: "hidden", whiteSpace: "nowrap" }, children: label })
-                    },
-                    hour
-                  );
-                }),
-                [...selection].filter((key) => key.startsWith(`${weekday}-`)).map((key) => {
-                  const hour = Number(key.split("-")[1]);
-                  return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "tb-selbox", style: { left: 0.5, right: 0.5, top: hour * rowH + 0.5, height: rowH - 1 }, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("i", { style: { left: 0, width: "100%" }, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "2.4", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("path", { d: "M2.5 6.4l2.3 2.3L9.5 3.7" }) }) }) }, key);
-                })
-              ] }, day);
-            }) })
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "tb-deep-body", ref: bodyRef, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "tb-deep-hours", style: { height: 24 * rowH }, children: Array.from({ length: 24 }, (_, hour) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { top: hour * rowH + 3 }, children: hour % 2 === 0 ? hour : "" }, hour)) }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "tb-deep-cols", onPointerDown: onCellDown, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(CanvasGradient, {}),
+              days.map((day, index) => {
+                const weekday = index + 1;
+                return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "tb-deep-col", style: { height: 24 * rowH }, children: [
+                  Array.from({ length: 24 }, (_, hour) => {
+                    const cell = levelOf(cells, weekday, hour);
+                    const left = weekday > 1 ? levelOf(cells, weekday - 1, hour) : "unset";
+                    const isFirstOfRun = cell !== "unset" && cell !== left;
+                    const label = cell === "high" ? "\u9AD8" : cell === "medium" ? "\u4E2D" : cell === "low" ? "\u4F4E" : "";
+                    return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                      "div",
+                      {
+                        className: `tb-hc${cell === "unset" ? "" : ` ${cell === "high" ? "H" : cell === "medium" ? "M" : "L"}`}`,
+                        "data-k": `${weekday}-${hour}`,
+                        "data-level": cell,
+                        style: { top: hour * rowH + 0.5, height: rowH - 1 },
+                        children: isFirstOfRun && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { fontSize: 10, fontWeight: 600, paddingLeft: 4, color: "#fff", overflow: "hidden", whiteSpace: "nowrap" }, children: label })
+                      },
+                      hour
+                    );
+                  }),
+                  [...selection].filter((key) => key.startsWith(`${weekday}-`)).map((key) => {
+                    const hour = Number(key.split("-")[1]);
+                    return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "tb-selbox", style: { left: 0.5, right: 0.5, top: hour * rowH + 0.5, height: rowH - 1 }, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("i", { style: { left: 0, width: "100%" }, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "2.4", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2.5 6.4l2.3 2.3L9.5 3.7" }) }) }) }, key);
+                  })
+                ] }, day);
+              })
+            ] })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("aside", { className: "tb-shelf", children: [
-          LEVELS.map((item) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("aside", { className: "tb-shelf", children: [
+          LEVELS.map((item) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
             "button",
             {
               className: "tb-cat",
               type: "button",
               style: { background: item.color, opacity: level === item.id ? 1 : 0.62, margin: "2px 7px 5px" },
               onClick: () => paint(item.id),
-              children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { children: item.name })
+              children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: item.name })
             },
             item.id
           )),
-          week !== void 0 && week.source !== "own" && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { marginTop: "auto", padding: "0 10px 10px", fontSize: "var(--tb-font-caption, 10px)", color: "var(--tb-text-tertiary, #727a88)", lineHeight: 1.6 }, children: week.source === "inherited" ? "\u7EE7\u627F\u81EA\u66F4\u65E9\u4E00\u5468\uFF0C\u6539\u8FD9\u4E00\u5468\u53EA\u5F71\u54CD\u8FD9\u4E00\u5468" : "\u8FD8\u6CA1\u6709\u753B\u8FC7\uFF0C\u6539\u8FD9\u4E00\u5468\u4ECE\u7A7A\u767D\u5F00\u59CB" })
+          week !== void 0 && week.source !== "own" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { marginTop: "auto", padding: "0 10px 10px", fontSize: "var(--tb-font-caption, 10px)", color: "var(--tb-text-tertiary, #727a88)", lineHeight: 1.6 }, children: week.source === "inherited" ? "\u7EE7\u627F\u81EA\u66F4\u65E9\u4E00\u5468\uFF0C\u6539\u8FD9\u4E00\u5468\u53EA\u5F71\u54CD\u8FD9\u4E00\u5468" : "\u8FD8\u6CA1\u6709\u753B\u8FC7\uFF0C\u6539\u8FD9\u4E00\u5468\u4ECE\u7A7A\u767D\u5F00\u59CB" })
         ] })
       ] }),
-      selection.size > 0 && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "tb-sel-badge", role: "status", children: durationLabel(selection.size * 60) })
+      selection.size > 0 && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "tb-sel-badge", role: "status", children: durationLabel(selection.size * 60) })
     ] });
   }
   var MODULES = [
-    { id: "actual", name: "\u5B9E\u5F55", icon: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.3", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("circle", { cx: "8", cy: "8", r: "6" }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M8 4.5V8l2.5 1.5" })
+    { id: "actual", name: "\u5B9E\u5F55", icon: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.3", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("circle", { cx: "8", cy: "8", r: "6" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { d: "M8 4.5V8l2.5 1.5" })
     ] }) },
-    { id: "plan", name: "\u8BA1\u5212", icon: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.3", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("rect", { x: "2", y: "3.5", width: "12", height: "10.5", rx: "2" }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2 6.5h12M5 2v2.5M11 2v2.5" }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M5 9.5l1.5 1.5L11 7.5" })
+    { id: "plan", name: "\u8BA1\u5212", icon: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.3", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("rect", { x: "2", y: "3.5", width: "12", height: "10.5", rx: "2" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { d: "M2 6.5h12M5 2v2.5M11 2v2.5" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { d: "M5 9.5l1.5 1.5L11 7.5" })
     ] }) },
-    { id: "deep", name: "\u6DF1\u5EA6\u65F6\u95F4", icon: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.3", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2 4.5h12M4 8h8M6 11.5h4" }) }) }
+    { id: "deep", name: "\u6DF1\u5EA6\u65F6\u95F4", icon: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.3", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { d: "M2 4.5h12M4 8h8M6 11.5h4" }) }) }
   ];
   function dayLabel(date) {
     const value = /* @__PURE__ */ new Date(`${date}T12:00:00`);
@@ -15039,8 +15046,8 @@
     return `${start.getMonth() + 1}\u6708${start.getDate()}\u65E5 \u2013 ${end.getMonth() + 1}\u6708${end.getDate()}\u65E5`;
   }
   function TimeHeader({ module, dateLabel, canUndo, busy, pickerOpen, drawerOpen, action, onDrawer, onPicker, onStep, onUndo }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("header", { className: `tb-head${action === void 0 || action === null ? "" : " has-action"}`, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+    return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("header", { className: `tb-head${action === void 0 || action === null ? "" : " has-action"}`, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
         "button",
         {
           className: "tb-module-switch",
@@ -15050,30 +15057,30 @@
           "aria-expanded": drawerOpen,
           onClick: onDrawer,
           children: [
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { className: "tb-switch-icon", viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.5", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2.5 4h11M2.5 8h11M2.5 12h11" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "tb-title", children: MODULES.find((item) => item.id === module)?.name ?? "" }),
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { className: "tb-switch-caret", viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "1.7", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M2.5 4.5L6 8l3.5-3.5" }) })
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("svg", { className: "tb-switch-icon", viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.5", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { d: "M2.5 4h11M2.5 8h11M2.5 12h11" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "tb-title", children: MODULES.find((item) => item.id === module)?.name ?? "" }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("svg", { className: "tb-switch-caret", viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "1.7", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { d: "M2.5 4.5L6 8l3.5-3.5" }) })
           ]
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "grow" }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "tb-hbtn", type: "button", "aria-label": module === "deep" ? "\u4E0A\u4E00\u5468" : "\u4E0A\u4E00\u5929", onClick: () => onStep(module === "deep" ? -7 : -1), children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.6", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M9.5 4L5.5 8l4 4" }) }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "tb-daylabel", type: "button", "aria-label": module === "deep" ? "\u9009\u62E9\u4E00\u5468" : "\u9009\u62E9\u65E5\u671F", "aria-expanded": pickerOpen, onClick: onPicker, children: dateLabel }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "tb-hbtn", type: "button", "aria-label": module === "deep" ? "\u4E0B\u4E00\u5468" : "\u4E0B\u4E00\u5929", onClick: () => onStep(module === "deep" ? 7 : 1), children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.6", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M6.5 4l4 4-4 4" }) }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "tb-now", type: "button", onClick: () => onStep(0), children: module === "deep" ? "\u672C\u5468" : "\u4ECA\u5929" }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "tb-hbtn", type: "button", title: "\u64A4\u9500", disabled: !canUndo || busy, onClick: onUndo, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.4", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M3 7h6.5a3.5 3.5 0 010 7H6" }),
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M5.5 4L2.5 7l3 3" })
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "grow" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { className: "tb-hbtn", type: "button", "aria-label": module === "deep" ? "\u4E0A\u4E00\u5468" : "\u4E0A\u4E00\u5929", onClick: () => onStep(module === "deep" ? -7 : -1), children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.6", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { d: "M9.5 4L5.5 8l4 4" }) }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { className: "tb-daylabel", type: "button", "aria-label": module === "deep" ? "\u9009\u62E9\u4E00\u5468" : "\u9009\u62E9\u65E5\u671F", "aria-expanded": pickerOpen, onClick: onPicker, children: dateLabel }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { className: "tb-hbtn", type: "button", "aria-label": module === "deep" ? "\u4E0B\u4E00\u5468" : "\u4E0B\u4E00\u5929", onClick: () => onStep(module === "deep" ? 7 : 1), children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.6", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { d: "M6.5 4l4 4-4 4" }) }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { className: "tb-now", type: "button", onClick: () => onStep(0), children: module === "deep" ? "\u672C\u5468" : "\u4ECA\u5929" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { className: "tb-hbtn", type: "button", title: "\u64A4\u9500", disabled: !canUndo || busy, onClick: onUndo, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.4", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { d: "M3 7h6.5a3.5 3.5 0 010 7H6" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { d: "M5.5 4L2.5 7l3 3" })
       ] }) }),
       action
     ] });
   }
   function Drawer({ open, module, onModuleChange, onClose }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_jsx_runtime4.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: `tb-scrim${open ? " on" : ""}`, onClick: onClose }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("nav", { className: `tb-drawer${open ? " on" : ""}`, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "cap", children: "\u5C0F\u79D8\u4E66" }),
-        MODULES.map((item) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+    return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(import_jsx_runtime5.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: `tb-scrim${open ? " on" : ""}`, onClick: onClose }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("nav", { className: `tb-drawer${open ? " on" : ""}`, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "cap", children: "\u5C0F\u79D8\u4E66" }),
+        MODULES.map((item) => /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
           "button",
           {
             className: `tb-mrow${module === item.id ? " on" : ""}`,
@@ -15100,17 +15107,17 @@
         window.removeEventListener("keydown", onKey);
       };
     }, [onClose]);
-    return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "tb-sheet on", role: "dialog", "aria-label": "\u7F16\u8F91\u5907\u6CE8", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "grab" }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "row", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: "time", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "tb-sheet on", role: "dialog", "aria-label": "\u7F16\u8F91\u5907\u6CE8", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "grab" }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "row", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "time", children: [
           clock(target.record.start),
           " \u2013 ",
           clock(target.record.end)
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "dur", children: durationLabel(target.record.end - target.record.start) })
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "dur", children: durationLabel(target.record.end - target.record.start) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
         "input",
         {
           className: "tb-note",
@@ -15123,14 +15130,14 @@
           }
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "tb-acts", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { className: "tb-btn danger", type: "button", disabled: busy, onClick: onDelete, children: "\u5220\u9664" }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { className: "tb-btn primary", type: "button", disabled: busy, onClick: () => onSave(note === "" ? void 0 : note), children: "\u5B8C\u6210" })
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "tb-acts", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "tb-btn danger", type: "button", disabled: busy, onClick: onDelete, children: "\u5220\u9664" }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "tb-btn primary", type: "button", disabled: busy, onClick: () => onSave(note === "" ? void 0 : note), children: "\u5B8C\u6210" })
       ] })
     ] });
   }
   var FALLBACK_COLOR = "#477bc7";
-  var CHEVRONS = /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "1.5", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("path", { d: "M3 5.2L6 2.4l3 2.8M3 9.5L6 6.7l3 2.8" }) });
+  var CHEVRONS = /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "1.5", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("path", { d: "M3 5.2L6 2.4l3 2.8M3 9.5L6 6.7l3 2.8" }) });
   function TagShelf({ tags, onAssign }) {
     const [mini, setMini] = (0, import_react6.useState)(false);
     const [collapsed, setCollapsed] = (0, import_react6.useState)({});
@@ -15138,17 +15145,17 @@
     const roots = tags.filter((tag) => tag.parentId === void 0);
     const tagOf = (id) => tags.find((tag) => tag.id === id);
     const tagColor = (id) => tagOf(id)?.color ?? FALLBACK_COLOR;
-    return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("aside", { className: `tb-shelf${mini ? " mini" : ""}`, "aria-label": "\u65F6\u95F4\u6807\u7B7E\u67B6", children: [
-      mini && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "tb-brush", style: { background: brushTagId === void 0 ? FALLBACK_COLOR : tagColor(brushTagId) } }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("button", { className: "tb-shelf-head", type: "button", onClick: () => setMini((value) => !value), children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("aside", { className: `tb-shelf${mini ? " mini" : ""}`, "aria-label": "\u65F6\u95F4\u6807\u7B7E\u67B6", children: [
+      mini && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "tb-brush", style: { background: brushTagId === void 0 ? FALLBACK_COLOR : tagColor(brushTagId) } }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("button", { className: "tb-shelf-head", type: "button", onClick: () => setMini((value) => !value), children: [
         CHEVRONS,
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: "\u5408\u4E0A\u6240\u6709\u5185\u5BB9" })
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: "\u5408\u4E0A\u6240\u6709\u5185\u5BB9" })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "tb-shelf-list", children: roots.map((tag) => {
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-shelf-list", children: roots.map((tag) => {
         const kids = tags.filter((item) => item.parentId === tag.id);
         const open = collapsed[tag.id] !== true;
-        return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: 5 }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
+        return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: 5 }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
             "button",
             {
               className: "tb-cat",
@@ -15165,15 +15172,15 @@
                 if (kids.length > 0) setCollapsed((previous) => ({ ...previous, [tag.id]: false }));
               },
               children: [
-                /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: tag.name }),
-                kids.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("svg", { className: "caret", viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "1.7", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("path", { d: "M4 2.5L7.5 6 4 9.5" }) })
+                /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: tag.name }),
+                kids.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("svg", { className: "caret", viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "1.7", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("path", { d: "M4 2.5L7.5 6 4 9.5" }) })
               ]
             }
           ),
-          open && kids.map((kid) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "tb-cat sub", type: "button", style: { backgroundColor: kid.color ?? FALLBACK_COLOR }, onClick: () => {
+          open && kids.map((kid) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { className: "tb-cat sub", type: "button", style: { backgroundColor: kid.color ?? FALLBACK_COLOR }, onClick: () => {
             setBrushTagId(kid.id);
             onAssign(kid.id);
-          }, children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: kid.name }) }, kid.id))
+          }, children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: kid.name }) }, kid.id))
         ] }, tag.id);
       }) })
     ] });
@@ -15184,7 +15191,7 @@
   function countGlyph(count) {
     return count < SUPERSCRIPT.length ? SUPERSCRIPT[count] : String(count);
   }
-  var CHECK = /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "2.4", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("path", { d: "M2.5 6.4l2.3 2.3L9.5 3.7" }) });
+  var CHECK = /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("svg", { viewBox: "0 0 12 12", fill: "none", stroke: "currentColor", strokeWidth: "2.4", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("path", { d: "M2.5 6.4l2.3 2.3L9.5 3.7" }) });
   function splitByHour(runs) {
     const out = [];
     for (const run of runs) {
@@ -15259,24 +15266,24 @@
       event.preventDefault();
       onBlockEdit(day, record);
     }, [records, day, onBlockEdit]);
-    return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-day", "data-day": day, style: { height }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-gutter", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: `tb-datemark${day === today ? " today" : ""}`, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "m", children: MONTH_LABELS[date.getMonth()] }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "d", children: date.getDate() }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "w", children: WEEKDAY_LABELS[(date.getDay() + 6) % 7] }),
-        day === today && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "t today", children: "\u4ECA\u5929" })
+    return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-day", "data-day": day, style: { height }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "tb-gutter", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: `tb-datemark${day === today ? " today" : ""}`, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "m", children: MONTH_LABELS[date.getMonth()] }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "d", children: date.getDate() }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "w", children: WEEKDAY_LABELS[(date.getDay() + 6) % 7] }),
+        day === today && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "t today", children: "\u4ECA\u5929" })
       ] }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-hours", style: { height }, children: Array.from({ length: 24 }, (_, hour) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: nowMin !== void 0 && hour === Math.floor(nowMin / 60) ? "now" : "", style: { top: hour * rowH + 4 }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "tb-hours", style: { height }, children: Array.from({ length: 24 }, (_, hour) => /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("span", { className: nowMin !== void 0 && hour === Math.floor(nowMin / 60) ? "now" : "", style: { top: hour * rowH + 4 }, children: [
         hour,
         ":00"
       ] }, hour)) }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-grid", "data-day": day, style: { height }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-cells", style: { gridAutoRows: `${rowH}px` }, onPointerDown: onCellDown, onContextMenu: onCellContextMenu, children: cells.map((cell) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: `tb-cell${cell.last ? " hourlast" : ""}`, "data-day": day, "data-min": cell.minute }, cell.minute)) }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-blocks", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-grid", "data-day": day, style: { height }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "tb-cells", style: { gridAutoRows: `${rowH}px` }, onPointerDown: onCellDown, onContextMenu: onCellContextMenu, children: cells.map((cell) => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: `tb-cell${cell.last ? " hourlast" : ""}`, "data-day": day, "data-min": cell.minute }, cell.minute)) }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-blocks", children: [
           rows.map(({ minute, record, count }) => {
             const label = record.note === void 0 || record.note === "" ? tagName(record.timeTagId) : record.note;
             const tooltip = count > 1 ? `${label} \xB7 \u53E6\u6709 ${count - 1} \u6761\u5E76\u884C\u8BB0\u5F55` : record.note === void 0 || record.note === "" ? tagName(record.timeTagId) : `${tagName(record.timeTagId)} \xB7 ${record.note}`;
-            return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+            return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
               "div",
               {
                 className: "tb-blk",
@@ -15288,12 +15295,12 @@
                   backgroundColor: tagColor(record.timeTagId)
                 },
                 title: tooltip,
-                children: minute === firstShown.get(record.id) && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: label })
+                children: minute === firstShown.get(record.id) && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { children: label })
               },
               `${record.id}:${minute}`
             );
           }),
-          rows.filter((cell) => cell.count > 1).map((cell) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+          rows.filter((cell) => cell.count > 1).map((cell) => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
             "button",
             {
               type: "button",
@@ -15317,12 +15324,12 @@
             `more:${cell.minute}`
           ))
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-lines", "aria-hidden": "true", style: { gridAutoRows: `${rowH}px` }, children: Array.from({ length: 24 * PER_HOUR }, (_, index) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("i", {}, index)) }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-sel", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "tb-lines", "aria-hidden": "true", style: { gridAutoRows: `${rowH}px` }, children: Array.from({ length: 24 * PER_HOUR }, (_, index) => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("i", {}, index)) }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-sel", children: [
           selRuns.map((run) => {
             const from = run.start % 60 / CELL;
             const count = (run.end - run.start) / CELL;
-            return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+            return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
               "div",
               {
                 className: "tb-selbox",
@@ -15332,12 +15339,12 @@
                   top: Math.floor(run.start / 60) * rowH + 1.5,
                   height: rowH - 3
                 },
-                children: Array.from({ length: count }, (_, index) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("i", { style: { left: `${index / count * 100}%`, width: `${100 / count}%` }, children: CHECK }, index))
+                children: Array.from({ length: count }, (_, index) => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("i", { style: { left: `${index / count * 100}%`, width: `${100 / count}%` }, children: CHECK }, index))
               },
               run.start
             );
           }),
-          nowMin !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+          nowMin !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
             "div",
             {
               className: "tb-nowline",
@@ -15349,7 +15356,7 @@
             }
           )
         ] }),
-        openMinute !== null && openRecords.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
+        openMinute !== null && openRecords.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
           "div",
           {
             className: "tb-pop",
@@ -15358,11 +15365,11 @@
             style: { top: Math.floor(openMinute / 60) * rowH + rowH + 4 },
             onPointerDown: (event) => event.stopPropagation(),
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-pop-title", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-pop-title", children: [
                 openRecords.length,
                 " \u6761\u5E76\u884C\u8BB0\u5F55"
               ] }),
-              openRecords.map((record) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
+              openRecords.map((record) => /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
                 "button",
                 {
                   type: "button",
@@ -15372,9 +15379,9 @@
                     onBlockEdit(day, record);
                   },
                   children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("i", { style: { background: tagColor(record.timeTagId) } }),
-                    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: record.note === void 0 || record.note === "" ? tagName(record.timeTagId) : record.note }),
-                    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("time", { children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("i", { style: { background: tagColor(record.timeTagId) } }),
+                    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { children: record.note === void 0 || record.note === "" ? tagName(record.timeTagId) : record.note }),
+                    /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("time", { children: [
                       clock(record.start),
                       "\u2013",
                       clock(record.end)
@@ -15595,12 +15602,12 @@
       onEdit(date, record);
     }, [clearSelection, onEdit]);
     const nowMin = days.includes(today) ? nowMinute : void 0;
-    return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_jsx_runtime7.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-tb", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-tb-main", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-canvas-bg", "aria-hidden": "true" }),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "tb-scroll", ref: scrollRef, onScroll, "aria-label": "\u65F6\u95F4\u5757\u753B\u5E03", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "tb-days", children: days.map((day) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_jsx_runtime8.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-tb", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-tb-main", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(CanvasGradient, {}),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-scroll", ref: scrollRef, onScroll, "aria-label": "\u65F6\u95F4\u5757\u753B\u5E03", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "tb-days", children: days.map((day) => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
               DayColumn,
               {
                 day,
@@ -15616,22 +15623,22 @@
               },
               day
             )) }),
-            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { className: `tb-jump${jumpVisible ? " on" : ""}`, type: "button", onClick: () => scrollToDate(today, true), children: "\u56DE\u5230\u4ECA\u5929" })
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("button", { className: `tb-jump${jumpVisible ? " on" : ""}`, type: "button", onClick: () => scrollToDate(today, true), children: "\u56DE\u5230\u4ECA\u5929" })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(TagShelf, { tags: timeTags, onAssign: assign })
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(TagShelf, { tags: timeTags, onAssign: assign })
       ] }),
-      totalMinutes > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: `tb-sel-badge${overlapsExisting ? " split" : ""}`, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { role: "status", children: durationLabel(totalMinutes) }),
-        overlapsExisting && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "tb-sel-mode", role: "group", "aria-label": "\u5199\u5165\u65B9\u5F0F", title: "\u6309 Tab \u5207\u6362\u8986\u76D6\uFF0F\u5E76\u884C", "aria-keyshortcuts": "Tab", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { type: "button", className: parallel ? "" : "on", "aria-pressed": !parallel, onClick: () => setParallel(false), children: "\u8986\u76D6" }),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { type: "button", className: parallel ? "on" : "", "aria-pressed": parallel, onClick: () => setParallel(true), children: "\u5E76\u884C" })
+      totalMinutes > 0 && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: `tb-sel-badge${overlapsExisting ? " split" : ""}`, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { role: "status", children: durationLabel(totalMinutes) }),
+        overlapsExisting && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("span", { className: "tb-sel-mode", role: "group", "aria-label": "\u5199\u5165\u65B9\u5F0F", title: "\u6309 Tab \u5207\u6362\u8986\u76D6\uFF0F\u5E76\u884C", "aria-keyshortcuts": "Tab", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("button", { type: "button", className: parallel ? "" : "on", "aria-pressed": !parallel, onClick: () => setParallel(false), children: "\u8986\u76D6" }),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("button", { type: "button", className: parallel ? "on" : "", "aria-pressed": parallel, onClick: () => setParallel(true), children: "\u5E76\u884C" })
         ] })
       ] })
     ] });
   }
   function Toast({ message }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: `tb-toast${message === "" ? "" : " on"}`, children: message });
+    return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: `tb-toast${message === "" ? "" : " on"}`, children: message });
   }
   var timeStyles = `.tb-app {
   position: relative;
@@ -15715,8 +15722,9 @@
 .tb-tb { flex: 1; min-height: 0; display: flex; background: var(--tb-surface-page, #0a0a0b); }
 .tb-tb-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; position: relative; }
 /* The reference's gradient is a fixed layer: it must not move with vertical scrolling. */
-.tb-canvas-bg { position: absolute; top: 0; bottom: 0; left: calc(var(--tb-gutter-width, 46px) + var(--tb-hour-width, 26px)); right: 0; z-index: 0; pointer-events: none;
+.tb-canvas-bg { position: absolute; top: 0; bottom: 0; left: 0; right: 0; z-index: 0; pointer-events: none;
   background: linear-gradient(180deg, var(--tb-grid-top, #202020) 0%, var(--tb-grid-mid, #505050) 55%, var(--tb-grid-bottom, #303030) 100%); }
+.tb-tb-main > .tb-canvas-bg { left: calc(var(--tb-gutter-width, 46px) + var(--tb-hour-width, 26px)); }
 .tb-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overflow-anchor: auto; position: relative; z-index: 1; scrollbar-width: none; }
 .tb-scroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
 .tb-days { position: relative; }
@@ -15879,9 +15887,9 @@
 .tb-deep-body { flex: 1; min-height: 0; display: flex; overflow: hidden; }
 .tb-deep-hours { width: 30px; flex: none; position: relative; }
 .tb-deep-hours span { position: absolute; right: 6px; font-size: var(--tb-font-caption, 10px); color: var(--tb-text-tertiary, #727a88); font-variant-numeric: tabular-nums; }
-.tb-deep-cols { flex: 1; display: flex; min-width: 0; position: relative; touch-action: none; background: var(--tb-surface-hover, #252931); }
-.tb-deep-col { flex: 1; min-width: 0; position: relative; }
-.tb-hc { position: absolute; left: 0; right: 0; background: var(--tb-grid-cell, #191c21); cursor: crosshair; box-shadow: 0 0 0 1px var(--tb-surface-hover, #252931); }
+.tb-deep-cols { flex: 1; display: flex; min-width: 0; position: relative; touch-action: none; }
+.tb-deep-col { flex: 1; min-width: 0; position: relative; z-index: 1; }
+.tb-hc { position: absolute; left: 0; right: 0; background: transparent; cursor: crosshair; box-shadow: 0 0 0 1px var(--tb-surface-page, #0a0a0b); }
 .tb-hc:hover { filter: brightness(1.12); }
 .tb-hc.H { background: color-mix(in srgb, var(--tb-deep-high, #5aa86a) 52%, var(--tb-grid-cell, #191c21)); }
 .tb-hc.M { background: color-mix(in srgb, var(--tb-deep-medium, #b99530) 40%, var(--tb-grid-cell, #191c21)); }
@@ -16107,7 +16115,7 @@
       cells: view.deep.levels.map((level) => ({ level }))
     }, [view]);
     const today = productToday;
-    return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(
+    return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(
       "div",
       {
         className: "tb-app",
@@ -16121,8 +16129,8 @@
           appRef.current?.focus({ preventScroll: true });
         },
         children: [
-          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("style", { children: timeStyles }),
-          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("style", { children: timeStyles }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
             TimeHeader,
             {
               module,
@@ -16138,8 +16146,8 @@
               onUndo: () => void undo()
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "tb-views", children: [
-            module !== "deep" && view !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("section", { className: "tb-view on", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "tb-views", children: [
+            module !== "deep" && view !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("section", { className: "tb-view on", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
               TimeCanvas,
               {
                 layer,
@@ -16157,7 +16165,7 @@
               },
               module
             ) }),
-            module === "deep" && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("section", { className: "tb-view on", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+            module === "deep" && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("section", { className: "tb-view on", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
               DeepWeekView,
               {
                 week: deepWeek,
@@ -16168,7 +16176,7 @@
               }
             ) })
           ] }),
-          picker !== null && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+          picker !== null && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
             DatePicker,
             {
               mode: picker === "deep" ? "week" : "day",
@@ -16182,8 +16190,8 @@
               onClose: () => setPicker(null)
             }
           ),
-          error !== "" && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "tb-toast on", style: { bottom: 52 }, children: error }),
-          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+          error !== "" && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "tb-toast on", style: { bottom: 52 }, children: error }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
             Drawer,
             {
               open: drawer,
@@ -16197,7 +16205,7 @@
               onClose: () => setDrawer(false)
             }
           ),
-          sheet !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+          sheet !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
             RecordSheet,
             {
               target: sheet,
@@ -16207,7 +16215,7 @@
               onDelete: () => void deleteSheet(sheet)
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Toast, { message: toast })
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Toast, { message: toast })
         ]
       }
     );
@@ -16477,7 +16485,7 @@
   }
 
   // time-block/src/App.tsx
-  var import_jsx_runtime10 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime11 = __toESM(require_jsx_runtime(), 1);
   var MIN_RAIL = 320;
   var MAX_RAIL = 720;
   var DEFAULT_RAIL = 390;
@@ -16501,7 +16509,7 @@
   };
   function ThemeToggle({ theme, onToggle }) {
     const dark = theme === "dark";
-    return /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
       "button",
       {
         className: "tb-hbtn",
@@ -16509,10 +16517,10 @@
         title: "\u5207\u6362\u4E3B\u9898",
         "aria-label": dark ? "\u5207\u6362\u5230\u6D45\u8272\u4E3B\u9898" : "\u5207\u6362\u5230\u6DF1\u8272\u4E3B\u9898",
         onClick: onToggle,
-        children: dark ? /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.4", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("circle", { cx: "8", cy: "8", r: "3.2" }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("path", { d: "M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1" })
-        ] }) : /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.4", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("path", { d: "M12.8 9.6A5.2 5.2 0 016.4 3.2a5.4 5.4 0 106.4 6.4z" }) })
+        children: dark ? /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.4", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("circle", { cx: "8", cy: "8", r: "3.2" }),
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("path", { d: "M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1" })
+        ] }) : /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.4", children: /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("path", { d: "M12.8 9.6A5.2 5.2 0 016.4 3.2a5.4 5.4 0 106.4 6.4z" }) })
       }
     );
   }
@@ -16542,16 +16550,16 @@
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", up);
     }, []);
-    return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "od-rail", style: { width: `min(100vw, ${railWidth}px)` }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "od-resize", role: "separator", "aria-orientation": "vertical", "aria-label": "\u8C03\u6574\u9884\u89C8\u680F\u5BBD\u5EA6", onPointerDown: startResize }),
-      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "od-rail", style: { width: `min(100vw, ${railWidth}px)` }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "od-resize", role: "separator", "aria-orientation": "vertical", "aria-label": "\u8C03\u6574\u9884\u89C8\u680F\u5BBD\u5EA6", onPointerDown: startResize }),
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
         TimeProduct,
         {
           adapter,
           today: FIXTURE_TODAY,
-          headerAction: /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("span", { style: PREVIEW_ROW, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("span", { style: PREVIEW_BADGE, title: "OpenDesign Fixture \u9884\u89C8", children: "\u8BBE\u8BA1\u9884\u89C8" }),
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(ThemeToggle, { theme, onToggle: () => setTheme((value) => value === "dark" ? "light" : "dark") })
+          headerAction: /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("span", { style: PREVIEW_ROW, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("span", { style: PREVIEW_BADGE, title: "OpenDesign Fixture \u9884\u89C8", children: "\u8BBE\u8BA1\u9884\u89C8" }),
+            /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(ThemeToggle, { theme, onToggle: () => setTheme((value) => value === "dark" ? "light" : "dark") })
           ] })
         }
       )
@@ -16559,10 +16567,10 @@
   }
 
   // time-block/src/index.tsx
-  var import_jsx_runtime11 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime12 = __toESM(require_jsx_runtime(), 1);
   var root = document.getElementById("root");
   if (root === null) throw new Error("\u7F3A\u5C11\u8BBE\u8BA1\u9884\u89C8\u6302\u8F7D\u70B9 #root");
-  (0, import_client.createRoot)(root).render(/* @__PURE__ */ (0, import_jsx_runtime11.jsx)(import_react8.StrictMode, { children: /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(App, {}) }));
+  (0, import_client.createRoot)(root).render(/* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_react8.StrictMode, { children: /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(App, {}) }));
 })();
 /*! Bundled license information:
 

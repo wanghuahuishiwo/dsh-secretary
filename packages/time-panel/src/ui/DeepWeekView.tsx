@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DeepCellLevel, DeepLevel, DeepWeekData } from './model.ts'
+import { CanvasGradient } from './CanvasGradient.tsx'
 import { WEEKDAY_LABELS, addDays, durationLabel, weekStartOf } from './model.ts'
 
 interface Props {
@@ -179,6 +180,7 @@ export function DeepWeekView({ week, weekStart, today, busy, onPaint }: Props) {
               ))}
             </div>
             <div className="tb-deep-cols" onPointerDown={onCellDown}>
+              <CanvasGradient />
               {days.map((day, index) => {
                 const weekday = index + 1
                 return (

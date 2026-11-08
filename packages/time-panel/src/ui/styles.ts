@@ -85,8 +85,9 @@ export const timeStyles = `.tb-app {
 .tb-tb { flex: 1; min-height: 0; display: flex; background: var(--tb-surface-page, #0a0a0b); }
 .tb-tb-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; position: relative; }
 /* The reference's gradient is a fixed layer: it must not move with vertical scrolling. */
-.tb-canvas-bg { position: absolute; top: 0; bottom: 0; left: calc(var(--tb-gutter-width, 46px) + var(--tb-hour-width, 26px)); right: 0; z-index: 0; pointer-events: none;
+.tb-canvas-bg { position: absolute; top: 0; bottom: 0; left: 0; right: 0; z-index: 0; pointer-events: none;
   background: linear-gradient(180deg, var(--tb-grid-top, #202020) 0%, var(--tb-grid-mid, #505050) 55%, var(--tb-grid-bottom, #303030) 100%); }
+.tb-tb-main > .tb-canvas-bg { left: calc(var(--tb-gutter-width, 46px) + var(--tb-hour-width, 26px)); }
 .tb-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overflow-anchor: auto; position: relative; z-index: 1; scrollbar-width: none; }
 .tb-scroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
 .tb-days { position: relative; }
@@ -249,9 +250,9 @@ export const timeStyles = `.tb-app {
 .tb-deep-body { flex: 1; min-height: 0; display: flex; overflow: hidden; }
 .tb-deep-hours { width: 30px; flex: none; position: relative; }
 .tb-deep-hours span { position: absolute; right: 6px; font-size: var(--tb-font-caption, 10px); color: var(--tb-text-tertiary, #727a88); font-variant-numeric: tabular-nums; }
-.tb-deep-cols { flex: 1; display: flex; min-width: 0; position: relative; touch-action: none; background: var(--tb-surface-hover, #252931); }
-.tb-deep-col { flex: 1; min-width: 0; position: relative; }
-.tb-hc { position: absolute; left: 0; right: 0; background: var(--tb-grid-cell, #191c21); cursor: crosshair; box-shadow: 0 0 0 1px var(--tb-surface-hover, #252931); }
+.tb-deep-cols { flex: 1; display: flex; min-width: 0; position: relative; touch-action: none; }
+.tb-deep-col { flex: 1; min-width: 0; position: relative; z-index: 1; }
+.tb-hc { position: absolute; left: 0; right: 0; background: transparent; cursor: crosshair; box-shadow: 0 0 0 1px var(--tb-surface-page, #0a0a0b); }
 .tb-hc:hover { filter: brightness(1.12); }
 .tb-hc.H { background: color-mix(in srgb, var(--tb-deep-high, #5aa86a) 52%, var(--tb-grid-cell, #191c21)); }
 .tb-hc.M { background: color-mix(in srgb, var(--tb-deep-medium, #b99530) 40%, var(--tb-grid-cell, #191c21)); }
