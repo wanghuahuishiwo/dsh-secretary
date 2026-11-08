@@ -6,9 +6,9 @@ import { test } from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import Storage, { storageBackendServiceKey } from '@deepseek-ai/dsh-storage'
 import { SqliteStorageBackend } from '@deepseek-ai/dsh-storage-sqlite'
-import { GoalService } from 'dsh-secretary-goal/contract'
-import { GtdService } from 'dsh-secretary-gtd/contract'
-import { TagService } from 'dsh-secretary-tag/contract'
+import { GoalService } from 'dsh-secretary-goal-provider/contract'
+import { GtdService } from 'dsh-secretary-gtd-service/contract'
+import { TagService } from 'dsh-secretary-tag-service/contract'
 import { TimeService } from 'dsh-secretary-time-block/contract'
 
 async function sqliteHarness(t, databasePath, failOn, beforePlugins, includeGoal = true) {
@@ -43,7 +43,7 @@ async function sqliteHarness(t, databasePath, failOn, beforePlugins, includeGoal
   }
   ctx.storage.backend.register('sqlite', backend)
   ctx.provide(storageBackendServiceKey('sqlite'), backend)
-  const storageModule = await import('dsh-secretary-storage')
+  const storageModule = await import('dsh-secretary-storage-domain')
   await ctx.plugin(storageModule)
   const facility = ctx.secretaryStorageDomain
   await beforePlugins?.(facility)
@@ -73,14 +73,14 @@ async function sqliteHarness(t, databasePath, failOn, beforePlugins, includeGoal
   })
 
   const modules = await Promise.all([
-    import('dsh-secretary-gtd'),
-    import('dsh-secretary-gtd/tools'),
-    import('dsh-secretary-tag'),
-    import('dsh-secretary-tag/tools'),
+    import('dsh-secretary-gtd-service'),
+    import('dsh-secretary-tool-gtd'),
+    import('dsh-secretary-tag-service'),
+    import('dsh-secretary-tool-tag'),
     import('dsh-secretary-time-block'),
     import('dsh-secretary-time-block/tools'),
     import('dsh-secretary-time-controller'),
-    ...(includeGoal ? [import('dsh-secretary-goal')] : []),
+    ...(includeGoal ? [import('dsh-secretary-goal-provider')] : []),
   ])
   // Create every module before awaiting them, as the real Loader does. Cordis
   // service readiness, not this list's order, determines who can activate.
@@ -105,7 +105,7 @@ async function sqliteHarness(t, databasePath, failOn, beforePlugins, includeGoal
     failWriteSequence(table, indexes) { nextFailure = { table, indexes: new Set(indexes), count: 0 } },
     async provideGoal() {
       if (includeGoal) throw new Error('secretary: test harness already includes Goal')
-      const goal = await import('dsh-secretary-goal')
+      const goal = await import('dsh-secretary-goal-provider')
       const provider = await ctx.plugin(goal)
       await Promise.all(pending)
       return provider
@@ -1791,7 +1791,7 @@ test('GTD product composition and unload preserve domain Services, Agent tools, 
 
 test('Secretary composition registers one coherent assistant and user-only GTD skills over SQLite services', async (t) => {
   const harness = await sqliteHarness(t)
-  const gtdAgent = await import('dsh-secretary-gtd/agent')
+  const gtdAgent = await import('dsh-secretary-gtd-agent')
   const secretary = await import('dsh-secretary')
   const timePanel = await import('dsh-secretary-time-controller')
   assert.deepEqual(timePanel.inject, ['time', 'tags'], 'Time product must not inject GTD')
@@ -1821,18 +1821,18 @@ test('Secretary composition registers one coherent assistant and user-only GTD s
   const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
   for (const row of [
     "name: '@deepseek-ai/dsh-storage-sqlite'",
-    "name: 'dsh-secretary-storage'",
-    "name: 'dsh-secretary-goal'",
-    "name: 'dsh-secretary-gtd'",
-    "name: 'dsh-secretary-tag'",
+    "name: 'dsh-secretary-storage-domain'",
+    "name: 'dsh-secretary-goal-provider'",
+    "name: 'dsh-secretary-gtd-service'",
+    "name: 'dsh-secretary-tag-service'",
     "name: 'dsh-secretary-time-block'",
     "name: 'dsh-secretary-time-controller'",
     "name: 'dsh-secretary-ui-time'",
     "name: 'dsh-secretary-ui-gtd'",
-    "name: 'dsh-secretary-gtd/tools'",
-    "name: 'dsh-secretary-tag/tools'",
+    "name: 'dsh-secretary-tool-gtd'",
+    "name: 'dsh-secretary-tool-tag'",
     "name: 'dsh-secretary-time-block/tools'",
-    "name: 'dsh-secretary-gtd/agent'",
+    "name: 'dsh-secretary-gtd-agent'",
     "name: 'dsh-secretary'",
     "name: '@deepseek-ai/dsh-skill-filesystem'",
     "name: '@deepseek-ai/dsh-tool-bash'",

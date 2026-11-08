@@ -13,9 +13,8 @@ Secretary 的 SQLite 持久化入口。组目录是纯容器：不包含 `packag
 
 | 包 | 名称 | 角色 |
 |---|---|---|
-| [`storage/`](storage/README.md) | `dsh-secretary-storage` | secretaryStorageDomain facility，按 domain 路由到 SQLite |
+| [`domain/`](domain/README.md) | `dsh-secretary-storage-domain` | `secretaryStorageDomain` facility，按 domain 路由到 SQLite |
 
 ## 约束
 
 - 跨包只依赖 Service contract、`./types` 或 Remote 契约，不 import 其他包的内部源码。
-- 新增包先留在本组；需要拆包时按 [ADR 0010](../../docs/adr/0010-package-groups-and-roles.md) 的判据。

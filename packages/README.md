@@ -30,10 +30,13 @@ kind: "package-group"
 | [`core/validation`](core/validation/README.md) | core | 共享输入校验 | `.` |
 | [`core/tooling`](core/tooling/README.md) | core | tool 注册与 no-config schema | `.` |
 | [`core/skill-resources`](core/skill-resources/README.md) | core | skill 资源注册 | `.` |
-| [`storage/storage`](storage/storage/README.md) | storage | `secretaryStorageDomain` facility | `.` |
-| [`goal/goal`](goal/goal/README.md) | goal | 空 `GoalService` Provider | `.` |
-| [`tag/tag`](tag/tag/README.md) | tag | `TagService` + `secretary_tag` | `.`、`./contract`、`./tools` |
-| [`gtd/gtd`](gtd/gtd/README.md) | gtd | `GtdService` + `secretary_gtd` + GTD agent/skills | `.`、`./contract`、`./tools`、`./agent` |
+| [`storage/domain`](storage/domain/README.md) | storage | `secretaryStorageDomain` facility | `.` |
+| [`goal/provider`](goal/provider/README.md) | goal | 空 `GoalService` Provider | `.`、`./contract` |
+| [`tag/service`](tag/service/README.md) | tag | `TagService` 与契约 | `.`、`./contract` |
+| [`tag/tool-tag`](tag/tool-tag/README.md) | tag | `secretary_tag` 工具 | `.` |
+| [`gtd/service`](gtd/service/README.md) | gtd | `GtdService` 与契约 | `.`、`./contract` |
+| [`gtd/tool-gtd`](gtd/tool-gtd/README.md) | gtd | `secretary_gtd` 工具 | `.` |
+| [`gtd/agent`](gtd/agent/README.md) | gtd | GTD 用户技能 | `.` |
 | [`time/time-block`](time/time-block/README.md) | time | `TimeService` + `secretary_time` | `.`、`./contract`、`./tools` |
 | [`api/time-controller`](api/time-controller/README.md) | api | `TimeProductService` 与浏览器 Remote 契约 | `.`、`./types`、`./typert`、`./remote` |
 | [`client/ui-time`](client/ui-time/README.md) | client | 纯 React UI + `TimeAdapter` 契约 + 右栏插件 | `./ui`、`./client` |
@@ -44,9 +47,9 @@ kind: "package-group"
 
 ```text
 bundle/secretary → client/ui-time ─┐
-                                     ├→ api/time-controller → time/time-block + tag/tag
-bundle/secretary → client/ui-gtd     │                          └→ goal/goal → storage/storage → core/*
-                                     └→ gtd/gtd ─────────────────┘
+                                     ├→ api/time-controller → time/time-block + tag/service
+bundle/secretary → client/ui-gtd     │                          └→ goal/provider → storage/domain → core/*
+                                     └→ gtd/service ─────────────┘
 ```
 
 - Host 产品 API 只依赖领域 Service contract，不 import 其他产品的 UI 或插件。

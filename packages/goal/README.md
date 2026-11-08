@@ -13,9 +13,8 @@ kind: "package-group"
 
 | 包 | 名称 | 角色 |
 |---|---|---|
-| [`goal/`](goal/README.md) | `dsh-secretary-goal` | 空 GoalService Provider；实体、模型与 UI 后置 |
+| [`provider/`](provider/README.md) | `dsh-secretary-goal-provider` | 空 GoalService Provider；实体、模型与 UI 后置 |
 
 ## 约束
 
 - 跨包只依赖 Service contract、`./types` 或 Remote 契约，不 import 其他包的内部源码。
-- 新增包先留在本组；需要拆包时按 [ADR 0010](../../docs/adr/0010-package-groups-and-roles.md) 的判据。

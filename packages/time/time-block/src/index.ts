@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { objectOf, optionalString, parseInstant, withoutUndefined } from 'dsh-secretary-validation'
-import type { TagReferenceRegistry, TagService } from 'dsh-secretary-tag/contract'
+import type { TagReferenceRegistry, TagService } from 'dsh-secretary-tag-service/contract'
 import {
   TimeService,
   isFocusLevel,

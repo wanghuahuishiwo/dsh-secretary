@@ -1,7 +1,7 @@
 {
-  "name": "dsh-secretary-goal",
+  "name": "dsh-secretary-tag-service",
   "version": "0.1.0",
-  "description": "Shared upstream Goal capability for dsh-secretary. Empty provider only; no Goal facts or UI are defined yet.",
+  "description": "Unified Tag domain service and its contract: time/context trees.",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
@@ -22,7 +22,8 @@
     "prepare": "node build.mjs"
   },
   "dependencies": {
-    "@deepseek-ai/cordis": "4.0.5"
+    "@deepseek-ai/cordis": "4.0.5",
+    "dsh-secretary-validation": "workspace:*"
   },
   "devDependencies": {
     "esbuild": "^0.25.10"

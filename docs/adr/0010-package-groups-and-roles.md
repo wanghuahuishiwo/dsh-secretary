@@ -18,10 +18,13 @@ packages/
 ├── core/validation/      dsh-secretary-validation：共享输入校验
 ├── core/tooling/         dsh-secretary-tooling：tool 注册
 ├── core/skill-resources/ dsh-secretary-skill-resources：skill 资源注册
-├── storage/storage/      dsh-secretary-storage：Secretary SQLite domain 路由
-├── goal/goal/            dsh-secretary-goal：上游空 GoalService Provider
-├── tag/tag/              dsh-secretary-tag：统一 TagService + Agent tools
-├── gtd/gtd/              dsh-secretary-gtd：GtdService、tools、agent 与技能
+├── storage/domain/       dsh-secretary-storage-domain：Secretary SQLite domain 路由
+├── goal/provider/        dsh-secretary-goal-provider：上游空 GoalService Provider
+├── tag/service/          dsh-secretary-tag-service：统一 TagService + contract
+├── tag/tool-tag/         dsh-secretary-tool-tag：secretary_tag 工具
+├── gtd/service/          dsh-secretary-gtd-service：GtdService + contract
+├── gtd/tool-gtd/         dsh-secretary-tool-gtd：secretary_gtd 工具
+├── gtd/agent/            dsh-secretary-gtd-agent：GTD 用户技能与资产
 ├── time/time-block/      dsh-secretary-time-block：TimeService + Agent tools
 ├── api/time-controller/  dsh-secretary-time-controller：TimeProductService + ./typert/./remote
 ├── client/ui-time/       dsh-secretary-ui-time：纯 React UI + TimeAdapter 契约 + 浏览器插件

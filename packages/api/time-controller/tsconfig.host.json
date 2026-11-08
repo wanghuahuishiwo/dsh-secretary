@@ -10,5 +10,5 @@
     "src/index.ts",
     "src/types.ts"
   ],
-  "references": [{ "path": "../../tag/tag" }, { "path": "../../time/time-block" }]
+  "references": [{ "path": "../../tag/service" }, { "path": "../../time/time-block" }]
 }

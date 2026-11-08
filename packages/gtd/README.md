@@ -1,5 +1,5 @@
 ---
-description: "GTD 领域能力：事实、Agent 工具与技能。"
+description: "GTD 能力族：领域 Service、模型工具与 Agent 技能分属三个角色包。"
 kind: "package-group"
 ---
 
@@ -7,15 +7,17 @@ kind: "package-group"
 
 ## 摘要
 
-GTD 领域能力：事实、Agent 工具与技能。组目录是纯容器：不包含 `package.json` 或源码，包恰好在组下一层。仓库级包地图见 [packages/README.md](../README.md)。
+GTD 能力族：Inbox、Project、Action 事实与派生查询，及其模型工具和用户技能。组目录是纯容器，仓库级包地图见 [packages/README.md](../README.md)。
 
 ## 包
 
 | 包 | 名称 | 角色 |
 |---|---|---|
-| [`gtd/`](gtd/README.md) | `dsh-secretary-gtd` | GtdService、`./contract`、`secretary_gtd`、GTD agent 与 skills |
+| [`service/`](service/README.md) | `dsh-secretary-gtd-service` | `GtdService` 与 `./contract` |
+| [`tool-gtd/`](tool-gtd/README.md) | `dsh-secretary-tool-gtd` | 面向模型的 `secretary_gtd` 工具 |
+| [`agent/`](agent/README.md) | `dsh-secretary-gtd-agent` | 用户侧 GTD 技能与技能资产 |
 
 ## 约束
 
-- 跨包只依赖 Service contract、`./types` 或 Remote 契约，不 import 其他包的内部源码。
-- 新增包先留在本组；需要拆包时按 [ADR 0010](../../docs/adr/0010-package-groups-and-roles.md) 的判据。
+- `service` 不注册工具或技能；`tool-gtd`、`agent` 只通过 `./contract` 与领域事实交互。
+- 跨包只依赖 Service contract，不 import 其他包的内部源码。

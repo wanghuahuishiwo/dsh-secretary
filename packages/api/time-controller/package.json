@@ -35,7 +35,7 @@
     "lib/typert.remote-client.d.ts"
   ],
   "dependencies": {
-    "dsh-secretary-tag": "workspace:*",
+    "dsh-secretary-tag-service": "workspace:*",
     "dsh-secretary-time-block": "workspace:*",
     "zod": "4.4.3"
   },

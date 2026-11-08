@@ -1,7 +1,7 @@
 {
-  "name": "dsh-secretary-storage",
+  "name": "dsh-secretary-tool-gtd",
   "version": "0.1.0",
-  "description": "Secretary-owned storage domain facility routing secretary domains to SQLite.",
+  "description": "Model-facing secretary_gtd tool over GtdService.",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
@@ -22,8 +22,7 @@
   },
   "dependencies": {
     "@deepseek-ai/cordis": "4.0.5",
-    "@deepseek-ai/dsh-storage": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-storage-domain": "0.2.1-rc.5",
+    "dsh-secretary-gtd-service": "workspace:*",
     "dsh-secretary-tooling": "workspace:*"
   },
   "devDependencies": {

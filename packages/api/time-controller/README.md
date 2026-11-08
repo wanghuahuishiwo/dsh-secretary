@@ -46,8 +46,8 @@ kind: "package-reference"
 
 ## 延伸阅读
 
-- [TimeBlock 功能与交互](../../docs/prd/time-block.md)
-- [运行架构](../../docs/architecture.md)
+- [TimeBlock 功能与交互](../../../docs/prd/time-block.md)
+- [运行架构](../../../docs/architecture.md)
 - [Time 领域包](../../time/time-block/README.md)
 - [Time 产品 UI](../../client/ui-time/README.md)
 - [Secretary bundle](../../bundle/secretary/README.md)

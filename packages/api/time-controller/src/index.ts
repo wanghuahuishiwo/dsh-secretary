@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
-import type { TagService } from 'dsh-secretary-tag/contract'
+import type { TagService } from 'dsh-secretary-tag-service/contract'
 import type { ActualSource, FocusLevel, TimeService } from 'dsh-secretary-time-block/contract'
 import type {
   DeleteTimeBlockRequest, DeleteTimeBlockResult, PaintDeepRequest, PaintDeepResult,

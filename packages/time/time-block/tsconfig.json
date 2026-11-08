@@ -7,5 +7,5 @@
     "emitDeclarationOnly": true
   },
   "files": ["src/contract.ts"],
-  "references": [{ "path": "../../tag/tag" }]
+  "references": [{ "path": "../../tag/service" }]
 }

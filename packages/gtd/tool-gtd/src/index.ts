@@ -1,10 +1,10 @@
 import type { Context } from '@deepseek-ai/cordis'
-import type { GtdService } from './contract.ts'
+import type { GtdService } from 'dsh-secretary-gtd-service/contract'
 import { noConfig, OUTPUT, registerTool } from 'dsh-secretary-tooling'
 
 export interface Config {}
-export const Config = noConfig('dsh-secretary-gtd-tools')
-export const name = 'dsh-secretary-gtd-tools'
+export const Config = noConfig('dsh-secretary-tool-gtd')
+export const name = 'dsh-secretary-tool-gtd'
 export const inject = ['tools', 'gtd']
 
 const nullable = (schema: Record<string, unknown>) => ({ anyOf: [schema, { type: 'null' }] })

@@ -12,9 +12,9 @@ import {
   type ProjectInput,
   type UpdateProjectInput,
   type UpdateActionInput,
-} from 'dsh-secretary-gtd/contract'
+} from 'dsh-secretary-gtd-service/contract'
 import { normalizeName, objectOf, optionalString, parseInstant, withoutUndefined } from 'dsh-secretary-validation'
-import type { TagReferenceRegistry, TagService } from 'dsh-secretary-tag/contract'
+import type { TagReferenceRegistry, TagService } from 'dsh-secretary-tag-service/contract'
 
 interface Table<Record> {
   get(key: string): Record | undefined
@@ -36,7 +36,7 @@ export interface Config { domain?: string }
 export const Config = {
   '~standard': {
     version: 1,
-    vendor: 'dsh-secretary-gtd',
+    vendor: 'dsh-secretary-gtd-service',
     validate(raw: unknown) {
       const value = raw === undefined ? {} : objectOf(raw, 'gtd config')
       const domain = value.domain ?? 'secretary_gtd'
@@ -530,7 +530,7 @@ export class SQLiteGtdService extends GtdService {
   }
 }
 
-export const name = 'dsh-secretary-gtd'
+export const name = 'dsh-secretary-gtd-service'
 export const inject = ['secretaryStorageDomain', 'tags', 'tagReferences', 'goals']
 
 export function apply(ctx: Context, config: Config = {}): void {

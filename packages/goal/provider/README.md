@@ -3,7 +3,7 @@ description: "Secretary 上游空 Goal Provider；供需要理解 Time／GTD 共
 kind: "package-reference"
 ---
 
-# dsh-secretary-goal
+# dsh-secretary-goal-provider
 
 ## 概述
 
@@ -29,7 +29,7 @@ Goal 作为产品模块保留独立入口，但当前只规划空壳页（未来
 | 入口 | 作用 | 依赖 |
 |---|---|---|
 | `dsh-secretary-goal` | 注册 `EmptyGoalService` | 无 |
-| `dsh-secretary-goal/contract` | 导出 `GoalService` 类型与 `goals` service key | 仅消费方类型依赖 |
+| `dsh-secretary-goal-provider/contract` | 导出 `GoalService` 类型与 `goals` service key | 仅消费方类型依赖 |
 
 本包没有 Config。消费方依赖 `GoalService` 契约，不依赖空实现的具体类。
 
@@ -46,8 +46,8 @@ Secretary bundle 显式禁用宿主自带的 `goal` Service entry，因此安装
 
 ## 延伸阅读
 
-- [共享上游架构](../../docs/architecture.md)
-- [Secretary bundle](../secretary/README.md)
+- [共享上游架构](../../../docs/architecture.md)
+- [Secretary bundle](../../bundle/secretary/README.md)
 
 ## 模型体验
 

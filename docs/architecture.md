@@ -21,12 +21,12 @@ dsh-secretary bundle：composition / preset / skills
 │
 ├── 上游共享
 │   ├── storage + core（validation / tooling / skill-resources）
-│   ├── tag        → TagService + Agent tools
+│   ├── tag        → TagService（tag/service）+ Agent 工具（tag/tool-tag）
 │   └── goal       → 空 GoalService Provider
 │
 ├── 下游领域
-│   ├── time-block → TimeService + Agent tools ──→ tag/contract + goal/contract
-│   └── gtd        → GtdService + Agent tools ───→ tag/contract + goal/contract
+│   ├── time-block → TimeService + Agent tools ──→ tag-service/contract + goal-provider/contract
+│   └── gtd        → GtdService（gtd/service）+ tools（gtd/tool-gtd）+ agent（gtd/agent）──→ tag-service/contract + goal-provider/contract
 │
 └── 产品交付
     ├── api/time-controller
@@ -65,7 +65,7 @@ Time 的 `./client` 是 DSH Client 插件，运行于桌面端的 Chromium rende
 
 ## 数据所有权
 
-默认数据库为 `$DSH_HOME/storages/secretary.db`。`dsh-secretary-storage` 提供专用 `secretaryStorageDomain`，只路由本项目 domains，不改变宿主全局 `storage-domain` 的默认 backend 或其他 routes：
+默认数据库为 `$DSH_HOME/storages/secretary.db`。`dsh-secretary-storage-domain` 提供专用 `secretaryStorageDomain`，只路由本项目 domains，不改变宿主全局 `storage-domain` 的默认 backend 或其他 routes：
 
 - `secretary_gtd`：`projects`、`actions`、`inbox`。
 - `secretary_tag`：`tags`（唯一表；`kind` 区分 `time` / `context`）。

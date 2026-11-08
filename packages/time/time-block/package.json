@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@deepseek-ai/cordis": "4.0.5",
-    "dsh-secretary-tag": "workspace:*",
+    "dsh-secretary-tag-service": "workspace:*",
     "dsh-secretary-validation": "workspace:*",
     "dsh-secretary-tooling": "workspace:*"
   },

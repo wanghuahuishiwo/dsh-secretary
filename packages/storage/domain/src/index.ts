@@ -4,8 +4,8 @@ import { DomainFacility } from '@deepseek-ai/dsh-storage-domain'
 import { noConfig } from 'dsh-secretary-tooling'
 
 export interface Config {}
-export const Config = noConfig('dsh-secretary-storage')
-export const name = 'dsh-secretary-storage'
+export const Config = noConfig('dsh-secretary-storage-domain')
+export const name = 'dsh-secretary-storage-domain'
 export const inject = ['storage', storageBackendServiceKey('sqlite')]
 
 export function apply(ctx: Context): void {

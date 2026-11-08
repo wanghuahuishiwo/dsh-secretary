@@ -1,4 +1,4 @@
-import type { Tag } from 'dsh-secretary-tag/contract'
+import type { Tag } from 'dsh-secretary-tag-service/contract'
 import type {} from '@deepseek-ai/dsh-typert-protocol'
 import type { ActualBlock, DeepWeek, PlanBlock } from 'dsh-secretary-time-block/contract'
 

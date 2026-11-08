@@ -14,18 +14,18 @@
         journalMode: wal
 
     - id: secretary-storage
-      name: 'dsh-secretary-storage'
+      name: 'dsh-secretary-storage-domain'
 
     # 上游共享 Goal Provider；当前为空，只建立 service seam。
     # 本列表行序仅用于阅读，启动与重载由 Cordis inject 驱动。
     - id: secretary-goal
-      name: 'dsh-secretary-goal'
+      name: 'dsh-secretary-goal-provider'
 
     - id: secretary-gtd
-      name: 'dsh-secretary-gtd'
+      name: 'dsh-secretary-gtd-service'
 
     - id: secretary-tag
-      name: 'dsh-secretary-tag'
+      name: 'dsh-secretary-tag-service'
 
     - id: secretary-time-block
       name: 'dsh-secretary-time-block'
@@ -174,13 +174,13 @@
             name: '@deepseek-ai/dsh-plugin-market/tools'
             disabled: true
           - id: secretary-gtd-tools
-            name: 'dsh-secretary-gtd/tools'
+            name: 'dsh-secretary-tool-gtd'
           - id: secretary-tag-tools
-            name: 'dsh-secretary-tag/tools'
+            name: 'dsh-secretary-tool-tag'
           - id: secretary-time-block-tools
             name: 'dsh-secretary-time-block/tools'
           - id: secretary-gtd-agent
-            name: 'dsh-secretary-gtd/agent'
+            name: 'dsh-secretary-gtd-agent'
           - id: secretary-agent
             name: 'dsh-secretary'
             config:

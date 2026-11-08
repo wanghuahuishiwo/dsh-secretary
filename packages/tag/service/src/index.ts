@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { normalizeName, objectOf, optionalString, withoutUndefined } from 'dsh-secretary-validation'
-import { TagService, type CreateTagInput, type Tag, type TagKind, type TagReferenceInspector, type UpdateTagInput } from 'dsh-secretary-tag/contract'
+import { TagService, type CreateTagInput, type Tag, type TagKind, type TagReferenceInspector, type UpdateTagInput } from 'dsh-secretary-tag-service/contract'
 
 interface Table<Record> {
   readonly size: number
@@ -20,7 +20,7 @@ export interface Config { domain?: string }
 export const Config = {
   '~standard': {
     version: 1,
-    vendor: 'dsh-secretary-tag',
+    vendor: 'dsh-secretary-tag-service',
     validate(raw: unknown) {
       const value = raw === undefined ? {} : objectOf(raw, 'tag config')
       const domain = value.domain ?? 'secretary_tag'
@@ -181,7 +181,7 @@ export class SQLiteTagService extends TagService {
   }
 }
 
-export const name = 'dsh-secretary-tag'
+export const name = 'dsh-secretary-tag-service'
 export const inject = ['secretaryStorageDomain']
 export function apply(ctx: Context, config: Config = {}): void {
   ctx.plugin(SQLiteTagService, config)

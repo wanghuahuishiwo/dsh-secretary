@@ -46,7 +46,7 @@ Client 先 `$mount()` controller 的 `/remote`，再在 child Context 等待 `re
 ## 延伸阅读
 
 - [TimeBlock 设计契约](../../../design/time-block/DESIGN.md)
-- [TimeBlock 功能与交互](../../docs/prd/time-block.md)
+- [TimeBlock 功能与交互](../../../docs/prd/time-block.md)
 - [Time Host API](../../api/time-controller/README.md)
 - [Secretary bundle](../../bundle/secretary/README.md)
 

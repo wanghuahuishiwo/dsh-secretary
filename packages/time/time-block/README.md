@@ -52,11 +52,11 @@ DeepTime 使用 7×24 周模板；未写入的周继承最近的有效更早周�
 
 ## 延伸阅读
 
-- [TimeBlock 产品功能与交互](../../docs/prd/time-block.md)
-- [当前数据模型](../../docs/data-model.md)
+- [TimeBlock 产品功能与交互](../../../docs/prd/time-block.md)
+- [当前数据模型](../../../docs/data-model.md)
 - [Time 产品 UI](../../client/ui-time/README.md)
 - [Time Host API](../../api/time-controller/README.md)
-- [运行架构](../../docs/architecture.md)
+- [运行架构](../../../docs/architecture.md)
 
 ## 模型体验
 

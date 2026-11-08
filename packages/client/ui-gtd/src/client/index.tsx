@@ -7,7 +7,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 
 /** One stable identity addresses both the launcher and its main registration. */
-const PANEL_ID = 'dsh-secretary-gtd' as MainPanelId
+const PANEL_ID = 'dsh-secretary-gtd-service' as MainPanelId
 
 /** Browser declarations are supplied by the Host Loader's client dependency graph. */
 export const inject = ['slots']

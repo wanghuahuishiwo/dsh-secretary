@@ -3,7 +3,7 @@ description: "把 Secretary 的 GTD、Tag 与 Time 领域路由到同一 SQLite�
 kind: "package-reference"
 ---
 
-# dsh-secretary-storage
+# dsh-secretary-storage-domain
 
 ## 概述
 
@@ -43,9 +43,9 @@ GTD、Tag 与 Time 分别使用 `secretary_gtd`、`secretary_tag`、`secretary_t
 
 ## 延伸阅读
 
-- [运行架构](../../docs/architecture.md)
-- [当前数据模型](../../docs/data-model.md)
-- [Secretary bundle](../secretary/README.md)
+- [运行架构](../../../docs/architecture.md)
+- [当前数据模型](../../../docs/data-model.md)
+- [Secretary bundle](../../bundle/secretary/README.md)
 
 ## 模型体验
 

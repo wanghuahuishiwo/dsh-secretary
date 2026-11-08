@@ -1,10 +1,10 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { noConfig, OUTPUT, registerTool } from 'dsh-secretary-tooling'
-import type { TagService } from './contract.ts'
+import type { TagService } from 'dsh-secretary-tag-service/contract'
 
 export interface Config {}
-export const Config = noConfig('dsh-secretary-tag-tools')
-export const name = 'dsh-secretary-tag-tools'
+export const Config = noConfig('dsh-secretary-tool-tag')
+export const name = 'dsh-secretary-tool-tag'
 export const inject = ['tools', 'tags']
 
 export function apply(ctx: Context): void {

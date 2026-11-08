@@ -42,13 +42,16 @@ packages/
 │   ├── tooling/
 │   └── skill-resources/
 ├── storage/       Secretary SQLite domain 路由
-│   └── storage/
+│   └── domain/
 ├── goal/         上游空 Goal Provider
-│   └── goal/
-├── tag/          统一 Tag Service 与 Agent tools
-│   └── tag/
-├── gtd/          GTD Service、tools、agent 与技能资源
-│   └── gtd/
+│   └── provider/
+├── tag/          统一 Tag 能力
+│   ├── service/
+│   └── tool-tag/
+├── gtd/          GTD 能力
+│   ├── service/
+│   ├── tool-gtd/
+│   └── agent/
 ├── time/         Time 领域能力
 │   └── time-block/      Time Service 与 Agent tools
 ├── api/          Host 产品 API

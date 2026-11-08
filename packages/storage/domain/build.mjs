@@ -5,7 +5,7 @@ import { mkdir } from 'node:fs/promises'
 await mkdir('lib', { recursive: true })
 
 const options = {
-  entryPoints: ['src/index.ts', 'src/contract.ts', 'src/tools.ts', 'src/agent.ts'],
+  entryPoints: ['src/index.ts'],
   outdir: 'lib',
   bundle: true,
   format: 'esm',

@@ -1,14 +1,13 @@
 {
-  "name": "dsh-secretary-tag",
+  "name": "dsh-secretary-gtd-service",
   "version": "0.1.0",
-  "description": "Independent Tag domain for dsh-secretary: unified time/context trees.",
+  "description": "GTD domain service and its contract: Inbox, Projects, Actions, derived Availability.",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
     "./contract": "./lib/contract.js",
-    "./tools": "./lib/tools.js",
     "./package.json": "./package.json"
   },
   "files": [
@@ -24,8 +23,8 @@
   },
   "dependencies": {
     "@deepseek-ai/cordis": "4.0.5",
-    "dsh-secretary-validation": "workspace:*",
-    "dsh-secretary-tooling": "workspace:*"
+    "dsh-secretary-tag-service": "workspace:*",
+    "dsh-secretary-validation": "workspace:*"
   },
   "devDependencies": {
     "esbuild": "^0.25.10"
