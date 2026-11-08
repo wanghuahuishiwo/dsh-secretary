@@ -12,7 +12,7 @@ import { promisify } from 'node:util'
 import { chromium } from 'playwright'
 import { openTimeRemote } from './open-time-product.mjs'
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..')
 const exec = promisify(execFile)
 
 async function run(command, args, options = {}) {
@@ -72,14 +72,22 @@ async function remoteCall(page, method, input) {
   }, { method, input })
 }
 
+async function workspacePackageDirs() {
+  const directories = []
+  for (const group of (await readdir(join(ROOT, 'packages'), { withFileTypes: true })).filter(entry => entry.isDirectory())) {
+    for (const candidate of (await readdir(join(ROOT, 'packages', group.name), { withFileTypes: true }))) {
+      const cwd = join(ROOT, 'packages', group.name, candidate.name)
+      if (candidate.isDirectory() && existsSync(join(cwd, 'package.json'))) directories.push(cwd)
+    }
+  }
+  return directories.sort()
+}
+
 async function packWorkspace(destination) {
   await mkdir(destination, { recursive: true })
-  const directories = (await readdir(join(ROOT, 'packages'), { withFileTypes: true }))
-    .filter(entry => entry.isDirectory() && existsSync(join(ROOT, 'packages', entry.name, 'package.json')))
-    .map(entry => entry.name).sort()
+  const directories = await workspacePackageDirs()
   const packs = []
-  for (const directory of directories) {
-    const cwd = join(ROOT, 'packages', directory)
+  for (const cwd of directories) {
     const manifest = JSON.parse(await readFile(join(cwd, 'package.json'), 'utf8'))
     await run('pnpm', ['pack', '--pack-destination', destination], { cwd })
     packs.push({ name: manifest.name, path: join(destination, `${manifest.name}-${manifest.version}.tgz`) })

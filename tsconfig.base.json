@@ -14,9 +14,9 @@
     "types": ["node"],
     "paths": {
       "@deepseek-ai/dsh-typert-protocol": ["./types/typert-protocol.d.ts"],
-      "dsh-secretary-tag/contract": ["./packages/tag/src/contract.ts"],
-      "dsh-secretary-time-block/contract": ["./packages/time-block/src/contract.ts"],
-      "dsh-secretary-time-panel/types": ["./packages/time-panel/src/types.ts"]
+      "dsh-secretary-tag/contract": ["./packages/tag/tag/src/contract.ts"],
+      "dsh-secretary-time-block/contract": ["./packages/time/time-block/src/contract.ts"],
+      "dsh-secretary-time-panel/types": ["./packages/api/time-controller/src/types.ts"]
     }
   }
 }

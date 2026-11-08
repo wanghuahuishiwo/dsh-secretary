@@ -7,10 +7,10 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import { openTimeRemote } from './open-time-product.mjs'
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..')
 const home = await mkdtemp(join(tmpdir(), 'shot-'))
 const overlay = join(home, 'overlay.yml')
-const packageDir = join(ROOT, 'packages/time-panel')
+const packageDir = join(ROOT, 'packages/api/time-controller')
 const profile = join(home, 'profiles', 'web')
 await mkdir(join(profile, 'node_modules'), { recursive: true })
 await symlink(packageDir, join(profile, 'node_modules/dsh-secretary-time-panel'), 'dir')
@@ -39,15 +39,15 @@ await writeFile(overlay, [
   '- id: ui-settings-account', '  config:', '    version: 1', '    step: done', '    usage: detailed',
   '    developerTools: true', '    purpose: null', '    process: standard', '    completion: api-key',
   '- insert:',
-  "    - id: secretary-browser-sqlite", `      name: 'file://${join(ROOT, 'packages/secretary/node_modules/@deepseek-ai/dsh-storage-sqlite/lib/index.js')}'`, '      config:', `        path: ${join(home, 's.sqlite')}`, '      journalMode: delete',
-  "    - id: secretary-browser-storage", `      name: 'file://${join(ROOT, 'packages/storage/lib/index.js')}'`,
-  "    - id: secretary-browser-goal", `      name: 'file://${join(ROOT, 'packages/goal/lib/index.js')}'`,
-  "    - id: secretary-browser-tag", `      name: 'file://${join(ROOT, 'packages/tag/lib/index.js')}'`,
-  "    - id: secretary-browser-gtd", `      name: 'file://${join(ROOT, 'packages/gtd/lib/index.js')}'`,
-  "    - id: secretary-browser-time", `      name: 'file://${join(ROOT, 'packages/time-block/lib/index.js')}'`,
+  "    - id: secretary-browser-sqlite", `      name: 'file://${join(ROOT, 'packages/bundle/secretary/node_modules/@deepseek-ai/dsh-storage-sqlite/lib/index.js')}'`, '      config:', `        path: ${join(home, 's.sqlite')}`, '      journalMode: delete',
+  "    - id: secretary-browser-storage", `      name: 'file://${join(ROOT, 'packages/storage/storage/lib/index.js')}'`,
+  "    - id: secretary-browser-goal", `      name: 'file://${join(ROOT, 'packages/goal/goal/lib/index.js')}'`,
+  "    - id: secretary-browser-tag", `      name: 'file://${join(ROOT, 'packages/tag/tag/lib/index.js')}'`,
+  "    - id: secretary-browser-gtd", `      name: 'file://${join(ROOT, 'packages/gtd/gtd/lib/index.js')}'`,
+  "    - id: secretary-browser-time", `      name: 'file://${join(ROOT, 'packages/time/time-block/lib/index.js')}'`,
   "    - id: secretary-browser-time-panel", "      name: 'dsh-secretary-time-panel'",
   "    - id: secretary-browser-tag-fixture", `      name: 'file://${join(home, 'tag-fixture.mjs')}'`,
-  "    - id: secretary-browser-gtd-panel", `      name: 'file://${join(ROOT, 'packages/gtd-panel/lib/index.js')}'`, '',
+  "    - id: secretary-browser-gtd-panel", `      name: 'file://${join(ROOT, 'packages/client/ui-gtd/lib/index.js')}'`, '',
 ].join('\n'))
 const port = await new Promise(r => { const s = createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => r(p)) }) })
 const child = spawn('dsh', ['web', '--patch', overlay, '--port', String(port), '--no-open'], { env: { ...process.env, DSH_HOME: home, DEEPSEEK_API_KEY: 'x' }, stdio: ['ignore', 'pipe', 'pipe'] })

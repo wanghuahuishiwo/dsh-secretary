@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import { clearDialogs, openTimeRemote } from './open-time-product.mjs'
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..')
 
 /** The canvas anchors on the machine's local day, so tests compute it the same way. */
 function localDate(date = new Date()) {
@@ -133,30 +133,30 @@ function overlaySource(home) {
     '    completion: api-key',
     '- insert:',
     "    - id: secretary-browser-sqlite",
-    `      name: 'file://${join(ROOT, 'packages/secretary/node_modules/@deepseek-ai/dsh-storage-sqlite/lib/index.js')}'`,
+    `      name: 'file://${join(ROOT, 'packages/bundle/secretary/node_modules/@deepseek-ai/dsh-storage-sqlite/lib/index.js')}'`,
     '      config:',
     `        path: ${join(home, 'secretary.sqlite')}`,
     '      journalMode: delete',
     "    - id: secretary-browser-storage",
-    `      name: 'file://${join(ROOT, 'packages/storage/lib/index.js')}'`,
+    `      name: 'file://${join(ROOT, 'packages/storage/storage/lib/index.js')}'`,
     "    - id: secretary-browser-goal",
-    `      name: 'file://${join(ROOT, 'packages/goal/lib/index.js')}'`,
+    `      name: 'file://${join(ROOT, 'packages/goal/goal/lib/index.js')}'`,
     "    - id: secretary-browser-tag",
-    `      name: 'file://${join(ROOT, 'packages/tag/lib/index.js')}'`,
+    `      name: 'file://${join(ROOT, 'packages/tag/tag/lib/index.js')}'`,
     "    - id: secretary-browser-gtd",
-    `      name: 'file://${join(ROOT, 'packages/gtd/lib/index.js')}'`,
+    `      name: 'file://${join(ROOT, 'packages/gtd/gtd/lib/index.js')}'`,
     "    - id: secretary-browser-time",
-    `      name: 'file://${join(ROOT, 'packages/time-block/lib/index.js')}'`,
+    `      name: 'file://${join(ROOT, 'packages/time/time-block/lib/index.js')}'`,
     "    - id: secretary-browser-time-panel",
     "      name: 'dsh-secretary-time-panel'",
     "    - id: secretary-browser-time-tools",
-    `      name: 'file://${join(ROOT, 'packages/time-block/lib/tools.js')}'`,
+    `      name: 'file://${join(ROOT, 'packages/time/time-block/lib/tools.js')}'`,
     "    - id: secretary-browser-time-lifecycle-fixture",
     `      name: 'file://${join(home, 'time-product-lifecycle.mjs')}'`,
     "    - id: secretary-browser-domain-fixture",
     `      name: 'file://${join(home, 'domain-fixture.mjs')}'`,
     "    - id: secretary-browser-gtd-panel",
-    `      name: 'file://${join(ROOT, 'packages/gtd-panel/lib/index.js')}'`,
+    `      name: 'file://${join(ROOT, 'packages/client/ui-gtd/lib/index.js')}'`,
     '',
   ].join('\n')
 }
@@ -164,7 +164,7 @@ function overlaySource(home) {
 async function prepareFixtures(home) {
   const profile = join(home, 'profiles', 'web')
   await mkdir(join(profile, 'node_modules'), { recursive: true })
-  const packageDir = join(ROOT, 'packages/time-panel')
+  const packageDir = join(ROOT, 'packages/api/time-controller')
   await symlink(packageDir, join(profile, 'node_modules/dsh-secretary-time-panel'), 'dir')
   await writeFile(join(profile, 'package.json'), JSON.stringify({
     name: 'dsh-profile-web', private: true,

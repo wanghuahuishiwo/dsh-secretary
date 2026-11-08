@@ -2,6 +2,6 @@
   "extends": "./tsconfig.base.json",
   "files": [],
   "references": [
-    { "path": "./packages/time-panel/tsconfig.host.json" }
+    { "path": "./packages/api/time-controller/tsconfig.host.json" }
   ]
 }

@@ -22,7 +22,7 @@ importers:
     dependencies:
       dsh-secretary-time-panel:
         specifier: workspace:*
-        version: link:../packages/time-panel
+        version: link:../packages/api/time-controller
       react:
         specifier: ^19.0.0
         version: 19.3.1
@@ -43,151 +43,14 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
-  packages/core:
+  packages/api/time-controller:
     dependencies:
-      '@deepseek-ai/cordis':
-        specifier: 4.0.5
-        version: 4.0.5
-    devDependencies:
-      esbuild:
-        specifier: ^0.25.10
-        version: 0.25.12
-
-  packages/goal:
-    dependencies:
-      '@deepseek-ai/cordis':
-        specifier: 4.0.5
-        version: 4.0.5
-    devDependencies:
-      esbuild:
-        specifier: ^0.25.10
-        version: 0.25.12
-
-  packages/gtd:
-    dependencies:
-      '@deepseek-ai/cordis':
-        specifier: 4.0.5
-        version: 4.0.5
-      dsh-secretary-core:
-        specifier: workspace:*
-        version: link:../core
       dsh-secretary-tag:
         specifier: workspace:*
-        version: link:../tag
-    devDependencies:
-      esbuild:
-        specifier: ^0.25.10
-        version: 0.25.12
-
-  packages/gtd-panel:
-    dependencies:
-      '@deepseek-ai/cordis':
-        specifier: 4.0.5
-        version: 4.0.5
-    devDependencies:
-      esbuild:
-        specifier: ^0.25.10
-        version: 0.25.12
-
-  packages/secretary:
-    dependencies:
-      '@deepseek-ai/cordis':
-        specifier: 4.0.5
-        version: 4.0.5
-      '@deepseek-ai/dsh-storage-sqlite':
-        specifier: 0.2.1-rc.5
-        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-storage@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5))
-      dsh-secretary-core:
-        specifier: workspace:*
-        version: link:../core
-      dsh-secretary-goal:
-        specifier: workspace:*
-        version: link:../goal
-      dsh-secretary-gtd:
-        specifier: workspace:*
-        version: link:../gtd
-      dsh-secretary-gtd-panel:
-        specifier: workspace:*
-        version: link:../gtd-panel
-      dsh-secretary-storage:
-        specifier: workspace:*
-        version: link:../storage
-      dsh-secretary-tag:
-        specifier: workspace:*
-        version: link:../tag
+        version: link:../../tag/tag
       dsh-secretary-time-block:
         specifier: workspace:*
-        version: link:../time-block
-      dsh-secretary-time-panel:
-        specifier: workspace:*
-        version: link:../time-panel
-    devDependencies:
-      '@deepseek-ai/dsh-storage':
-        specifier: 0.2.1-rc.5
-        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
-      esbuild:
-        specifier: ^0.25.10
-        version: 0.25.12
-      playwright:
-        specifier: 1.62.1
-        version: 1.62.1
-
-  packages/storage:
-    dependencies:
-      '@deepseek-ai/cordis':
-        specifier: 4.0.5
-        version: 4.0.5
-      '@deepseek-ai/dsh-storage':
-        specifier: 0.2.1-rc.5
-        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
-      '@deepseek-ai/dsh-storage-domain':
-        specifier: 0.2.1-rc.5
-        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-storage@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5))
-      dsh-secretary-core:
-        specifier: workspace:*
-        version: link:../core
-    devDependencies:
-      esbuild:
-        specifier: ^0.25.10
-        version: 0.25.12
-
-  packages/tag:
-    dependencies:
-      '@deepseek-ai/cordis':
-        specifier: 4.0.5
-        version: 4.0.5
-      dsh-secretary-core:
-        specifier: workspace:*
-        version: link:../core
-    devDependencies:
-      esbuild:
-        specifier: ^0.25.10
-        version: 0.25.12
-
-  packages/time-block:
-    dependencies:
-      '@deepseek-ai/cordis':
-        specifier: 4.0.5
-        version: 4.0.5
-      dsh-secretary-core:
-        specifier: workspace:*
-        version: link:../core
-      dsh-secretary-tag:
-        specifier: workspace:*
-        version: link:../tag
-    devDependencies:
-      esbuild:
-        specifier: ^0.25.10
-        version: 0.25.12
-
-  packages/time-panel:
-    dependencies:
-      dsh-secretary-tag:
-        specifier: workspace:*
-        version: link:../tag
-      dsh-secretary-time-block:
-        specifier: workspace:*
-        version: link:../time-block
+        version: link:../../time/time-block
       zod:
         specifier: 4.4.3
         version: 4.4.3
@@ -228,6 +91,143 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+
+  packages/bundle/secretary:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5
+      '@deepseek-ai/dsh-storage-sqlite':
+        specifier: 0.2.1-rc.5
+        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-storage@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5))
+      dsh-secretary-core:
+        specifier: workspace:*
+        version: link:../../core/core
+      dsh-secretary-goal:
+        specifier: workspace:*
+        version: link:../../goal/goal
+      dsh-secretary-gtd:
+        specifier: workspace:*
+        version: link:../../gtd/gtd
+      dsh-secretary-gtd-panel:
+        specifier: workspace:*
+        version: link:../../client/ui-gtd
+      dsh-secretary-storage:
+        specifier: workspace:*
+        version: link:../../storage/storage
+      dsh-secretary-tag:
+        specifier: workspace:*
+        version: link:../../tag/tag
+      dsh-secretary-time-block:
+        specifier: workspace:*
+        version: link:../../time/time-block
+      dsh-secretary-time-panel:
+        specifier: workspace:*
+        version: link:../../api/time-controller
+    devDependencies:
+      '@deepseek-ai/dsh-storage':
+        specifier: 0.2.1-rc.5
+        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
+      playwright:
+        specifier: 1.62.1
+        version: 1.62.1
+
+  packages/client/ui-gtd:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5
+    devDependencies:
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
+
+  packages/core/core:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5
+    devDependencies:
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
+
+  packages/goal/goal:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5
+    devDependencies:
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
+
+  packages/gtd/gtd:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5
+      dsh-secretary-core:
+        specifier: workspace:*
+        version: link:../../core/core
+      dsh-secretary-tag:
+        specifier: workspace:*
+        version: link:../../tag/tag
+    devDependencies:
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
+
+  packages/storage/storage:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5
+      '@deepseek-ai/dsh-storage':
+        specifier: 0.2.1-rc.5
+        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
+      '@deepseek-ai/dsh-storage-domain':
+        specifier: 0.2.1-rc.5
+        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-storage@0.2.1-rc.5(@deepseek-ai/cordis@4.0.5))
+      dsh-secretary-core:
+        specifier: workspace:*
+        version: link:../../core/core
+    devDependencies:
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
+
+  packages/tag/tag:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5
+      dsh-secretary-core:
+        specifier: workspace:*
+        version: link:../../core/core
+    devDependencies:
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
+
+  packages/time/time-block:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5
+      dsh-secretary-core:
+        specifier: workspace:*
+        version: link:../../core/core
+      dsh-secretary-tag:
+        specifier: workspace:*
+        version: link:../../tag/tag
+    devDependencies:
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
 
 packages:
 

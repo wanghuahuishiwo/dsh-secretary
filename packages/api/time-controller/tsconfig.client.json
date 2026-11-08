@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "lib/client-types",
@@ -15,7 +15,7 @@
     "src/ui/**/*.tsx"
   ],
   "references": [
-    { "path": "../tag" },
-    { "path": "../time-block" }
+    { "path": "../../tag/tag" },
+    { "path": "../../time/time-block" }
   ]
 }

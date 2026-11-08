@@ -80,7 +80,7 @@
   "scripts": {
     "build": "tsc -b tsconfig.host.json tsconfig.ui.json tsconfig.client.json && node build.mjs",
     "dev": "node build.mjs --watch",
-    "prepare": "node ../../scripts/generate-typert.mjs && node build.mjs",
+    "prepare": "node ../../../scripts/generate-typert.mjs && node build.mjs",
     "test": "node --test tests/*.mjs"
   }
 }
