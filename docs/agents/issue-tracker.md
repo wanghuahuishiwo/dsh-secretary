@@ -24,6 +24,17 @@ python3 ~/.team-skills/scripts/driver.py resolve --project-root <项目根> --na
 - 状态与阶段更新只修改映射集合，保留其他标签；认领和更新不构成原子锁。
 - 父子与阻塞使用真实 Issue URL 的正文／评论约定，不使用自动关闭语法，也不冒充 GitHub 原生强制依赖。
 
+## 需求生命周期
+
+一张需求 Issue 贯穿全程，设计是它的一个阶段，不另建设计票。
+
+- `inbox`：原始想法，零成本记录；决定投入时用 `/grill-design` 拷问。
+- `ready-for-design`：`/to-design` 把结论写回后打上；设计由 `/design` 在 OpenDesign 执行，确认记录（commit、范围）写在 Issue 评论。
+- `ready-for-agent`：设计已确认或无需设计；进入 `/to-spec` 或直接实现。
+- 交付完成后关闭；不做的事项用 `wontfix`。
+
+写回规则：需求与设计补充写正文，只补不改原有结构；技术相关的决策、结论、待决追加为评论。
+
 ## 规格、工单与证据
 
 - 规格由 GitHub 父 Issue 正文承载，子 Issue 承载实施工单；不在仓库创建 `docs/specs/` 或其他本地副本。
