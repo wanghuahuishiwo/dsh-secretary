@@ -15044,7 +15044,7 @@
     const end = /* @__PURE__ */ new Date(`${addDays(weekStart, 6)}T12:00:00`);
     return `${start.getMonth() + 1}\u6708${start.getDate()}\u65E5 \u2013 ${end.getMonth() + 1}\u6708${end.getDate()}\u65E5`;
   }
-  function TimeHeader({ module, dateLabel, canUndo, busy, pickerOpen, drawerOpen, onDrawer, onPicker, onStep, onUndo }) {
+  function TimeHeader({ module, dateLabel, canUndo, busy, pickerOpen, drawerOpen, onDrawer, onPicker, onStep, onUndo, onRefresh }) {
     return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("header", { className: "tb-head", children: [
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
         "button",
@@ -15067,6 +15067,10 @@
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { className: "tb-daylabel", type: "button", "aria-label": module === "deep" ? "\u9009\u62E9\u4E00\u5468" : "\u9009\u62E9\u65E5\u671F", "aria-expanded": pickerOpen, onClick: onPicker, children: dateLabel }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { className: "tb-hbtn", type: "button", "aria-label": module === "deep" ? "\u4E0B\u4E00\u5468" : "\u4E0B\u4E00\u5929", onClick: () => onStep(module === "deep" ? 7 : 1), children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.6", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { d: "M6.5 4l4 4-4 4" }) }) }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { className: "tb-now", type: "button", onClick: () => onStep(0), children: module === "deep" ? "\u672C\u5468" : "\u4ECA\u5929" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { className: "tb-hbtn", type: "button", title: "\u91CD\u65B0\u8BFB\u53D6\u6570\u636E", "aria-label": "\u91CD\u65B0\u8BFB\u53D6\u6570\u636E", disabled: busy, onClick: onRefresh, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.4", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { d: "M13 8a5 5 0 11-1.6-3.7" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { d: "M13.2 2.6V6H9.8" })
+      ] }) }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { className: "tb-hbtn", type: "button", title: "\u64A4\u9500", disabled: !canUndo || busy, onClick: onUndo, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("svg", { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.4", children: [
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { d: "M3 7h6.5a3.5 3.5 0 010 7H6" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { d: "M5.5 4L2.5 7l3 3" })
@@ -16045,6 +16049,25 @@
         setError(messageOf(reason));
       });
     }, [load]);
+    const refresh = (0, import_react.useCallback)(async () => {
+      const ticket = revision.current + 1;
+      revision.current = ticket;
+      setBusy(true);
+      try {
+        const next = await adapter.refresh({ anchor, from: range.from, to: range.to, weekStart });
+        if (revision.current === ticket) {
+          setView(next);
+          setError("");
+        }
+        say("\u5DF2\u5237\u65B0");
+      } catch (reason) {
+        const text = messageOf(reason);
+        if (revision.current === ticket) setError(text);
+        say(text);
+      } finally {
+        setBusy(false);
+      }
+    }, [adapter, anchor, range, say, weekStart]);
     const runWrite = (0, import_react.useCallback)(async (operation, message) => {
       const ticket = revision.current + 1;
       revision.current = ticket;
@@ -16224,7 +16247,8 @@
               onDrawer: () => setDrawer((value) => !value),
               onPicker: () => setPicker(picker === null ? module : null),
               onStep: step,
-              onUndo: () => void undo()
+              onUndo: () => void undo(),
+              onRefresh: () => void refresh()
             }
           ),
           /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "tb-views", children: [
@@ -16412,6 +16436,10 @@
     async load(query) {
       this.query = query;
       return this.view();
+    }
+    /** A fixture already answers from its live objects, so refresh equals load. */
+    async refresh(query) {
+      return this.load(query);
     }
     async paint(command) {
       if (command.mode === "parallel" && command.tagId !== null) {
