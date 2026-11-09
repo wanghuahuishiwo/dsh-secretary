@@ -26,11 +26,12 @@ python3 ~/.team-skills/scripts/driver.py resolve --project-root <项目根> --na
 
 ## 需求生命周期
 
-一张需求 Issue 贯穿全程，设计是它的一个阶段，不另建设计票。
+一张需求 Issue 贯穿全程，设计是它的一个阶段，不另建设计票。状态标签只回答一个问题：下一步该谁动（HITL 还是 AFK）；阶段进展靠评论与 PR 记录，不用标签表达。
 
-- `inbox`：原始想法，零成本记录；决定投入时用 `/grill-design` 拷问。
-- `ready-for-design`：`/to-design` 把结论写回后打上；设计由 `/design` 在 OpenDesign 执行，确认记录（commit、范围）写在 Issue 评论。
-- `ready-for-agent`：设计已确认或无需设计；进入 `/to-spec` 或直接实现。
+- 未打标签：刚提的想法，一句话需求必然先走 HITL（`/grill-design` 拷问），无需初始状态标签。
+- `needs-info`：拷问中缺信息，等用户回答；回答后回到未打标签。
+- `ready-for-human`：设计已由 `/design` 产出（commit、范围记录在 Issue 评论），等人确认。
+- `ready-for-agent`：设计已确认或无需设计，已规格化；进入 `/to-spec` 或直接实现。
 - 交付完成后关闭；不做的事项用 `wontfix`。
 
 写回规则：需求与设计补充写正文，只补不改原有结构；技术相关的决策、结论、待决追加为评论。
