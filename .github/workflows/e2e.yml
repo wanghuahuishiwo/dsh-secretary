@@ -16,18 +16,52 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  browser:
-    name: real DSH browser
+  changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
     steps:
       - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'packages/**'
+              - 'design/**'
+              - 'scripts/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - '.github/workflows/e2e.yml'
+  browser:
+    name: real DSH browser
+    needs: changes
+    runs-on: ubuntu-latest
+    steps:
+      # GitHub docs「Handling skipped but required checks」：必需检查必须总是上报，
+      # 纯文档/技能改动时秒退成功，而不是跳过 workflow。
+      - name: Skip on docs-only changes
+        if: needs.changes.outputs.code != 'true'
+        run: echo "no code changes; browser suite skipped"
+      - uses: actions/checkout@v4
+        if: needs.changes.outputs.code == 'true'
       - uses: pnpm/action-setup@v4
+        if: needs.changes.outputs.code == 'true'
       - uses: actions/setup-node@v4
+        if: needs.changes.outputs.code == 'true'
         with:
           node-version: ${{ env.PRIMARY_NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+        if: needs.changes.outputs.code == 'true'
       - run: pnpm run build
+        if: needs.changes.outputs.code == 'true'
       - run: npm install --global @deepseek-ai/dsh@${{ env.DSH_VERSION }}
+        if: needs.changes.outputs.code == 'true'
       - run: pnpm --filter dsh-secretary exec playwright install --with-deps chromium
+        if: needs.changes.outputs.code == 'true'
       - run: pnpm run test:browser
+        if: needs.changes.outputs.code == 'true'
