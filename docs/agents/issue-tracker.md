@@ -35,6 +35,8 @@ python3 ~/.team-skills/scripts/driver.py resolve --project-root <项目根> --na
 
 写回规则：需求与设计补充写正文，只补不改原有结构；技术相关的决策、结论、待决追加为评论。
 
+优先级是独立于状态的一根轴，用 `P1` / `P2` / `P3` 标签表达，与状态标签自由组合。
+
 ## 规格、工单与证据
 
 - 规格由 GitHub 父 Issue 正文承载，子 Issue 承载实施工单；不在仓库创建 `docs/specs/` 或其他本地副本。
