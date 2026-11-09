@@ -35,24 +35,24 @@
 ## Token 分层
 
 ```text
-根 tokens.css                    --sec-*   项目级 foundation（颜色/字阶/间距/圆角）
-design/<module>/tokens.css       模块 contract（alias 到 --sec-* + 模块尺寸/调色板）
-packages/<group>/<pkg>/src/ui            只消费模块 token
-packages/<group>/<pkg>/src/client        --dsw-* → 模块 token 的宿主绑定
+根 tokens.css                    --sec-*   设计壳 chrome 与项目级 foundation
+packages/<group>/<pkg>/src/ui            模块 token 唯一定义处；组件只消费模块 token
+design/<module>/tokens.css       仅设计 fixture 调色板
+packages/<group>/<pkg>/src/client        宿主布局与明暗信号，不定义颜色
 ```
 
 - 根 token 只放跨模块共享的 foundation，不放某个模块的尺寸、组件或业务调色板。
-- 模块 token 把颜色、字阶、间距和圆角 alias 到根 token；模块专属尺寸与 fixture 调色板用字面值。
-- 组件里不出现宿主 token（`--dsw-*`）；宿主差异只在 client 的 token 绑定文件中处理。
-- OpenDesign 同时加载根 token 与模块 token；生产由 client 绑定宿主值。两边 token 名称与语义一致，具体 RGB 由宿主决定。
+- 模块 token（颜色、字阶、间距、圆角、尺寸）唯一定义在共享 UI 的 token 块，明暗各一套；不在设计壳或宿主重复定义。
+- 组件里不出现宿主 token（`--dsw-*`）；宿主只提供明暗信号（`TimeProduct` 的 `theme`），不提供色值。
+- OpenDesign 与生产渲染同一个组件、同一份 token，主题切换只改 `data-tb-theme`。
 
 ## 组件分层
 
 | 层 | 位置 | 职责 | 不做什么 |
 |---|---|---|---|
 | 纯 UI | `packages/<group>/<pkg>/src/ui` | 产品根组件、内部组件、纯 model、组件样式、UI 数据契约 | 不 import 宿主、Remote、产品包或 client；不持有全局 store |
-| 宿主适配 | `packages/<group>/<pkg>/src/client` | Remote Adapter、DSH 生命周期、宿主 token 绑定 | 不复制 UI，不定义第二套样式 |
-| 设计壳 | `design/<module>` | OpenDesign 壳、Fixture Adapter、主题与预览标识、场景 | 不复制产品 UI，不访问生产数据 |
+| 宿主适配 | `packages/<group>/<pkg>/src/client` | Remote Adapter、DSH 生命周期、宿主布局与明暗信号 | 不复制 UI，不定义第二套颜色或样式 |
+| 设计壳 | `design/<module>` | OpenDesign 壳、Fixture Adapter、主题状态与预览浮层、场景 | 不复制产品 UI 或色板，不访问生产数据 |
 | 设计文档 | `design/<module>/DESIGN.md` | 模块视觉、组件组合、模块 token 契约 | 不重复项目级原则 |
 
 每个产品模块只导出一个稳定 UI 入口（产品根、纯 model、Adapter 契约类型）。内部组件不进入公开契约。设计壳只 import 该公开入口，不 import 生产 client。
@@ -74,8 +74,9 @@ UI 只通过 Adapter 契约读数据、发命令：
 ## 验收规则
 
 - 根 `DESIGN.md` 不出现单个模块的 token 前缀、布局尺寸、专属组件或阶段限制。
-- 根 token 只有 `--sec-*` foundation；模块 token 自洽并能 alias 到根 token。
+- 根 token 只有 `--sec-*` foundation，服务设计壳 chrome；模块 token 自洽，不 alias 到根 token。
 - 纯 UI 目录不出现宿主/Remote/产品包 import，也不出现宿主 token；组件只消费模块 token。
+- 模块色板单一来源：明暗两套 token 只在纯 UI 中定义，设计壳与宿主不得重复定义颜色。
 - 每个模块只有一份产品 UI：设计壳 import 公开 UI 入口，不保留设计侧重复组件。
 - 设计预览加载完整产品 UI，fixture 可复现，主题可切换，控制台错误与外部请求为 0。
 - 设计预览与生产同结构：预览专有控件只出现在产品框外的页面浮层，不进入产品布局；布局差异按 bug 处理。

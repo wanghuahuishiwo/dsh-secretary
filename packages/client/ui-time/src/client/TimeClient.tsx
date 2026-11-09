@@ -17,9 +17,9 @@ export function TimeClient({ ctx }: { readonly ctx: Context }) {
     return () => observer.disconnect()
   }, [])
   return (
-    <div className={`tb-host${dark ? ' tb-host-dark' : ''}`}>
+    <div className="tb-host">
       <style>{hostTokens}</style>
-      <TimeProduct adapter={adapter} />
+      <TimeProduct adapter={adapter} theme={dark ? 'dark' : 'light'} />
     </div>
   )
 }

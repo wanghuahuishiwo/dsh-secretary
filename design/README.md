@@ -56,7 +56,7 @@ pnpm --dir design od
 
 1. 创建 `<module>/src/index.tsx` 和 `<module>/index.html`，HTML 引用 `./assets/index.js` 与 `./assets/index.css`。
 2. 在 `<module>/README.md` 写交互范围、数据边界与验收方式；需要浏览器回归时添加 `<module>/scenarios.json`。
-3. 在 `<module>/DESIGN.md` 写模块视觉、组件与 token 契约；需要模块 token 时新增 `<module>/tokens.css`。
+3. 在 `<module>/DESIGN.md` 写模块视觉、组件与 token 契约；模块色板定义在共享 UI 的 token 块，`<module>/tokens.css` 只放设计 fixture 调色板。
 4. 将模块加入上表。
 5. 执行 `pnpm --dir design build` 生成 `<module>/assets/`。
 

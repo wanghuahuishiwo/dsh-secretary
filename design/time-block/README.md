@@ -7,7 +7,7 @@
 - 预览：`index.html`
 - 场景：`scenarios.json`
 - 视觉基线：`baselines/select-390-dark.png` 仅作历史存档（单日设计时期产物，已不代表当前界面）；当前验收以 `scenarios.json` 与浏览器回归为准
-- 模块 token：[tokens.css](tokens.css)
+- Fixture 标签调色板：[tokens.css](tokens.css)；产品色板唯一定义在 `packages/client/ui-time/src/ui/styles.ts`
 
 ## 交互
 

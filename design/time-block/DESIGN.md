@@ -41,27 +41,22 @@ TimeProduct                      UI 根：模块/层/日期/范围/选择/浮层
 
 ## Token 契约
 
-组件只消费 `--tb-*`。值统一定义在 [tokens.css](tokens.css)：颜色、字阶、间距和圆角 alias 到根 `--sec-*`；模块尺寸、深度级别色与 fixture 调色板使用字面值。生产由 `packages/client/ui-time/src/client/hostTokens.ts` 把 DSH 的宿主值绑到同一组 `--tb-*`。
+组件只消费 `--tb-*`。**唯一来源**是 `packages/client/ui-time/src/ui/styles.ts` 的 `.tb-app` token 块：默认暗色，`.tb-app[data-tb-theme='light']` 覆盖浅色，两边都是产品自身色板。生产与 OpenDesign 由 `TimeProduct` 的 `theme` prop 选择主题，不再各自绑定一套颜色；`design/time-block/tokens.css` 只保留 fixture 标签调色板，`hostTokens.ts` 只负责宿主布局。
 
 | 分组 | Token | 来源 |
 |---|---|---|
-| 表面 | `--tb-surface-page` / `--tb-surface-rail` / `--tb-surface-raised` / `--tb-surface-hover` / `--tb-grid-cell` | alias 到根 token |
-| 文字 | `--tb-text-primary` / `--tb-text-secondary` / `--tb-text-tertiary` | alias 到根 token |
-| 边框 | `--tb-border-subtle` / `--tb-border-strong` | alias 到根 token |
-| 强调与状态 | `--tb-accent` / `--tb-accent-soft` / `--tb-danger` / `--tb-selection` | alias 到根 token |
-| 字阶 | `--tb-font-family` / `--tb-font-caption` / `--tb-font-label` / `--tb-font-body` / `--tb-font-title` | alias 到根 token |
-| 间距 | `--tb-space-1` … `--tb-space-6` | alias 到根 token |
-| 圆角 | `--tb-radius-sm` / `--tb-radius-md` / `--tb-radius-lg` | alias 到根 token |
-| 模块尺寸 | `--tb-head-height: 60px` / `--tb-control-height: 30px` / `--tb-hour-height: 26px` / `--tb-rail-width: 390px` / `--tb-shelf-width: 116px` / `--tb-status-height: 42px` / `--tb-gutter-width: 46px` / `--tb-hour-width: 26px` / `--tb-font-date: 34px` / `--tb-font-cat: 13px` | 字面值 |
-| 网格背景渐变 | `--tb-grid-top` / `--tb-grid-mid` / `--tb-grid-bottom` | 字面值，明暗各一套 |
-| 深度级别 | `--tb-deep-high` / `--tb-deep-medium` / `--tb-deep-low` | 字面值，明暗各一套 |
-| Fixture 标签 | `--tb-tag-work` / `--tb-tag-focus` / `--tb-tag-collaboration` / `--tb-tag-life` / `--tb-tag-meal` / `--tb-tag-exercise` / `--tb-tag-learning` / `--tb-tag-reading` / `--tb-tag-rest` / `--tb-tag-errand` | 字面值，明暗各一套；仅服务设计 fixture |
+| 表面 / 文字 / 边框 / 强调与状态 | `--tb-surface-*` / `--tb-text-*` / `--tb-border-*` / `--tb-accent*` / `--tb-danger` / `--tb-selection` | `styles.ts` token 块，明暗各一套 |
+| 字阶 / 间距 / 圆角 | `--tb-font-*` / `--tb-space-*` / `--tb-radius-*` | `styles.ts` token 块，明暗共用 |
+| 模块尺寸 | `--tb-head-height: 60px` / `--tb-control-height: 30px` / `--tb-hour-height: 26px` / `--tb-rail-width: 390px` / `--tb-shelf-width: 116px` / `--tb-status-height: 42px` / `--tb-gutter-width: 46px` / `--tb-hour-width: 26px` / `--tb-font-date: 34px` / `--tb-font-cat: 13px` | `styles.ts` token 块 |
+| 网格背景渐变 | `--tb-grid-top` / `--tb-grid-mid` / `--tb-grid-bottom` | `styles.ts` token 块，明暗各一套 |
+| 深度级别 | `--tb-deep-high` / `--tb-deep-medium` / `--tb-deep-low` | `styles.ts` token 块，明暗各一套 |
+| Fixture 标签 | `--tb-tag-work` … `--tb-tag-errand` | `design/time-block/tokens.css`，仅服务设计 fixture |
 
-`--tb-tag-*` 不是生产标签色来源：生产标签色仍来自 Tag 数据。暗色 fixture 采用参考界面的暖色系（深红 / 正红 / 珊瑚 / 暖黄 / 中灰），仅用于设计评审；浅色主题使用同色相加深值。新增组件颜色/间距时先扩模块 token，不在组件里写死色值或新增第二套变量。
+`--tb-tag-*` 不是生产标签色来源：生产标签色仍来自 Tag 数据。暗色 fixture 采用参考界面的暖色系（深红 / 正红 / 珊瑚 / 暖黄 / 中灰），仅用于设计评审；浅色主题使用同色相加深值。新增组件颜色/间距时先扩 `styles.ts` 的 token 块，不在组件里写死色值，也不在壳层另建第二套变量。宿主只提供明暗信号，不提供色值。
 
 ## 数据边界与 Fixture
 
-OpenDesign 组合根是 `design/time-block/src/App.tsx`：创建 `FixtureTimeAdapter`、持有主题状态、在页面级浮层渲染主题切换与「设计预览」标识，产品框内只渲染 `TimeProduct`。设计侧只 import `dsh-secretary-ui-time/ui`，不 import 生产 client。
+OpenDesign 组合根是 `design/time-block/src/App.tsx`：创建 `FixtureTimeAdapter`、持有主题状态、在页面级浮层渲染主题切换与「设计预览」标识，产品框内只渲染 `TimeProduct` 并传入 `theme`。设计侧只 import `dsh-secretary-ui-time/ui`，不 import 生产 client。生产 `TimeClient` 只把 DSH 的明暗状态转成同一个 `theme`，不绑定第二套颜色。
 
 `FixtureTimeAdapter` 实现 `TimeAdapter`，纯内存、无网络/SQLite/生产 DSH 依赖：
 
@@ -76,7 +71,7 @@ OpenDesign 组合根是 `design/time-block/src/App.tsx`：创建 `FixtureTimeAda
 ## 验收
 
 - `design/time-block/index.html` 加载完整 `TimeProduct`：Time / Deep / 多日 / 日历 / 编辑 / 抽屉 / Undo。
-- 主题切换可用，控制台错误与外部请求为 0。
+- 主题切换可用，控制台错误与外部请求为 0；明暗只切 `data-tb-theme`，色值来自同一份 token 块。
 - OD 与生产同结构：`TimeProduct` 头部控件相同、无预览专有元素；「设计预览」与主题切换位于产品框外的浮层。
 - `design/time-block/scenarios.json` 的场景可在固定 fixture 上复现。
 - 重叠记录默认收起为数量角标；点角标才显示该格全部记录，且不改变行高、不切分格子。

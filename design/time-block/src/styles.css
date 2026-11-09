@@ -83,10 +83,10 @@ body {
 
 .od-badge {
   padding: 2px 6px;
-  border: 1px solid var(--tb-border-strong);
-  border-radius: var(--tb-radius-sm);
+  border: 1px solid var(--sec-color-border-strong);
+  border-radius: var(--sec-radius-sm);
   background: var(--sec-color-surface-rail);
-  color: var(--tb-text-tertiary);
+  color: var(--sec-color-text-tertiary);
   font-size: 9px;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -100,12 +100,12 @@ body {
   padding: 0;
   border-radius: 7px;
   background: var(--sec-color-surface-rail);
-  color: var(--tb-text-secondary);
+  color: var(--sec-color-text-secondary);
 }
 
 .od-theme:hover {
   background: var(--sec-color-surface-hover);
-  color: var(--tb-text-primary);
+  color: var(--sec-color-text-primary);
 }
 
 .od-theme svg {

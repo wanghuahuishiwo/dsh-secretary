@@ -5,7 +5,7 @@
 export { TimeProduct } from './TimeProduct.tsx'
 export { timeMath } from './model.ts'
 export type {
-  TimeAdapter, TimeProductProps,
+  TimeAdapter, TimeProductProps, TimeTheme,
   TimeView, TimeQuery, TimeLayer, TimeTagView, TimeBlockView, TimeRunView,
   PaintCommand, PaintDeepCommand, UpdateBlockCommand, DeleteBlockCommand,
   DeepLevel, DeepCellLevel, DeepWeekData, DeepWeekSource, DeepRect,
