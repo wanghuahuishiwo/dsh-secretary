@@ -14,6 +14,7 @@ export interface TimeTag {
   readonly kind: 'time' | 'context'
   readonly parentId?: number
   readonly color?: string
+  readonly description?: string
 }
 
 export type DeepLevel = 'high' | 'medium' | 'low'

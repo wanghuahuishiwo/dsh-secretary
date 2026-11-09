@@ -15162,6 +15162,7 @@
             {
               className: "tb-cat",
               type: "button",
+              title: tag.description,
               style: { backgroundColor: tag.color ?? FALLBACK_COLOR },
               "aria-expanded": kids.length > 0 ? open : void 0,
               onClick: (event) => {
@@ -15179,7 +15180,7 @@
               ]
             }
           ),
-          open && kids.map((kid) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { className: "tb-cat sub", type: "button", style: { backgroundColor: kid.color ?? FALLBACK_COLOR }, onClick: () => {
+          open && kids.map((kid) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { className: "tb-cat sub", type: "button", title: kid.description, style: { backgroundColor: kid.color ?? FALLBACK_COLOR }, onClick: () => {
             setBrushTagId(kid.id);
             onAssign(kid.id);
           }, children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: kid.name }) }, kid.id))
@@ -16188,7 +16189,8 @@
       name: tag.name,
       kind: "time",
       parentId: tag.parentId === void 0 ? void 0 : indexes.tag.number(tag.parentId),
-      color: tag.color
+      color: tag.color,
+      description: tag.description
     })), [indexes, view]);
     const records = (0, import_react.useMemo)(() => {
       const make = (list) => {

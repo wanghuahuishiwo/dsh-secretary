@@ -40,6 +40,16 @@ function parseKind(raw: unknown): TagKind {
   return raw
 }
 
+/** Empty descriptions are stored as absent so `has description` stays a real signal. */
+function parseDescription(raw: unknown): string | undefined {
+  const value = optionalString(raw, 'tag description')
+  if (value === undefined) return undefined
+  const trimmed = value.trim()
+  if (trimmed === '') return undefined
+  if (trimmed.length > 500) throw new Error('secretary: tag description is limited to 500 characters')
+  return trimmed
+}
+
 function parseTag(raw: unknown): Tag {
   const tag = objectOf(raw, 'tag') as unknown as Tag
   if (!Number.isSafeInteger(tag.id) || tag.id <= 0) throw new Error('secretary: invalid stored tag id')
@@ -49,6 +59,7 @@ function parseTag(raw: unknown): Tag {
     throw new Error('secretary: invalid stored tag parentId')
   }
   optionalString(tag.color, 'tag color')
+  parseDescription(tag.description)
   return tag
 }
 
@@ -122,6 +133,7 @@ export class SQLiteTagService extends TagService {
         kind,
         parentId: parent?.id,
         color: optionalString(input.color, 'tag color'),
+        description: parseDescription(input.description),
       })
       await domain.global.set(id + 1)
       await domain.table('tags').put(String(id), tag)
@@ -154,6 +166,9 @@ export class SQLiteTagService extends TagService {
         ...current,
         name: input.name === undefined ? current.name : normalizeName(input.name, 'tag name'),
         color: input.color === null ? undefined : input.color === undefined ? current.color : optionalString(input.color, 'tag color'),
+        description: input.description === null
+          ? undefined
+          : input.description === undefined ? current.description : parseDescription(input.description),
       })
       await domain.table('tags').put(String(id), tag)
       return tag

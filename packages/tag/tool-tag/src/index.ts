@@ -14,7 +14,7 @@ export function apply(ctx: Context): void {
   const tags = () => (ctx as Context & { tags: TagService }).tags
   registerTool(ctx, {
     name: 'secretary_tag',
-    description: 'Manage the independent unified time/context Tag trees. Numeric ids distinguish same-name tags of different kinds.',
+    description: 'Manage the independent unified time/context Tag trees. Numeric ids distinguish same-name tags of different kinds. A tag carries an optional description: the rule for when to pick it, which matters for tags whose name does not explain itself. Read it before classifying a block or a GTD project.',
     parameters: {
       type: 'object', additionalProperties: false,
       properties: {
@@ -24,6 +24,7 @@ export function apply(ctx: Context): void {
         kind: { type: 'string', enum: ['time', 'context'] },
         parentId: { anyOf: [{ type: 'number' }, { type: 'null' }] },
         color: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+        description: { anyOf: [{ type: 'string' }, { type: 'null' }] },
       },
       required: ['op'],
     },

@@ -27,7 +27,7 @@ kind: "package-reference"
 <details>
 <summary>实现说明与源码定位</summary>
 
-`src/index.ts` 实现 Tag 树、唯一性与引用保护；`src/contract.ts` 是消费者共享的类型与接口。数据落在唯一的 `tags` 表，`time` / `context` 只是 `kind`。
+`src/index.ts` 实现 Tag 树、唯一性与引用保护；`src/contract.ts` 是消费者共享的类型与接口。数据落在唯一的 `tags` 表，`time` / `context` 只是 `kind`。每个标签可带一句 `description`——这个标签算什么、什么时候该选它，用于名称不自解释的标签（主线 / 副线）；空字符串按未设置处理，`update` 传 `null` 清空。
 
 </details>
 
