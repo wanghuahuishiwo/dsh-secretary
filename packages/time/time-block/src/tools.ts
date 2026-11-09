@@ -26,6 +26,7 @@ export function apply(ctx: Context): void {
           'template.list', 'template.create', 'template.update', 'template.delete', 'template.apply', 'template.undo',
           'actual.create', 'actual.get', 'actual.list', 'actual.update', 'actual.delete', 'actual.start', 'actual.stop',
           'deep.getWeek', 'deep.setCell', 'deep.clearCell', 'deep.setRange', 'deep.clearRange',
+          'reload',
         ] },
         id: { type: 'integer', minimum: 1 },
         timeTagId: { type: 'integer', minimum: 1 },
@@ -79,6 +80,9 @@ export function apply(ctx: Context): void {
         case 'deep.clearCell': return { week: await time().clearDeepCell(inputOf(args)) }
         case 'deep.setRange': return { week: await time().setDeepRange(inputOf(args)) }
         case 'deep.clearRange': return { week: await time().clearDeepRange(inputOf(args)) }
+        case 'reload':
+          await time().reload()
+          return { reloaded: true }
         default: throw new Error(`secretary: unknown time operation ${JSON.stringify(args.op)}`)
       }
     },

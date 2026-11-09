@@ -28,7 +28,7 @@ kind: "package-reference"
 
 ## 模型体验
 
-模型看到 `secretary_gtd` 的 op schema 与 Tool 结果；不改变系统提示。
+模型看到 `secretary_gtd` 的 op schema 与 Tool 结果；不改变系统提示。`op: reload` 重新读取持久化的项目、行动与收件箱，用于外部改库之后。
 
 ## 已知限制与后续工作
 

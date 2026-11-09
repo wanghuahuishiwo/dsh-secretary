@@ -42,4 +42,6 @@ export abstract class TagService extends Service {
   abstract moveTag(id: number, parentId: number | null): Promise<Tag>
   abstract deleteTag(id: number): Promise<Tag>
   abstract withReferenceConsistency<Outcome>(operation: () => Promise<Outcome>): Promise<Outcome>
+  /** Re-read persisted tags after an out-of-band change; no host restart. */
+  abstract reload(): Promise<void>
 }

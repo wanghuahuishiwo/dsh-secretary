@@ -132,4 +132,6 @@ export abstract class GtdService extends Service {
   abstract deleteAction(id: number): Promise<Action>
   abstract completeAction(id: number, completedAt: string): Promise<ActionView>
   abstract dropAction(id: number, droppedAt: string): Promise<ActionView>
+  /** Re-read persisted projects, actions, and inbox items; no host restart. */
+  abstract reload(): Promise<void>
 }

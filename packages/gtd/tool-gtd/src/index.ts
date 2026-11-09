@@ -48,6 +48,7 @@ export function apply(ctx: Context): void {
             'inbox.capture', 'inbox.list', 'inbox.clarify', 'inbox.delete',
             'project.list', 'project.get', 'project.create', 'project.update', 'project.delete',
             'action.list', 'action.create', 'action.get', 'action.effectiveTags', 'action.next', 'action.forecast', 'action.update', 'action.delete', 'action.complete', 'action.drop',
+            'reload',
           ],
         },
         id: { type: 'integer', minimum: 1 },
@@ -103,6 +104,9 @@ export function apply(ctx: Context): void {
         case 'action.delete': return { action: await gtd().deleteAction(args.id) }
         case 'action.complete': return { action: await gtd().completeAction(args.id, args.completedAt) }
         case 'action.drop': return { action: await gtd().dropAction(args.id, args.droppedAt) }
+        case 'reload':
+          await gtd().reload()
+          return { reloaded: true }
         default: throw new Error(`secretary: unknown gtd operation ${JSON.stringify(args.op)}`)
       }
     },

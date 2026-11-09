@@ -18,7 +18,7 @@ export function apply(ctx: Context): void {
     parameters: {
       type: 'object', additionalProperties: false,
       properties: {
-        op: { type: 'string', enum: ['create', 'get', 'list', 'update', 'move', 'delete'] },
+        op: { type: 'string', enum: ['create', 'get', 'list', 'update', 'move', 'delete', 'reload'] },
         id: { type: 'number' },
         name: { type: 'string' },
         kind: { type: 'string', enum: ['time', 'context'] },
@@ -37,6 +37,9 @@ export function apply(ctx: Context): void {
         case 'update': return { tag: await tags().updateTag(args.id, inputOf(args)) }
         case 'move': return { tag: await tags().moveTag(args.id, args.parentId) }
         case 'delete': return { tag: await tags().deleteTag(args.id) }
+        case 'reload':
+          await tags().reload()
+          return { reloaded: true }
         default: throw new Error(`secretary: unknown tag operation ${JSON.stringify(args.op)}`)
       }
     },

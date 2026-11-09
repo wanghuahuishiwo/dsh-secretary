@@ -133,15 +133,33 @@ function dateAtInstant(instant: string, timeZone: string): string {
 export class SQLiteGtdService extends GtdService {
   static inject = ['secretaryStorageDomain', 'tags', 'tagReferences']
 
-  private readonly ready: Promise<StorageDomain>
+  private ready: Promise<StorageDomain>
   private readonly context: Context
+  private readonly config: Config
   private queue: Promise<unknown> = Promise.resolve()
 
   constructor(ctx: Context, config: Config = {}) {
     super(ctx)
     this.context = ctx
-    this.ready = (ctx as Context & { secretaryStorageDomain: { open(spec: unknown): Promise<StorageDomain> } }).secretaryStorageDomain.open({
-      name: config.domain ?? 'secretary_gtd',
+    this.config = config
+    this.ready = this.openDomain()
+    ctx.effect(() => async () => {
+      await this.queue
+      await (await this.ready).close()
+    })
+    ctx.effect(() => (ctx as Context & { tagReferences: TagReferenceRegistry }).tagReferences.register({
+      hasReferences: async tagId => {
+        const domain = await this.ready
+        if ([...domain.table('projects').entries()].some(([, project]) => project.tagIds.includes(tagId))) return true
+        return [...domain.table('actions').entries()].some(([, action]) => action.tagIds.includes(tagId))
+      },
+    }), 'secretary: GTD tag reference inspector')
+  }
+
+  /** Open the GTD domain from the medium; the only place the spec is declared. */
+  private openDomain(): Promise<StorageDomain> {
+    return (this.context as Context & { secretaryStorageDomain: { open(spec: unknown): Promise<StorageDomain> } }).secretaryStorageDomain.open({
+      name: this.config.domain ?? 'secretary_gtd',
       version: 1,
       tables: {
         projects: { valueSchema: { parse: parseProject } },
@@ -153,20 +171,16 @@ export class SQLiteGtdService extends GtdService {
         return value
       } } },
     })
-    ctx.effect(async () => {
-      const domain = await this.ready
-      return async () => {
-        await this.queue
-        await domain.close()
-      }
+  }
+
+  /** Re-read every persisted project, action, and inbox item; no host restart. */
+  async reload(): Promise<void> {
+    return this.mutate(async () => {
+      const previous = await this.ready.catch(() => undefined)
+      if (previous !== undefined) await previous.close()
+      this.ready = this.openDomain()
+      await this.ready
     })
-    ctx.effect(() => (ctx as Context & { tagReferences: TagReferenceRegistry }).tagReferences.register({
-      hasReferences: async tagId => {
-        const domain = await this.ready
-        if ([...domain.table('projects').entries()].some(([, project]) => project.tagIds.includes(tagId))) return true
-        return [...domain.table('actions').entries()].some(([, action]) => action.tagIds.includes(tagId))
-      },
-    }), 'secretary: GTD tag reference inspector')
   }
 
   private get tags(): TagService {
