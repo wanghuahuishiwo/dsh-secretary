@@ -127,6 +127,12 @@ export interface TimeAdapter {
   paintDeep(command: PaintDeepCommand): Promise<TimeView>
   updateBlock(command: UpdateBlockCommand): Promise<TimeView>
   deleteBlock(command: DeleteBlockCommand): Promise<TimeView>
+  /**
+   * Subscribe to host-side change marks, pushed exactly when a Time mutation
+   * persisted. The production Remote adapter opens the `watch` stream; fixture
+   * previews omit it and stay fully static.
+   */
+  watch?(onChange: () => void): () => void
 }
 
 export interface TimeProductProps {

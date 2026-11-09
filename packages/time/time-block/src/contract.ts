@@ -1,5 +1,16 @@
 import { Service, type Context } from '@deepseek-ai/cordis'
 
+/**
+ * Emitted after every successfully persisted Time mutation (plans, actuals,
+ * templates, deep cells, reload) so in-process consumers — the Remote watch
+ * stream — can push a re-read mark without polling.
+ */
+declare module '@deepseek-ai/cordis' {
+  interface Events {
+    'secretary/time-changed': () => void
+  }
+}
+
 export type ActualSource = 'user_reported' | 'agent_observed' | 'imported'
 export const FOCUS_LEVELS = ['deep', 'shallow'] as const
 export type FocusLevel = (typeof FOCUS_LEVELS)[number]
