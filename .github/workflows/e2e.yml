@@ -45,7 +45,7 @@ jobs:
       # 纯文档/技能改动时秒退成功，而不是跳过 workflow。
       - name: Skip on docs-only changes
         if: needs.changes.outputs.code != 'true'
-        run: echo "no code changes: browser suite skipped"
+        run: echo "no code changes; browser suite skipped"
       - uses: actions/checkout@v4
         if: needs.changes.outputs.code == 'true'
       - uses: pnpm/action-setup@v4
