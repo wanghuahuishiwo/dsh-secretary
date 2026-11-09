@@ -38,6 +38,8 @@ python3 ~/.team-skills/scripts/driver.py resolve --project-root <项目根> --na
 
 优先级是独立于状态的一根轴，用 `P1` / `P2` / `P3` 标签表达，与状态标签自由组合。
 
+工作类型也是独立的轴，用于 agent 分发路由：`design` 路由到 OD worker（`/design`，改 `design/` 与共享组件），`dev` 路由到实现 worker（`/implement`，改 `packages/`）。类型标签只在 `ready-for-agent` 时参与分发；HITL 状态（`needs-info` / `ready-for-human`）不分发，无需类型标签。
+
 ## 规格、工单与证据
 
 - 规格由 GitHub 父 Issue 正文承载，子 Issue 承载实施工单；不在仓库创建 `docs/specs/` 或其他本地副本。
