@@ -31,10 +31,11 @@ interface TimeHeaderProps {
   readonly onPicker: () => void
   readonly onStep: (amount: number) => void
   readonly onUndo: () => void
+  readonly onRefresh: () => void
 }
 
 /** 产品头部：菜单、模块名、日期导航、今天、撤销。 */
-export function TimeHeader({ module, dateLabel, canUndo, busy, pickerOpen, drawerOpen, onDrawer, onPicker, onStep, onUndo }: TimeHeaderProps) {
+export function TimeHeader({ module, dateLabel, canUndo, busy, pickerOpen, drawerOpen, onDrawer, onPicker, onStep, onUndo, onRefresh }: TimeHeaderProps) {
   return (
     <header className="tb-head">
       <button
@@ -60,6 +61,9 @@ export function TimeHeader({ module, dateLabel, canUndo, busy, pickerOpen, drawe
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M6.5 4l4 4-4 4" /></svg>
       </button>
       <button className="tb-now" type="button" onClick={() => onStep(0)}>{module === 'deep' ? '本周' : '今天'}</button>
+      <button className="tb-hbtn" type="button" title="重新读取数据" aria-label="重新读取数据" disabled={busy} onClick={onRefresh}>
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M13 8a5 5 0 11-1.6-3.7" /><path d="M13.2 2.6V6H9.8" /></svg>
+      </button>
       <button className="tb-hbtn" type="button" title="撤销" disabled={!canUndo || busy} onClick={onUndo}>
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M3 7h6.5a3.5 3.5 0 010 7H6" /><path d="M5.5 4L2.5 7l3 3" /></svg>
       </button>

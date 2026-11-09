@@ -185,4 +185,6 @@ export abstract class TimeService extends Service {
   abstract clearDeepCell(input: DeepCellPosition): Promise<DeepWeek>
   abstract setDeepRange(input: SetDeepRangeInput): Promise<DeepWeek>
   abstract clearDeepRange(input: DeepRange): Promise<DeepWeek>
+  /** Re-read persisted plans, actuals, and templates; no host restart. */
+  abstract reload(): Promise<void>
 }

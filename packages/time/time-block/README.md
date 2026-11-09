@@ -33,6 +33,7 @@ kind: "package-reference"
 - `plan.*`：读取和维护具体日期的计划块。
 - `template.*`：维护星期模板，显式应用或撤销目标日期计划。
 - `actual.*`：补记、编辑、开始和停止实录。
+- `reload`：关闭并按同一份 spec 重新打开时间领域，用于外部改库（迁移、修复脚本）之后；不重启宿主、不改写任何计划或实录。
 - `deep.*`：读取、设置和清除周模板中的单格或闭区间矩形。
 
 日期、时区和各操作的必填字段由 `contract` 与工具 schema 定义。画布手势属于 `client/ui-time`，Remote 产品方法属于 `api/time-controller`，不在本包重复定义。

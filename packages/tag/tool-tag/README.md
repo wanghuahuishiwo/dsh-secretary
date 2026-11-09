@@ -7,7 +7,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包把 `TagService` 的 create / get / list / update / move / delete 操作暴露为 `secretary_tag` 工具。它只消费 [`tag-service`](../service/README.md) 的 `./contract`，不拥有标签事实。
+本包把 `TagService` 的 create / get / list / update / move / delete 以及 reload 操作暴露为 `secretary_tag` 工具。它只消费 [`tag-service`](../service/README.md) 的 `./contract`，不拥有标签事实。
 
 ## 使用本包
 
@@ -19,7 +19,7 @@ kind: "package-reference"
 
 ## 理解实现
 
-`src/index.ts` 定义工具 schema 并调用 `TagService`；校验与错误文案遵循同一 Service 契约。
+`src/index.ts` 定义工具 schema 并调用 `TagService`；校验与错误文案遵循同一 Service 契约。`op: reload` 让运行中的服务重新读取持久化标签，用于外部改库之后。
 
 ## 延伸阅读
 

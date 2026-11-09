@@ -49,14 +49,24 @@ export class RemoteTimeAdapter implements TimeAdapter {
   }
 
   async load(query: TimeQuery): Promise<TimeView> {
+    return this.read(query, 'readWindow')
+  }
+
+  /** Re-read persisted Tags and Time facts instead of the host's snapshot. */
+  async refresh(query: TimeQuery): Promise<TimeView> {
+    return this.read(query, 'reloadWindow')
+  }
+
+  private async read(query: TimeQuery, method: 'readWindow' | 'reloadWindow'): Promise<TimeView> {
     this.query = query
-    const result = await this.remote.readWindow({
+    const request = {
       anchor: query.anchor,
       timeZone: this.timeZone,
       weekStart: query.weekStart,
       from: query.from,
       to: query.to,
-    })
+    }
+    const result = await (method === 'readWindow' ? this.remote.readWindow(request) : this.remote.reloadWindow(request))
     if (!result.ok) throw result.error
     this.projection = result.value
     return this.viewOf(result.value)

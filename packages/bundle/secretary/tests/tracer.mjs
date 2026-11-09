@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
+import { DatabaseSync } from 'node:sqlite'
 import { Context } from '@deepseek-ai/cordis'
 import Storage, { storageBackendServiceKey } from '@deepseek-ai/dsh-storage'
 import { SqliteStorageBackend } from '@deepseek-ai/dsh-storage-sqlite'
@@ -2157,4 +2158,99 @@ test('clarification restores the original Inbox and removes partial writes after
     assert.deepEqual(inbox.items.map(item => item.id), [captured.item.id])
     await harness.close()
   }
+})
+
+/** Open the running harness's SQLite file as an outside writer would. */
+function externalDatabase(path) {
+  return new DatabaseSync(path)
+}
+
+const LEGACY_INBOX_ROW = {
+  id: '5ff171ac-1193-4225-a4db-d55be3880eec',
+  title: '定：新加坡 onsite 还是海外 remote',
+  raw: '历史导入记录，id 是 UUID',
+  source: 'knowledge:life-plan/05-职业路径.md',
+  status: 'open',
+  createdAt: '2026-10-29T09:54:47.841Z',
+}
+
+test('A stored record that no longer matches its schema is quarantined instead of disabling its domain', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'dsh-secretary-legacy-'))
+  const databasePath = join(directory, 'secretary.sqlite')
+  t.after(() => rm(directory, { recursive: true, force: true }))
+
+  // First boot materializes the tables; the legacy row then lands while nothing is running.
+  const warm = await sqliteHarness(t, databasePath)
+  await warm.close()
+  const writer = externalDatabase(databasePath)
+  writer.prepare('insert into u_secretary_gtd_inbox(key, value) values (?, ?)')
+    .run(LEGACY_INBOX_ROW.id, JSON.stringify(LEGACY_INBOX_ROW))
+  writer.close()
+
+  const harness = await sqliteHarness(t, databasePath)
+  // The domain opens: one unreadable record must not take GTD down.
+  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'inbox.list' })).items, [])
+  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'project.list' })).projects, [])
+
+  // The record survives, moved aside with its reason, so nothing is silently lost.
+  const reader = externalDatabase(databasePath)
+  const quarantined = reader.prepare('select value from u_secretary_quarantine_records').all()
+  reader.close()
+  assert.equal(quarantined.length, 1)
+  const record = JSON.parse(quarantined[0].value)
+  assert.equal(record.domain, 'secretary_gtd')
+  assert.equal(record.table, 'inbox')
+  assert.equal(record.key, LEGACY_INBOX_ROW.id)
+  assert.deepEqual(record.raw, LEGACY_INBOX_ROW)
+  assert.match(record.reason, /inbox id must be a positive integer/)
+
+  // Tag deletion is no longer collateral damage of the GTD failure.
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '临时', kind: 'time' })
+  assert.equal((await execute(harness, 'secretary_tag', { op: 'delete', id: tag.id })).tag.id, tag.id)
+})
+
+test('Reload re-reads data written outside the running services, without a host restart', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '技术', kind: 'time' })
+  const writer = externalDatabase(harness.databasePath)
+  writer.prepare('update u_secretary_tag_tags set value = ? where key = ?')
+    .run(JSON.stringify({ ...tag, name: '技术（外部改名）' }), String(tag.id))
+  writer.prepare('insert into u_secretary_gtd_inbox(key, value) values (?, ?)').run('1', JSON.stringify({
+    id: 1, title: '外部捕获', raw: '迁移脚本写入', source: 'migration', status: 'open', createdAt: '2026-11-09T00:00:00.000Z',
+  }))
+  writer.close()
+
+  // Services still serve their loaded snapshot; that is the documented cache.
+  assert.equal((await execute(harness, 'secretary_tag', { op: 'list' })).tags[0].name, '技术')
+  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'inbox.list' })).items, [])
+
+  await execute(harness, 'secretary_tag', { op: 'reload' })
+  await execute(harness, 'secretary_gtd', { op: 'reload' })
+  assert.equal((await execute(harness, 'secretary_tag', { op: 'list' })).tags[0].name, '技术（外部改名）')
+  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'inbox.list' })).items.map(item => item.title), ['外部捕获'])
+})
+
+test('Time product reloadWindow re-reads Tag and Time facts after an out-of-band change', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
+  const product = harness.ctx.get('timeProduct')
+  assert.ok(product)
+  const query = { anchor: '2026-11-02', timeZone: 'Asia/Shanghai', weekStart: '2026-11-02' }
+  await product.paint({
+    layer: 'actual', tagId: tag.id, timeZone: 'Asia/Shanghai',
+    runs: [{ date: '2026-11-02', start: 540, end: 600 }],
+  })
+
+  const writer = externalDatabase(harness.databasePath)
+  writer.prepare('update u_secretary_tag_tags set value = ? where key = ?')
+    .run(JSON.stringify({ ...tag, name: '工作（外部改名）' }), String(tag.id))
+  writer.close()
+
+  // The canvas still answers from the loaded snapshot...
+  const cached = await product.readWindow(query)
+  assert.deepEqual(cached.tags.map(item => item.name), ['工作'])
+  // ...the refresh control re-reads instead, and keeps the recorded facts.
+  const refreshed = await product.reloadWindow(query)
+  assert.deepEqual(refreshed.tags.map(item => item.name), ['工作（外部改名）'])
+  assert.deepEqual(refreshed.actual.map(block => block.timeTagId), [tag.id])
 })

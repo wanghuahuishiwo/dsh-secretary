@@ -18,6 +18,8 @@ kind: "package-reference"
 | `.` | 提供 `GtdService` |
 | `./contract` | 事项事实、输入与查询接口 |
 
+`reload()` 关闭当前领域并按同一份 spec 重新打开，用于外部改库（迁移、修复脚本）之后；它不改写项目、行动或收件箱事实，也不会让 GTD 与 Time 自动对齐。
+
 ## 理解实现
 
 <details>

@@ -54,20 +54,29 @@ function parseTag(raw: unknown): Tag {
 
 export class SQLiteTagService extends TagService {
   static inject = ['secretaryStorageDomain']
-  private readonly ready: Promise<StorageDomain>
+  private ready: Promise<StorageDomain>
+  private readonly context: Context
+  private readonly config: Config
   private readonly inspectors = new Set<TagReferenceInspector>()
   private queue: Promise<unknown> = Promise.resolve()
 
   constructor(ctx: Context, config: Config = {}) {
     super(ctx)
+    this.context = ctx
+    this.config = config
     ctx.provide('tagReferences', {
       register: (inspector: TagReferenceInspector) => {
         this.inspectors.add(inspector)
         return () => { this.inspectors.delete(inspector) }
       },
     })
-    this.ready = (ctx as Context & { secretaryStorageDomain: { open(spec: unknown): Promise<StorageDomain> } }).secretaryStorageDomain.open({
-      name: config.domain ?? 'secretary_tag',
+    this.ready = this.openDomain()
+    ctx.effect(() => async () => { await this.queue; await (await this.ready).close() })
+  }
+
+  private openDomain(): Promise<StorageDomain> {
+    return (this.context as Context & { secretaryStorageDomain: { open(spec: unknown): Promise<StorageDomain> } }).secretaryStorageDomain.open({
+      name: this.config.domain ?? 'secretary_tag',
       version: 1,
       tables: { tags: { valueSchema: { parse: parseTag } } },
       global: { initial: 1, schema: { parse(value: unknown) {
@@ -75,16 +84,26 @@ export class SQLiteTagService extends TagService {
         return value
       } } },
     })
-    ctx.effect(async () => {
-      const domain = await this.ready
-      return async () => { await this.queue; await domain.close() }
-    })
   }
 
   private mutate<Outcome>(operation: () => Promise<Outcome>): Promise<Outcome> {
     const result = this.queue.then(operation)
     this.queue = result.then(() => undefined, () => undefined)
     return result
+  }
+
+  /**
+   * Re-read every persisted tag without restarting the host process. Reads and
+   * writes that start after this call resolve against the reloaded domain; the
+   * previous domain is closed only once its replacement is open.
+   */
+  async reload(): Promise<void> {
+    return this.mutate(async () => {
+      const previous = await this.ready.catch(() => undefined)
+      if (previous !== undefined) await previous.close()
+      this.ready = this.openDomain()
+      await this.ready
+    })
   }
 
   async createTag(input: CreateTagInput): Promise<Tag> {

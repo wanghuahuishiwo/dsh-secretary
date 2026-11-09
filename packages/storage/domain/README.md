@@ -37,7 +37,9 @@ GTD、Tag 与 Time 分别使用 `secretary_gtd`、`secretary_tag`、`secretary_t
 
 `src/index.ts` 用 `storageBackendServiceKey('sqlite')` 解析当前 backend，并只路由上述三个领域。卸载时关闭本设施打开的领域，不关闭由其他 Provider 拥有的共享 backend。
 
-写入持久化和领域语义由实际领域包拥有；本包不提供跨领域事务。
+领域 open 失败且错误为 `invalid-record` 时，本设施把那条记录移出原表、写进 `secretary_quarantine` 领域（保留原值与拒绝原因），然后重试 open：一条读不出来的历史记录不该让整个域和依赖它的写入一起不可用。无法定位到具体记录的失败（global 槽、backend 故障）照原样抛出。
+
+写入持久化和领域语义由实际领域包拥有；本包不提供跨领域事务，也不做旧数据迁移。
 
 </details>
 
@@ -67,3 +69,5 @@ GTD、Tag 与 Time 分别使用 `secretary_gtd`、`secretary_tag`、`secretary_t
 
 - 只路由 Secretary 拥有的三个领域，不提供通用宿主存储代理。
 - 不提供跨领域事务、旧 JSON／Obsidian 数据复制或业务迁移。
+- 隔离只做「不丢数据地绕开」，不做语义修复：原值能读回，但字段未补、未重写。
+- 领域在 open 时取一次快照；外部改库要由领域消费者显式 reload，本设施不监视文件变化。

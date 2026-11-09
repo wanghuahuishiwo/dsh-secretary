@@ -318,15 +318,34 @@ function deepWeek(
 
 export class SQLiteTimeService extends TimeService {
   static inject = ['secretaryStorageDomain', 'tags', 'tagReferences']
-  private readonly ready: Promise<StorageDomain>
+  private ready: Promise<StorageDomain>
   private readonly context: Context
+  private readonly config: Config
   private queue: Promise<unknown> = Promise.resolve()
 
   constructor(ctx: Context, config: Config = {}) {
     super(ctx)
     this.context = ctx
-    this.ready = (ctx as Context & { secretaryStorageDomain: { open(spec: unknown): Promise<StorageDomain> } }).secretaryStorageDomain.open({
-      name: config.domain ?? 'secretary_time',
+    this.config = config
+    this.ready = this.openDomain()
+    ctx.effect(() => async () => { await this.queue; await (await this.ready).close() })
+    ctx.effect(() => (ctx as Context & { tagReferences: TagReferenceRegistry }).tagReferences.register({
+      hasReferences: async tagId => {
+        const domain = await this.ready
+        if ([...domain.table('actual_blocks').entries()].some(([, block]) => block.timeTagId === tagId)) return true
+        if ([...domain.table('plan_template_blocks').entries()].some(([, block]) => block.timeTagId === tagId)) return true
+        if ([...domain.table('plan_blocks').entries()].some(([, block]) => block.timeTagId === tagId)) return true
+        return [...domain.table('plan_template_undos').entries()].some(([targetDate, undo]) =>
+          JSON.stringify(this.plansForDate(domain, targetDate, undo.timeZone)) === JSON.stringify(undo.after)
+          && [...undo.before, ...undo.after].some(block => block.timeTagId === tagId))
+      },
+    }), 'secretary: TimeBlock tag reference inspector')
+  }
+
+  /** Open the Time domain from the medium; the only place the spec is declared. */
+  private openDomain(): Promise<StorageDomain> {
+    return (this.context as Context & { secretaryStorageDomain: { open(spec: unknown): Promise<StorageDomain> } }).secretaryStorageDomain.open({
+      name: this.config.domain ?? 'secretary_time',
       version: 1,
       tables: {
         actual_blocks: { valueSchema: { parse: parseActual } },
@@ -340,21 +359,16 @@ export class SQLiteTimeService extends TimeService {
         return value
       } } },
     })
-    ctx.effect(async () => {
-      const domain = await this.ready
-      return async () => { await this.queue; await domain.close() }
+  }
+
+  /** Re-read every persisted block without restarting the host process. */
+  async reload(): Promise<void> {
+    return this.mutate(async () => {
+      const previous = await this.ready.catch(() => undefined)
+      if (previous !== undefined) await previous.close()
+      this.ready = this.openDomain()
+      await this.ready
     })
-    ctx.effect(() => (ctx as Context & { tagReferences: TagReferenceRegistry }).tagReferences.register({
-      hasReferences: async tagId => {
-        const domain = await this.ready
-        if ([...domain.table('actual_blocks').entries()].some(([, block]) => block.timeTagId === tagId)) return true
-        if ([...domain.table('plan_template_blocks').entries()].some(([, block]) => block.timeTagId === tagId)) return true
-        if ([...domain.table('plan_blocks').entries()].some(([, block]) => block.timeTagId === tagId)) return true
-        return [...domain.table('plan_template_undos').entries()].some(([targetDate, undo]) =>
-          JSON.stringify(this.plansForDate(domain, targetDate, undo.timeZone)) === JSON.stringify(undo.after)
-          && [...undo.before, ...undo.after].some(block => block.timeTagId === tagId))
-      },
-    }), 'secretary: TimeBlock tag reference inspector')
   }
 
   private mutate<Outcome>(operation: () => Promise<Outcome>): Promise<Outcome> {

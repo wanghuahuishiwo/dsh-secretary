@@ -20,6 +20,8 @@ kind: "package-reference"
 
 本包没有 Config。TagManager UI/Remote 尚未实现；本包只提供 Service 事实。
 
+`reload()` 关闭当前领域并按同一份 spec 重新打开，让外部改库后的标签无需重启宿主即可读到；它是运营动作，不是新事实，也不触发 GTD／Time 的联动。
+
 ## 理解实现
 
 <details>
