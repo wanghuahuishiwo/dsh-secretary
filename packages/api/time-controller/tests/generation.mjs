@@ -19,7 +19,11 @@ test('official generator emits five importable/readable Time artifacts with exac
   assert.deepEqual(remote.default.descriptors.map(item => `${item.namespace}/${item.method}`), [
     'secretaryTime/deleteBlock', 'secretaryTime/paint', 'secretaryTime/paintDeep',
     'secretaryTime/readWindow', 'secretaryTime/reloadWindow', 'secretaryTime/replaceDay', 'secretaryTime/updateBlock',
+    'secretaryTime/watch',
   ])
   assert.equal(remote.default.descriptors[0].result.mode, 'strict')
   assert.equal(remote.default.descriptors[0].parameters[0].codec.mode, 'strict')
+  const watch = remote.default.descriptors.at(-1)
+  assert.equal(watch.method, 'watch')
+  assert.equal(watch.mode, 'stream')
 })

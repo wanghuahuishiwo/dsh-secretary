@@ -43,7 +43,7 @@ const client = {
  * It carries no DSH banner/footer; production still bundles `src/ui` directly.
  */
 const ui = {
-  entryPoints: { ui: 'src/ui/index.ts', 'ui-model': 'src/ui/model.ts' },
+  entryPoints: { ui: 'src/ui/index.ts', 'ui-model': 'src/ui/model.ts', 'ui-change-reload': 'src/ui/changeReload.ts' },
   outdir: 'lib',
   bundle: true,
   format: 'esm',

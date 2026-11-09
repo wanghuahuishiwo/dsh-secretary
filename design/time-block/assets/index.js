@@ -15643,6 +15643,59 @@
   function Toast({ message }) {
     return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: `tb-toast${message === "" ? "" : " on"}`, children: message });
   }
+  function viewSignature(view) {
+    return JSON.stringify([view.days, view.weekStart, view.tags, view.blocks, view.deep]);
+  }
+  function createChangeReload(options) {
+    const debounceMs = options.debounceMs ?? 50;
+    let pending = false;
+    let timer;
+    let loading = false;
+    const reload = async () => {
+      if (loading) {
+        pending = true;
+        return;
+      }
+      loading = true;
+      try {
+        const next = await options.load();
+        if (viewSignature(next) !== viewSignature(options.current())) options.apply(next);
+      } catch {
+      } finally {
+        loading = false;
+      }
+    };
+    const drain = () => {
+      if (!pending) return;
+      pending = false;
+      void reload();
+    };
+    const cancelTimer = () => {
+      if (timer !== void 0) {
+        clearTimeout(timer);
+        timer = void 0;
+      }
+    };
+    return {
+      notify() {
+        pending = true;
+        if (options.isHeld()) return;
+        cancelTimer();
+        timer = setTimeout(() => {
+          timer = void 0;
+          drain();
+        }, debounceMs);
+      },
+      release() {
+        cancelTimer();
+        drain();
+      },
+      dispose() {
+        cancelTimer();
+        pending = false;
+      }
+    };
+  }
   var timeStyles = `
 /* ---------- module tokens: the only palette source for both shells ---------- */
 .tb-app {
@@ -16050,6 +16103,39 @@
         setError(messageOf(reason));
       });
     }, [load]);
+    const heldRef = (0, import_react.useRef)(false);
+    const viewRef = (0, import_react.useRef)(void 0);
+    viewRef.current = view;
+    const changeRef = (0, import_react.useRef)(void 0);
+    (0, import_react.useEffect)(() => {
+      const stopWatch = adapter.watch?.(() => {
+        changeRef.current?.notify();
+      });
+      return stopWatch;
+    }, [adapter]);
+    (0, import_react.useEffect)(() => {
+      if (adapter.watch === void 0 || view === void 0) return;
+      const ticket = revision.current;
+      const reload = createChangeReload({
+        load: () => adapter.load({ anchor, from: range.from, to: range.to, weekStart }),
+        current: () => viewRef.current ?? view,
+        apply: (next) => {
+          if (revision.current !== ticket) return;
+          setView(next);
+          setError("");
+        },
+        isHeld: () => heldRef.current
+      });
+      changeRef.current = reload;
+      return () => {
+        if (changeRef.current === reload) changeRef.current = void 0;
+        reload.dispose();
+      };
+    }, [adapter, anchor, range, view === void 0, weekStart]);
+    (0, import_react.useEffect)(() => {
+      heldRef.current = busy || sheet !== void 0 || picker !== null;
+      if (!heldRef.current) changeRef.current?.release();
+    }, [busy, picker, sheet]);
     const refresh = (0, import_react.useCallback)(async () => {
       const ticket = revision.current + 1;
       revision.current = ticket;

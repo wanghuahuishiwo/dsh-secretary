@@ -52,6 +52,23 @@ export class RemoteTimeAdapter implements TimeAdapter {
     return this.read(query, 'readWindow')
   }
 
+  /**
+   * Forward `watch` stream marks to the surface. The host pushes one mark per
+   * persisted Time mutation; if the carrier ends the stream the surface keeps
+   * its last good view until a remount or a manual refresh.
+   */
+  watch(onChange: () => void): () => void {
+    const handle = this.remote.watch()
+    void (async () => {
+      try {
+        for await (const _mark of handle) onChange()
+      } catch {
+        // Stream lost with the carrier; nothing to re-open on this adapter.
+      }
+    })()
+    return () => { void handle.dispose() }
+  }
+
   /** Re-read persisted Tags and Time facts instead of the host's snapshot. */
   async refresh(query: TimeQuery): Promise<TimeView> {
     return this.read(query, 'reloadWindow')
