@@ -1,6 +1,6 @@
 interface:
   display_name: "To Design"
-  short_description: "拷问结束后把结论写回需求 Issue：需求与设计补充进正文，技术相关的决策、结论、待决进评论"
-  default_prompt: "使用 $to-design 把这次拷问结论写回需求 Issue #<编号>：需求与设计补充进正文，技术相关的决策、结论、待决进评论。"
+  short_description: "把拷问结论补进需求 Issue：设计要求并入需求，开发与技术内容追加为评论"
+  default_prompt: "使用 $to-design 把这次拷问结论补进需求 Issue #<编号>：设计要求并入需求，开发与技术内容追加为评论。"
 policy:
   allow_implicit_invocation: false
