@@ -1,0 +1,6 @@
+interface:
+  display_name: "Design"
+  short_description: "在 OpenDesign 里按需求 Issue 执行设计：改组件、壳与 fixture，构建预览，写回 Issue"
+  default_prompt: "使用 $design 按需求 Issue #<编号> 执行设计：改组件、壳与 fixture，构建预览，把产出和待确认点写回 Issue。"
+policy:
+  allow_implicit_invocation: false
