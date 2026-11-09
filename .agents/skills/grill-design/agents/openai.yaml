@@ -1,0 +1,6 @@
+interface:
+  display_name: "Grill Design"
+  short_description: "产品需求与交互设计的拷问：问到足以开始设计"
+  default_prompt: "使用 $grill-design 拷问这条产品需求的交互设计：<需求 Issue 或当前想法>"
+policy:
+  allow_implicit_invocation: false
