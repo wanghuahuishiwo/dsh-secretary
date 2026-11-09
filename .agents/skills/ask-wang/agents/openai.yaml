@@ -1,0 +1,6 @@
+interface:
+  display_name: "Ask Wang"
+  short_description: "问哪个技能或流程适合你当前的情况"
+  default_prompt: "使用 $ask-wang 帮我判断当前该用哪个技能或走哪条流程：<当前情况>"
+policy:
+  allow_implicit_invocation: false
