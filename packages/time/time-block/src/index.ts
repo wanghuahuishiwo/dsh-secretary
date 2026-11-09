@@ -374,7 +374,10 @@ export class SQLiteTimeService extends TimeService {
   private mutate<Outcome>(operation: () => Promise<Outcome>): Promise<Outcome> {
     const result = this.queue.then(operation)
     this.queue = result.then(() => undefined, () => undefined)
-    return result
+    return result.then(outcome => {
+      this.context.emit('secretary/time-changed')
+      return outcome
+    })
   }
 
   private async requireTimeTag(id: number): Promise<void> {

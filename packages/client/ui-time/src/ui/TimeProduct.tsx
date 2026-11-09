@@ -9,6 +9,7 @@ import { RecordSheet, type SheetTarget } from './RecordSheet.tsx'
 import { TimeCanvas } from './TimeCanvas.tsx'
 import { TimeHeader, dayLabel, weekLabel, type TimeModule } from './TimeHeader.tsx'
 import { Toast } from './Toast.tsx'
+import { createChangeReload, type ChangeReload } from './changeReload.ts'
 import {
   addDays, localDate, weekStartOf,
   type DayRecord, type Run, type TimeTag,
@@ -113,6 +114,45 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
   useEffect(() => {
     void load().catch((reason: unknown) => { setError(messageOf(reason)) })
   }, [load])
+
+  // A local interaction owns the surface while a write is in flight or an
+  // editor is open; pushed repaints hold back until it is released.
+  const heldRef = useRef(false)
+  const viewRef = useRef<TimeView | undefined>(undefined)
+  viewRef.current = view
+  const changeRef = useRef<ChangeReload | undefined>(undefined)
+
+  // Host-pushed change marks: the watch stream says a mutation persisted, and
+  // only a real data change repaints. Persistence re-reads stay on refresh.
+  useEffect(() => {
+    const stopWatch = adapter.watch?.(() => { changeRef.current?.notify() })
+    return stopWatch
+  }, [adapter])
+
+  useEffect(() => {
+    if (adapter.watch === undefined || view === undefined) return
+    const ticket = revision.current
+    const reload = createChangeReload({
+      load: () => adapter.load({ anchor, from: range.from, to: range.to, weekStart }),
+      current: () => viewRef.current ?? view,
+      apply: (next) => {
+        if (revision.current !== ticket) return
+        setView(next)
+        setError('')
+      },
+      isHeld: () => heldRef.current,
+    })
+    changeRef.current = reload
+    return () => {
+      if (changeRef.current === reload) changeRef.current = undefined
+      reload.dispose()
+    }
+  }, [adapter, anchor, range, view === undefined, weekStart])
+
+  useEffect(() => {
+    heldRef.current = busy || sheet !== undefined || picker !== null
+    if (!heldRef.current) changeRef.current?.release()
+  }, [busy, picker, sheet])
 
   /** 重新读取持久化数据：宿主的数据层持有内存快照，刷新是一次显式重读。 */
   const refresh = useCallback(async () => {
