@@ -1,5 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
-import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
+import { Remote, RemoteError, RemoteStream, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import type { TagService } from 'dsh-secretary-tag-service/contract'
 import type { ActualSource, FocusLevel, TimeService } from 'dsh-secretary-time-block/contract'
 import type {
@@ -420,6 +420,34 @@ export class TimeProductService extends TypertRemoteService {
       return { ok: true, block }
     } catch (error) {
       productFailure(this.productCtx, error, 'deleteBlock')
+    }
+  }
+
+  /**
+   * Push one mark after every persisted Time mutation, so an open surface
+   * re-reads its window exactly when the data changed instead of polling. The
+   * stream carries no data: the client decides what and how much to reload.
+   */
+  @Remote({ name: 'watch', mode: 'stream' })
+  watch(): RemoteStream<{ changed: true }> {
+    let wake: (() => void) | undefined
+    const marks: Array<{ changed: true }> = []
+    const dispose = this.productCtx.on('secretary/time-changed', () => {
+      marks.push({ changed: true })
+      wake?.()
+    })
+    return {
+      async *[Symbol.asyncIterator]() {
+        try {
+          for (;;) {
+            while (marks.length > 0) yield marks.shift()!
+            await new Promise<void>(resolve => { wake = resolve })
+          }
+        } finally {
+          wake = undefined
+          dispose()
+        }
+      },
     }
   }
 
