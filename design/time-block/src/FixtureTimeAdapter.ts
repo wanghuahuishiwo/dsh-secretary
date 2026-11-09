@@ -61,6 +61,11 @@ export class FixtureTimeAdapter implements TimeAdapter {
     return this.view()
   }
 
+  /** A fixture already answers from its live objects, so refresh equals load. */
+  async refresh(query: TimeQuery): Promise<TimeView> {
+    return this.load(query)
+  }
+
   async paint(command: PaintCommand): Promise<TimeView> {
     if (command.mode === 'parallel' && command.tagId !== null) {
       this.writeParallel(command.layer, command.runs, command.tagId)

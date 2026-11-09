@@ -1,5 +1,5 @@
 ---
-description: "小秘书-时间块的 Host 产品 API：六个产品级 Typert Remote 方法；供迁移 Remote、排查产品生命周期或核对领域调用边界的用户与维护者阅读。"
+description: "小秘书-时间块的 Host 产品 API：七个产品级 Typert Remote 方法；供迁移 Remote、排查产品生命周期或核对领域调用边界的用户与维护者阅读。"
 kind: "package-reference"
 ---
 
@@ -7,7 +7,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包提供“小秘书-时间块”的 Host 产品服务 `TimeProductService`：把画布需要的三模块窗口、paint／replace／update／delete 与 DeepTime 批量操作暴露为六个 Typert Remote 方法，调用既有 `TimeService` 与 `TagService`。浏览器 UI 由 [`client/ui-time`](../../client/ui-time/README.md) 拥有，本包不含 React 或界面代码。
+本包提供“小秘书-时间块”的 Host 产品服务 `TimeProductService`：把画布需要的三模块窗口、paint／replace／update／delete、DeepTime 批量操作与显式重读暴露为七个 Typert Remote 方法，调用既有 `TimeService` 与 `TagService`。浏览器 UI 由 [`client/ui-time`](../../client/ui-time/README.md) 拥有，本包不含 React 或界面代码。
 
 ## 目录
 
@@ -38,7 +38,7 @@ kind: "package-reference"
 <details>
 <summary>实现说明与源码定位</summary>
 
-`src/index.ts` 是唯一的 Host 实现：`TimeProductService` 提供 `readWindow / paint / replaceDay / updateBlock / deleteBlock / paintDeep`，调用既有 TimeService／TagService；`src/types.ts` 是浏览器安全的请求与 projection 词汇。
+`src/index.ts` 是唯一的 Host 实现：`TimeProductService` 提供 `readWindow / reloadWindow / paint / replaceDay / updateBlock / deleteBlock / paintDeep`，调用既有 TimeService／TagService；`src/types.ts` 是浏览器安全的请求与 projection 词汇。
 
 `lib/typert.host.js`、`lib/typert.remote-client.js` 及声明由官方 Typert generator 生成，不入库。浏览器侧只在 `client/ui-time` 中通过 `./remote` 挂载，不复制第二份声明。
 

@@ -115,6 +115,11 @@ export interface DeleteBlockCommand {
  */
 export interface TimeAdapter {
   load(query: TimeQuery): Promise<TimeView>
+  /**
+   * Re-read the same query from storage. `load` may answer from the host's
+   * in-memory snapshot; `refresh` is the explicit re-read the user asks for.
+   */
+  refresh(query: TimeQuery): Promise<TimeView>
   paint(command: PaintCommand): Promise<TimeView>
   undo(layer: TimeLayer): Promise<TimeView | undefined>
   paintDeep(command: PaintDeepCommand): Promise<TimeView>

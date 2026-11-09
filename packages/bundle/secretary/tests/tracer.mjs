@@ -2229,3 +2229,28 @@ test('Reload re-reads data written outside the running services, without a host 
   assert.equal((await execute(harness, 'secretary_tag', { op: 'list' })).tags[0].name, '技术（外部改名）')
   assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'inbox.list' })).items.map(item => item.title), ['外部捕获'])
 })
+
+test('Time product reloadWindow re-reads Tag and Time facts after an out-of-band change', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
+  const product = harness.ctx.get('timeProduct')
+  assert.ok(product)
+  const query = { anchor: '2026-11-02', timeZone: 'Asia/Shanghai', weekStart: '2026-11-02' }
+  await product.paint({
+    layer: 'actual', tagId: tag.id, timeZone: 'Asia/Shanghai',
+    runs: [{ date: '2026-11-02', start: 540, end: 600 }],
+  })
+
+  const writer = externalDatabase(harness.databasePath)
+  writer.prepare('update u_secretary_tag_tags set value = ? where key = ?')
+    .run(JSON.stringify({ ...tag, name: '工作（外部改名）' }), String(tag.id))
+  writer.close()
+
+  // The canvas still answers from the loaded snapshot...
+  const cached = await product.readWindow(query)
+  assert.deepEqual(cached.tags.map(item => item.name), ['工作'])
+  // ...the refresh control re-reads instead, and keeps the recorded facts.
+  const refreshed = await product.reloadWindow(query)
+  assert.deepEqual(refreshed.tags.map(item => item.name), ['工作（外部改名）'])
+  assert.deepEqual(refreshed.actual.map(block => block.timeTagId), [tag.id])
+})

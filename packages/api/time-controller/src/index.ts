@@ -287,27 +287,47 @@ export class TimeProductService extends TypertRemoteService {
   @Remote('readWindow')
   async readWindow(input: TimeWindowRequest): Promise<TimeWindowProjection> {
     try {
-      const anchor = validDate(input.anchor, 'anchor')
-      const timeZone = validTimeZone(input.timeZone)
-      const from = input.from === undefined ? addDays(anchor, -WINDOW_BEFORE) : validDate(input.from, 'from')
-      const to = input.to === undefined ? addDays(anchor, WINDOW_AFTER) : validDate(input.to, 'to')
-      if (from > to) throw new Error('secretary: Time window requires from <= to')
-      const days = rangeDays(from, to)
-      if (days.length > WINDOW_MAX) throw new Error(`secretary: Time window is limited to ${WINDOW_MAX} days`)
-      const weekStart = weekStartOf(validDate(input.weekStart ?? anchor, 'weekStart'))
-      const nowMs = Date.now()
-      const fromMs = zonedStart(days[0]!, timeZone)
-      const toMs = zonedStart(addDays(days[days.length - 1]!, 1), timeZone)
-      const [tags, actual, plan, deep] = await Promise.all([
-        this.productCtx.tags.listTags(),
-        this.productCtx.time.listActual({ from: new Date(fromMs).toISOString(), to: new Date(toMs).toISOString() }),
-        Promise.all(days.map(date => this.productCtx.time.listPlan({ date, timeZone }))).then(lists => lists.flat()),
-        this.productCtx.time.getDeepWeek({ weekStart }),
-      ])
-      return { anchor, timeZone, today: localDateOf(nowMs, timeZone), nowMs, from, to, days, weekStart, tags, actual, plan, deep }
+      return await this.projectWindow(input)
     } catch (error) {
       invalidInput(error)
     }
+  }
+
+  /**
+   * Re-read persisted Tags and Time facts, then project the same window. The
+   * data layer keeps an in-memory snapshot, so this is the explicit re-read the
+   * refresh control asks for; it never writes and never completes GTD work.
+   */
+  @Remote('reloadWindow')
+  async reloadWindow(input: TimeWindowRequest): Promise<TimeWindowProjection> {
+    try {
+      await this.productCtx.tags.reload()
+      await this.productCtx.time.reload()
+      return await this.projectWindow(input)
+    } catch (error) {
+      invalidInput(error)
+    }
+  }
+
+  private async projectWindow(input: TimeWindowRequest): Promise<TimeWindowProjection> {
+    const anchor = validDate(input.anchor, 'anchor')
+    const timeZone = validTimeZone(input.timeZone)
+    const from = input.from === undefined ? addDays(anchor, -WINDOW_BEFORE) : validDate(input.from, 'from')
+    const to = input.to === undefined ? addDays(anchor, WINDOW_AFTER) : validDate(input.to, 'to')
+    if (from > to) throw new Error('secretary: Time window requires from <= to')
+    const days = rangeDays(from, to)
+    if (days.length > WINDOW_MAX) throw new Error(`secretary: Time window is limited to ${WINDOW_MAX} days`)
+    const weekStart = weekStartOf(validDate(input.weekStart ?? anchor, 'weekStart'))
+    const nowMs = Date.now()
+    const fromMs = zonedStart(days[0]!, timeZone)
+    const toMs = zonedStart(addDays(days[days.length - 1]!, 1), timeZone)
+    const [tags, actual, plan, deep] = await Promise.all([
+      this.productCtx.tags.listTags(),
+      this.productCtx.time.listActual({ from: new Date(fromMs).toISOString(), to: new Date(toMs).toISOString() }),
+      Promise.all(days.map(date => this.productCtx.time.listPlan({ date, timeZone }))).then(lists => lists.flat()),
+      this.productCtx.time.getDeepWeek({ weekStart }),
+    ])
+    return { anchor, timeZone, today: localDateOf(nowMs, timeZone), nowMs, from, to, days, weekStart, tags, actual, plan, deep }
   }
 
   /** Paint one independent Time layer with the existing canvas semantics. */

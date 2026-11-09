@@ -176,7 +176,7 @@ Secretary 的 GTD、Tag、Time 三个领域都由 [storage domain 包装层](../
 
 ### 6.1 重新加载
 
-`secretary_tag`、`secretary_gtd`、`secretary_time` 各提供 `reload` 动作：关闭当前领域、按同一份 spec 重新打开，让之后的读写落在新快照上。它不重启宿主、不改写任何事实，也不触发领域间的联动。外部改库后必须显式 reload；否则服务继续返回旧值，用旧 id 上色还会把事实写到错误标签上。
+`secretary_tag`、`secretary_gtd`、`secretary_time` 各提供 `reload` 动作：关闭当前领域、按同一份 spec 重新打开，让之后的读写落在新快照上。它不重启宿主、不改写任何事实，也不触发领域间的联动。外部改库后必须显式 reload；否则服务继续返回旧值，用旧 id 上色还会把事实写到错误标签上。画布顶部提供同一件事的产品入口：刷新按钮调用 `TimeProductService.reloadWindow`，重读标签与时间块后重画当前窗口。
 
 ### 6.2 坏记录隔离
 

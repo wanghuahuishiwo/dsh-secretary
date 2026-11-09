@@ -18,7 +18,7 @@ test('official generator emits five importable/readable Time artifacts with exac
   assert.equal(remote.default.package, 'dsh-secretary-time-controller')
   assert.deepEqual(remote.default.descriptors.map(item => `${item.namespace}/${item.method}`), [
     'secretaryTime/deleteBlock', 'secretaryTime/paint', 'secretaryTime/paintDeep',
-    'secretaryTime/readWindow', 'secretaryTime/replaceDay', 'secretaryTime/updateBlock',
+    'secretaryTime/readWindow', 'secretaryTime/reloadWindow', 'secretaryTime/replaceDay', 'secretaryTime/updateBlock',
   ])
   assert.equal(remote.default.descriptors[0].result.mode, 'strict')
   assert.equal(remote.default.descriptors[0].parameters[0].codec.mode, 'strict')

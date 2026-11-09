@@ -114,6 +114,27 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
     void load().catch((reason: unknown) => { setError(messageOf(reason)) })
   }, [load])
 
+  /** 重新读取持久化数据：宿主的数据层持有内存快照，刷新是一次显式重读。 */
+  const refresh = useCallback(async () => {
+    const ticket = revision.current + 1
+    revision.current = ticket
+    setBusy(true)
+    try {
+      const next = await adapter.refresh({ anchor, from: range.from, to: range.to, weekStart })
+      if (revision.current === ticket) {
+        setView(next)
+        setError('')
+      }
+      say('已刷新')
+    } catch (reason) {
+      const text = messageOf(reason)
+      if (revision.current === ticket) setError(text)
+      say(text)
+    } finally {
+      setBusy(false)
+    }
+  }, [adapter, anchor, range, say, weekStart])
+
   const runWrite = useCallback(async (
     operation: () => Promise<TimeView>, message: string,
   ): Promise<boolean> => {
@@ -317,6 +338,7 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
         onPicker={() => setPicker(picker === null ? module : null)}
         onStep={step}
         onUndo={() => void undo()}
+        onRefresh={() => void refresh()}
       />
 
       <div className="tb-views">
