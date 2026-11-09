@@ -16,6 +16,11 @@ export interface Tag {
   readonly kind: TagKind
   readonly parentId?: number
   readonly color?: string
+  /**
+   * What this tag means and when to pick it. Tags whose name does not carry its
+   * own rule (主线 / 副线) depend on this text staying with the tag.
+   */
+  readonly description?: string
 }
 
 export interface CreateTagInput {
@@ -23,11 +28,14 @@ export interface CreateTagInput {
   readonly kind?: TagKind
   readonly parentId?: number
   readonly color?: string
+  readonly description?: string
 }
 
 export interface UpdateTagInput {
   readonly name?: string
   readonly color?: string | null
+  /** `null` clears the description; `undefined` keeps it. */
+  readonly description?: string | null
 }
 
 export abstract class TagService extends Service {

@@ -2254,3 +2254,27 @@ test('Time product reloadWindow re-reads Tag and Time facts after an out-of-band
   assert.deepEqual(refreshed.tags.map(item => item.name), ['工作（外部改名）'])
   assert.deepEqual(refreshed.actual.map(block => block.timeTagId), [tag.id])
 })
+
+test('Tags carry the rule for when to pick them, and it survives rename and clearing', async (t) => {
+  const harness = await sqliteHarness(t)
+  const { tag: work } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
+  const { tag: mainline } = await execute(harness, 'secretary_tag', {
+    op: 'create', name: '主线', parentId: work.id,
+    description: '  产出物被上级或跨团队消费：汇报、核心模块架构决策。  ',
+  })
+  assert.equal(mainline.description, '产出物被上级或跨团队消费：汇报、核心模块架构决策。')
+
+  // The description is a fact of the tag, not of one read.
+  const listed = await execute(harness, 'secretary_tag', { op: 'list', kind: 'time' })
+  assert.equal(listed.tags.find(tag => tag.id === mainline.id).description, mainline.description)
+  // Projects pick a tag, so the rule reaches GTD classification too.
+  const projected = await harness.ctx.get('timeProduct').readWindow({ anchor: '2026-11-09', timeZone: 'Asia/Shanghai' })
+  assert.equal(projected.tags.find(tag => tag.id === mainline.id).description, mainline.description)
+
+  const renamed = await execute(harness, 'secretary_tag', { op: 'update', id: mainline.id, name: '主线（向上）' })
+  assert.equal(renamed.tag.description, mainline.description, 'rename keeps the rule')
+  const cleared = await execute(harness, 'secretary_tag', { op: 'update', id: mainline.id, description: null })
+  assert.equal(cleared.tag.description, undefined)
+  const refreshed = await execute(harness, 'secretary_tag', { op: 'get', id: mainline.id })
+  assert.equal(refreshed.tag.description, undefined)
+})

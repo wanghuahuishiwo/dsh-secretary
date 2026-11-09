@@ -19,7 +19,7 @@ kind: "package-reference"
 
 ## 理解实现
 
-`src/index.ts` 定义工具 schema 并调用 `TagService`；校验与错误文案遵循同一 Service 契约。`op: reload` 让运行中的服务重新读取持久化标签，用于外部改库之后。
+`src/index.ts` 定义工具 schema 并调用 `TagService`；校验与错误文案遵循同一 Service 契约。`op: reload` 让运行中的服务重新读取持久化标签，用于外部改库之后。create / update 接受 `description`，list / get 返回它；名字不自解释的标签（主线 / 副线）应当带上判据，模型分类前先读它。
 
 ## 延伸阅读
 

@@ -16,6 +16,8 @@ export interface TimeTagView {
   readonly name: string
   readonly parentId?: string
   readonly color?: string
+  /** What the tag means and when to pick it; shown as the shelf tooltip. */
+  readonly description?: string
 }
 
 export interface TimeBlockView {

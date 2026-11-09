@@ -277,6 +277,7 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
     kind: 'time',
     parentId: tag.parentId === undefined ? undefined : indexes.tag.number(tag.parentId),
     color: tag.color,
+    description: tag.description,
   })), [indexes, view])
 
   const records = useMemo(() => {

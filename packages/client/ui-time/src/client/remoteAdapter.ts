@@ -176,6 +176,7 @@ export class RemoteTimeAdapter implements TimeAdapter {
         name: tag.name,
         parentId: tag.parentId === undefined ? undefined : String(tag.parentId),
         color: tag.color,
+        description: tag.description,
       }))
     const levels: DeepCellLevel[] = Array.from({ length: DEEP_CELLS }, () => 'unset')
     for (const cell of projection.deep.cells) {
