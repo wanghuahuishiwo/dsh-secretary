@@ -20,7 +20,7 @@ interface Props {
   readonly tags: readonly TimeTag[]
   readonly busy: boolean
   readonly onAssign: (runs: readonly Run[], tagId: number | null, mode: 'overwrite' | 'parallel') => void
-  /** 点记录块（短按、无拖动）时打开该格的记录详情 sheet。 */
+  /** 双击已有记录块时打开该格的记录详情 sheet。 */
   readonly onOpen: (date: string, minute: number) => void
 }
 
@@ -29,8 +29,6 @@ interface DragState {
   readonly minute: number
   moved: boolean
   readonly wasSelected: boolean
-  /** 手势从记录块上开始：短按打开详情，拖动仍进入选区。 */
-  readonly fromBlock: boolean
 }
 
 const FALLBACK_COLOR = '#477bc7'
@@ -61,7 +59,7 @@ function splitByHour(runs: readonly Run[]): Run[] {
 
 /** One day column: the date mark, the hour scale, the ten-minute grid, its blocks and its selection. */
 const DayColumn = memo(function DayColumn({
-  day, rowH, today, records, selected, nowMin, tagName, tagColor, onCellDown, onCellContextMenu,
+  day, rowH, today, records, selected, nowMin, tagName, tagColor, onCellDown, onCellContextMenu, onCellDoubleClick,
 }: {
   day: string
   rowH: number
@@ -73,6 +71,7 @@ const DayColumn = memo(function DayColumn({
   tagColor: (id: number) => string
   onCellDown: (event: React.PointerEvent<HTMLDivElement>) => void
   onCellContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void
+  onCellDoubleClick: (event: React.MouseEvent<HTMLDivElement>) => void
 }) {
   const date = new Date(`${day}T12:00:00`)
   const height = 24 * rowH
@@ -106,7 +105,7 @@ const DayColumn = memo(function DayColumn({
           <span key={hour} className={nowMin !== undefined && hour === Math.floor(nowMin / 60) ? 'now' : ''} style={{ top: hour * rowH + 4 }}>{hour}:00</span>
         ))}
       </div>
-      <div className="tb-grid" data-day={day} style={{ height }} onPointerDown={onCellDown} onContextMenu={onCellContextMenu}>
+      <div className="tb-grid" data-day={day} style={{ height }} onPointerDown={onCellDown} onContextMenu={onCellContextMenu} onDoubleClick={onCellDoubleClick}>
         <div className="tb-cells" style={{ gridAutoRows: `${rowH}px` }}>
           {cells.map(cell => (
             <div key={cell.minute} className={`tb-cell${cell.last ? ' hourlast' : ''}`} data-day={day} data-min={cell.minute} />
@@ -315,7 +314,7 @@ export function TimeCanvas(props: Props) {
 
   const clearSelection = useCallback(() => writeSelection(new Map()), [writeSelection])
 
-  /** 空格与记录块共用一次 pointerdown：块上的短按与拖动都从选区手势开始。 */
+  /** 空格与记录块共用一次 pointerdown：单击与拖动都从选区手势开始。 */
   const onCellDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     const target = (event.target as HTMLElement).closest<HTMLElement>('[data-day][data-min]')
     if (target === null) return
@@ -323,14 +322,26 @@ export function TimeCanvas(props: Props) {
     const minute = Number(target.dataset.min)
     if (date === undefined || !Number.isFinite(minute)) return
     event.preventDefault()
-    const fromBlock = target.closest('.tb-blk') !== null
     const current = selectedRef.current.get(date)
     const wasSelected = current?.has(minute) ?? false
-    dragRef.current = { date, minute, moved: false, wasSelected, fromBlock }
+    dragRef.current = { date, minute, moved: false, wasSelected }
     if (!wasSelected) setDayMinutes(date, [...(current ?? []), minute])
   }, [setDayMinutes])
 
-  /** 右键仍可打开记录详情；与单击走同一个入口。 */
+  /** 双击已占用块打开记录详情；单击仍是原来的选区手势。 */
+  const onCellDoubleClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const target = (event.target as HTMLElement).closest<HTMLElement>('[data-day][data-min]')
+    if (target === null || target.closest('.tb-blk') === null) return
+    const date = target.dataset.day
+    const minute = Number(target.dataset.min)
+    if (date === undefined || !Number.isFinite(minute)) return
+    const list = records.get(date) ?? []
+    if (!list.some(record => record.start <= minute && minute < record.end)) return
+    event.preventDefault()
+    onOpen(date, minute)
+  }, [onOpen, records])
+
+  /** 右键仍可打开记录详情；与双击走同一个入口。 */
   const onCellContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     const target = (event.target as HTMLElement).closest<HTMLElement>('[data-day][data-min]')
     if (target === null) return
@@ -362,13 +373,7 @@ export function TimeCanvas(props: Props) {
       const drag = dragRef.current
       if (drag === null) return
       dragRef.current = null
-      // 短按记录块：不切换选区，直接打开详情并清空选区；拖动结束则不触发。
       if (drag.moved) return
-      if (drag.fromBlock) {
-        clearSelection()
-        onOpen(drag.date, drag.minute)
-        return
-      }
       if (!drag.wasSelected) return
       const current = selectedRef.current.get(drag.date) ?? new Set<number>()
       setDayMinutes(drag.date, [...current].filter(minute => minute !== drag.minute))
@@ -459,6 +464,7 @@ export function TimeCanvas(props: Props) {
                   tagColor={tagColor}
                   onCellDown={onCellDown}
                   onCellContextMenu={onCellContextMenu}
+                  onCellDoubleClick={onCellDoubleClick}
                 />
               ))}
             </div>
