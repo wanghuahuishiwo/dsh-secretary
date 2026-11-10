@@ -15377,8 +15377,7 @@
     tagName,
     tagColor,
     onCellDown,
-    onCellContextMenu,
-    onCellDoubleClick
+    onCellContextMenu
   }) {
     const date = /* @__PURE__ */ new Date(`${day}T12:00:00`);
     const height = 24 * rowH;
@@ -15404,7 +15403,7 @@
         hour,
         ":00"
       ] }, hour)) }),
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-grid", "data-day": day, style: { height }, onPointerDown: onCellDown, onContextMenu: onCellContextMenu, onDoubleClick: onCellDoubleClick, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-grid", "data-day": day, style: { height }, onPointerDown: onCellDown, onContextMenu: onCellContextMenu, children: [
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "tb-cells", style: { gridAutoRows: `${rowH}px` }, children: cells.map((cell) => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: `tb-cell${cell.last ? " hourlast" : ""}`, "data-day": day, "data-min": cell.minute }, cell.minute)) }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-blocks", children: [
           rows.map(({ minute, record, count }) => {
@@ -15601,17 +15600,6 @@
       dragRef.current = { date, minute, moved: false, wasSelected };
       if (!wasSelected) setDayMinutes(date, [...current ?? [], minute]);
     }, [setDayMinutes]);
-    const onCellDoubleClick = (0, import_react5.useCallback)((event) => {
-      const target = event.target.closest("[data-day][data-min]");
-      if (target === null || target.closest(".tb-blk") === null) return;
-      const date = target.dataset.day;
-      const minute = Number(target.dataset.min);
-      if (date === void 0 || !Number.isFinite(minute)) return;
-      const list = records.get(date) ?? [];
-      if (!list.some((record) => record.start <= minute && minute < record.end)) return;
-      event.preventDefault();
-      onOpen(date, minute);
-    }, [onOpen, records]);
     const onCellContextMenu = (0, import_react5.useCallback)((event) => {
       const target = event.target.closest("[data-day][data-min]");
       if (target === null) return;
@@ -15723,8 +15711,7 @@
                 tagName,
                 tagColor,
                 onCellDown,
-                onCellContextMenu,
-                onCellDoubleClick
+                onCellContextMenu
               },
               day
             )) }),

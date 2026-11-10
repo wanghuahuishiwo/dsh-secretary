@@ -59,7 +59,7 @@ function splitByHour(runs: readonly Run[]): Run[] {
 
 /** One day column: the date mark, the hour scale, the ten-minute grid, its blocks and its selection. */
 const DayColumn = memo(function DayColumn({
-  day, rowH, today, records, selected, nowMin, tagName, tagColor, onCellDown, onCellContextMenu, onCellDoubleClick,
+  day, rowH, today, records, selected, nowMin, tagName, tagColor, onCellDown, onCellContextMenu,
 }: {
   day: string
   rowH: number
@@ -71,7 +71,6 @@ const DayColumn = memo(function DayColumn({
   tagColor: (id: number) => string
   onCellDown: (event: React.PointerEvent<HTMLDivElement>) => void
   onCellContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void
-  onCellDoubleClick: (event: React.MouseEvent<HTMLDivElement>) => void
 }) {
   const date = new Date(`${day}T12:00:00`)
   const height = 24 * rowH
@@ -105,7 +104,7 @@ const DayColumn = memo(function DayColumn({
           <span key={hour} className={nowMin !== undefined && hour === Math.floor(nowMin / 60) ? 'now' : ''} style={{ top: hour * rowH + 4 }}>{hour}:00</span>
         ))}
       </div>
-      <div className="tb-grid" data-day={day} style={{ height }} onPointerDown={onCellDown} onContextMenu={onCellContextMenu} onDoubleClick={onCellDoubleClick}>
+      <div className="tb-grid" data-day={day} style={{ height }} onPointerDown={onCellDown} onContextMenu={onCellContextMenu}>
         <div className="tb-cells" style={{ gridAutoRows: `${rowH}px` }}>
           {cells.map(cell => (
             <div key={cell.minute} className={`tb-cell${cell.last ? ' hourlast' : ''}`} data-day={day} data-min={cell.minute} />
@@ -328,20 +327,7 @@ export function TimeCanvas(props: Props) {
     if (!wasSelected) setDayMinutes(date, [...(current ?? []), minute])
   }, [setDayMinutes])
 
-  /** 双击已占用块打开记录详情；单击仍是原来的选区手势。 */
-  const onCellDoubleClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    const target = (event.target as HTMLElement).closest<HTMLElement>('[data-day][data-min]')
-    if (target === null || target.closest('.tb-blk') === null) return
-    const date = target.dataset.day
-    const minute = Number(target.dataset.min)
-    if (date === undefined || !Number.isFinite(minute)) return
-    const list = records.get(date) ?? []
-    if (!list.some(record => record.start <= minute && minute < record.end)) return
-    event.preventDefault()
-    onOpen(date, minute)
-  }, [onOpen, records])
-
-  /** 右键仍可打开记录详情；与双击走同一个入口。 */
+  /** 右键记录块打开记录详情：与产品既有快捷键一致，单击仍是选区手势。 */
   const onCellContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     const target = (event.target as HTMLElement).closest<HTMLElement>('[data-day][data-min]')
     if (target === null) return
@@ -464,7 +450,6 @@ export function TimeCanvas(props: Props) {
                   tagColor={tagColor}
                   onCellDown={onCellDown}
                   onCellContextMenu={onCellContextMenu}
-                  onCellDoubleClick={onCellDoubleClick}
                 />
               ))}
             </div>
