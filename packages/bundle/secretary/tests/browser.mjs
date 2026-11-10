@@ -64,6 +64,12 @@ function collectPageErrors(page, errors) {
     if (message.type() !== 'error') return
     if (/ERR_INCOMPLETE_CHUNKED_ENCODING|ERR_CONNECTION_REFUSED/.test(message.text())) return
     if (/Failed to load resource: the server responded with a status of 500/.test(message.text())) return
+    // These tests stop and restart the host, or rewrite its profile for HMR.
+    // While the old process is going away the page's live connections and the
+    // plugin event stream reject; that is the restart, not a page defect.
+    if (/WebSocket connection to 'ws:\/\/[^']*\/api\/remote\.mux' failed/.test(message.text())) return
+    if (/Failed to load resource: the server responded with a status of 404/.test(message.text())
+      && /\/plugins\/events$/.test(message.location().url)) return
     errors.push(new Error(`console.error: ${message.text()}`))
   })
 }

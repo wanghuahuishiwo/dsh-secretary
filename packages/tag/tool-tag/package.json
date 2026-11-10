@@ -21,7 +21,7 @@
     "prepare": "node build.mjs"
   },
   "dependencies": {
-    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/cordis": "4.1.0",
     "dsh-secretary-tag-service": "workspace:*",
     "dsh-secretary-tooling": "workspace:*"
   },
