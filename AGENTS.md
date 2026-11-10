@@ -26,6 +26,8 @@
 | 小秘书-目标 | 独立入口 + 空白 `main` | `GoalService`（bundle 级空实现） | 空壳入口；实体、模型、Remote、UI 后置 |
 
 - **Tag**：共享模块，唯一 `TagService` 与 `tags` 表；`time` / `context` 只是 `kind`。共享 `TagManager` UI/Remote 待实现，不是独立产品入口。
+- **事实所有权**：每个领域拥有自己的事实与存储，模型、语义与边界写在该能力族自己的 README，不设全局数据模型文档；其他领域只经该领域公开的契约依赖，不另建平行事实。
+- **派生视图不另存事实**：视图、筛选与汇总从权威事实即时派生，不为其复制或保存第二份数据。
 - **Storage / Core**：基础设施。
 - **Secretary Agent / bundle**：技能、Markdown GTD 数据面与 CLI 装配，不是产品 UI。会话内工具已退役：time/tag 经 CLI（`dsh-secretary-cli`），GTD 经通用文档工具。
 - **包分组**：`packages/<能力族>/<包>`，组只是容器；包地图见 [packages/README.md](packages/README.md)，结构与角色拆分决策见 [ADR 0010](docs/adr/0010-package-groups-and-roles.md)。
@@ -64,7 +66,6 @@ packages/
 docs/
 ├── prd/             当前产品范围与各产品交互
 ├── architecture.md  当前装配、依赖、Remote 与验证入口
-├── data-model.md    当前事实、关系与持久化语义
 ├── glossary.md      领域术语
 ├── adr/             架构决策历史
 ├── research/        调研证据

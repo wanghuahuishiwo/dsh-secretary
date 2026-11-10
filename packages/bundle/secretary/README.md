@@ -73,7 +73,6 @@ patch 显式禁用宿主 `goal` Service entry，避免与项目空 Goal Provider
 
 - [运行架构](../../../docs/architecture.md)
 - [当前产品范围](../../../docs/prd/README.md)
-- [当前数据模型](../../../docs/data-model.md)
 - [工单与验收操作](../../../docs/agents/issue-tracker.md)
 
 ## 模型体验

@@ -1,6 +1,6 @@
 # 小秘书-时间块
 
-本文描述当前 TimeBlock 产品的功能与交互。产品入口与 UI 见 [Time 产品 UI README](../../packages/client/ui-time/README.md)，Host Remote 与装卸见 [Time Host API README](../../packages/api/time-controller/README.md)；日期、Tags、计划和实录的领域规则见 [Time 领域包 README](../../packages/time/time-block/README.md) 与 [数据模型](../data-model.md)。
+本文描述当前 TimeBlock 产品的功能与交互。产品入口与 UI 见 [Time 产品 UI README](../../packages/client/ui-time/README.md)，Host Remote 与装卸见 [Time Host API README](../../packages/api/time-controller/README.md)；日期、Tags、计划和实录的领域规则见 [Time 领域包 README](../../packages/time/time-block/README.md)。
 
 ## 入口与模块
 
@@ -88,7 +88,7 @@ Remote 失败不会显示成功，也不会把失败操作加入 Undo。已成�
 
 ## 相关阅读
 
-- [当前数据模型](../data-model.md)
+- [Time 领域包](../../packages/time/time-block/README.md)
 - [领域术语](../glossary.md)
 - [外部「时间块」App 交互调研](../research/timeblocks-interaction.md)（设计证据，不是当前产品契约）
 - [运行架构与验证入口](../architecture.md)

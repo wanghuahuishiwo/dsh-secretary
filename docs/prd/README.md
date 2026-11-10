@@ -1,6 +1,6 @@
 # 产品需求
 
-本目录保存当前产品范围与交互。全局共享规则只写在这里；具体产品的功能与操作由各自文档承担。产品模块、入口、领域服务和共享边界只维护在 [AGENTS.md](../../AGENTS.md#产品模块)；本目录不重复模块地图。领域事实见 [data-model.md](../data-model.md)，技术结构见 [architecture.md](../architecture.md)，实施规格与验收由 [GitHub Issues](../agents/issue-tracker.md) 承载。
+本目录保存当前产品范围与交互。全局共享规则只写在这里；具体产品的功能与操作由各自文档承担。产品模块、入口、领域服务和共享边界只维护在 [AGENTS.md](../../AGENTS.md#产品模块)；本目录不重复模块地图。领域事实与模型见各能力族的 README（GTD／Tag／Time），技术结构见 [architecture.md](../architecture.md)，实施规格与验收由 [GitHub Issues](../agents/issue-tracker.md) 承载。
 
 ## 产品文档
 
