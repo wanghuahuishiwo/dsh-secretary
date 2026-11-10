@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CELL, MAX_ROW_H, MIN_ROW_H, PER_HOUR, WEEKDAY_LABELS,
-  cellRecords, clock, durationLabel, recordAt, runsOf,
+  cellRecords, durationLabel, runsOf,
   type DayRecord, type Run, type TimeTag,
 } from './model.ts'
 import { CanvasGradient } from './CanvasGradient.tsx'
@@ -20,7 +20,8 @@ interface Props {
   readonly tags: readonly TimeTag[]
   readonly busy: boolean
   readonly onAssign: (runs: readonly Run[], tagId: number | null, mode: 'overwrite' | 'parallel') => void
-  readonly onEdit: (date: string, record: DayRecord) => void
+  /** 点记录块（短按、无拖动）时打开该格的记录详情 sheet。 */
+  readonly onOpen: (date: string, minute: number) => void
 }
 
 interface DragState {
@@ -28,6 +29,8 @@ interface DragState {
   readonly minute: number
   moved: boolean
   readonly wasSelected: boolean
+  /** 手势从记录块上开始：短按打开详情，拖动仍进入选区。 */
+  readonly fromBlock: boolean
 }
 
 const FALLBACK_COLOR = '#477bc7'
@@ -58,7 +61,7 @@ function splitByHour(runs: readonly Run[]): Run[] {
 
 /** One day column: the date mark, the hour scale, the ten-minute grid, its blocks and its selection. */
 const DayColumn = memo(function DayColumn({
-  day, rowH, today, records, selected, nowMin, tagName, tagColor, onCellDown, onBlockEdit,
+  day, rowH, today, records, selected, nowMin, tagName, tagColor, onCellDown, onCellContextMenu,
 }: {
   day: string
   rowH: number
@@ -69,7 +72,7 @@ const DayColumn = memo(function DayColumn({
   tagName: (id: number) => string
   tagColor: (id: number) => string
   onCellDown: (event: React.PointerEvent<HTMLDivElement>) => void
-  onBlockEdit: (date: string, record: DayRecord) => void
+  onCellContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void
 }) {
   const date = new Date(`${day}T12:00:00`)
   const height = 24 * rowH
@@ -80,7 +83,6 @@ const DayColumn = memo(function DayColumn({
   const selRuns = selected === undefined ? [] : splitByHour(runsOf(day, [...selected]))
   /** One collapsed cell shows its earliest record; overlaps stay behind a count badge. */
   const rows = useMemo(() => cellRecords(records), [records])
-  const [openMinute, setOpenMinute] = useState<number | null>(null)
 
   /** A hidden record starts showing once the earlier records above it end. */
   const firstShown = useMemo(() => {
@@ -88,48 +90,6 @@ const DayColumn = memo(function DayColumn({
     for (const cell of rows) if (!first.has(cell.record.id)) first.set(cell.record.id, cell.minute)
     return first
   }, [rows])
-
-  const openRecords = useMemo(() => {
-    if (openMinute === null) return []
-    return records
-      .filter(record => record.start <= openMinute && openMinute < record.end)
-      .sort((left, right) => left.start - right.start || left.id - right.id)
-  }, [records, openMinute])
-
-  useEffect(() => {
-    if (openMinute === null) return
-    /** The popover is additive: closing it must not change the canvas' own gestures. */
-    const close = (event: PointerEvent) => {
-      const target = event.target as HTMLElement
-      if (target.closest('.tb-pop') !== null || target.closest('.tb-more') !== null) return
-      setOpenMinute(null)
-    }
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpenMinute(null)
-    }
-    window.addEventListener('pointerdown', close)
-    window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('pointerdown', close)
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [openMinute])
-
-  useEffect(() => {
-    if (openMinute === null) return
-    const cell = rows.find(item => item.minute === openMinute)
-    if (cell === undefined || cell.count < 2) setOpenMinute(null)
-  }, [rows, openMinute])
-
-  const onCellContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement
-    const minute = Number(target.dataset.min)
-    if (!Number.isFinite(minute)) return
-    const record = recordAt(records, minute)
-    if (record === undefined) return
-    event.preventDefault()
-    onBlockEdit(day, record)
-  }, [records, day, onBlockEdit])
 
   return (
     <div className="tb-day" data-day={day} style={{ height }}>
@@ -146,22 +106,26 @@ const DayColumn = memo(function DayColumn({
           <span key={hour} className={nowMin !== undefined && hour === Math.floor(nowMin / 60) ? 'now' : ''} style={{ top: hour * rowH + 4 }}>{hour}:00</span>
         ))}
       </div>
-      <div className="tb-grid" data-day={day} style={{ height }}>
-        <div className="tb-cells" style={{ gridAutoRows: `${rowH}px` }} onPointerDown={onCellDown} onContextMenu={onCellContextMenu}>
+      <div className="tb-grid" data-day={day} style={{ height }} onPointerDown={onCellDown} onContextMenu={onCellContextMenu}>
+        <div className="tb-cells" style={{ gridAutoRows: `${rowH}px` }}>
           {cells.map(cell => (
             <div key={cell.minute} className={`tb-cell${cell.last ? ' hourlast' : ''}`} data-day={day} data-min={cell.minute} />
           ))}
         </div>
         <div className="tb-blocks">
           {rows.map(({ minute, record, count }) => {
-            const label = record.note === undefined || record.note === '' ? tagName(record.timeTagId) : record.note
+            /** 画布上的块内文字恒为标签名；备注只出现在 tooltip 与详情 sheet 里。 */
+            const name = tagName(record.timeTagId)
+            const note = record.note?.trim() ?? ''
             const tooltip = count > 1
-              ? `${label} · 另有 ${count - 1} 条并行记录`
-              : record.note === undefined || record.note === '' ? tagName(record.timeTagId) : `${tagName(record.timeTagId)} · ${record.note}`
+              ? `${name}${note === '' ? '' : ` · ${note}`} · 另有 ${count - 1} 条并行记录`
+              : note === '' ? name : `${name} · ${note}`
             return (
               <div
                 key={`${record.id}:${minute}`}
                 className="tb-blk"
+                data-day={day}
+                data-min={minute}
                 style={{
                   left: `${(((minute % 60) / CELL) / PER_HOUR) * 100}%`,
                   width: `${100 / PER_HOUR}%`,
@@ -171,26 +135,23 @@ const DayColumn = memo(function DayColumn({
                 }}
                 title={tooltip}
               >
-                {minute === firstShown.get(record.id) && <span>{label}</span>}
+                {minute === firstShown.get(record.id) && <span>{name}</span>}
               </div>
             )
           })}
+          {/* 数量角标只是视觉指示：不可点、不抢块的手势。 */}
           {rows.filter(cell => cell.count > 1).map(cell => (
-            <button
+            <span
               key={`more:${cell.minute}`}
-              type="button"
               className="tb-more"
+              aria-hidden="true"
               style={{
                 left: `calc(${((((cell.minute % 60) / CELL) + 1) / PER_HOUR) * 100}% - 14px)`,
                 top: Math.floor(cell.minute / 60) * rowH,
               }}
-              aria-label={`${cell.count} 条并行记录`}
-              title={`${cell.count} 条并行记录`}
-              onPointerDown={event => { event.stopPropagation(); event.preventDefault() }}
-              onClick={event => { event.stopPropagation(); setOpenMinute(cell.minute) }}
             >
               {countGlyph(cell.count)}
-            </button>
+            </span>
           ))}
         </div>
         <div className="tb-lines" aria-hidden="true" style={{ gridAutoRows: `${rowH}px` }}>
@@ -228,39 +189,13 @@ const DayColumn = memo(function DayColumn({
             />
           )}
         </div>
-        {openMinute !== null && openRecords.length > 1 && (
-          <div
-            className="tb-pop"
-            role="dialog"
-            aria-label={`${openRecords.length} 条并行记录`}
-            style={{ top: Math.floor(openMinute / 60) * rowH + rowH + 4 }}
-            onPointerDown={event => event.stopPropagation()}
-          >
-            <div className="tb-pop-title">{openRecords.length} 条并行记录</div>
-            {openRecords.map(record => (
-              <button
-                key={record.id}
-                type="button"
-                className="tb-pop-row"
-                onClick={() => {
-                  setOpenMinute(null)
-                  onBlockEdit(day, record)
-                }}
-              >
-                <i style={{ background: tagColor(record.timeTagId) }} />
-                <span>{record.note === undefined || record.note === '' ? tagName(record.timeTagId) : record.note}</span>
-                <time>{clock(record.start)}–{clock(record.end)}</time>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   )
 })
 
 export function TimeCanvas(props: Props) {
-  const { layer, days, today, nowMinute, focus, onExtend, onTopDateChange, records, tags, onAssign, onEdit } = props
+  const { layer, days, today, nowMinute, focus, onExtend, onTopDateChange, records, tags, onAssign, onOpen } = props
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef<DragState | null>(null)
   const selectedRef = useRef<Map<string, Set<number>>>(new Map())
@@ -378,25 +313,44 @@ export function TimeCanvas(props: Props) {
     writeSelection(next)
   }, [writeSelection])
 
+  const clearSelection = useCallback(() => writeSelection(new Map()), [writeSelection])
+
+  /** 空格与记录块共用一次 pointerdown：块上的短按与拖动都从选区手势开始。 */
   const onCellDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement
+    const target = (event.target as HTMLElement).closest<HTMLElement>('[data-day][data-min]')
+    if (target === null) return
     const date = target.dataset.day
     const minute = Number(target.dataset.min)
     if (date === undefined || !Number.isFinite(minute)) return
     event.preventDefault()
+    const fromBlock = target.closest('.tb-blk') !== null
     const current = selectedRef.current.get(date)
     const wasSelected = current?.has(minute) ?? false
-    dragRef.current = { date, minute, moved: false, wasSelected }
+    dragRef.current = { date, minute, moved: false, wasSelected, fromBlock }
     if (!wasSelected) setDayMinutes(date, [...(current ?? []), minute])
   }, [setDayMinutes])
+
+  /** 右键仍可打开记录详情；与单击走同一个入口。 */
+  const onCellContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const target = (event.target as HTMLElement).closest<HTMLElement>('[data-day][data-min]')
+    if (target === null) return
+    const date = target.dataset.day
+    const minute = Number(target.dataset.min)
+    if (date === undefined || !Number.isFinite(minute)) return
+    const list = records.get(date) ?? []
+    if (!list.some(record => record.start <= minute && minute < record.end)) return
+    event.preventDefault()
+    clearSelection()
+    onOpen(date, minute)
+  }, [clearSelection, onOpen, records])
 
   useEffect(() => {
     const move = (event: PointerEvent) => {
       const drag = dragRef.current
       if (drag === null) return
-      const target = event.target as HTMLElement | null
-      const date = target?.dataset?.day
-      const minute = Number(target?.dataset?.min)
+      const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-day][data-min]')
+      const date = target?.dataset.day
+      const minute = Number(target?.dataset.min)
       if (date === undefined || date !== drag.date || !Number.isFinite(minute)) return
       if (!drag.moved && minute === drag.minute) return
       drag.moved = true
@@ -408,7 +362,14 @@ export function TimeCanvas(props: Props) {
       const drag = dragRef.current
       if (drag === null) return
       dragRef.current = null
-      if (drag.moved || !drag.wasSelected) return
+      // 短按记录块：不切换选区，直接打开详情并清空选区；拖动结束则不触发。
+      if (drag.moved) return
+      if (drag.fromBlock) {
+        clearSelection()
+        onOpen(drag.date, drag.minute)
+        return
+      }
+      if (!drag.wasSelected) return
       const current = selectedRef.current.get(drag.date) ?? new Set<number>()
       setDayMinutes(drag.date, [...current].filter(minute => minute !== drag.minute))
     }
@@ -418,9 +379,7 @@ export function TimeCanvas(props: Props) {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
     }
-  }, [setDayMinutes])
-
-  const clearSelection = useCallback(() => writeSelection(new Map()), [writeSelection])
+  }, [clearSelection, onOpen, setDayMinutes])
 
   const runs = useMemo(() => {
     const list: Run[] = []
@@ -478,11 +437,6 @@ export function TimeCanvas(props: Props) {
     clearSelection()
   }
 
-  const handleBlockEdit = useCallback((date: string, record: DayRecord) => {
-    clearSelection()
-    onEdit(date, record)
-  }, [clearSelection, onEdit])
-
   const nowMin = days.includes(today) ? nowMinute : undefined
 
   return (
@@ -504,7 +458,7 @@ export function TimeCanvas(props: Props) {
                   tagName={tagName}
                   tagColor={tagColor}
                   onCellDown={onCellDown}
-                  onBlockEdit={handleBlockEdit}
+                  onCellContextMenu={onCellContextMenu}
                 />
               ))}
             </div>

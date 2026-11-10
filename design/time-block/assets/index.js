@@ -15115,44 +15115,186 @@
       ] })
     ] });
   }
-  function RecordSheet({ target, busy, onClose, onSave, onDelete }) {
-    const [note, setNote] = (0, import_react4.useState)(target.record.note ?? "");
+  var NOTE_DEBOUNCE_MS = 400;
+  var DISMISS_DRAG_PX = 64;
+  function weekdayLabel(date) {
+    return WEEKDAY_LABELS[weekdayOf(date) - 1];
+  }
+  function noteOf(record) {
+    return record.note ?? "";
+  }
+  function RecordsSheet({
+    target,
+    records,
+    tagName,
+    tagColor,
+    busy,
+    onClose,
+    onBack,
+    onOpenRecord,
+    onNoteChange,
+    onDelete
+  }) {
+    const record = target.recordId === void 0 ? void 0 : records.find((item) => item.id === target.recordId);
+    const hasParent = records.length > 1;
+    const [note, setNote] = (0, import_react4.useState)(() => record === void 0 ? "" : noteOf(record));
+    const noteRef = (0, import_react4.useRef)(note);
+    noteRef.current = note;
+    const savedRef = (0, import_react4.useRef)(note);
+    const noteSaveRef = (0, import_react4.useRef)(onNoteChange);
+    noteSaveRef.current = onNoteChange;
+    const closeRef = (0, import_react4.useRef)(onClose);
+    closeRef.current = onClose;
+    const recordId = record?.id;
+    const [openRecordId, setOpenRecordId] = (0, import_react4.useState)(recordId);
+    if (openRecordId !== recordId) {
+      setOpenRecordId(recordId);
+      const value = record === void 0 ? "" : noteOf(record);
+      setNote(value);
+      noteRef.current = value;
+      savedRef.current = value;
+    }
+    (0, import_react4.useEffect)(() => {
+      if (record === void 0 || busy) return;
+      if (note === savedRef.current) return;
+      const timer = window.setTimeout(() => {
+        savedRef.current = note;
+        noteSaveRef.current(record, note === "" ? void 0 : note);
+      }, NOTE_DEBOUNCE_MS);
+      return () => {
+        window.clearTimeout(timer);
+      };
+    }, [busy, note, record]);
+    const flush = (0, import_react4.useCallback)(() => {
+      if (record === void 0) return;
+      if (noteRef.current === savedRef.current) return;
+      savedRef.current = noteRef.current;
+      noteSaveRef.current(record, noteRef.current === "" ? void 0 : noteRef.current);
+    }, [record]);
+    const dismiss = (0, import_react4.useCallback)(() => {
+      flush();
+      closeRef.current();
+    }, [flush]);
+    const back = (0, import_react4.useCallback)(() => {
+      flush();
+      onBack();
+    }, [flush, onBack]);
     (0, import_react4.useEffect)(() => {
       const onKey = (event) => {
-        if (event.key === "Escape") onClose();
+        if (event.key === "Escape") dismiss();
       };
       window.addEventListener("keydown", onKey);
       return () => {
         window.removeEventListener("keydown", onKey);
       };
-    }, [onClose]);
-    return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "tb-sheet on", role: "dialog", "aria-label": "\u7F16\u8F91\u5907\u6CE8", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "grab" }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "row", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "time", children: [
-          clock(target.record.start),
-          " \u2013 ",
-          clock(target.record.end)
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "dur", children: durationLabel(target.record.end - target.record.start) })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
-        "input",
+    }, [dismiss]);
+    const [dragOffset, setDragOffset] = (0, import_react4.useState)(0);
+    const offsetRef = (0, import_react4.useRef)(0);
+    const onGrabDown = (event) => {
+      event.preventDefault();
+      const startY = event.clientY;
+      const move = (pointer) => {
+        const offset = Math.max(0, pointer.clientY - startY);
+        offsetRef.current = offset;
+        setDragOffset(offset);
+      };
+      const up = () => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        const offset = offsetRef.current;
+        offsetRef.current = 0;
+        setDragOffset(0);
+        if (offset >= DISMISS_DRAG_PX) dismiss();
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    };
+    return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_jsx_runtime6.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "tb-sheet-scrim", onClick: dismiss }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
+        "div",
         {
-          className: "tb-note",
-          placeholder: "\u5907\u6CE8\uFF08\u53EF\u7A7A\uFF09",
-          value: note,
-          autoFocus: true,
-          onChange: (event) => setNote(event.target.value),
-          onKeyDown: (event) => {
-            if (event.key === "Enter") onSave(note === "" ? void 0 : note);
-          }
+          className: "tb-sheet on",
+          role: "dialog",
+          "aria-label": record === void 0 ? `${records.length} \u6761\u5E76\u884C\u8BB0\u5F55` : "\u8BB0\u5F55\u8BE6\u60C5",
+          style: dragOffset > 0 ? { transform: `translateY(${dragOffset}px)`, transition: "none" } : void 0,
+          children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "grab", role: "separator", "aria-label": "\u5411\u4E0B\u62D6\u52A8\u5173\u95ED", onPointerDown: onGrabDown }),
+            record === void 0 ? /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_jsx_runtime6.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "tb-sheet-head", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "tb-sheet-title", children: [
+                  records.length,
+                  " \u6761\u5E76\u884C\u8BB0\u5F55"
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "tb-sheet-sub", children: [
+                  weekdayLabel(target.date),
+                  " ",
+                  clock(target.minute)
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "tb-sheet-close", type: "button", "aria-label": "\u5173\u95ED", onClick: dismiss, children: "\xD7" })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "tb-sheet-body", children: records.map((item) => {
+                const itemNote = noteOf(item);
+                return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
+                  "button",
+                  {
+                    className: "tb-sheet-row",
+                    type: "button",
+                    onClick: () => onOpenRecord(item.id),
+                    children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("i", { className: "dot", style: { background: tagColor(item.timeTagId) } }),
+                      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "nm", children: tagName(item.timeTagId) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("time", { children: [
+                        clock(item.start),
+                        "\u2013",
+                        clock(item.end)
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "dur", children: durationLabel(item.end - item.start) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "arrow", "aria-hidden": "true", children: "\u203A" }),
+                      itemNote !== "" && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "note-line", children: itemNote })
+                    ]
+                  },
+                  item.id
+                );
+              }) })
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_jsx_runtime6.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "tb-sheet-head", children: [
+                hasParent && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("button", { className: "tb-sheet-back", type: "button", "aria-label": `\u8FD4\u56DE ${records.length} \u6761\u8BB0\u5F55`, onClick: back, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "chev", "aria-hidden": "true", children: "\u2039" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { children: [
+                    records.length,
+                    " \u6761\u8BB0\u5F55"
+                  ] })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("i", { className: "dot", style: { background: tagColor(record.timeTagId) } }),
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "tb-sheet-title", children: tagName(record.timeTagId) }),
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "tb-sheet-close", type: "button", "aria-label": "\u5173\u95ED", onClick: dismiss, children: "\xD7" })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "tb-sheet-meta", children: [
+                weekdayLabel(target.date),
+                " ",
+                clock(record.start),
+                " \u2013 ",
+                clock(record.end),
+                " \xB7 ",
+                durationLabel(record.end - record.start)
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "tb-sheet-body", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+                "input",
+                {
+                  className: "tb-note",
+                  placeholder: "\u6DFB\u52A0\u5907\u6CE8\uFF08\u8F93\u5165\u5373\u4FDD\u5B58\uFF09",
+                  "aria-label": "\u5907\u6CE8",
+                  value: note,
+                  autoFocus: true,
+                  onChange: (event) => setNote(event.target.value)
+                }
+              ) }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "tb-sheet-actions", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "tb-del", type: "button", disabled: busy, onClick: () => onDelete(record), children: "\u5220\u9664\u8BB0\u5F55" }) })
+            ] })
+          ]
         }
-      ),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "tb-acts", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "tb-btn danger", type: "button", disabled: busy, onClick: onDelete, children: "\u5220\u9664" }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "tb-btn primary", type: "button", disabled: busy, onClick: () => onSave(note === "" ? void 0 : note), children: "\u5B8C\u6210" })
-      ] })
+      )
     ] });
   }
   var FALLBACK_COLOR = "#477bc7";
@@ -15235,7 +15377,7 @@
     tagName,
     tagColor,
     onCellDown,
-    onBlockEdit
+    onCellContextMenu
   }) {
     const date = /* @__PURE__ */ new Date(`${day}T12:00:00`);
     const height = 24 * rowH;
@@ -15245,47 +15387,11 @@
     }));
     const selRuns = selected === void 0 ? [] : splitByHour(runsOf(day, [...selected]));
     const rows = (0, import_react5.useMemo)(() => cellRecords(records), [records]);
-    const [openMinute, setOpenMinute] = (0, import_react5.useState)(null);
     const firstShown = (0, import_react5.useMemo)(() => {
       const first = /* @__PURE__ */ new Map();
       for (const cell of rows) if (!first.has(cell.record.id)) first.set(cell.record.id, cell.minute);
       return first;
     }, [rows]);
-    const openRecords = (0, import_react5.useMemo)(() => {
-      if (openMinute === null) return [];
-      return records.filter((record) => record.start <= openMinute && openMinute < record.end).sort((left, right) => left.start - right.start || left.id - right.id);
-    }, [records, openMinute]);
-    (0, import_react5.useEffect)(() => {
-      if (openMinute === null) return;
-      const close = (event) => {
-        const target = event.target;
-        if (target.closest(".tb-pop") !== null || target.closest(".tb-more") !== null) return;
-        setOpenMinute(null);
-      };
-      const onKey = (event) => {
-        if (event.key === "Escape") setOpenMinute(null);
-      };
-      window.addEventListener("pointerdown", close);
-      window.addEventListener("keydown", onKey);
-      return () => {
-        window.removeEventListener("pointerdown", close);
-        window.removeEventListener("keydown", onKey);
-      };
-    }, [openMinute]);
-    (0, import_react5.useEffect)(() => {
-      if (openMinute === null) return;
-      const cell = rows.find((item) => item.minute === openMinute);
-      if (cell === void 0 || cell.count < 2) setOpenMinute(null);
-    }, [rows, openMinute]);
-    const onCellContextMenu = (0, import_react5.useCallback)((event) => {
-      const target = event.target;
-      const minute = Number(target.dataset.min);
-      if (!Number.isFinite(minute)) return;
-      const record = recordAt(records, minute);
-      if (record === void 0) return;
-      event.preventDefault();
-      onBlockEdit(day, record);
-    }, [records, day, onBlockEdit]);
     return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-day", "data-day": day, style: { height }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "tb-gutter", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: `tb-datemark${day === today ? " today" : ""}`, children: [
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "m", children: MONTH_LABELS[date.getMonth()] }),
@@ -15297,16 +15403,19 @@
         hour,
         ":00"
       ] }, hour)) }),
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-grid", "data-day": day, style: { height }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "tb-cells", style: { gridAutoRows: `${rowH}px` }, onPointerDown: onCellDown, onContextMenu: onCellContextMenu, children: cells.map((cell) => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: `tb-cell${cell.last ? " hourlast" : ""}`, "data-day": day, "data-min": cell.minute }, cell.minute)) }),
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-grid", "data-day": day, style: { height }, onPointerDown: onCellDown, onContextMenu: onCellContextMenu, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "tb-cells", style: { gridAutoRows: `${rowH}px` }, children: cells.map((cell) => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: `tb-cell${cell.last ? " hourlast" : ""}`, "data-day": day, "data-min": cell.minute }, cell.minute)) }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-blocks", children: [
           rows.map(({ minute, record, count }) => {
-            const label = record.note === void 0 || record.note === "" ? tagName(record.timeTagId) : record.note;
-            const tooltip = count > 1 ? `${label} \xB7 \u53E6\u6709 ${count - 1} \u6761\u5E76\u884C\u8BB0\u5F55` : record.note === void 0 || record.note === "" ? tagName(record.timeTagId) : `${tagName(record.timeTagId)} \xB7 ${record.note}`;
+            const name = tagName(record.timeTagId);
+            const note = record.note?.trim() ?? "";
+            const tooltip = count > 1 ? `${name}${note === "" ? "" : ` \xB7 ${note}`} \xB7 \u53E6\u6709 ${count - 1} \u6761\u5E76\u884C\u8BB0\u5F55` : note === "" ? name : `${name} \xB7 ${note}`;
             return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
               "div",
               {
                 className: "tb-blk",
+                "data-day": day,
+                "data-min": minute,
                 style: {
                   left: `${minute % 60 / CELL / PER_HOUR * 100}%`,
                   width: `${100 / PER_HOUR}%`,
@@ -15315,29 +15424,19 @@
                   backgroundColor: tagColor(record.timeTagId)
                 },
                 title: tooltip,
-                children: minute === firstShown.get(record.id) && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { children: label })
+                children: minute === firstShown.get(record.id) && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { children: name })
               },
               `${record.id}:${minute}`
             );
           }),
           rows.filter((cell) => cell.count > 1).map((cell) => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
-            "button",
+            "span",
             {
-              type: "button",
               className: "tb-more",
+              "aria-hidden": "true",
               style: {
                 left: `calc(${(cell.minute % 60 / CELL + 1) / PER_HOUR * 100}% - 14px)`,
                 top: Math.floor(cell.minute / 60) * rowH
-              },
-              "aria-label": `${cell.count} \u6761\u5E76\u884C\u8BB0\u5F55`,
-              title: `${cell.count} \u6761\u5E76\u884C\u8BB0\u5F55`,
-              onPointerDown: (event) => {
-                event.stopPropagation();
-                event.preventDefault();
-              },
-              onClick: (event) => {
-                event.stopPropagation();
-                setOpenMinute(cell.minute);
               },
               children: countGlyph(cell.count)
             },
@@ -15375,49 +15474,12 @@
               }
             }
           )
-        ] }),
-        openMinute !== null && openRecords.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
-          "div",
-          {
-            className: "tb-pop",
-            role: "dialog",
-            "aria-label": `${openRecords.length} \u6761\u5E76\u884C\u8BB0\u5F55`,
-            style: { top: Math.floor(openMinute / 60) * rowH + rowH + 4 },
-            onPointerDown: (event) => event.stopPropagation(),
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-pop-title", children: [
-                openRecords.length,
-                " \u6761\u5E76\u884C\u8BB0\u5F55"
-              ] }),
-              openRecords.map((record) => /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
-                "button",
-                {
-                  type: "button",
-                  className: "tb-pop-row",
-                  onClick: () => {
-                    setOpenMinute(null);
-                    onBlockEdit(day, record);
-                  },
-                  children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("i", { style: { background: tagColor(record.timeTagId) } }),
-                    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { children: record.note === void 0 || record.note === "" ? tagName(record.timeTagId) : record.note }),
-                    /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("time", { children: [
-                      clock(record.start),
-                      "\u2013",
-                      clock(record.end)
-                    ] })
-                  ]
-                },
-                record.id
-              ))
-            ]
-          }
-        )
+        ] })
       ] })
     ] });
   });
   function TimeCanvas(props) {
-    const { layer, days, today, nowMinute, focus, onExtend, onTopDateChange, records, tags, onAssign, onEdit } = props;
+    const { layer, days, today, nowMinute, focus, onExtend, onTopDateChange, records, tags, onAssign, onOpen } = props;
     const scrollRef = (0, import_react5.useRef)(null);
     const dragRef = (0, import_react5.useRef)(null);
     const selectedRef = (0, import_react5.useRef)(/* @__PURE__ */ new Map());
@@ -15525,24 +15587,39 @@
       else next.set(date, new Set(minutes));
       writeSelection(next);
     }, [writeSelection]);
+    const clearSelection = (0, import_react5.useCallback)(() => writeSelection(/* @__PURE__ */ new Map()), [writeSelection]);
     const onCellDown = (0, import_react5.useCallback)((event) => {
-      const target = event.target;
+      const target = event.target.closest("[data-day][data-min]");
+      if (target === null) return;
       const date = target.dataset.day;
       const minute = Number(target.dataset.min);
       if (date === void 0 || !Number.isFinite(minute)) return;
       event.preventDefault();
+      const fromBlock = target.closest(".tb-blk") !== null;
       const current = selectedRef.current.get(date);
       const wasSelected = current?.has(minute) ?? false;
-      dragRef.current = { date, minute, moved: false, wasSelected };
+      dragRef.current = { date, minute, moved: false, wasSelected, fromBlock };
       if (!wasSelected) setDayMinutes(date, [...current ?? [], minute]);
     }, [setDayMinutes]);
+    const onCellContextMenu = (0, import_react5.useCallback)((event) => {
+      const target = event.target.closest("[data-day][data-min]");
+      if (target === null) return;
+      const date = target.dataset.day;
+      const minute = Number(target.dataset.min);
+      if (date === void 0 || !Number.isFinite(minute)) return;
+      const list = records.get(date) ?? [];
+      if (!list.some((record) => record.start <= minute && minute < record.end)) return;
+      event.preventDefault();
+      clearSelection();
+      onOpen(date, minute);
+    }, [clearSelection, onOpen, records]);
     (0, import_react5.useEffect)(() => {
       const move = (event) => {
         const drag = dragRef.current;
         if (drag === null) return;
-        const target = event.target;
-        const date = target?.dataset?.day;
-        const minute = Number(target?.dataset?.min);
+        const target = event.target?.closest("[data-day][data-min]");
+        const date = target?.dataset.day;
+        const minute = Number(target?.dataset.min);
         if (date === void 0 || date !== drag.date || !Number.isFinite(minute)) return;
         if (!drag.moved && minute === drag.minute) return;
         drag.moved = true;
@@ -15554,7 +15631,13 @@
         const drag = dragRef.current;
         if (drag === null) return;
         dragRef.current = null;
-        if (drag.moved || !drag.wasSelected) return;
+        if (drag.moved) return;
+        if (drag.fromBlock) {
+          clearSelection();
+          onOpen(drag.date, drag.minute);
+          return;
+        }
+        if (!drag.wasSelected) return;
         const current = selectedRef.current.get(drag.date) ?? /* @__PURE__ */ new Set();
         setDayMinutes(drag.date, [...current].filter((minute) => minute !== drag.minute));
       };
@@ -15564,8 +15647,7 @@
         window.removeEventListener("pointermove", move);
         window.removeEventListener("pointerup", up);
       };
-    }, [setDayMinutes]);
-    const clearSelection = (0, import_react5.useCallback)(() => writeSelection(/* @__PURE__ */ new Map()), [writeSelection]);
+    }, [clearSelection, onOpen, setDayMinutes]);
     const runs = (0, import_react5.useMemo)(() => {
       const list = [];
       for (const [date, minutes] of selected) list.push(...runsOf(date, [...minutes]));
@@ -15617,10 +15699,6 @@
       onAssign(runs, tagId, parallel ? "parallel" : "overwrite");
       clearSelection();
     };
-    const handleBlockEdit = (0, import_react5.useCallback)((date, record) => {
-      clearSelection();
-      onEdit(date, record);
-    }, [clearSelection, onEdit]);
     const nowMin = days.includes(today) ? nowMinute : void 0;
     return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_jsx_runtime8.Fragment, { children: [
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "tb-tb", children: [
@@ -15639,7 +15717,7 @@
                 tagName,
                 tagColor,
                 onCellDown,
-                onBlockEdit: handleBlockEdit
+                onCellContextMenu
               },
               day
             )) }),
@@ -15950,25 +16028,14 @@
 .tb-lines i:nth-child(6n) { border-right: 0; }
 .tb-blk { position: absolute; overflow: hidden; display: flex; align-items: center; padding: 0 4px;
   font-size: var(--tb-font-caption, 10px); font-weight: 600; letter-spacing: .1px; color: #fff; white-space: nowrap;
-}
+  pointer-events: auto; cursor: pointer; }
 .tb-blk span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Overlap stays in the data but not in the cell: one record plus a count badge. */
-/* A bare superscript keeps the badge quiet on top of the tag colour. */
+/* A bare superscript keeps the badge quiet on top of the tag colour; it is a marker, not a control. */
 .tb-more { position: absolute; z-index: 4; width: 12px; height: 12px; display: grid; place-items: center; padding: 0;
   border: 0; background: transparent; color: #fff; font-size: 11px; font-weight: 700; line-height: 1;
   text-shadow: 0 1px 2px rgba(0, 0, 0, .55), 0 0 1px rgba(0, 0, 0, .6);
-  pointer-events: auto; cursor: pointer; opacity: .88; }
-.tb-more:hover { opacity: 1; }
-.tb-pop { position: absolute; z-index: 6; left: 6px; right: 6px; display: flex; flex-direction: column; gap: 1px;
-  padding: 5px; border: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); border-radius: 8px;
-  background: var(--tb-surface-raised, #1d2025); box-shadow: 0 10px 30px rgba(0, 0, 0, .42); pointer-events: auto; }
-.tb-pop-title { padding: 2px 6px 5px; color: var(--tb-text-tertiary, #727a88); font-size: var(--tb-font-caption, 10px); }
-.tb-pop-row { width: 100%; height: 28px; display: flex; align-items: center; gap: 7px; padding: 0 6px; border: 0; border-radius: 5px;
-  background: transparent; color: var(--tb-text-primary, #eceff3); font-size: var(--tb-font-label, 11px); text-align: left; }
-.tb-pop-row:hover { background: var(--tb-surface-hover, #252931); }
-.tb-pop-row i { width: 8px; height: 8px; flex: none; border-radius: 2px; }
-.tb-pop-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tb-pop-row time { margin-left: auto; flex: none; color: var(--tb-text-tertiary, #727a88); font-size: var(--tb-font-caption, 10px); font-variant-numeric: tabular-nums; }
+  pointer-events: none; opacity: .88; }
 .tb-selbox { position: absolute; box-shadow: inset 0 0 0 2px var(--tb-selection, #f4f7fb); pointer-events: none; }
 .tb-selbox i { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; }
 .tb-selbox i svg { width: 12px; height: 12px; color: var(--tb-text-primary, #eceff3); }
@@ -16044,30 +16111,46 @@
 .tb-smenu button svg { width: 12px; height: 12px; color: var(--tb-accent, #82aaff); opacity: 0; }
 .tb-smenu button.on svg { opacity: 1; }
 
-/* ---------- \u7F16\u8F91\u6D6E\u5C42 ---------- */
-.tb-sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 23; background: var(--tb-surface-raised, #1d2025);
-  border-top: 1px solid var(--tb-border-subtle, rgba(255, 255, 255, 0.07)); border-radius: 14px 14px 0 0; box-shadow: 0 14px 38px rgba(0, 0, 0, .38);
-  padding: 8px 12px 14px; max-height: 76%; overflow-y: auto;
+/* ---------- \u8BB0\u5F55\u8BE6\u60C5 sheet\uFF1A\u8BE6\u60C5/\u5217\u8868\u7684\u552F\u4E00\u5BB9\u5668\uFF0C\u4ECE\u53F3\u680F\u5E95\u90E8\u62C9\u8D77 ---------- */
+.tb-sheet-scrim { position: absolute; inset: 0; z-index: 22; background: rgba(0, 0, 0, .32); }
+.tb-sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 23; display: flex; flex-direction: column;
+  background: var(--tb-surface-raised, #1d2025);
+  border-top: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); border-radius: 14px 14px 0 0;
+  box-shadow: 0 -12px 34px rgba(0, 0, 0, .5); max-height: 78%;
   transform: translateY(101%); transition: transform .24s cubic-bezier(.32, .72, 0, 1); }
 .tb-sheet.on { transform: none; }
-.tb-sheet .grab { width: 34px; height: 4px; border-radius: 2px; background: var(--tb-border-strong, rgba(255, 255, 255, 0.14)); margin: 0 auto 11px; }
-.tb-sheet .row { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
-.tb-sheet .time { font-size: var(--tb-font-title, 15px); font-weight: 600; font-variant-numeric: tabular-nums; }
-.tb-sheet .dur { font-size: var(--tb-font-label, 11px); color: var(--tb-text-tertiary, #727a88); background: var(--tb-surface-hover, #252931); border-radius: 4px; padding: 1px 6px; }
-.tb-sheet .grow { flex: 1; }
-.tb-step { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); color: var(--tb-text-secondary, #a3a9b4);
-  font-size: 14px; line-height: 1; padding: 0; }
-.tb-step:hover { background: var(--tb-surface-hover, #252931); color: var(--tb-text-primary, #eceff3); }
-.tb-picks { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 10px; }
-.tb-picks button { height: 25px; border-radius: 5px; padding: 0 9px; font-size: var(--tb-font-label, 11px); color: #fff; opacity: .5; }
-.tb-picks button.on { opacity: 1; box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px var(--tb-accent, #82aaff); }
-.tb-note { width: 100%; height: 30px; border-radius: 7px; border: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); background: var(--tb-surface-hover, #252931);
-  color: var(--tb-text-primary, #eceff3); font-size: var(--tb-font-body, 12px); padding: 0 9px; margin-bottom: 10px; }
+.tb-sheet .grab { flex: none; width: 34px; height: 4px; border-radius: 2px; background: var(--tb-border-strong, rgba(255, 255, 255, 0.14));
+  margin: 7px auto 2px; cursor: grab; touch-action: none; }
+.tb-sheet .grab:active { cursor: grabbing; }
+.tb-sheet-head { flex: none; display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 4px 12px 8px; }
+.tb-sheet-title { font-size: var(--tb-font-title, 15px); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-sheet-sub { flex: none; color: var(--tb-text-tertiary, #727a88); font-size: var(--tb-font-caption, 10px); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tb-sheet .dot { width: 10px; height: 10px; flex: none; border-radius: 2px; }
+.tb-sheet-close { margin-left: auto; width: 24px; height: 24px; flex: none; padding: 0; border-radius: 6px;
+  color: var(--tb-text-secondary, #a3a9b4); font-size: 16px; line-height: 1; }
+.tb-sheet-close:hover { background: var(--tb-surface-hover, #252931); color: var(--tb-text-primary, #eceff3); }
+.tb-sheet-back { display: flex; align-items: center; gap: 4px; flex: none; min-height: 30px; padding: 0 6px 0 2px;
+  border-radius: 7px; color: var(--tb-text-secondary, #a3a9b4); font-size: var(--tb-font-label, 11px); }
+.tb-sheet-back:hover { color: var(--tb-text-primary, #eceff3); }
+.tb-sheet-back .chev { font-size: 19px; line-height: 1; margin-top: -1px; }
+.tb-sheet-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 12px; }
+.tb-sheet-row { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding: 7px 6px; border-radius: 7px;
+  color: var(--tb-text-primary, #eceff3); font-size: var(--tb-font-body, 12px); text-align: left; }
+.tb-sheet-row:hover { background: var(--tb-surface-hover, #252931); }
+.tb-sheet-row .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-sheet-row time { margin-left: auto; flex: none; color: var(--tb-text-secondary, #a3a9b4); font-size: var(--tb-font-caption, 10px); font-variant-numeric: tabular-nums; }
+.tb-sheet-row .dur { flex: none; color: var(--tb-text-tertiary, #727a88); font-size: var(--tb-font-caption, 10px); }
+.tb-sheet-row .arrow { flex: none; width: 10px; color: var(--tb-text-tertiary, #727a88); font-size: 12px; text-align: center; }
+.tb-sheet-row .note-line { flex-basis: 100%; padding-left: 17px; color: var(--tb-text-secondary, #a3a9b4); font-size: var(--tb-font-caption, 10px);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-sheet-meta { flex: none; padding: 0 14px 10px; color: var(--tb-text-secondary, #a3a9b4); font-size: var(--tb-font-label, 11px); font-variant-numeric: tabular-nums; }
+.tb-note { width: 100%; height: 34px; border-radius: 8px; border: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14));
+  background: var(--tb-surface-rail, #151515); color: var(--tb-text-primary, #eceff3); font-size: var(--tb-font-body, 12px); padding: 0 10px; }
 .tb-note::placeholder { color: var(--tb-text-tertiary, #727a88); }
-.tb-acts { display: flex; gap: 8px; }
-.tb-btn { height: 31px; flex: 1; border-radius: 7px; border: 1px solid var(--tb-border-strong, rgba(255, 255, 255, 0.14)); background: var(--tb-surface-hover, #252931); color: var(--tb-text-primary, #eceff3); font-size: var(--tb-font-body, 12px); }
-.tb-btn.primary { background: var(--tb-text-primary, #eceff3); color: var(--tb-surface-rail, #16181c); border-color: transparent; font-weight: 600; }
-.tb-btn.danger { color: var(--tb-danger, #ef8c84); border-color: color-mix(in srgb, var(--tb-danger, #ef8c84) 40%, transparent); }
+.tb-sheet-actions { flex: none; display: flex; justify-content: flex-end; padding: 2px 14px 14px; }
+.tb-del { padding: 6px 0; color: var(--tb-danger, #ef8c84); font-size: var(--tb-font-label, 11px); }
+.tb-del:hover { text-decoration: underline; }
+.tb-del:disabled { opacity: .4; cursor: default; }
 
 /* ---------- toast ---------- */
 .tb-toast { position: absolute; left: 50%; bottom: 16px; transform: translate(-50%, 6px); z-index: 30;
@@ -16241,7 +16324,7 @@
           rememberAnswer(next);
           setError("");
         }
-        say(message);
+        if (message !== void 0) say(message);
         return true;
       } catch (reason) {
         const text = messageOf(reason);
@@ -16303,24 +16386,23 @@
         level === null ? "\u5DF2\u64E6\u9664" : "\u5DF2\u8BB0\u5F55"
       );
     }, [adapter, runWrite, weekStart]);
-    const saveSheet = (0, import_react.useCallback)(async (target, note) => {
-      const ok = await runWrite(
+    const saveNote = (0, import_react.useCallback)(async (target, record, note) => {
+      await runWrite(
         () => adapter.updateBlock({
           layer: target.layer,
-          id: indexes.block.string(target.record.id),
+          id: indexes.block.string(record.id),
           date: target.date,
-          start: target.record.start,
-          end: target.record.end,
-          tagId: indexes.tag.string(target.record.timeTagId),
+          start: record.start,
+          end: record.end,
+          tagId: indexes.tag.string(record.timeTagId),
           note
         }),
-        "\u5DF2\u4FDD\u5B58"
+        void 0
       );
-      if (ok) setSheet(void 0);
     }, [adapter, indexes, runWrite]);
-    const deleteSheet = (0, import_react.useCallback)(async (target) => {
+    const deleteRecord = (0, import_react.useCallback)(async (target, record) => {
       const ok = await runWrite(
-        () => adapter.deleteBlock({ layer: target.layer, id: indexes.block.string(target.record.id) }),
+        () => adapter.deleteBlock({ layer: target.layer, id: indexes.block.string(record.id) }),
         "\u5DF2\u5220\u9664"
       );
       if (ok) setSheet(void 0);
@@ -16378,6 +16460,27 @@
         plan: make(view?.blocks.plan ?? [])
       };
     }, [indexes, view]);
+    const tagNameOf = (0, import_react.useCallback)((id) => tags.find((tag) => tag.id === id)?.name ?? `\u6807\u7B7E ${id}`, [tags]);
+    const tagColorOf = (0, import_react.useCallback)((id) => tags.find((tag) => tag.id === id)?.color ?? "var(--tb-text-tertiary)", [tags]);
+    const sheetRecords = (0, import_react.useMemo)(() => {
+      if (sheet === void 0) return [];
+      const list = records[sheet.layer].get(sheet.date) ?? [];
+      return list.filter((record) => record.start <= sheet.minute && sheet.minute < record.end);
+    }, [records, sheet]);
+    const openCell = (0, import_react.useCallback)((date, minute) => {
+      const list = (records[layer].get(date) ?? []).filter((record) => record.start <= minute && minute < record.end);
+      if (list.length === 0) return;
+      setSheet(list.length === 1 ? { layer, date, minute, recordId: list[0].id } : { layer, date, minute });
+    }, [layer, records]);
+    const backToSheetList = (0, import_react.useCallback)(() => {
+      setSheet((current) => current === void 0 ? current : { layer: current.layer, date: current.date, minute: current.minute });
+    }, []);
+    const openSheetRecord = (0, import_react.useCallback)((recordId) => {
+      setSheet((current) => current === void 0 ? current : { ...current, recordId });
+    }, []);
+    (0, import_react.useEffect)(() => {
+      if (sheet !== void 0 && sheetRecords.length === 0) setSheet(void 0);
+    }, [sheet, sheetRecords.length]);
     const deepWeek = (0, import_react.useMemo)(() => view === void 0 ? void 0 : {
       weekStart: view.weekStart,
       source: view.deep.source,
@@ -16431,7 +16534,7 @@
                 tags,
                 busy,
                 onAssign: (runs, tagId, mode) => void paint(layer, runs, tagId, mode),
-                onEdit: (date, record) => setSheet({ layer, date, record })
+                onOpen: (date, minute) => openCell(date, minute)
               },
               module
             ) }),
@@ -16476,13 +16579,18 @@
             }
           ),
           sheet !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
-            RecordSheet,
+            RecordsSheet,
             {
               target: sheet,
+              records: sheetRecords,
+              tagName: tagNameOf,
+              tagColor: tagColorOf,
               busy,
               onClose: () => setSheet(void 0),
-              onSave: (note) => void saveSheet(sheet, note),
-              onDelete: () => void deleteSheet(sheet)
+              onBack: backToSheetList,
+              onOpenRecord: openSheetRecord,
+              onNoteChange: (record, note) => void saveNote(sheet, record, note),
+              onDelete: (record) => void deleteRecord(sheet, record)
             }
           ),
           /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Toast, { message: toast })
@@ -16540,6 +16648,7 @@
     block("a-09", FIXTURE_TODAY, 1140, 1180, "reading"),
     block("a-13", FIXTURE_TODAY, 570, 650, "learning", "\u901A\u52E4\u542C Git \u70ED\u699C"),
     block("a-14", FIXTURE_TODAY, 1150, 1180, "rest", "\u62C9\u4F38"),
+    block("a-15", FIXTURE_TODAY, 740, 800, "collaboration", "\u5348\u9910\u4F1A\u540C\u6B65"),
     block("a-10", FIXTURE_YESTERDAY, 550, 650, "focus"),
     block("a-11", FIXTURE_YESTERDAY, 650, 680, "collaboration"),
     block("a-12", FIXTURE_TOMORROW, 540, 570, "focus", "\u5DF2\u6709\u5B9E\u5F55\u793A\u4F8B")

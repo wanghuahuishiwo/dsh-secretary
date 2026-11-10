@@ -58,6 +58,7 @@ const actual: readonly TimeBlockView[] = [
   block('a-09', FIXTURE_TODAY, 1140, 1180, 'reading'),
   block('a-13', FIXTURE_TODAY, 570, 650, 'learning', '通勤听 Git 热榜'),
   block('a-14', FIXTURE_TODAY, 1150, 1180, 'rest', '拉伸'),
+  block('a-15', FIXTURE_TODAY, 740, 800, 'collaboration', '午餐会同步'),
   block('a-10', FIXTURE_YESTERDAY, 550, 650, 'focus'),
   block('a-11', FIXTURE_YESTERDAY, 650, 680, 'collaboration'),
   block('a-12', FIXTURE_TOMORROW, 540, 570, 'focus', '已有实录示例'),

@@ -5,7 +5,7 @@ import type {
 import { DatePicker } from './DatePicker.tsx'
 import { DeepWeekView } from './DeepWeekView.tsx'
 import { Drawer } from './Drawer.tsx'
-import { RecordSheet, type SheetTarget } from './RecordSheet.tsx'
+import { RecordsSheet, type SheetTarget } from './RecordsSheet.tsx'
 import { TimeCanvas } from './TimeCanvas.tsx'
 import { TimeHeader, dayLabel, weekLabel, type TimeModule } from './TimeHeader.tsx'
 import { Toast } from './Toast.tsx'
@@ -197,7 +197,7 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
   }, [adapter, anchor, range, rememberAnswer, say, weekStart])
 
   const runWrite = useCallback(async (
-    operation: () => Promise<TimeView>, message: string,
+    operation: () => Promise<TimeView>, message: string | undefined,
   ): Promise<boolean> => {
     const ticket = revision.current + 1
     revision.current = ticket
@@ -209,7 +209,8 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
         rememberAnswer(next)
         setError('')
       }
-      say(message)
+      // 备注自动保存不弹成功 Toast；只有失败的既有错误提示会说话。
+      if (message !== undefined) say(message)
       return true
     } catch (reason) {
       const text = messageOf(reason)
@@ -285,28 +286,26 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
     )
   }, [adapter, runWrite, weekStart])
 
-  const saveSheet = useCallback(async (
-    target: SheetTarget,
-    note: string | undefined,
-  ) => {
-    const ok = await runWrite(
+  /** 详情 sheet 的备注自动保存：沿用现有 updateBlock，不弹成功 Toast，失败由既有错误通道呈现。 */
+  const saveNote = useCallback(async (target: SheetTarget, record: DayRecord, note: string | undefined) => {
+    await runWrite(
       () => adapter.updateBlock({
         layer: target.layer,
-        id: indexes.block.string(target.record.id),
+        id: indexes.block.string(record.id),
         date: target.date,
-        start: target.record.start,
-        end: target.record.end,
-        tagId: indexes.tag.string(target.record.timeTagId),
+        start: record.start,
+        end: record.end,
+        tagId: indexes.tag.string(record.timeTagId),
         note,
       }),
-      '已保存',
+      undefined,
     )
-    if (ok) setSheet(undefined)
   }, [adapter, indexes, runWrite])
 
-  const deleteSheet = useCallback(async (target: SheetTarget) => {
+  /** 删除记录是详情里的次级文字操作；成功后才关闭整张 sheet。 */
+  const deleteRecord = useCallback(async (target: SheetTarget, record: DayRecord) => {
     const ok = await runWrite(
-      () => adapter.deleteBlock({ layer: target.layer, id: indexes.block.string(target.record.id) }),
+      () => adapter.deleteBlock({ layer: target.layer, id: indexes.block.string(record.id) }),
       '已删除',
     )
     if (ok) setSheet(undefined)
@@ -368,6 +367,42 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
     } as Readonly<Record<TimeLayer, ReadonlyMap<string, readonly DayRecord[]>>>
   }, [indexes, view])
 
+  /** 画布与记录 sheet 共用的标签解析；解析失败回退「标签 {id}」。 */
+  const tagNameOf = useCallback((id: number) => tags.find(tag => tag.id === id)?.name ?? `标签 ${id}`, [tags])
+  const tagColorOf = useCallback((id: number) => tags.find(tag => tag.id === id)?.color ?? 'var(--tb-text-tertiary)', [tags])
+
+  /** sheet 的列表内容：被点击的那一格此刻覆盖的全部记录。 */
+  const sheetRecords = useMemo(() => {
+    if (sheet === undefined) return []
+    const list = records[sheet.layer].get(sheet.date) ?? []
+    return list.filter(record => record.start <= sheet.minute && sheet.minute < record.end)
+  }, [records, sheet])
+
+  /** 点记录块：单条直接进详情，同格多条先拉出「N 条并行记录」列表。 */
+  const openCell = useCallback((date: string, minute: number) => {
+    const list = (records[layer].get(date) ?? []).filter(record => record.start <= minute && minute < record.end)
+    if (list.length === 0) return
+    setSheet(list.length === 1
+      ? { layer, date, minute, recordId: list[0].id }
+      : { layer, date, minute })
+  }, [layer, records])
+
+  /** 详情左上角返回列表：只降一层，保留列表层。 */
+  const backToSheetList = useCallback(() => {
+    setSheet(current => (
+      current === undefined ? current : { layer: current.layer, date: current.date, minute: current.minute }
+    ))
+  }, [])
+
+  const openSheetRecord = useCallback((recordId: number) => {
+    setSheet(current => (current === undefined ? current : { ...current, recordId }))
+  }, [])
+
+  // 记录被 Undo 或宿主推送移走时，整张 sheet 关闭而不是留下空壳。
+  useEffect(() => {
+    if (sheet !== undefined && sheetRecords.length === 0) setSheet(undefined)
+  }, [sheet, sheetRecords.length])
+
   const deepWeek = useMemo(() => view === undefined ? undefined : {
     weekStart: view.weekStart,
     source: view.deep.source,
@@ -414,7 +449,7 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
               layer={layer} days={view.days} today={today} nowMinute={now?.minute ?? view.nowMinute}
               focus={focus} onExtend={extendRange} onTopDateChange={setTopDate} records={records[layer]} tags={tags}
               busy={busy} onAssign={(runs, tagId, mode) => void paint(layer, runs, tagId, mode)}
-              onEdit={(date, record) => setSheet({ layer, date, record })}
+              onOpen={(date, minute) => openCell(date, minute)}
             />
           </section>
         )}
@@ -455,9 +490,17 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
       />
 
       {sheet !== undefined && (
-        <RecordSheet
-          target={sheet} busy={busy} onClose={() => setSheet(undefined)}
-          onSave={note => void saveSheet(sheet, note)} onDelete={() => void deleteSheet(sheet)}
+        <RecordsSheet
+          target={sheet}
+          records={sheetRecords}
+          tagName={tagNameOf}
+          tagColor={tagColorOf}
+          busy={busy}
+          onClose={() => setSheet(undefined)}
+          onBack={backToSheetList}
+          onOpenRecord={openSheetRecord}
+          onNoteChange={(record, note) => void saveNote(sheet, record, note)}
+          onDelete={record => void deleteRecord(sheet, record)}
         />
       )}
       <Toast message={toast} />
