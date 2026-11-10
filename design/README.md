@@ -59,9 +59,9 @@ OD 项目是「目录指针 + 项目级评审状态」，没有分支概念；�
 | 对象 | 规则 | 示例 |
 |---|---|---|
 | worktree 目录 | `~/workspace/dsh-secretary-wt-<branch-slug>`，`<branch-slug>` = 分支名里的 `/` 换成 `-` | 分支 `design/38-floating-detail` → `dsh-secretary-wt-design-38-floating-detail` |
-| 基线项目 | 主 checkout（`master`）注册的项目，保留不动 | `dsh-secretary 设计 · master` |
+| 基线项目 | 专用 `master` worktree（`~/workspace/dsh-secretary-wt-master`）注册，保留不动 | `dsh-secretary 设计 · master` |
 | 分支项目 | 一个 worktree 一个项目，名字 = 前缀 + 当前分支 | `dsh-secretary 设计 · design/38-floating-detail` |
-| 注册位置 | 只在 worktree 根执行 `pnpm --dir design od`；`/tmp`、`/var/folders` 会被拒绝 | — |
+| 注册位置 | 只在 worktree 根执行 `pnpm --dir design od`；`/tmp`、`/var/folders` 会被拒绝；不做 UI 的 worktree 不必注册 | — |
 | 评审状态 | 按项目隔离，跨分支不共享；设计结论必须随 PR 落到 `design/` | — |
 | 清理 | worktree 删除/分支合入后 `od project delete <id>`；脚本会列出僵尸项目 | — |
 
