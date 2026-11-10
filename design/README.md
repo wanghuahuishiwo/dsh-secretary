@@ -56,10 +56,16 @@ pnpm --dir design od
 
 OD 项目是「目录指针 + 项目级评审状态」，没有分支概念；我们的开发模式是「feature 分支 + 独立 worktree」。约定如下：
 
-- **一个 worktree = 一个 OD 项目**，项目名带当前分支：`dsh-secretary 设计 · <branch>`；`main`/`master` 的项目是设计基线。
-- **只在稳定路径注册**：worktree 放 `~/workspace/` 下；`/tmp`、`/var/folders` 会被脚本拒绝。
-- **评审状态按项目隔离**：同一分支反复迭代保留评论；跨分支不共享。设计结论必须随 PR 落到 `design/`，不能只活在某个 worktree 的 OD 项目里。
-- **worktree 生命周期跟随项目**：分支合入、worktree 删除后，用 `od project delete <id>` 清掉对应项目；脚本会提示指向已不存在目录的僵尸项目。
+| 对象 | 规则 | 示例 |
+|---|---|---|
+| worktree 目录 | `~/workspace/dsh-secretary-wt-<branch-slug>`，`<branch-slug>` = 分支名里的 `/` 换成 `-` | 分支 `design/38-floating-detail` → `dsh-secretary-wt-design-38-floating-detail` |
+| 基线项目 | 主 checkout（`master`）注册的项目，保留不动 | `dsh-secretary 设计 · master` |
+| 分支项目 | 一个 worktree 一个项目，名字 = 前缀 + 当前分支 | `dsh-secretary 设计 · design/38-floating-detail` |
+| 注册位置 | 只在 worktree 根执行 `pnpm --dir design od`；`/tmp`、`/var/folders` 会被拒绝 | — |
+| 评审状态 | 按项目隔离，跨分支不共享；设计结论必须随 PR 落到 `design/` | — |
+| 清理 | worktree 删除/分支合入后 `od project delete <id>`；脚本会列出僵尸项目 | — |
+
+并行开发时，两个 worktree 各自注册项目、各自构建预览，OD 里可同时打开两个项目做并行 UI 设计，评论互不串。
 
 ## 新增模块
 
