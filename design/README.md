@@ -67,6 +67,18 @@ OD 项目是「目录指针 + 项目级评审状态」，没有分支概念；�
 
 并行开发时，两个 worktree 各自注册项目、各自构建预览，OD 里可同时打开两个项目做并行 UI 设计，评论互不串。
 
+### OD 项目管理员（本机角色）
+
+OD daemon 只在本机可发现，项目创建/清理必须在运行 OpenDesign 的机器上完成，因此指定一个角色，避免人人乱建：
+
+| 项 | 规则 |
+|---|---|
+| 角色 | **Lead（本机）**：唯一负责创建、对账、清理 OD 项目；设计执行代理不建项目，只在 Lead 交付的项目里工作 |
+| 唯一入口 | `pnpm --dir design od`（在目标 worktree 根执行）；**禁止**在 OD 界面手动 import/create，也禁止裸调 `od project import-folder` |
+| 对账 | `node design/scripts/import-open-design.mjs --audit`：列出 项目 ↔ baseDir ↔ 分支 ↔ 健康状态，标记僵尸项目、名称不符（疑似手动创建）、未注册的工作树 |
+| 生命周期 | worktree 创建 → 管理员注册；worktree 删除/分支合入 → 管理员删除对应项目；删除用 OD 自带 `od project delete <id>` |
+| 前置 | OpenDesign 桌面端必须正在运行（脚本从进程与本地端点发现 daemon） |
+
 ## 新增模块
 
 1. 创建 `<module>/src/index.tsx` 和 `<module>/index.html`，HTML 引用 `./assets/index.js` 与 `./assets/index.css`。
