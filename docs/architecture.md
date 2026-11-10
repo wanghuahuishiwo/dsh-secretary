@@ -72,7 +72,7 @@ Time 的 `./client` 是 DSH Client 插件，运行于桌面端的 Chromium rende
 - `secretary_tag`：`tags`（唯一表；`kind` 区分 `time` / `context`）。
 - `secretary_time`：`plan_blocks`、`actual_blocks`、`plan_template_blocks`、`plan_template_undos`、`deep_templates`。
 
-各 domain 的 next-id、串行写队列、日期与标签不变式见 [data-model.md](data-model.md)。GoalService 空 Provider 不打开 domain，也没有 Goal 表。
+各 domain 的 next-id、串行写队列、日期与标签不变式见 [storage/domain](../packages/storage/domain/README.md)、[tag](../packages/tag/README.md) 与 [time-block](../packages/time/time-block/README.md) 的领域模型章节。GoalService 空 Provider 不打开 domain，也没有 Goal 表。
 
 ## 验证入口
 

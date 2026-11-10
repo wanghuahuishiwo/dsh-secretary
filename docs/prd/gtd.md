@@ -21,7 +21,7 @@
 
 ## 相关阅读
 
-- [当前数据模型](../data-model.md)
+- [GTD 领域包](../../packages/gtd/README.md)
 - [领域术语](../glossary.md)
 - [OmniFocus 核心模型调研](../research/omnifocus.md)
 - [运行架构](../architecture.md)

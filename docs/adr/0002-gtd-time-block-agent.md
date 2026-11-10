@@ -3,7 +3,7 @@
 - 状态：已被取代（2026-11-03）
 - 原决策日期：2026-10-28
 - 取代：[0001 · 以 Action 承载事项、安排与执行](0001-action-centric-model.md)
-- 被取代：[当前产品需求](../prd/README.md)、[数据模型](../data-model.md)
+- 被取代：[当前产品需求](../prd/README.md)
 
 > 本文件仅保留历史决策。其中 TimeBlock 直接关联 Action、planned／actual 同记录、Statistics Projection 等规则已废止，不得作为当前实现依据。
 

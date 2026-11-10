@@ -9,7 +9,6 @@
 | [prd/gtd.md](prd/gtd.md) | GTD 当前入口、空白页面与领域能力边界。 |
 | [prd/goal.md](prd/goal.md) | Goal 当前为空壳入口，业务模型与 UI 后置。 |
 | [architecture.md](architecture.md) | 当前装配、依赖、Host／Client、Remote 与验证入口。 |
-| [data-model.md](data-model.md) | 当前事实、关系、标签、日期与持久化不变式。 |
 | [glossary.md](glossary.md) | 当前领域术语。 |
 
 ## 维护

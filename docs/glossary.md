@@ -1,7 +1,7 @@
 # 术语表
 
 > 小秘书领域术语的唯一入口。GTD / OmniFocus 沿用官方概念；时间系统使用小秘书自有术语；同名概念不合并。
-> 数据实体与关联规则见 [data-model.md](data-model.md)；理论依据见 [OmniFocus 调研](research/omnifocus.md)、[GTD 理论核查](research/gtd-theory-review.md)。
+> 数据实体与关联规则见各领域 README：[GTD](../packages/gtd/README.md)、[Tag](../packages/tag/README.md)、[时间块](../packages/time/time-block/README.md)、[持久化](../packages/storage/domain/README.md)；理论依据见 [OmniFocus 调研](research/omnifocus.md)、[GTD 理论核查](research/gtd-theory-review.md)。
 
 ## 1. GTD / OmniFocus 核心概念
 

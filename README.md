@@ -26,7 +26,7 @@ dsh plugin --profile <name> add <本仓>/packages/bundle/secretary
 | 理解当前产品范围与交互边界 | [prd/](docs/prd/README.md) |
 | 理解包、依赖、产品 API 与 Remote 终点 | [architecture.md](docs/architecture.md) |
 | 找某个包属于哪个能力族 | [packages/README.md](packages/README.md) |
-| 理解领域事实与数据所有权 | [data-model.md](docs/data-model.md) |
+| 理解领域事实与数据所有权 | [AGENTS.md 产品模块](AGENTS.md#产品模块) + 各能力族 README |
 | 改某个包（exports、Config、限制） | 该包自己的 README |
 | 查看工单、规格与验收证据 | [GitHub Issues](docs/agents/issue-tracker.md) |
 | 查看文档索引、ADR 与调研 | [docs/README.md](docs/README.md) |

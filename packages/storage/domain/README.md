@@ -9,6 +9,21 @@ kind: "package-reference"
 
 本包让 Secretary 的 GTD、Tag 和 Time 事实共用一个 SQLite 文件，同时不接管宿主其他领域。消费方通过 `secretaryStorageDomain` 打开自己的领域，无需直接选择或操作 SQLite backend。
 
+## 持久化语义
+
+Secretary 的 Tag、Time 两个领域由本包路由到同一个 SQLite 文件；GTD 是 Markdown 数据面，不经过本包。读写在两个层次上工作：
+
+- **领域在 open 时读取一次全量快照**，之后每条写入逐条写回 SQLite；关闭时不整表回写。
+- 因此**外部写入**（迁移脚本、修复脚本、其他进程直接改库）不会被运行中的进程察觉，直到该领域重新加载。
+
+### 重新加载
+
+CLI（`dsh-secretary`）的 `tag reload` 与 `time reload` 关闭当前领域、按同一份 spec 重新打开，让之后的读写落在新快照上。它不重启宿主、不改写任何事实，也不触发领域间的联动。外部改库后必须显式 reload；否则服务继续返回旧值，用旧 id 上色还会把事实写到错误标签上。画布顶部提供同一件事的产品入口：刷新按钮调用 `TimeProductService.reloadWindow`，重读标签与时间块后重画当前窗口。GTD 数据面是 Markdown，现读即所见，无 reload。
+
+### 坏记录隔离
+
+领域 open 时若某条记录不再匹配 schema，包装层把它移出原表、写进 `secretary_quarantine` 领域并记录 error 日志，然后重试 open；域照常可用，其余记录不受影响。隔离记录保留原值与拒绝原因，供事后核对与修复。没有这一层时，一条历史脏数据会让整个域打不开，并连带让其他域的写入失败（例如标签引用检查会拦住任何标签删除）。
+
 ## 目录
 
 - [使用本包](#使用本包)
@@ -46,7 +61,6 @@ GTD、Tag 与 Time 分别使用 `secretary_gtd`、`secretary_tag`、`secretary_t
 ## 延伸阅读
 
 - [运行架构](../../../docs/architecture.md)
-- [当前数据模型](../../../docs/data-model.md)
 - [Secretary bundle](../../bundle/secretary/README.md)
 
 ## 模型体验
