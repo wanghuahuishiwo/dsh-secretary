@@ -2,17 +2,21 @@ import type { Context } from '@deepseek-ai/cordis'
 import { Remote, RemoteError, RemoteStream, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import type { TagService } from 'dsh-secretary-tag-service/contract'
 import type { ActualSource, FocusLevel, TimeService } from 'dsh-secretary-time-block/contract'
+import { invokeTagOp, invokeTimeOp } from './agent-ops.ts'
 import type {
   DeleteTimeBlockRequest, DeleteTimeBlockResult, PaintDeepRequest, PaintDeepResult,
-  PaintTimeBlocksRequest, PaintResult, PaintRun, ReplaceTimeDayRequest, TimeLayer,
+  PaintTimeBlocksRequest, PaintResult, PaintRun, ReplaceTimeDayRequest, TagAgentInvoke,
+  TagAgentResult, TimeAgentInvoke, TimeAgentResult, TimeLayer,
   TimeWindowProjection, TimeWindowRequest, UpdateTimeBlockRequest, UpdateTimeBlockResult,
 } from './types.ts'
 
 export type {
   DeleteTimeBlockRequest, DeleteTimeBlockResult, PaintDeepRequest, PaintDeepResult,
-  PaintTimeBlocksRequest, PaintResult, PaintRun, ReplaceTimeDayRequest, TimeLayer,
+  PaintTimeBlocksRequest, PaintResult, PaintRun, ReplaceTimeDayRequest, TagAgentInvoke,
+  TagAgentResult, TimeAgentInvoke, TimeAgentResult, TimeLayer,
   TimeWindowProjection, TimeWindowRequest, UpdateTimeBlockRequest, UpdateTimeBlockResult,
 } from './types.ts'
+export { invokeTagOp, invokeTimeOp } from './agent-ops.ts'
 
 const WINDOW_BEFORE = 3
 const WINDOW_AFTER = 10
@@ -21,7 +25,7 @@ const MINUTE_MS = 60_000
 const DAY_MS = 24 * 60 * MINUTE_MS
 const DATE = /^\d{4}-\d{2}-\d{2}$/
 
-interface TimeProductContext extends Context {
+interface ProductContext extends Context {
   readonly time: TimeService
   readonly tags: TagService
 }
@@ -117,7 +121,7 @@ function endOf(block: BlockLike, nowMs: number): number {
 }
 
 async function blocksOfLayer(
-  ctx: TimeProductContext, layer: TimeLayer, fromMs: number, toMs: number, timeZone: string,
+  ctx: ProductContext, layer: TimeLayer, fromMs: number, toMs: number, timeZone: string,
 ): Promise<BlockLike[]> {
   if (layer === 'actual') {
     return await ctx.time.listActual({ from: new Date(fromMs).toISOString(), to: new Date(toMs).toISOString() })
@@ -128,17 +132,17 @@ async function blocksOfLayer(
   return lists.flat()
 }
 
-async function deleteBlock(ctx: TimeProductContext, layer: TimeLayer, id: number): Promise<void> {
+async function deleteBlock(ctx: ProductContext, layer: TimeLayer, id: number): Promise<void> {
   if (layer === 'actual') await ctx.time.deleteActual(id)
   else await ctx.time.deletePlan(id)
 }
 
-async function requireTimeTag(ctx: TimeProductContext, id: number): Promise<void> {
+async function requireTimeTag(ctx: ProductContext, id: number): Promise<void> {
   const tag = await ctx.tags.getTag(id)
   if (tag.kind !== 'time') throw new Error('secretary: TimeBlock requires a time tag')
 }
 
-async function writeBlock(ctx: TimeProductContext, layer: TimeLayer, interval: Interval, timeZone: string): Promise<void> {
+async function writeBlock(ctx: ProductContext, layer: TimeLayer, interval: Interval, timeZone: string): Promise<void> {
   const startAt = new Date(interval.startMs).toISOString()
   const endAt = new Date(interval.endMs).toISOString()
   if (layer === 'actual') {
@@ -162,7 +166,7 @@ function sameBlockShape(left: BlockLike, right: BlockLike): boolean {
 }
 
 async function mergeLayer(
-  ctx: TimeProductContext, layer: TimeLayer, fromMs: number, toMs: number, timeZone: string, nowMs: number,
+  ctx: ProductContext, layer: TimeLayer, fromMs: number, toMs: number, timeZone: string, nowMs: number,
 ): Promise<void> {
   for (let guard = 0; guard < 64; guard += 1) {
     const blocks = await blocksOfLayer(ctx, layer, fromMs, toMs, timeZone)
@@ -185,7 +189,7 @@ async function mergeLayer(
 
 /** Preserve the legacy panel's cut, overwrite, parallel-shape and merge semantics. */
 async function paintRuns(
-  ctx: TimeProductContext, layer: TimeLayer, tagId: number | null, runs: readonly PaintRun[], timeZone: string,
+  ctx: ProductContext, layer: TimeLayer, tagId: number | null, runs: readonly PaintRun[], timeZone: string,
 ): Promise<void> {
   const nowMs = Date.now()
   const fromMs = Math.min(...runs.map(run => zonedStart(run.date, timeZone)))
@@ -220,7 +224,7 @@ async function paintRuns(
 
 /** Add one new record per run without cutting or deleting any existing record. */
 async function addParallelRuns(
-  ctx: TimeProductContext, layer: TimeLayer, tagId: number, runs: readonly PaintRun[], timeZone: string,
+  ctx: ProductContext, layer: TimeLayer, tagId: number, runs: readonly PaintRun[], timeZone: string,
 ): Promise<void> {
   for (const run of runs) {
     const dayStart = zonedStart(run.date, timeZone)
@@ -235,7 +239,7 @@ async function addParallelRuns(
 
 /** Replace one local day's blocks with the snapshot held by a canvas Undo entry. */
 async function replaceDaySnapshot(
-  ctx: TimeProductContext, layer: TimeLayer, date: string,
+  ctx: ProductContext, layer: TimeLayer, date: string,
   intervals: ReplaceTimeDayRequest['intervals'], timeZone: string,
 ): Promise<void> {
   const dayStart = zonedStart(date, timeZone)
@@ -252,7 +256,7 @@ async function replaceDaySnapshot(
   }
 }
 
-type TimeOperation = 'readWindow' | 'paint' | 'replaceDay' | 'updateBlock' | 'deleteBlock' | 'paintDeep'
+type TimeOperation = 'readWindow' | 'paint' | 'replaceDay' | 'updateBlock' | 'deleteBlock' | 'paintDeep' | 'agentInvoke'
 type TimeWriteOperation = Exclude<TimeOperation, 'readWindow'>
 function invalidInput(error: unknown, operation: TimeOperation = 'readWindow'): never {
   if (error instanceof RemoteError) throw error
@@ -262,10 +266,10 @@ function invalidInput(error: unknown, operation: TimeOperation = 'readWindow'): 
   throw error
 }
 
-function productFailure(ctx: TimeProductContext, error: unknown, operation: TimeWriteOperation): never {
+function productFailure(ctx: ProductContext, error: unknown, operation: TimeWriteOperation): never {
   if (error instanceof RemoteError) throw error
   const message = error instanceof Error ? error.message : String(error)
-  const missing = /^secretary: no (?:actual|plan) block "(\d+)"$/.exec(message)
+  const missing = /^secretary: no (?:actual|plan)(?: template)? block "(\d+)"$/.exec(message)
   if (missing !== null) {
     throw new RemoteError('secretaryTime/not-found', message, { blockId: Number(missing[1]) }, { cause: error })
   }
@@ -276,11 +280,11 @@ function productFailure(ctx: TimeProductContext, error: unknown, operation: Time
 
 /** Host application Service owned by the independent Time product. */
 export class TimeProductService extends TypertRemoteService {
-  private readonly productCtx: TimeProductContext
+  private readonly productCtx: ProductContext
 
   constructor(ctx: Context) {
     super(ctx, 'timeProduct', { namespace: 'secretaryTime' })
-    this.productCtx = ctx as TimeProductContext
+    this.productCtx = ctx as ProductContext
   }
 
   /** Read the current Actual, Plan, DeepTime and Tag projection without GTD data. */
@@ -472,6 +476,56 @@ export class TimeProductService extends TypertRemoteService {
       productFailure(this.productCtx, error, 'replaceDay')
     }
   }
+
+  /**
+   * Run one retired-tool op through the real TimeService, so the CLI carries
+   * the session tool's exact op surface and error semantics for every agent.
+   */
+  @Remote('agentInvoke')
+  async agentInvoke(input: TimeAgentInvoke): Promise<TimeAgentResult> {
+    try {
+      return await invokeTimeOp(this.productCtx.time, input)
+    } catch (error) {
+      productFailure(this.productCtx, error, 'agentInvoke')
+    }
+  }
+}
+
+function tagAgentFailure(ctx: ProductContext, error: unknown): never {
+  if (error instanceof RemoteError) throw error
+  const message = error instanceof Error ? error.message : String(error)
+  const missing = /^secretary: no tag "(\d+)"$/.exec(message)
+  if (missing !== null) {
+    throw new RemoteError('secretaryTag/not-found', message, { tagId: Number(missing[1]) }, { cause: error })
+  }
+  if (message.startsWith('secretary:')) {
+    throw new RemoteError('secretaryTag/invalid-input', message, {}, { cause: error })
+  }
+  ctx.logger.error('secretaryTag agentInvoke failed', error)
+  throw new RemoteError('secretaryTag/agent-op-failed', message, {}, { cause: error })
+}
+
+/** Host application Service owning the CLI-facing tag op surface. */
+export class TagProductService extends TypertRemoteService {
+  private readonly productCtx: ProductContext
+
+  constructor(ctx: Context) {
+    super(ctx, 'tagProduct', { namespace: 'secretaryTag' })
+    this.productCtx = ctx as ProductContext
+  }
+
+  /**
+   * Run one retired-tool op through the real TagService, so the CLI carries
+   * the session tool's exact op surface and error semantics for every agent.
+   */
+  @Remote('agentInvoke')
+  async agentInvoke(input: TagAgentInvoke): Promise<TagAgentResult> {
+    try {
+      return await invokeTagOp(this.productCtx.tags, input)
+    } catch (error) {
+      tagAgentFailure(this.productCtx, error)
+    }
+  }
 }
 
 export const name = 'dsh-secretary-time-controller'
@@ -479,4 +533,5 @@ export const inject = ['time', 'tags']
 
 export function apply(ctx: Context): void {
   new TimeProductService(ctx)
+  new TagProductService(ctx)
 }

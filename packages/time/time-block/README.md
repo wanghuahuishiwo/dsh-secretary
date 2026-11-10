@@ -22,7 +22,7 @@ kind: "package-reference"
 
 ### 组合与配置
 
-本包由 Secretary bundle 挂载。`dsh-secretary-time-block` 提供 `ctx.time`，`/tools` 注册公共工具 `secretary_time`；右栏 UI 由 [`client/ui-time`](../../client/ui-time/README.md) 提供，Host 产品 API 在 [`api/time-controller`](../../api/time-controller/README.md)。
+本包由 Secretary bundle 挂载。`dsh-secretary-time-block` 提供 `ctx.time`；右栏 UI 由 [`client/ui-time`](../../client/ui-time/README.md) 提供，Host 产品 API 在 [`api/time-controller`](../../api/time-controller/README.md)，Agent 入口是 CLI（`dsh-secretary`）。
 
 | Config 字段 | 默认值 | 含义 |
 |---|---|---|

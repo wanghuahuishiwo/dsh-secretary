@@ -109,6 +109,9 @@ test('final tarballs install into a fresh profile and serve Time/GTD with persis
     ...packs.map(pack => `  ${pack.name}: file:${pack.path}`), '',
   ].join('\n'))
   const env = { ...process.env, DSH_HOME: home, DEEPSEEK_API_KEY: 'installed-test-no-model' }
+  // The desktop runtime's embedded pnpm reads the ambient registry (a partial
+  // mirror without current @deepseek-ai releases); resolve from npmjs.
+  await writeFile(join(profile, '.npmrc'), 'registry=https://registry.npmjs.org\n')
   await run('dsh', ['plugin', '--profile', 'web', 'add', ...packs.map(pack => pack.path)], { env })
   const manifestPath = join(profile, 'package.json')
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
@@ -119,7 +122,7 @@ test('final tarballs install into a fresh profile and serve Time/GTD with persis
 
   const fixture = join(work, 'installed-fixture.mjs')
   await writeFile(fixture, `
-    export const inject = ['connection', 'storage', 'secretaryStorageDomain', 'goals', 'tags', 'time', 'gtd']
+    export const inject = ['connection', 'storage', 'secretaryStorageDomain', 'goals', 'tags', 'time']
     export function apply(ctx) {
       ctx.effect(() => ctx.connection.fetch.register({
         path: '/api/secretary-installed.fixture', methods: ['POST'], requestBody: 'buffered',
@@ -134,7 +137,6 @@ test('final tarballs install into a fresh profile and serve Time/GTD with persis
               goal: ctx.get('goals') !== undefined,
               tag: ctx.get('tags') !== undefined,
               time: ctx.get('time') !== undefined,
-              gtd: ctx.get('gtd') !== undefined,
             },
           })
         },
@@ -173,7 +175,7 @@ test('final tarballs install into a fresh profile and serve Time/GTD with persis
       return body
     })
     assert.equal(fixtureResult.goalProvider, 'EmptyGoalService')
-    assert.deepEqual(fixtureResult.services, { storage: true, domain: true, goal: true, tag: true, time: true, gtd: true })
+    assert.deepEqual(fixtureResult.services, { storage: true, domain: true, goal: true, tag: true, time: true })
 
     const painted = await remoteCall(page, 'secretaryTime/paint', {
       layer: 'actual', tagId: fixtureResult.tag.id, timeZone: 'Asia/Shanghai',
@@ -193,6 +195,11 @@ test('final tarballs install into a fresh profile and serve Time/GTD with persis
     await main.waitFor({ state: 'attached' })
     assert.equal(await main.innerText(), '')
     assert.deepEqual(errors, [])
+    // The secretary agent plugin seeds the Markdown GTD data plane on boot.
+    const gtdDir = join(home, 'storages', 'secretary', 'gtd')
+    for (const file of ['README.md', 'Inbox.md', 'GTD.md']) {
+      assert.ok(existsSync(join(gtdDir, file)), `the GTD data plane must seed ${file}`)
+    }
     outputs.push(['initial', server.output()])
     await server.stop()
 
@@ -209,7 +216,62 @@ test('final tarballs install into a fresh profile and serve Time/GTD with persis
       assert.doesNotMatch(output, /service "goals" has been registered|ERR_MODULE_NOT_FOUND/)
     }
     assert.deepEqual(errors, [])
-    console.log(JSON.stringify({ work, packed: packs.length, services: fixtureResult.services, goalProvider: fixtureResult.goalProvider, firstRead: true, paintPersisted: true }, null, 2))
+
+    // CLI channel: an agent shell exchanges the launch token on /connect and
+    // writes through the host's Remotes, never touching SQLite itself.
+    const bootUrl = new URL(server.url)
+    const cliEnv = {
+      ...process.env,
+      DSH_SECRETARY_URL: `${bootUrl.protocol}//${bootUrl.host}`,
+      DSH_SECRETARY_TOKEN: bootUrl.searchParams.get('token'),
+    }
+    const cli = join(ROOT, 'packages/secretary/cli/bin/dsh-secretary.mjs')
+    const tagOut = await run('node', [cli, 'tag', 'create', '--name', 'CLI 工作', '--kind', 'time'], { env: cliEnv })
+    const tag = JSON.parse(tagOut.stdout).tag
+    assert.equal(tag.name, 'CLI 工作')
+    const actualOut = await run('node', [cli, 'time', 'actual.create',
+      '--timeTagId', String(tag.id), '--startAt', '2026-11-03T09:00:00+08:00', '--endAt', '2026-11-03T10:00:00+08:00',
+      '--actualSource', 'user_reported', '--focus', 'deep'], { env: cliEnv })
+    const cliActual = JSON.parse(actualOut.stdout).block
+    assert.equal(cliActual.timeTagId, tag.id)
+    // Watch acceptance: a CLI write surfaces on the open canvas without any
+    // refresh — proof the write went through the host service and its watch.
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date())
+    const blocksBefore = await page.locator('[data-time-remote] .tb-blk').count()
+    const watchOut = await run('node', [cli, 'time', 'actual.create',
+      '--timeTagId', String(tag.id), '--startAt', `${today}T09:00:00+08:00`, '--endAt', `${today}T10:00:00+08:00`,
+      '--actualSource', 'user_reported', '--note', 'CLI watch'], { env: cliEnv })
+    assert.equal(JSON.parse(watchOut.stdout).block.note, 'CLI watch')
+    await page.locator(`.tb-cell[data-day="${today}"]`).first().waitFor({ timeout: 15_000 })
+    await page.waitForFunction(before => document
+      .querySelectorAll('[data-time-remote] .tb-blk').length > before, blocksBefore, { timeout: 15_000 })
+    const afterCli = await remoteCall(page, 'secretaryTime/readWindow', { anchor: '2026-11-03', timeZone: 'Asia/Shanghai' })
+    assert.equal(afterCli.ok, true)
+    assert.ok(afterCli.value.actual.some(block => block.id === cliActual.id),
+      'the CLI write must land in the host facts the product reads')
+    const restartAfterCli = await remoteCall(page, 'secretaryTime/readWindow', { anchor: '2026-11-03', timeZone: 'Asia/Shanghai' })
+    assert.equal(restartAfterCli.value.actual.some(block => block.id === cliActual.id), true)
+
+    // CLI failure branches: outside a session, a usage error, and a domain refusal.
+    const outside = await exec('node', [cli, 'time', 'actual.list'], { env: { ...process.env, DSH_SECRETARY_URL: '', DSH_SECRETARY_TOKEN: '' } })
+      .then(() => undefined, error => error)
+    assert.equal(outside.code, 2, 'a missing environment must exit 2 with guidance')
+    assert.match(outside.stderr, /inside a DSH session/)
+    const invalid = await exec('node', [cli, 'time', 'deep.setCell',
+      '--weekStart', '2026-11-09', '--weekday', '1', '--hour', '9', '--level', 'ultra'], { env: cliEnv })
+      .then(() => undefined, error => error)
+    assert.equal(invalid.code, 1, 'an invalid argument must exit non-zero')
+    const invalidEnvelope = JSON.parse(invalid.stderr)
+    assert.equal(invalidEnvelope.error.code, 'gateway/input-invalid', JSON.stringify(invalidEnvelope))
+    const refused = await exec('node', [cli, 'time', 'plan.create',
+      '--date', '2026-02-31', '--timeZone', 'Asia/Shanghai', '--timeTagId', String(tag.id),
+      '--startAt', '2026-03-01T09:00:00+08:00', '--endAt', '2026-03-01T10:00:00+08:00'], { env: cliEnv })
+      .then(() => undefined, error => error)
+    assert.equal(refused.code, 1, 'a domain refusal must exit non-zero')
+    const refusal = JSON.parse(refused.stderr)
+    assert.equal(refusal.error.code, 'secretaryTime/invalid-input', JSON.stringify(refusal))
+
+    console.log(JSON.stringify({ work, packed: packs.length, services: fixtureResult.services, goalProvider: fixtureResult.goalProvider, firstRead: true, paintPersisted: true, cliWrite: true }, null, 2))
   } catch (error) {
     if (server) await writeFile(join(work, 'boot-failure.log'), server.output())
     throw new Error(`${error instanceof Error ? error.message : String(error)}\nInstalled artifacts: ${work}\nHost output:\n${server?.output() ?? 'not booted'}`, { cause: error })

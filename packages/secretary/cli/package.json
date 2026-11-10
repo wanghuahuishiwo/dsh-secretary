@@ -1,0 +1,20 @@
+{
+  "name": "dsh-secretary-cli",
+  "version": "0.1.0",
+  "description": "Thin agent CLI exposing the running DSH host's secretaryTime / secretaryTag Remotes to any bash shell.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "dsh-secretary": "./bin/dsh-secretary.mjs"
+  },
+  "exports": {
+    "./bin": "./bin/dsh-secretary.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin/*.mjs"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  }
+}

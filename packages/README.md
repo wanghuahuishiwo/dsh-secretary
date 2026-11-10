@@ -13,13 +13,14 @@ kind: "package-group"
 
 | 组 | 职责 |
 |---|---|
-| [`core/`](core/README.md) | 共享基础设施：校验、工具注册与 skill 资源注册 |
+| [`core/`](core/README.md) | 共享基础设施：校验、schema 约定与 skill 资源注册 |
 | [`storage/`](storage/README.md) | Secretary SQLite domain 持久化路由 |
 | [`goal/`](goal/README.md) | 上游 GoalService 空 Provider，只建立 seam |
-| [`tag/`](tag/README.md) | 统一 TagService 与 Agent tools |
-| [`gtd/`](gtd/README.md) | GtdService、tools、agent 与技能资源 |
+| [`tag/`](tag/README.md) | 统一 TagService |
+| [`gtd/`](gtd/README.md) | GTD 用户技能资源 |
 | [`time/`](time/README.md) | Time 领域能力族 |
 | [`api/`](api/README.md) | Host 产品 API（Typert Remote controller） |
+| [`secretary/`](secretary/README.md) | Agent 自有运行代码（CLI） |
 | [`client/`](client/README.md) | 浏览器产品 UI 与客户端插件 |
 | [`bundle/`](bundle/README.md) | 可安装 bundle（preset、patch 与装配） |
 
@@ -28,17 +29,15 @@ kind: "package-group"
 | 包 | 能力族 | 角色 | 对外出口 |
 |---|---|---|---|
 | [`core/validation`](core/validation/README.md) | core | 共享输入校验 | `.` |
-| [`core/tooling`](core/tooling/README.md) | core | tool 注册与 no-config schema | `.` |
+| [`core/tooling`](core/tooling/README.md) | core | no-config schema 与共享输出约定 | `.` |
 | [`core/skill-resources`](core/skill-resources/README.md) | core | skill 资源注册 | `.` |
 | [`storage/domain`](storage/domain/README.md) | storage | `secretaryStorageDomain` facility | `.` |
 | [`goal/provider`](goal/provider/README.md) | goal | 空 `GoalService` Provider | `.`、`./contract` |
 | [`tag/service`](tag/service/README.md) | tag | `TagService` 与契约 | `.`、`./contract` |
-| [`tag/tool-tag`](tag/tool-tag/README.md) | tag | `secretary_tag` 工具 | `.` |
-| [`gtd/service`](gtd/service/README.md) | gtd | `GtdService` 与契约 | `.`、`./contract` |
-| [`gtd/tool-gtd`](gtd/tool-gtd/README.md) | gtd | `secretary_gtd` 工具 | `.` |
 | [`gtd/agent`](gtd/agent/README.md) | gtd | GTD 用户技能 | `.` |
-| [`time/time-block`](time/time-block/README.md) | time | `TimeService` + `secretary_time` | `.`、`./contract`、`./tools` |
-| [`api/time-controller`](api/time-controller/README.md) | api | `TimeProductService` 与浏览器 Remote 契约 | `.`、`./types`、`./typert`、`./remote` |
+| [`time/time-block`](time/time-block/README.md) | time | `TimeService` | `.`、`./contract` |
+| [`secretary/cli`](secretary/cli/README.md) | secretary | `dsh-secretary` CLI（agent 薄客户端） | `./bin` |
+| [`api/time-controller`](api/time-controller/README.md) | api | `TimeProductService`、`TagProductService` 与 Remote 契约 | `.`、`./types`、`./typert`、`./remote` |
 | [`client/ui-time`](client/ui-time/README.md) | client | 纯 React UI + `TimeAdapter` 契约 + 右栏插件 | `./ui`、`./client` |
 | [`client/ui-gtd`](client/ui-gtd/README.md) | client | 左栏入口 + 空白 main | `.`、`./client` |
 | [`bundle/secretary`](bundle/secretary/README.md) | bundle | 唯一安装入口：preset、skills、cordis.patch | `.` |
@@ -49,7 +48,7 @@ kind: "package-group"
 bundle/secretary → client/ui-time ─┐
                                      ├→ api/time-controller → time/time-block + tag/service
 bundle/secretary → client/ui-gtd     │                          └→ goal/provider → storage/domain → core/*
-                                     └→ gtd/service ─────────────┘
+bundle/secretary → secretary/cli ───┘（CLI 经 /api 调用 secretaryTime/secretaryTag agentInvoke）
 ```
 
 - Host 产品 API 只依赖领域 Service contract，不 import 其他产品的 UI 或插件。

@@ -8,7 +8,7 @@ Secretary Agent 是对话式私人秘书：无独立 UI，在 DSH 会话中工�
 
 | 能力域类型 | 回答的问题 | 来源插件举例 | 节 |
 |---|---|---|---|
-| Tools（工具） | 模型能调用什么 | tool-web、tool-fs、当前插件 tool-gtd… | §3 |
+| Tools（工具） | 模型能调用什么 | tool-web、tool-fs、tool-bash（time/tag 经 bash CLI） | §3 |
 | Skills（技能） | 模型按什么行为规则做事 | dsh-secretary、gtd-agent、skill-filesystem | §4 |
 | Prompt 注入（系统提示词段落） | 每轮固定看到什么 | persona、system-prompt、各工具插件 | §5 |
 | Context 快照（动态上下文） | 环境事实如何随轮刷新 | time-context、working-directory | §6 |
@@ -26,10 +26,9 @@ Secretary Agent 是对话式私人秘书：无独立 UI，在 DSH 会话中工�
 
 | 工具 | 能力 | 来源插件 | 裁掉后果 |
 |---|---|---|---|
-| `secretary_gtd` | 事项全量操作（op 见下） | `dsh-secretary-tool-gtd`（当前插件） | 核心能力，不裁 |
-| `secretary_tag` | 标签树全量操作（op 见下） | `dsh-secretary-tool-tag`（当前插件） | 核心能力，不裁 |
-| `secretary_time` | 计划/实录/模板/深度时间（op 见下） | `dsh-secretary-time-block/tools`（当前插件） | 核心能力，不裁 |
-| `bash` / `pwsh` | Shell 命令（按平台二选一） | `@deepseek-ai/dsh-tool-bash` / `dsh-tool-pwsh` | 失去系统操作兜底（如 `open -g` 唤起应用） |
+| ~~`secretary_gtd`~~ | 已退役：GTD 走 Markdown 数据面 + 通用文档工具 | —（#51） | — |
+| ~~`secretary_tag`~~ / ~~`secretary_time`~~ | 已退役：op 面并入 CLI `dsh-secretary`（经 `bash` 调用） | —（#51） | — |
+| `bash` / `pwsh` | Shell 命令（按平台二选一）；`"$DSH_SECRETARY_CLI"` 即 time/tag 能力入口 | `@deepseek-ai/dsh-tool-bash` / `dsh-tool-pwsh` | 失去 CLI 通道与系统操作兜底 |
 | `read` / `write` / `edit` | 文件读写与编辑 | `@deepseek-ai/dsh-tool-fs` | 准备产物、备注材料、（将来）GTD Markdown 全部失效 |
 | `glob` / `grep` | 文件查找与内容搜索 | `@deepseek-ai/dsh-tool-fs-search` | 不能在大目录里找材料 |
 | `web_search` / `web_fetch` | 网络搜索与抓取 | `@deepseek-ai/dsh-tool-web` | 秘书不能自查资料，准备只能靠用户喂 |
@@ -44,15 +43,14 @@ Secretary Agent 是对话式私人秘书：无独立 UI，在 DSH 会话中工�
 | `plugin_manager` | 管理插件（条件可用） | `@deepseek-ai/dsh-plugin-manager/tools` | 失去插件管理；非秘书场景 |
 | `skill` | 按需加载技能 | `@deepseek-ai/dsh-tool-skill` | 不能按需取技能 |
 
-当前插件工具 op 明细（真实代码枚举）：
+CLI op 明细（`dsh-secretary <time|tag> <op>`，真实代码枚举；与 `secretaryTime/secretaryTag agentInvoke` Remote 一一对应）：
 
-| 工具 | op |
+| 域 | op |
 |---|---|
-| `secretary_gtd` | `inbox.capture` / `list` / `clarify` / `delete` · `project.list` / `get` / `create` / `update` / `delete` · `action.list` / `create` / `get` / `effectiveTags` / `next` / `forecast` / `update` / `delete` / `complete` / `drop` · `reload` |
-| `secretary_tag` | `create` / `get` / `list` / `update` / `move` / `delete` · `reload` |
-| `secretary_time` | `plan.list` / `get` / `create` / `update` / `delete` · `actual.list` / `get` / `create` / `update` / `delete` / `start` / `stop` · `template.list` / `create` / `update` / `delete` / `apply` / `undo` · `deep.getWeek` / `setCell` / `clearCell` / `setRange` / `clearRange` |
+| `tag` | `create` / `get` / `list` / `update` / `move` / `delete` · `reload` |
+| `time` | `plan.list` / `get` / `create` / `update` / `delete` · `actual.list` / `get` / `create` / `update` / `delete` / `start` / `stop` · `template.list` / `create` / `update` / `delete` / `apply` / `undo` · `deep.getWeek` / `setCell` / `clearCell` / `setRange` / `clearRange` · `reload` |
 
-数据路径：三工具 → GtdService / TagService / TimeService → `secretary_*` 域 → 同一 SQLite。契约见本仓 [gtd/service/contract.ts](../packages/gtd/service/src/contract.ts) 等各包。
+数据路径：agent shell → CLI（`/connect` 换凭据）→ `/api` → `secretaryTime` / `secretaryTag` Remote → TimeService / TagService → 同一 SQLite；GTD → Markdown 数据面（通用文档工具）。端点、launch token 与 CLI 路径由 `ctx.shellEnv.register` 注入 `DSH_SECRETARY_URL` / `DSH_SECRETARY_TOKEN` / `DSH_SECRETARY_CLI`。CLI 包：本仓 [secretary/cli](../packages/secretary/cli)。
 
 ## 4. Skills（技能）
 
@@ -60,11 +58,9 @@ Secretary Agent 是对话式私人秘书：无独立 UI，在 DSH 会话中工�
 |---|---|---|---|
 | `secretary` | 行为主体（主循环 + 授权边界，见下），persona 要求处理相关事项时加载 | `dsh-secretary`（当前插件） | 不可裁——秘书行为规则全部在此 |
 | `gtd-inbox-capture` / `gtd-clarify` | 捕获与澄清流程，仅用户显式调用 | `dsh-secretary-gtd-agent`（当前插件） | 失去捕获/澄清引导，GTD 工具仍在但无流程约束 |
-| 技能目录（来源方） | 扫描 `~/.agents/skills`：**71 个全局技能**，其中 **25 个 model-invocable**（进模型目录，模型可自动调用、占每轮 token）、**46 个 user-only**（仅用户 `/` 调用，不进模型目录） | `@deepseek-ai/dsh-skill-filesystem` | 删 = 目录只剩 bundle 注册 4 个；**换独立根** = 只含秘书技能，一次消掉绝大多数噪音 |
+| 技能目录（来源方） | preset 已显式 `disabled: true`（#51）：目录只剩运行时注册技能，71 个全局技能不再进入任何秘书会话，旧 vault 同名冲突随之消除 | `@deepseek-ai/dsh-skill-filesystem` | 重新启用 = 71 个全局技能回流（25 个 model-invocable） |
 
-**已知问题**：25 个 model-invocable 里多数是工程技能（code-review、tdd、diagnosing-bugs、pr、research…），秘书会话中模型可自动调用它们，行为可能被带偏；旧 `gtd-clarify` / `gtd-inbox-capture`（user-only，读写旧 vault）与当前插件同名技能在 user-only 区并存，`/gtd-clarify` 命中哪份取决于注册顺序。裁剪未定（§12）。
-
-**技能的两条进入通道**（汇入同一注册表）：文件系统目录扫描（`skill-filesystem` → `~/.agents/skills`，71 个全局技能）与**运行时注册**（插件 `apply` → `ctx.skills.register`，当前插件 4 个技能）。当前插件的技能随包安装在 profile 的 `node_modules/<包>/assets/` 下（本仓 `package.json` 的 `files` 含 `assets`；开发模式为 `link:` 软链指回源码），不依赖 `~/.agents/skills` 与 workspace——换独立技能根不影响它们。
+**技能的两条进入通道**（汇入同一注册表）：文件系统目录扫描（`skill-filesystem`，现已禁用）与**运行时注册**（插件 `apply` → `ctx.skills.register`，当前插件 3 个技能：secretary、gtd-inbox-capture、gtd-clarify）。当前插件的技能随包安装在 profile 的 `node_modules/<包>/assets/` 下，不依赖 `~/.agents/skills` 与 workspace。
 
 secretary skill 行为规则（资产：本仓 `packages/bundle/secretary/assets/secretary/SKILL.md`）——主循环：
 
@@ -170,11 +166,11 @@ persona 文案：
 | 计划/实录/模板/深度时间读写 | ✅ 已运行 | — |
 | 主动工作模型（触发/打扰/频率/去重） | ❌ 未设计 | [#25](https://github.com/wanghuahuishiwo/dsh-secretary/issues/25) |
 | 外部送达通道（钉钉） | ❌ 未设计，依赖 #25 | [#26](https://github.com/wanghuahuishiwo/dsh-secretary/issues/26) |
-| 非秘书会话调用秘书能力 | ❌ 未设计（当前直写库有害） | [#45](https://github.com/wanghuahuishiwo/dsh-secretary/issues/45) |
+| 非秘书会话调用秘书能力 | ✅ CLI 已交付（#51/#45） | — |
 | 时间块统计 | ❌ 未设计 | [#48](https://github.com/wanghuahuishiwo/dsh-secretary/issues/48) |
 | GTD 完整工作区 UI | ❌ 空白页 | [#6](https://github.com/wanghuahuishiwo/dsh-secretary/issues/6) / [#5](https://github.com/wanghuahuishiwo/dsh-secretary/issues/5) |
-| GTD 过渡数据面（Markdown 直读 + prompt 注入） | 🔶 讨论中，未定稿 | 待立 issue |
-| 技能目录噪音与同名冲突（§4） | 🔶 事实确认，裁剪未定 | 待定 |
+| GTD 过渡数据面（Markdown 直读） | ✅ 已交付（#51/#53） | — |
+| 技能目录噪音与同名冲突（§4） | ✅ 已裁剪（skill-filesystem 禁用） | — |
 
 **官方还有、当前未挂载的扩展**（需要时在 preset 加插件行）：mcp（外部工具接入）、team（多代理任务板）、session-query（会话历史检索，对秘书回忆潜力大）、attachment（用户发文件）、webhook（外部事件唤醒，与 #25 相关）、guard / spill（循环守卫与结果外溢）、lsp / terminal / computer-use / browser-use（工程向，秘书用不到）。分组总表见 DSH 官方仓 `packages/README.zh.md`。
 
@@ -184,7 +180,7 @@ persona 文案：
 
 - **设计权威**：本文。Agent 的架构叙述只在这里维护，包 README 只讲包级事实。
 - **当前资产**：`bundle/secretary` 事实上是 Secretary Agent 的家（persona 配置、secretary skill、技能注册、preset 组合），兼唯一安装入口。
-- **演进触发**：当第一块 Agent 自有运行代码出现（prompt 注入插件、主动工作循环、GTD Markdown 读写技能），建立 `packages/secretary/` 能力族，资产迁入，`bundle/secretary` 回归纯装配。拆包遵循 [packages/README.md](../packages/README.md) 的消费者证据规则——上述自有代码即是证据。
+- **演进触发已发生**：CLI（`packages/secretary/cli`，#51）是第一块 Agent 自有运行代码，`packages/secretary/` 能力族已建立；后续自有运行代码迁入该族。
 - **GTD 技能**暂留 `gtd/agent`；出现跨领域编排技能时再收拢。
 - **命名规则**：指"小秘书这个实体"永远带 `secretary` 限定（secretary-agent、`packages/secretary/`）；裸 `agent` 留给"给 agent 的指令与基础设施"这一既有含义（AGENTS.md、`.agents/`、`gtd/agent`）。
 

@@ -21,19 +21,20 @@ dsh-secretary bundle：composition / preset / skills
 │
 ├── 上游共享
 │   ├── storage + core（validation / tooling / skill-resources）
-│   ├── tag        → TagService（tag/service）+ Agent 工具（tag/tool-tag）
+│   ├── tag        → TagService（tag/service）
 │   └── goal       → 空 GoalService Provider
 │
 ├── 下游领域
-│   ├── time-block → TimeService + Agent tools ──→ tag-service/contract + goal-provider/contract
-│   └── gtd        → GtdService（gtd/service）+ tools（gtd/tool-gtd）+ agent（gtd/agent）──→ tag-service/contract + goal-provider/contract
+│   ├── time-block → TimeService ──→ tag-service/contract + goal-provider/contract
+│   └── gtd        → Markdown 数据面（gtdPath 目录）+ agent 技能（gtd/agent），无 SQLite 域
 │
 └── 产品交付
     ├── api/time-controller
-    │   └── TimeProductService extends TypertRemoteService
-    │       ├── @Remote：readWindow / paint / replaceDay / updateBlock / deleteBlock / paintDeep
-    │       ├── 调用 TimeService + TagService
-    │       └── ./typert + ./remote + ./types
+    │   ├── TimeProductService extends TypertRemoteService
+    │   │   ├── @Remote：readWindow / paint / replaceDay / updateBlock / deleteBlock / paintDeep / agentInvoke
+    │   │   ├── 调用 TimeService + TagService
+    │   │   └── ./typert + ./remote + ./types
+    │   └── TagProductService（secretaryTag/agentInvoke：CLI 的 tag op 面）
     ├── client/ui-time
     │   ├── ./ui：纯 React UI + TimeAdapter 契约（design/ 与生产共用）
     │   └── ./client：product-local $mount → RemoteTimeAdapter → TimeProduct
@@ -47,17 +48,17 @@ dsh-secretary bundle：composition / preset / skills
 
 当前树只列已实现的产品交付；目标产品的 `goal-panel` 空壳和共享 `TagManager` UI/Remote 尚未实现，不能据此声称已经运行。包分组见 [packages/README.md](../packages/README.md)。
 
-Time 的浏览器 Remote 与 Agent tools 是平级 adapters，不是上下层：
+Time 的浏览器 Remote 与 Agent CLI 是平级 adapters，不是上下层：
 
 ```text
 Time Browser → ctx.remote.secretaryTime → TimeProductService ─────────┐
                                                                  ├→ TimeService / TagService → Storage
-Agent → secretary_time / secretary_tag ──────────────────────────┘
+Agent shell → dsh-secretary CLI → /api agentInvoke ─────────────┘（shell-env 注入端点与凭据）
 
-GTD 空页 → 仅注册左栏入口与 main，无 GTD Remote 调用
+GTD → Markdown 数据面（通用文档工具直读直写）；空页 → 仅注册左栏入口与 main
 ```
 
-不保留统一 Secretary 业务代理、同时注入 GTD／Time 的父 adapter、跨产品 `domain + op` 命令总线、常驻中央产品 assembly，或手写的聚合 HTTP JSON API。每个产品的 assembly 只挂载自己的 Remote 并与该产品 UI 共同清理，不包含业务方法。Time 产品插件装卸不影响 GTD，也不卸载仍供 Agent 使用的 TimeService/tools。TimeService／GtdService 是独立于 UI 的下游领域 Services，并非天然常驻；实际装载由 bundle 装配和消费者决定。第一个真实 GTD 页面能力出现时，再在 GTD 产品包中建立最小 `GtdProductService`。
+不保留统一 Secretary 业务代理、同时注入 GTD／Time 的父 adapter、跨产品 `domain + op` 命令总线、常驻中央产品 assembly，或手写的聚合 HTTP JSON API。每个产品的 assembly 只挂载自己的 Remote 并与该产品 UI 共同清理，不包含业务方法。Time 产品插件装卸不影响 Tag/GTD，也不卸载仍供 Agent CLI 使用的 TimeService。会话内工具（secretary_time/tag/gtd）已退役；能力入口是 CLI（time/tag）与 Markdown（GTD）。TimeService 是独立于 UI 的下游领域 Service，并非天然常驻；实际装载由 bundle 装配和消费者决定。
 
 exact Fetch 只用于流式上传、文件下载、原始字节或浏览器原生响应。常规业务调用的 Client 类型以 Remote 生成结果为唯一来源，不手写第二份重复声明。
 

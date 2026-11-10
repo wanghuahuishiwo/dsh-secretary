@@ -1,6 +1,6 @@
 # 小秘书-事项
 
-本文描述当前 GTD 产品的入口与页面边界。事项事实和 Agent 能力见 [GTD 领域包 README](../../packages/gtd/service/README.md)；入口与装卸实现见 [GTD 产品包 README](../../packages/client/ui-gtd/README.md)。
+本文描述当前 GTD 产品的入口与页面边界。事项事实是 Markdown 数据面（`gtdPath` 目录，约定见目录内 README）；技能见 [GTD 技能包 README](../../packages/gtd/agent/README.md)，入口与装卸实现见 [GTD 产品包 README](../../packages/client/ui-gtd/README.md)。
 
 ## 当前入口与页面
 

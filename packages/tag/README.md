@@ -14,9 +14,8 @@ kind: "package-group"
 | 包 | 名称 | 角色 |
 |---|---|---|
 | [`service/`](service/README.md) | `dsh-secretary-tag-service` | `TagService` 与 `./contract` |
-| [`tool-tag/`](tool-tag/README.md) | `dsh-secretary-tool-tag` | 面向模型的 `secretary_tag` 工具 |
 
 ## 约束
 
-- `service` 不注册 Agent 工具；`tool-tag` 只通过 `./contract` 消费 `TagService`。
+- `service` 不注册 Agent 入口；CLI 与产品 Remote 都只通过 `./contract` 消费 `TagService`（工具已随 #51 退役）。
 - 跨包只依赖 Service contract，不 import 其他包的内部源码。

@@ -7,7 +7,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包提供唯一 `TagService` 与 `./contract`：Time 和 GTD 共用一棵可持续保存的标签树，数字 ID 用于精确关联，`time` 与 `context` 两种 `kind` 不会因同名而合并。面向模型的 `secretary_tag` 工具在 [`tool-tag`](../tool-tag/README.md)，不在本包。
+本包提供唯一 `TagService` 与 `./contract`：Time 和 GTD 共用一棵可持续保存的标签树，数字 ID 用于精确关联，`time` 与 `context` 两种 `kind` 不会因同名而合并。面向 agent 的入口是 CLI（[`secretary/cli`](../../secretary/cli/README.md)），不在本包。
 
 ## 使用本包
 
@@ -34,14 +34,14 @@ kind: "package-reference"
 ## 延伸阅读
 
 - [Tag 产品范围](../../../docs/prd/README.md)
-- [Tag Agent 工具](../tool-tag/README.md)
+
 - [运行架构](../../../docs/architecture.md)
 
 ## 模型体验
 
 ### 模型上下文
 
-本包不添加模型输入；`secretary_tag` 的工具 schema 与结果由 `tool-tag` 拥有。
+本包不添加模型输入；CLI 的 op 面由 `secretaryTag/agentInvoke` Remote 拥有。
 
 #### Token 影响
 

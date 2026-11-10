@@ -1,7 +1,7 @@
 {
   "name": "dsh-secretary-time-controller",
   "version": "0.1.0",
-  "description": "Time product Host API: six product-local Typert Remote methods over TimeService and TagService.",
+  "description": "Time product Host API: seven canvas Typert Remote methods plus the CLI-facing time/tag agentInvoke surfaces.",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
