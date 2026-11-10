@@ -69,6 +69,7 @@ function findDaemon() {
   }
 }
 
+const AUDIT = process.argv.includes('--audit')
 const PROJECT_NAME = resolveProjectName()
 const daemon = findDaemon()
 const cliPath = `${daemon.appPath}${DAEMON_MARKER.replace('daemon-sidecar.mjs', 'daemon-cli.mjs')}`
@@ -91,6 +92,35 @@ function cli(args) {
 
 const daemonUrl = `http://127.0.0.1:${daemon.port}`
 const projects = JSON.parse(cli(['project', 'list', '--daemon-url', daemonUrl, '--json'])).projects
+
+/** `--audit`：只做对账，不改任何项目；给「OD 项目管理员」在合并/删 worktree 后核对用。 */
+if (AUDIT) {
+  const branchOf = (dir) => {
+    try { return sh('git', ['-C', dir, 'rev-parse', '--abbrev-ref', 'HEAD']).trim() } catch { return '—' }
+  }
+  const rows = projects
+    .filter((project) => typeof project.metadata?.baseDir === 'string')
+    .map((project) => {
+      const base = project.metadata.baseDir
+      const branch = branchOf(base)
+      const exists = existsSync(base)
+      const expected = branch === '—' || branch === 'detached' ? null : `${PROJECT_PREFIX} · ${branch}`
+      const state = !exists ? '目录不存在（僵尸）' : expected !== null && project.name !== expected ? '名称不符（疑似手动创建）' : '正常'
+      return { id: project.id, name: project.name, base, state }
+    })
+  const managed = new Set(rows.map((row) => row.base))
+  const worktrees = sh('git', ['-C', repoRoot, 'worktree', 'list', '--porcelain'])
+    .split('\n\n')
+    .map((block) => block.match(/^worktree (.+)$/m)?.[1])
+    .filter((dir) => typeof dir === 'string' && dir.startsWith('/'))
+  console.log('id                                      name                                     baseDir                                     branch                  state')
+  for (const row of rows) {
+    console.log(`${row.id.padEnd(38)}  ${row.name.padEnd(38)}  ${row.base.padEnd(42)}  ${branchOf(row.base).padEnd(22)}  ${row.state}`)
+  }
+  const missing = worktrees.filter((dir) => !managed.has(dir))
+  if (missing.length > 0) console.log(`\n未注册的工作树：\n${missing.map((dir) => `  ${dir}`).join('\n')}`)
+  process.exit(0)
+}
 const existing = projects.find((project) => project.metadata?.baseDir === repoRoot)
 const sameBranch = projects.filter((project) => project.name === PROJECT_NAME && project.metadata?.baseDir !== repoRoot)
 const stale = projects.filter((project) => {
