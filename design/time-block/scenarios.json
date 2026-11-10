@@ -89,7 +89,7 @@
       "expected": [
         "09:30–10:40 的重叠格只有 1 个 .tb-blk，宽度仍是整格；每格右上角有 .tb-more 角标，文本“²”",
         "该 .tb-blk 的 span 为“深度工作”；.tb-more 是 span（不是 button），aria-hidden=true，getComputedStyle 的 pointer-events 为 none，点击不改变选区也不打开任何浮层",
-        "点击块打开 .tb-sheet[role=dialog][aria-label=\"2 条并行记录\"]，无 .tb-pop；两行：深度工作 09:10–10:40 1 小时 30 分 ›（备注预览“整理 TimeBlock 交互”）、学习 09:30–10:50 1 小时 20 分 ›（备注预览“通勤听 Git 热榜”）",
+        "右键记录块打开 .tb-sheet[role=dialog][aria-label=\"2 条并行记录\"]，无 .tb-pop；两行：深度工作 09:10–10:40 1 小时 30 分 ›（备注预览“整理 TimeBlock 交互”）、学习 09:30–10:50 1 小时 20 分 ›（备注预览“通勤听 Git 热榜”）",
         "点第一行后同一 .tb-sheet 变为详情：aria-label=\"记录详情\"，左上角 .tb-sheet-back 文案为“‹ 2 条记录”，.tb-sheet-meta 为“周五 09:10 – 10:40 · 1 小时 30 分”，.tb-note 值为“整理 TimeBlock 交互”",
         "详情没有“完成/保存”按钮：只有备注输入框与右下角 .tb-del“删除记录”；点返回后回到 2 条记录的列表",
         "Esc 直接关闭整张 sheet（.tb-sheet 不存在），不逐级返回列表",
