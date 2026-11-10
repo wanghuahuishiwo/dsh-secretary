@@ -429,7 +429,7 @@ test('selecting cells then a category paints them; 不选, Delete and 撤销 beh
   }
 })
 
-test('the 备注 sheet changes a record, and 计划 paints its own layer without touching 实录', { timeout: 240_000 }, async (t) => {
+test('the record detail sheet opens on right-click, autosaves the note and keeps it off the canvas, and 计划 paints its own layer', { timeout: 240_000 }, async (t) => {
   const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-browser-'))
   const overlay = await writeOverlay(home)
   const server = await boot(home, overlay)
@@ -448,14 +448,67 @@ test('the 备注 sheet changes a record, and 计划 paints its own layer without
     await dragCells(page, today, 480, 530)
     await page.locator('.tb-cat').filter({ hasText: '工作' }).first().click()
     await page.waitForFunction(() => document.querySelectorAll('.tb-blk').length === 6)
+    assert.equal(await page.locator('.tb-blk span').first().innerText(), '工作', '画布块内文字是标签名')
 
-    await dragCells(page, today, 480, 530)
-    await page.locator(`.tb-cell[data-day="${today}"][data-min="480"]`).click({ button: "right" })
+    // 单击记录块仍是选区手势：出现浮动徽章，但不打开详情。
+    await page.locator('.tb-blk').first().click()
+    assert.match(await page.locator('.tb-sel-badge').innerText(), /10 分/, '单击记录块仍产生选区')
+    assert.equal(await page.locator('.tb-sheet').count(), 0, '单击记录块不打开详情')
+    await page.keyboard.press('Escape')
+    assert.equal(await page.locator('.tb-sel-badge').count(), 0, 'Esc 只清空选区')
+
+    // 右键单条记录直接进详情：没有完成/保存按钮，备注输入后自动写入。
+    const block = page.locator('.tb-blk').first()
+    await block.click({ button: 'right' })
     const sheet = page.locator('.tb-sheet')
     await sheet.waitFor()
+    assert.equal(await sheet.locator('.tb-sheet-title').innerText(), '工作', '单条记录的块直接进入详情')
+    assert.equal(await sheet.getByRole('button', { name: /完成|保存/ }).count(), 0, '详情没有完成/保存按钮')
     await sheet.locator('.tb-note').fill('午饭')
-    await sheet.getByRole('button', { name: '完成' }).click()
-    await page.waitForFunction(() => document.querySelectorAll('.tb-blk span')[0]?.textContent === '午饭')
+    await page.waitForFunction(() => document.querySelector('.tb-blk')?.getAttribute('title')?.includes('午饭'),
+      undefined, { timeout: 20_000 })
+    assert.equal(await page.locator('.tb-blk span').first().innerText(), '工作', '备注不进入画布，块内文字仍是标签名')
+
+    // Esc 关闭整张 sheet；重开详情直接读到已自动写入的备注。
+    await page.keyboard.press('Escape')
+    await sheet.waitFor({ state: 'detached' })
+    await block.click({ button: 'right' })
+    await sheet.waitFor()
+    assert.equal(await sheet.locator('.tb-note').inputValue(), '午饭', '无需保存，重开详情仍能读到备注')
+
+    // 点遮罩关闭整张 sheet。
+    await page.locator('.tb-sheet-scrim').click({ position: { x: 12, y: 12 } })
+    await sheet.waitFor({ state: 'detached' })
+
+    // 向下拖动把手关闭整张 sheet。
+    await block.click({ button: 'right' })
+    await sheet.waitFor()
+    const grab = await sheet.locator('.grab').boundingBox()
+    await page.mouse.move(grab.x + grab.width / 2, grab.y + grab.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(grab.x + grab.width / 2, grab.y + grab.height / 2 + 90, { steps: 6 })
+    await page.mouse.up()
+    await sheet.waitFor({ state: 'detached' })
+
+    // 同格多条：右键先进「N 条并行记录」列表，点行下钻，‹ N 条记录 返回列表。
+    await dragCells(page, today, 480, 530)
+    await page.locator('.tb-sel-mode').getByRole('button', { name: '并行' }).click()
+    await page.locator('.tb-cat').filter({ hasText: '生活' }).first().click()
+    await page.waitForFunction(() => document.querySelectorAll('.tb-more').length === 6, undefined, { timeout: 20_000 })
+    assert.equal(await page.locator('.tb-blk span').first().innerText(), '工作', '重叠格只显示最早一条的标签')
+    await block.click({ button: 'right' })
+    await sheet.waitFor()
+    assert.equal(await sheet.locator('.tb-sheet-title').innerText(), '2 条并行记录', '同格多条先进列表')
+    assert.equal(await sheet.locator('.tb-sheet-row').count(), 2, '列表列出该格的全部记录')
+    await sheet.locator('.tb-sheet-row').first().click()
+    const back = sheet.locator('.tb-sheet-back')
+    await back.waitFor()
+    assert.match(await back.innerText(), /2 条记录/, '详情左上角是返回列表控件')
+    assert.equal(await sheet.locator('.tb-sheet-row').count(), 0, '点行进入该条记录详情')
+    await back.click()
+    await page.waitForFunction(() => document.querySelectorAll('.tb-sheet-row').length === 2)
+    await page.keyboard.press('Escape')
+    await sheet.waitFor({ state: 'detached' })
 
     await chooseTimeView(page, '计划')
     await page.waitForTimeout(400)
@@ -466,7 +519,7 @@ test('the 备注 sheet changes a record, and 计划 paints its own layer without
 
     await chooseTimeView(page, '实录')
     await page.waitForTimeout(400)
-    assert.equal(await page.locator('.tb-blk span').first().innerText(), '午饭', 'plan painting leaves 实录 alone')
+    assert.equal(await page.locator('.tb-blk span').first().innerText(), '工作', 'plan painting leaves 实录 alone')
 
     assert.deepEqual(errors, [])
   } finally {
@@ -792,18 +845,20 @@ test('Time Remote product covers cold-start real-canvas read/paint, strict error
     assert.equal(await product.locator('.tb-blk').count(), 1, 'failed paint leaves the last successful projection intact')
 
     await dragCells(page, today, 540, 540)
-    await product.locator(`.tb-cell[data-day="${today}"][data-min="540"]`).click({ button: "right" })
+    await product.locator(`.tb-blk[data-day="${today}"][data-min="540"]`).click({ button: 'right' })
     const failedSheet = product.locator('.tb-sheet')
+    await failedSheet.locator('.tb-note').waitFor()
     await failedSheet.locator('.tb-note').fill('失败时保留编辑')
-    await failedSheet.getByRole('button', { name: '完成' }).click()
+    // 详情没有保存按钮：备注在 400ms 防抖后自动写入，失败走既有错误/Toast 并保留输入。
     await product.locator('.tb-toast').filter({ hasText: 'Time updateBlock could not be persisted' }).first().waitFor()
     assert.equal(await failedSheet.count(), 1, 'failed update keeps the sheet open')
     assert.equal(await failedSheet.locator('.tb-note').inputValue(), '失败时保留编辑')
-    await failedSheet.getByRole('button', { name: '删除' }).click()
+    assert.equal(await failedSheet.getByRole('button', { name: /完成|保存/ }).count(), 0, '详情没有完成/保存按钮')
+    await failedSheet.getByRole('button', { name: '删除记录' }).click()
     await product.locator('.tb-toast').filter({ hasText: 'Time deleteBlock could not be persisted' }).first().waitFor()
     assert.equal(await failedSheet.count(), 1, 'failed delete also keeps the sheet open')
     assert.equal(await product.locator('.tb-toast').filter({ hasText: '已删除' }).count(), 0)
-    await failedSheet.getByRole('button', { name: '删除' }).waitFor()
+    await failedSheet.getByRole('button', { name: '删除记录' }).waitFor()
 
     const writeFailed = await remoteCall(page, 'secretaryTime/paint', {
       input: {
@@ -864,13 +919,22 @@ test('Time Remote product preserves editing, multi-day Undo, date navigation, an
     await product.locator('.tb-cat').filter({ hasText: '工作' }).first().click()
     await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .tb-blk').length === 6)
     await dragCells(page, today, 480, 530)
-    await product.locator(`.tb-cell[data-day="${today}"][data-min="480"]`).click({ button: "right" })
+    await product.locator(`.tb-blk[data-day="${today}"][data-min="480"]`).click({ button: 'right' })
     const sheet = product.locator('.tb-sheet')
+    await sheet.locator('.tb-note').waitFor()
     await sheet.locator('.tb-note').fill('Remote 午饭')
-    await sheet.getByRole('button', { name: '完成' }).click()
+    // 没有保存按钮：备注自动写入；画布块内文字仍是标签名。
+    await page.waitForFunction(() => document.querySelector('[data-time-remote] .tb-blk')?.getAttribute('title')?.includes('Remote 午饭'),
+      undefined, { timeout: 20_000 })
+    assert.equal(await product.locator('.tb-blk span').first().innerText(), '工作', '备注不上画布')
+    await page.keyboard.press('Escape')
     await sheet.waitFor({ state: 'detached' })
     await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .tb-blk').length === 6)
-    assert.equal(await product.locator('.tb-blk span').first().innerText(), 'Remote 午饭')
+    await product.locator(`.tb-blk[data-day="${today}"][data-min="480"]`).click({ button: 'right' })
+    await sheet.locator('.tb-note').waitFor()
+    assert.equal(await sheet.locator('.tb-note').inputValue(), 'Remote 午饭', '重开详情读到已自动写入的备注')
+    await page.keyboard.press('Escape')
+    await sheet.waitFor({ state: 'detached' })
 
     await chooseTimeView(page, '计划')
     assert.equal(await product.locator('.tb-blk').count(), 0)
@@ -878,8 +942,8 @@ test('Time Remote product preserves editing, multi-day Undo, date navigation, an
     await product.locator('.tb-cat').filter({ hasText: '生活' }).first().click()
     await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .tb-blk').length === 6)
     await dragCells(page, today, 600, 650)
-    await product.locator(`.tb-cell[data-day="${today}"][data-min="600"]`).click({ button: "right" })
-    await sheet.getByRole('button', { name: '删除' }).click()
+    await product.locator(`.tb-blk[data-day="${today}"][data-min="600"]`).click({ button: 'right' })
+    await sheet.getByRole('button', { name: '删除记录' }).click()
     await sheet.waitFor({ state: 'detached' })
     assert.equal(await product.locator('.tb-blk').count(), 0)
     await chooseTimeView(page, '实录')
@@ -890,8 +954,8 @@ test('Time Remote product preserves editing, multi-day Undo, date navigation, an
     assert.match(await product.locator('.tb-sel-badge').innerText(), /20 分/)
     await product.locator('.tb-cat').filter({ hasText: '工作' }).first().click()
     await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .tb-blk').length === 8)
-    await product.locator(`.tb-cell[data-day="${today}"][data-min="620"]`).click()
-    await product.locator(`.tb-cell[data-day="${tomorrow}"][data-min="620"]`).click()
+    await product.locator(`.tb-blk[data-day="${today}"][data-min="620"]`).click()
+    await product.locator(`.tb-blk[data-day="${tomorrow}"][data-min="620"]`).click()
     await page.keyboard.press('Delete')
     await page.waitForFunction(() => document.querySelectorAll('[data-time-remote] .tb-blk').length === 6)
     await product.locator('.tb-head button[title="撤销"]').click()
