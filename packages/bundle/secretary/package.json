@@ -20,7 +20,7 @@
   ],
   "engines": {
     "node": "^22.19.0 || >=24.0.0",
-    "dsh": ">=0.2.1-rc.5 <0.3.0"
+    "dsh": ">=0.2.2-rc.1 <0.3.0"
   },
   "dsh": {
     "bundle": {
@@ -37,8 +37,8 @@
     "test:tracer": "node --test tests/tracer.mjs"
   },
   "dependencies": {
-    "@deepseek-ai/cordis": "4.0.5",
-    "@deepseek-ai/dsh-storage-sqlite": "0.2.1-rc.5",
+    "@deepseek-ai/cordis": "4.1.0",
+    "@deepseek-ai/dsh-storage-sqlite": "0.2.2-rc.1",
     "dsh-secretary-goal-provider": "workspace:*",
     "dsh-secretary-gtd-service": "workspace:*",
     "dsh-secretary-storage-domain": "workspace:*",
@@ -53,8 +53,8 @@
     "dsh-secretary-gtd-agent": "workspace:*"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "4.0.5",
-    "@deepseek-ai/dsh-storage": "0.2.1-rc.5",
+    "@deepseek-ai/cordis": "4.1.0",
+    "@deepseek-ai/dsh-storage": "0.2.2-rc.1",
     "esbuild": "^0.25.10",
     "playwright": "1.62.1"
   }

@@ -10,7 +10,7 @@ permissions:
 env:
   PRIMARY_NODE_VERSION: '24'
   DSH_TELEMETRY_DISABLED: '1'
-  DSH_VERSION: '0.2.1-rc.5'
+  DSH_VERSION: '0.2.2-rc.1'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

@@ -15,7 +15,7 @@ pnpm test
 dsh plugin --profile <name> add <本仓>/packages/bundle/secretary
 ```
 
-运行要求 DSH `0.2.1-rc.5` 或兼容的 `0.2.x`。默认业务数据在 `$DSH_HOME/storages/secretary.db`。本仓测试只使用临时 `DSH_HOME`，不修改真实用户 profile。
+运行要求 DSH `0.2.2-rc.1` 或兼容的 `0.2.x`。默认业务数据在 `$DSH_HOME/storages/secretary.db`。本仓测试只使用临时 `DSH_HOME`，不修改真实用户 profile。
 
 ## 开发导航
 
