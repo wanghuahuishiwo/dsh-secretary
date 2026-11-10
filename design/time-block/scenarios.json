@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "entry": "design/time-block/index.html",
   "viewport": { "width": 390, "height": 844 },
   "adapter": "fixture",
@@ -15,14 +15,16 @@
     "undoButton": ".tb-head button[title=\"撤销\"]",
     "canvas": ".tb-day[data-day]（14 列）→ .tb-cell[data-day][data-min]（每列 24 × 6 格）",
     "canvasBackground": ".tb-canvas-bg（固定渐变浮层，不随 .tb-scroll 滚动；TimeCanvas 与 DeepWeekView 共用）",
-    "block": ".tb-blk（title 为标签名或备注；span 只在每条记录首个可见格；重叠格只画一条）",
-    "overlapBadge": ".tb-more（重叠格右上角数量角标，文本为 ²/³；aria-label 为“N 条并行记录”）",
-    "overlapPopover": ".tb-pop[role=\"dialog\"]（只有点角标才出现；.tb-pop-row 每条记录，含颜色、名称与起止时间；点外部或 Esc 收起）",
+    "block": ".tb-blk[data-day][data-min]（可点/右键；文本恒为标签名，span 只在每条记录首个可见格；title 为「标签名 · 备注」）",
+    "overlapBadge": ".tb-more（重叠格右上角数量角标，文本为 ²/³；aria-hidden 且 pointer-events: none，只是视觉指示，不可点）",
+    "sheet": ".tb-sheet[role=\"dialog\"]（详情 aria-label=\"记录详情\"，列表 aria-label=\"N 条并行记录\"）；同层遮罩 .tb-sheet-scrim",
+    "sheetList": ".tb-sheet-row（色点 + .nm 标签名 + time 起止时间 + .dur 时长 + .arrow；有备注时追加 .note-line 预览）",
+    "sheetBack": ".tb-sheet-back（详情左上角「‹ N 条记录」，只有从列表下钻的多记录详情才有）",
+    "sheetDetail": ".tb-sheet-meta（星期 起 – 止 · 时长）、.tb-note（备注输入框，无保存按钮）、.tb-del（右下角危险色文字「删除记录」）",
     "selection": ".tb-selbox",
     "selectionBadge": ".tb-sel-badge（无选区时不渲染；含时长与可选 .tb-sel-mode）",
     "paintMode": ".tb-sel-mode（仅选区碰到已有记录时出现；两个按钮“覆盖”“并行”，默认“覆盖”选中；写入后消失）",
     "tagShelf": ".tb-shelf .tb-cat",
-    "sheet": ".tb-sheet[role=\"dialog\"][aria-label=\"编辑备注\"]（只有备注输入与删除/完成）",
     "deep": ".tb-deep → .tb-hc[data-k=\"weekday-hour\"]（class H / M / L；data-level）",
     "deepLabel": "每行连续同级别仅最左一格含级别名 span（高 / 中 / 低）",
     "datePicker": ".tb-picker[role=\"dialog\"] → .tb-picker-day[data-day]",
@@ -50,7 +52,9 @@
         ".tb-module-switch .tb-title 显示“实录”（默认模块）",
         ".tb-daylabel 为“11月6日 周五”，.tb-day[data-day=\"2026-11-06\"] 的 .tb-datemark .today 存在",
         ".tb-day 共 14 列，.tb-cell 共 2016 格（14 × 24 × 6）",
-        ".tb-head button[title=\"撤销\"] 为 disabled；.tb-sel-badge 不存在",
+        "画布块文字只有标签名：09:10 的 .tb-blk span 为“深度工作”，不出现备注“整理 TimeBlock 交互”；备注只在 title（“深度工作 · 整理 TimeBlock 交互”）与详情 sheet 中",
+        ".tb-more 不是 button，带 aria-hidden 且 pointer-events 为 none；页面没有 .tb-pop",
+        ".tb-head button[title=\"撤销\"] 为 disabled；.tb-sel-badge 不存在；.tb-sheet 不存在",
         ".tb-toast 为空；.tb-head 内无预览专有控件（无 .has-action）；.od-preview 中“设计预览”标识存在且在 .tb-app 之外",
         "html[data-theme]=dark；.tb-app[data-tb-theme=\"dark\"]；背景为 rgb(10, 10, 11)；控制台错误 0，外部请求 0"
       ]
@@ -72,22 +76,25 @@
     },
     {
       "id": "parallel-blocks",
-      "title": "并行记录：格阵不拆、不增高，只加数量角标",
+      "title": "并行记录：画布不拆格；右键块先出列表，再下钻详情，返回保留列表",
       "steps": [
         "打开 design/time-block/index.html（实录、11月6日），不点击任何格子",
-        "读取 09:00–11:00 的 .tb-blk 与 .tb-more",
-        "在 09:30 的重叠格上右键，再按 Esc",
-        "点击 09:30 格子的 .tb-more 角标",
-        "点击浮层中的“通勤听 Git 热榜”，再按 Esc",
-        "切到计划，读取 21:20 的角标"
+        "读取 09:30（data-min=570）的 .tb-blk 与 .tb-more",
+        "点击 09:30 的 .tb-blk，再点击列表第一行；观察详情左上角返回控件",
+        "点击 .tb-sheet-back 回到列表",
+        "再点第一行进入详情，按 Esc",
+        "点击 12:30（data-min=750）的 .tb-blk",
+        "按 Esc 关闭，再从 09:30 的块上拖到 10:00"
       ],
       "expected": [
-        "默认没有 .tb-pop；09:30–10:40 的重叠格只有 1 个 .tb-blk（宽度仍是整格，不再横向切分），每格右上角有 1 个 .tb-more 角标，文本“²”",
-        "09:00–09:20 与 10:40 没有角标；10:40 起“通勤听 Git 热榜”接替显示，标签只在其首个可见格出现一次",
-        "重叠格右键仍是原行为：打开该格最早一条记录的备注页（.tb-sheet），不是 .tb-pop；Esc 关闭备注页",
-        "角标点击不改变选区：.tb-sel-badge 仍不存在；.tb-pop 出现且含 2 个 .tb-pop-row，显示“深度工作 · 整理 TimeBlock 交互”“学习 · 通勤听 Git 热榜”及各自起止时间",
-        "点击记录后浮层收起并打开 .tb-sheet（该记录的备注页）；Esc 关闭备注页",
-        "计划 21:20–21:40 同样只显示一条记录并带角标；每天仍 24 行、每行 6 格，行高不变"
+        "09:30–10:40 的重叠格只有 1 个 .tb-blk，宽度仍是整格；每格右上角有 .tb-more 角标，文本“²”",
+        "该 .tb-blk 的 span 为“深度工作”；.tb-more 是 span（不是 button），aria-hidden=true，getComputedStyle 的 pointer-events 为 none，点击不改变选区也不打开任何浮层",
+        "点击块打开 .tb-sheet[role=dialog][aria-label=\"2 条并行记录\"]，无 .tb-pop；两行：深度工作 09:10–10:40 1 小时 30 分 ›（备注预览“整理 TimeBlock 交互”）、学习 09:30–10:50 1 小时 20 分 ›（备注预览“通勤听 Git 热榜”）",
+        "点第一行后同一 .tb-sheet 变为详情：aria-label=\"记录详情\"，左上角 .tb-sheet-back 文案为“‹ 2 条记录”，.tb-sheet-meta 为“周五 09:10 – 10:40 · 1 小时 30 分”，.tb-note 值为“整理 TimeBlock 交互”",
+        "详情没有“完成/保存”按钮：只有备注输入框与右下角 .tb-del“删除记录”；点返回后回到 2 条记录的列表",
+        "Esc 直接关闭整张 sheet（.tb-sheet 不存在），不逐级返回列表",
+        "12:30 块打开列表：用餐 12:10–12:50 40 分（无备注预览）、协作沟通 12:20–13:20 1 小时（备注预览“午餐会同步”），即同格两条并行、其中一条带备注",
+        "从块上拖动仍进入选区：选区徽章显示“40 分”，.tb-sheet 不出现；每天仍 24 行、每行 6 格，行高不变"
       ]
     },
     {
@@ -107,7 +114,7 @@
     },
     {
       "id": "select-cells",
-      "title": "追加与取消格阵选择",
+      "title": "空格上的追加与取消选择",
       "steps": [
         "点击 .tb-cell[data-day=\"2026-11-06\"][data-min=\"360\"]",
         "点击 .tb-cell[data-day=\"2026-11-06\"][data-min=\"370\"]",
@@ -117,7 +124,7 @@
         "第一步后 .tb-sel-badge 出现，文本为“10 分”，当日 .tb-selbox 为 1 个",
         "第二步后文本为“20 分”，360 与 370 同属一个连续选区",
         "第三步后回到“10 分”，360 仍选中、370 取消，仍为 1 个 .tb-selbox",
-        "全程不修改时间块：当日 title=\"深度工作\" 的 .tb-blk 保持 4 段"
+        "全程不修改时间块：当日 title=\"深度工作\" 的 .tb-blk 保持 4 段；不打开 .tb-sheet"
       ]
     },
     {
@@ -139,28 +146,28 @@
       "id": "parallel-add",
       "title": "选区碰已有记录：覆盖／并行，默认覆盖",
       "steps": [
-        "在 09:30–10:00 拖选（该区间已有实录）",
+        "从 09:30（data-min=570）的 .tb-blk 拖到 10:00（data-min=600），该区间已有实录",
         "按 Tab（选区仍有重叠记录）",
         "点击标签架“学习”",
-        "等待 Toast；“已添加并行”后点 09:30 的 .tb-more，再点撤销"
+        "等待 Toast；“已添加并行”后点击 09:30 的 .tb-blk（不是角标），再点撤销"
       ],
       "expected": [
-        "默认选中“覆盖”；选区徽章同时显示“40 分”与“覆盖｜并行”",
+        "从块上开始拖动只形成选区，不打开 sheet；默认选中“覆盖”；选区徽章同时显示“40 分”与“覆盖｜并行”",
         "按 Tab 后焦点不被带走（仍在画布），“并行”aria-pressed=true；再点标签写入，Toast 为“已添加并行”，选区与模式一起清空",
-        "原有“整理 TimeBlock 交互”“通勤听 Git 热榜”完整保留；09:30 角标从“²”变“³”，浮层出现第三条“学习 09:30–10:10”",
-        "撤销后角标回到“²”，新增记录消失，原有记录不变"
+        "原有“整理 TimeBlock 交互”“通勤听 Git 热榜”完整保留；右键块打开的列表从 2 行变 3 行，新增“学习 09:30–10:10”",
+        "撤销后列表回到 2 行，新增记录消失，原有记录不变"
       ]
     },
     {
       "id": "erase",
       "title": "Delete 擦除整条记录并 Undo 恢复",
       "steps": [
-        "从 .tb-cell[data-day=\"2026-11-06\"][data-min=\"550\"] 拖到 [data-min=\"630\"]，选中整条 90 分钟记录",
+        "从 .tb-blk[data-day=\"2026-11-06\"][data-min=\"550\"] 拖到 [data-min=\"630\"]，选中整条 90 分钟记录",
         "按 Delete",
         "点击 .tb-head button[title=\"撤销\"]"
       ],
       "expected": [
-        "选区徽章时长显示“1 小时 30 分”，并出现 .tb-sel-mode（默认“覆盖”）",
+        "从块上拖动只形成选区：时长显示“1 小时 30 分”，并出现 .tb-sel-mode（默认“覆盖”）；不打开 sheet",
         "擦除后 .tb-toast 为“已擦除”，title=\"整理 TimeBlock 交互\" 变为 0 段，撤销可用",
         "Undo 后 .tb-toast 为“已撤销”，该记录恢复为 9 段"
       ]
@@ -197,17 +204,21 @@
       ]
     },
     {
-      "id": "record-note",
-      "title": "右键记录：写备注、删除",
+      "id": "record-detail",
+      "title": "点单条记录块直接进详情：备注输入即生效、无保存按钮、删除",
       "steps": [
-        "在 .tb-cell[data-day=\"2026-11-06\"][data-min=\"550\"] 上右键",
-        "在 .tb-sheet 的 .tb-note 填“设计走查记录”，点击“完成”",
-        "再次右键该记录，点击 .tb-sheet 中“删除”"
+        "点击 .tb-blk[data-day=\"2026-11-06\"][data-min=\"820\"]（13:40，单条记录）",
+        "在 .tb-note 中输入“复盘周会”，等待 500ms",
+        "读取该块文本、title 与 .tb-toast",
+        "点击 .tb-sheet-scrim 关闭；再次点击同一块",
+        "点击 .tb-del（删除记录）"
       ],
       "expected": [
-        ".tb-sheet[role=\"dialog\"][aria-label=\"编辑备注\"] 显示“09:10 – 10:40”“1 小时 30 分”，不提供换标签或调时间控件",
-        "保存后 .tb-sheet 关闭，.tb-toast 为“已保存”，title=\"设计走查记录\" 的 .tb-blk 为 9 段",
-        "删除后 .tb-sheet 关闭，.tb-toast 为“已删除”，该记录变为 0 段"
+        "单击记录块直接打开详情：.tb-sheet[aria-label=\"记录详情\"]，没有 .tb-sheet-back（单条记录没有上一级），没有“完成/保存”按钮",
+        "详情显示“周五 13:40 – 14:20 · 40 分”，.tb-note 自动聚焦",
+        "输入 400ms 后备注自动写入 fixture：不出现“已保存”Toast；画布块文字仍是“深度工作”，title 变为“深度工作 · 复盘周会”（备注不进入画布文字）",
+        "点遮罩关闭整张 sheet；再次点击同一块，详情 .tb-note 值为“复盘周会”",
+        "点“删除记录”后 sheet 关闭，.tb-toast 为“已删除”，该记录 0 段；Undo 不把删除计入（删除不在画布 Undo 历史中）"
       ]
     },
     {
@@ -249,7 +260,8 @@
       "title": "常用操作全程无控制台错误、无外部请求",
       "steps": [
         "重新加载入口",
-        "依次切到计划、切回实录、选中 360 并上色、Undo、下一天、今天、切到深度时间"
+        "依次切到计划、切回实录、选中 360 并上色、Undo、下一天、今天、切到深度时间",
+        "点开 09:30 的块 → 列表 → 详情 → 返回 → Esc 关闭"
       ],
       "expected": [
         "consoleErrors = 0",
