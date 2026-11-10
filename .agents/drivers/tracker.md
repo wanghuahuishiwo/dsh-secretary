@@ -28,7 +28,7 @@ driver 是 Markdown 执行说明，由当前 agent 使用实际工具完成，�
 
 输入：项目绑定、标题、UTF-8 正文文件、已核实的类型与标签。
 
-实现：先按仓库查重；使用 `gh issue create --repo <owner/repo> --title <标题> --body-file <正文文件>`。仅添加项目已映射且真实存在的标签。创建失败或结果不明时先按标题、正文和仓库回读，不重复创建。
+实现：先按仓库查重；使用 `gh issue create --repo <owner/repo> --title <标题> --body-file <正文文件>`，证据图片用 `--attach` 内嵌。仅添加项目已映射且真实存在的标签。创建失败或结果不明时先按标题、正文和仓库回读，不重复创建。
 
 完成：返回真实 Issue number 与 URL，并按 number 回读正文、状态和标签。
 
@@ -44,7 +44,7 @@ driver 是 Markdown 执行说明，由当前 agent 使用实际工具完成，�
 
 输入：Issue number、获授权记录及 UTF-8 正文文件。
 
-实现：使用 `gh issue comment <number> --repo <owner/repo> --body-file <正文文件>` 追加普通评论，不重写正文，不主动触发 Agent 派发。
+实现：使用 `gh issue comment <number> --repo <owner/repo> --body-file <正文文件>` 追加普通评论，证据图片用 `--attach` 内嵌；不重写正文，不主动触发 Agent 派发。
 
 完成：回读新增评论的作者、正文、时间与 URL。
 
@@ -75,5 +75,5 @@ driver 是 Markdown 执行说明，由当前 agent 使用实际工具完成，�
 ## 恢复与边界
 
 - 任何写入失败、超时或部分成功都先按仓库和 Issue number 回读；无 number 时查重，确认未创建后才考虑重试。
-- 不使用 GitHub Issue 评论冒充 MR／CI、附件上传或远程合入结果。
-- 当前未声明附件、MR、CI、自动通知和跨仓库关系动作；需要时另行核对真实 `gh` 能力后扩展。
+- 不使用 GitHub Issue 评论冒充 MR／CI 或远程合入结果；附件只作图片证据，不替代 CI、日志或合入链接。
+- 已声明附件上传；未声明 MR、CI、自动通知和跨仓库关系动作，需要时另行核对真实 `gh` 能力后扩展。

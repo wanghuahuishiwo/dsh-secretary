@@ -1,7 +1,7 @@
 {
   "name": "dsh-secretary",
   "version": "0.1.0",
-  "description": "Personal Secretary Agent for DSH: GTD, unified Tags, date Plans, PlanTemplates, ActualBlocks, and proactive follow-through.",
+  "description": "Personal Secretary Agent for DSH: a Markdown GTD data plane, CLI time/tag ops, and proactive follow-through.",
   "license": "MIT",
   "keywords": [
     "dsh",
@@ -39,18 +39,16 @@
   "dependencies": {
     "@deepseek-ai/cordis": "4.1.0",
     "@deepseek-ai/dsh-storage-sqlite": "0.2.2-rc.1",
+    "dsh-secretary-cli": "workspace:*",
     "dsh-secretary-goal-provider": "workspace:*",
-    "dsh-secretary-gtd-service": "workspace:*",
+    "dsh-secretary-gtd-agent": "workspace:*",
+    "dsh-secretary-skill-resources": "workspace:*",
     "dsh-secretary-storage-domain": "workspace:*",
     "dsh-secretary-tag-service": "workspace:*",
     "dsh-secretary-time-block": "workspace:*",
-    "dsh-secretary-ui-gtd": "workspace:*",
     "dsh-secretary-time-controller": "workspace:*",
-    "dsh-secretary-ui-time": "workspace:*",
-    "dsh-secretary-skill-resources": "workspace:*",
-    "dsh-secretary-tool-gtd": "workspace:*",
-    "dsh-secretary-tool-tag": "workspace:*",
-    "dsh-secretary-gtd-agent": "workspace:*"
+    "dsh-secretary-ui-gtd": "workspace:*",
+    "dsh-secretary-ui-time": "workspace:*"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",

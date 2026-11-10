@@ -1,14 +1,13 @@
 {
   "name": "dsh-secretary-time-block",
   "version": "0.1.0",
-  "description": "Time domain for dsh-secretary: independent Tag-classified date Plans, weekday PlanTemplates, and ActualBlocks.",
+  "description": "Time domain for dsh-secretary: independent Tag-classified date Plans, weekday PlanTemplates, ActualBlocks, and DeepTime weeks.",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
     "./contract": "./lib/contract.js",
-    "./tools": "./lib/tools.js",
     "./package.json": "./package.json"
   },
   "files": [
@@ -25,8 +24,7 @@
   "dependencies": {
     "@deepseek-ai/cordis": "4.1.0",
     "dsh-secretary-tag-service": "workspace:*",
-    "dsh-secretary-validation": "workspace:*",
-    "dsh-secretary-tooling": "workspace:*"
+    "dsh-secretary-validation": "workspace:*"
   },
   "devDependencies": {
     "esbuild": "^0.25.10"

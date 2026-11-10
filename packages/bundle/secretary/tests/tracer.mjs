@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -8,9 +8,9 @@ import { Context } from '@deepseek-ai/cordis'
 import Storage, { storageBackendServiceKey } from '@deepseek-ai/dsh-storage'
 import { SqliteStorageBackend } from '@deepseek-ai/dsh-storage-sqlite'
 import { GoalService } from 'dsh-secretary-goal-provider/contract'
-import { GtdService } from 'dsh-secretary-gtd-service/contract'
 import { TagService } from 'dsh-secretary-tag-service/contract'
 import { TimeService } from 'dsh-secretary-time-block/contract'
+import { invokeTagOp, invokeTimeOp } from 'dsh-secretary-time-controller'
 
 async function sqliteHarness(t, databasePath, failOn, beforePlugins, includeGoal = true) {
   const directory = databasePath === undefined ? await mkdtemp(join(tmpdir(), 'dsh-secretary-tracer-')) : undefined
@@ -50,6 +50,7 @@ async function sqliteHarness(t, databasePath, failOn, beforePlugins, includeGoal
   await beforePlugins?.(facility)
 
   const tools = new Map()
+  const registeredTools = new Map()
   const skills = new Map()
   const routes = new Map()
   ctx.provide('connection', {
@@ -63,6 +64,7 @@ async function sqliteHarness(t, databasePath, failOn, beforePlugins, includeGoal
   ctx.provide('tools', {
     register(definition) {
       tools.set(definition.name, definition)
+      registeredTools.set(definition.name, definition)
       return () => { tools.delete(definition.name) }
     },
   })
@@ -74,12 +76,8 @@ async function sqliteHarness(t, databasePath, failOn, beforePlugins, includeGoal
   })
 
   const modules = await Promise.all([
-    import('dsh-secretary-gtd-service'),
-    import('dsh-secretary-tool-gtd'),
     import('dsh-secretary-tag-service'),
-    import('dsh-secretary-tool-tag'),
     import('dsh-secretary-time-block'),
-    import('dsh-secretary-time-block/tools'),
     import('dsh-secretary-time-controller'),
     ...(includeGoal ? [import('dsh-secretary-goal-provider')] : []),
   ])
@@ -95,13 +93,15 @@ async function sqliteHarness(t, databasePath, failOn, beforePlugins, includeGoal
     await ctx.fiber.dispose()
     await facility.closeAll()
     await backend.close()
+    // The session tools are retired: no plugin may ever register one again.
+    if (registeredTools.size > 0) throw new Error(`secretary: retired tools were registered: ${[...registeredTools.keys()].sort().join(', ')}`)
   }
   t.after(async () => {
     await close()
     if (directory !== undefined) await rm(directory, { recursive: true, force: true })
   })
   return {
-    ctx, tools, skills, routes, databasePath: resolvedDatabasePath, close, failOn,
+    ctx, tools, registeredTools, skills, routes, databasePath: resolvedDatabasePath, close, failOn, tmpdir: directory,
     failNextWrite(table, index = 1) { nextFailure = { table, indexes: new Set([index]), count: 0 } },
     failWriteSequence(table, indexes) { nextFailure = { table, indexes: new Set(indexes), count: 0 } },
     async provideGoal() {
@@ -115,9 +115,9 @@ async function sqliteHarness(t, databasePath, failOn, beforePlugins, includeGoal
 }
 
 function execute(harness, name, args) {
-  const tool = harness.tools.get(name)
-  assert.ok(tool, `missing public tool ${name}`)
-  return tool.execute(args)
+  if (name === 'secretary_time') return invokeTimeOp(harness.ctx.get('time'), args)
+  if (name === 'secretary_tag') return invokeTagOp(harness.ctx.get('tags'), args)
+  throw new Error(`missing agent op surface ${name}`)
 }
 
 async function eventually(assertion) {
@@ -134,7 +134,7 @@ async function eventually(assertion) {
   throw lastError
 }
 
-test('Tag public tools create and list a unified time/context tree with numeric ids', async (t) => {
+test('Tag agent ops create and list a unified time/context tree with numeric ids', async (t) => {
   const harness = await sqliteHarness(t)
   const work = await execute(harness, 'secretary_tag', {
     op: 'create', name: '工作', kind: 'time', color: '#477bc7',
@@ -201,7 +201,7 @@ test('Tag moves reject cycles and cross-kind parents, and delete protects childr
   await assert.rejects(execute(harness, 'secretary_tag', { op: 'get', id: child.id }), /no tag/)
 })
 
-test('ActualBlock public tools persist independent, arbitrarily overlapping actual intervals', async (t) => {
+test('ActualBlock agent ops persist independent, arbitrarily overlapping actual intervals', async (t) => {
   const harness = await sqliteHarness(t)
   const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '技术', kind: 'time' })
   const created = await execute(harness, 'secretary_time', {
@@ -245,7 +245,7 @@ test('ActualBlock public tools persist independent, arbitrarily overlapping actu
   assert.deepEqual((await execute(harness, 'secretary_time', { op: 'actual.list' })).blocks.map(block => block.id), [1])
 })
 
-test('PlanBlock public tools provide numeric-id CRUD on a concrete date', async (t) => {
+test('PlanBlock agent ops provide numeric-id CRUD on a concrete date', async (t) => {
   const harness = await sqliteHarness(t)
   const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '专注工作', kind: 'time' })
   const created = await execute(harness, 'secretary_time', {
@@ -343,7 +343,7 @@ test('Plan update moves a record between dates without leaving it in the origina
   })).blocks.map(item => item.id), [block.id], 'replacing day A must not delete a PlanBlock already moved to day B')
 })
 
-test('PlanTemplateBlock public tools maintain weekday-local template records with numeric ids', async (t) => {
+test('PlanTemplateBlock agent ops maintain weekday-local template records with numeric ids', async (t) => {
   const harness = await sqliteHarness(t)
   const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '晨间例行', kind: 'time' })
   const created = await execute(harness, 'secretary_time', {
@@ -824,33 +824,18 @@ test('Tag deletion ignores an apply history invalidated by a later Plan edit but
   })).block.timeTagId, editedTag.id)
 })
 
-test('GTD Completed and Actual start/stop remain independent facts', async (t) => {
+test('Actual start/stop cycles remain independent persisted facts', async (t) => {
   const harness = await sqliteHarness(t)
   const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
-  const captured = await execute(harness, 'secretary_gtd', {
-    op: 'inbox.capture', title: '整理评审材料', raw: '周五前准备好产品评审。', source: 'user_request',
-  })
-  const clarified = await execute(harness, 'secretary_gtd', {
-    op: 'inbox.clarify', id: captured.item.id,
-    project: { title: '产品评审', outcome: '评审材料完整。', type: 'sequential', tagIds: [tag.id] },
-    action: { title: '整理评审材料', dueAt: '2026-10-30T17:00:00+08:00', estimatedMinutes: 60 },
-  })
-  assert.equal(clarified.action.availability, 'available')
-  assert.equal((await execute(harness, 'secretary_gtd', { op: 'inbox.list' })).items.length, 0)
 
   const firstCycle = await execute(harness, 'secretary_time', {
     op: 'actual.start', timeTagId: tag.id, startAt: '2026-10-29T18:00:00+08:00', actualSource: 'user_reported',
   })
   await execute(harness, 'secretary_time', { op: 'actual.stop', id: firstCycle.block.id, endAt: '2026-10-29T18:10:00+08:00' })
-  assert.equal((await execute(harness, 'secretary_gtd', { op: 'action.get', id: clarified.action.id })).action.status, 'active')
   const started = await execute(harness, 'secretary_time', {
     op: 'actual.start', timeTagId: tag.id, startAt: '2026-10-29T19:10:00+08:00',
-    actualSource: 'user_reported', focus: 'deep', note: `Action ${clarified.action.id} 仅作备注提及`,
+    actualSource: 'user_reported', focus: 'deep', note: '运行中的事项仅作备注提及',
   })
-  const completed = await execute(harness, 'secretary_gtd', {
-    op: 'action.complete', id: clarified.action.id, completedAt: '2026-10-29T20:05:00+08:00',
-  })
-  assert.equal(completed.action.status, 'completed')
   const stillRunning = await execute(harness, 'secretary_time', { op: 'actual.get', id: started.block.id })
   assert.equal(stillRunning.block.endAt, undefined)
   assert.equal(stillRunning.block.actionId, undefined)
@@ -859,14 +844,12 @@ test('GTD Completed and Actual start/stop remain independent facts', async (t) =
     op: 'actual.stop', id: started.block.id, endAt: '2026-10-29T20:10:00+08:00',
   })
   assert.equal(stopped.block.endAt, '2026-10-29T20:10:00+08:00')
-  const action = await execute(harness, 'secretary_gtd', { op: 'action.get', id: clarified.action.id })
-  assert.equal(action.action.completedAt, '2026-10-29T20:05:00+08:00')
   assert.equal((await execute(harness, 'secretary_time', { op: 'actual.get', id: firstCycle.block.id })).block.endAt, '2026-10-29T18:10:00+08:00')
   assert.equal((await execute(harness, 'secretary_time', { op: 'actual.list' })).blocks.length, 2)
   assert.deepEqual(JSON.parse(JSON.stringify(stopped)), stopped)
 })
 
-test('Tag, Actual, and GTD facts reopen from the same SQLite file after a full shutdown', async (t) => {
+test('Tag and Actual facts reopen from the same SQLite file after a full shutdown', async (t) => {
   const directory = await mkdtemp(join(tmpdir(), 'dsh-secretary-restart-'))
   const databasePath = join(directory, 'secretary.sqlite')
   t.after(async () => { await rm(directory, { recursive: true, force: true }) })
@@ -874,14 +857,6 @@ test('Tag, Actual, and GTD facts reopen from the same SQLite file after a full s
   const first = await sqliteHarness(t, databasePath)
   const { tag: root } = await execute(first, 'secretary_tag', { op: 'create', name: '工作', kind: 'time', color: '#477bc7' })
   const { tag: child } = await execute(first, 'secretary_tag', { op: 'create', name: '实现', parentId: root.id })
-  const captured = await execute(first, 'secretary_gtd', {
-    op: 'inbox.capture', title: '持久化验证', raw: '重启后继续处理持久化验证。', source: 'user_request',
-  })
-  const clarified = await execute(first, 'secretary_gtd', {
-    op: 'inbox.clarify', id: captured.item.id,
-    project: { title: '持久化项目', outcome: '重启后事实仍然存在。', type: 'sequential', tagIds: [root.id] },
-    action: { title: '验证重启恢复', tagIds: [child.id], plannedAt: '2026-11-03T09:00:00+08:00' },
-  })
   const { block: running } = await execute(first, 'secretary_time', {
     op: 'actual.start', timeTagId: child.id, startAt: '2026-11-02T09:00:00+08:00',
     actualSource: 'agent_observed', focus: 'deep',
@@ -893,13 +868,6 @@ test('Tag, Actual, and GTD facts reopen from the same SQLite file after a full s
   await first.close()
 
   const reopened = await sqliteHarness(t, databasePath)
-  const action = await execute(reopened, 'secretary_gtd', { op: 'action.get', id: clarified.action.id })
-  assert.equal(action.action.title, '验证重启恢复')
-  assert.equal(action.action.plannedAt, '2026-11-03T09:00:00+08:00')
-  assert.deepEqual(action.action.tagIds, [child.id])
-  assert.deepEqual(new Set(action.action.effectiveTags), new Set([root.id, child.id]))
-  const nextAction = await execute(reopened, 'secretary_gtd', { op: 'action.create', title: '重开后数字 ID', tagIds: [root.id] })
-  assert.equal(nextAction.action.id, clarified.action.id + 1)
   const restoredChild = await execute(reopened, 'secretary_tag', { op: 'get', id: child.id })
   assert.equal(restoredChild.tag.parentId, root.id)
   assert.equal(restoredChild.tag.color, undefined)
@@ -1078,7 +1046,7 @@ test('deep.clearRange clears an inclusive rectangle while preserving cells outsi
   assert.equal(week.cells.find(cell => cell.weekday === 4 && cell.hour === 14).level, 'unset')
 })
 
-test('deep public tools reject invalid levels, coordinates, and reversed ranges without overwriting the week', async (t) => {
+test('deep agent ops reject invalid levels, coordinates, and reversed ranges without overwriting the week', async (t) => {
   const harness = await sqliteHarness(t)
   await execute(harness, 'secretary_time', { op: 'deep.setCell', weekStart: '2026-11-02', weekday: 1, hour: 9, level: 'high' })
   const invalid = [
@@ -1105,13 +1073,6 @@ test('deep public tools reject invalid levels, coordinates, and reversed ranges 
   }
   const { week } = await execute(harness, 'secretary_time', { op: 'deep.getWeek', weekStart: '2026-11-02' })
   assert.deepEqual(week.cells.filter(cell => cell.level !== 'unset'), [{ weekday: 1, hour: 9, level: 'high' }])
-  const tool = harness.tools.get('secretary_time')
-  assert.deepEqual(tool.parameters.properties.level.enum, ['high', 'medium', 'low'])
-  assert.equal(tool.parameters.properties.weekday.minimum, 1)
-  assert.equal(tool.parameters.properties.weekday.maximum, 7)
-  assert.equal(tool.parameters.properties.hour.minimum, 0)
-  assert.equal(tool.parameters.properties.hour.maximum, 23)
-  assert.equal(tool.parameters.properties.weekStart.type, 'string')
 })
 
 test('deep weekly templates and Actual facts never derive from or rewrite each other', async (t) => {
@@ -1137,7 +1098,7 @@ test('deep weekly templates and Actual facts never derive from or rewrite each o
   assert.equal((await execute(harness, 'secretary_time', { op: 'actual.get', id: later.id })).block.focus, 'shallow')
 })
 
-test('Time tool exposes only the new Plan/Template/Actual/DeepTime model and rejects invalid intervals without overwriting facts', async (t) => {
+test('Time agent ops expose only the new Plan/Template/Actual/DeepTime model and reject invalid intervals without overwriting facts', async (t) => {
   const harness = await sqliteHarness(t)
   const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
   const { block } = await execute(harness, 'secretary_time', {
@@ -1151,23 +1112,6 @@ test('Time tool exposes only the new Plan/Template/Actual/DeepTime model and rej
     /endAt must be after startAt/,
   )
   assert.equal((await execute(harness, 'secretary_time', { op: 'actual.get', id: block.id })).block.startAt, '2026-10-29T09:00:00+08:00')
-
-  const tool = harness.tools.get('secretary_time')
-  assert.deepEqual(tool.parameters.properties.focus.anyOf[0].enum, ['deep', 'shallow'])
-  for (const field of ['actionId', 'planned', 'actual', 'use', 'gtdRefs', 'preparationReminderId']) {
-    assert.equal(tool.parameters.properties[field], undefined)
-  }
-  assert.ok(!tool.parameters.properties.op.enum.includes('record_actual'))
-  assert.ok(tool.parameters.properties.op.enum.includes('actual.start'))
-  assert.ok(tool.parameters.properties.op.enum.includes('actual.stop'))
-  for (const op of [
-    'plan.list', 'plan.get', 'plan.create', 'plan.update', 'plan.delete',
-    'template.list', 'template.create', 'template.update', 'template.delete', 'template.apply', 'template.undo',
-    'deep.getWeek', 'deep.setCell', 'deep.clearCell', 'deep.setRange', 'deep.clearRange',
-  ]) assert.ok(tool.parameters.properties.op.enum.includes(op), `missing public operation ${op}`)
-  assert.equal(tool.parameters.properties.id.type, 'integer')
-  assert.equal(tool.parameters.properties.timeTagId.type, 'integer')
-  assert.equal(tool.parameters.properties.weekday.type, 'integer')
 })
 
 
@@ -1655,33 +1599,7 @@ test('Time product paint cuts runs out of one layer and replaceDay, updateBlock,
   assert.deepEqual((await state()).actual, [])
 })
 
-test('Time product keeps Time and Tag available when GTD storage holds an unreadable legacy record', async (t) => {
-  const harness = await sqliteHarness(t)
-  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
-  const message = "domain 'secretary_gtd': stored record '5ff171ac-1193-4225-a4db-d55be3880eec' in table 'inbox' does not match its schema"
-  for (const method of ['listInbox', 'listProjects', 'listActions', 'listNextActions', 'listForecast']) {
-    harness.ctx.gtd[method] = async () => { throw new Error(message) }
-  }
-  const product = harness.ctx.get('timeProduct')
-  assert.ok(product)
-  const state = await product.readWindow({ anchor: '2026-11-02', timeZone: 'Asia/Shanghai', weekStart: '2026-11-02' })
-  assert.deepEqual(state.tags.map(item => item.id), [tag.id])
-  assert.equal(Array.isArray(state.actual), true)
-  assert.equal(Array.isArray(state.plan), true)
-  assert.equal(Array.isArray(state.deep.cells), true)
-  for (const key of ['inbox', 'projects', 'actions', 'nextActions', 'forecast', 'warnings']) {
-    assert.equal(key in state, false, `Time projection must not contain aggregate GTD field ${key}`)
-  }
-
-  await product.paint({
-    layer: 'actual', tagId: tag.id, timeZone: 'Asia/Shanghai',
-    runs: [{ date: '2026-11-02', start: 540, end: 600 }],
-  })
-  const after = await product.readWindow({ anchor: '2026-11-02', timeZone: 'Asia/Shanghai', weekStart: '2026-11-02' })
-  assert.equal(after.actual.length, 1, 'Time writes still work while GTD is unreadable')
-})
-
-test('Time product and public tools share the same Tag and Time Services without aggregate routes', async (t) => {
+test('Time product and agent ops share the same Tag and Time Services without aggregate routes', async (t) => {
   const harness = await sqliteHarness(t)
   const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
   const product = harness.ctx.get('timeProduct')
@@ -1700,48 +1618,17 @@ test('Time product and public tools share the same Tag and Time Services without
   assert.equal(harness.routes.has('/api/secretary.command'), false)
 })
 
-test('GTD public tools preserve capture, clarification, Next, Forecast, and completion facts without a product API', async (t) => {
-  const harness = await sqliteHarness(t)
-  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
-  const captured = await execute(harness, 'secretary_gtd', {
-    op: 'inbox.capture', title: '工具捕获', raw: '公共工具与 Service 同源', source: 'user_request',
-  })
-  assert.equal(typeof captured.item.id, 'number')
-  assert.equal((await execute(harness, 'secretary_gtd', { op: 'inbox.list' })).items[0].id, captured.item.id)
-  const clarified = await execute(harness, 'secretary_gtd', {
-    op: 'inbox.clarify', id: captured.item.id,
-    project: { title: '工具项目', outcome: '各次读取看到同一事实', type: 'parallel', tagIds: [tag.id] },
-    action: { title: '工具下一步', plannedAt: '2026-11-03T09:00:00+08:00' },
-  })
-  assert.equal(clarified.action.availability, 'available')
-  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'inbox.list' })).items, [])
-  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'project.list' })).projects.map(project => project.id), [clarified.project.id])
-  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'action.next' })).actions.map(action => action.id), [clarified.action.id])
-  assert.deepEqual((await execute(harness, 'secretary_gtd', {
-    op: 'action.forecast', date: '2026-11-03', timeZone: 'Asia/Shanghai',
-  })).actions.map(action => action.id), [clarified.action.id])
-  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'action.list' })).actions[0].effectiveTags, [tag.id])
-  const completed = await execute(harness, 'secretary_gtd', {
-    op: 'action.complete', id: clarified.action.id, completedAt: '2026-11-03T10:00:00+08:00',
-  })
-  assert.equal(completed.action.status, 'completed')
-  assert.equal((await execute(harness, 'secretary_gtd', { op: 'action.get', id: clarified.action.id })).action.completedAt, '2026-11-03T10:00:00+08:00')
-  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'action.next' })).actions, [])
-  assert.equal(harness.routes.size, 0, 'the GTD domain needs no legacy state/command routes')
-})
-
-test('Goal is an upstream Provider: Time, GTD and TimeProduct wait for it and unload with it', async (t) => {
+test('Goal is an upstream Provider: Tag, Time and TimeProduct wait for it and unload with it', async (t) => {
   const harness = await sqliteHarness(t, undefined, undefined, undefined, false)
   await eventually(() => assert.ok(harness.ctx.get('tags') instanceof TagService))
   assert.equal(harness.ctx.get('goals'), undefined)
-  assert.equal(harness.ctx.get('gtd'), undefined)
   assert.equal(harness.ctx.get('time'), undefined)
   assert.equal(harness.ctx.get('timeProduct'), undefined)
   assert.equal(harness.routes.size, 0)
 
   const provider = await harness.provideGoal()
   assert.ok(harness.ctx.get('goals') instanceof GoalService)
-  assert.ok(harness.ctx.get('gtd') instanceof GtdService)
+  assert.ok(harness.ctx.get('tags') instanceof TagService)
   assert.ok(harness.ctx.get('time') instanceof TimeService)
   assert.ok(harness.ctx.get('timeProduct'))
   assert.equal(harness.routes.size, 0)
@@ -1749,415 +1636,39 @@ test('Goal is an upstream Provider: Time, GTD and TimeProduct wait for it and un
   await provider.dispose()
   await eventually(() => {
     assert.equal(harness.ctx.get('goals'), undefined)
-    assert.equal(harness.ctx.get('gtd'), undefined)
     assert.equal(harness.ctx.get('time'), undefined)
     assert.equal(harness.ctx.get('timeProduct'), undefined)
     assert.equal(harness.routes.size, 0)
   })
 })
 
-test('GTD product composition and unload preserve domain Services, Agent tools, and the independent Time product', async (t) => {
-  const harness = await sqliteHarness(t)
-  const gtd = harness.ctx.get('gtd')
-  const time = harness.ctx.get('time')
-  const product = await harness.ctx.plugin(await import('dsh-secretary-ui-gtd'))
-  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '独立装卸', kind: 'time' })
-  const { action } = await execute(harness, 'secretary_gtd', { op: 'action.create', title: '装卸后继续存在', tagIds: [tag.id] })
-  const tools = [...harness.tools.keys()]
-  const routes = [...harness.routes.keys()]
-
-  await product.dispose()
-  assert.ok(harness.ctx.gtd instanceof GtdService)
-  assert.ok(harness.ctx.time instanceof TimeService)
-  assert.deepEqual([...harness.tools.keys()], tools)
-  assert.deepEqual([...harness.routes.keys()], routes)
-  assert.equal((await gtd.getAction(action.id)).title, '装卸后继续存在')
-  assert.equal((await execute(harness, 'secretary_gtd', { op: 'action.get', id: action.id })).action.title, '装卸后继续存在')
-  const actual = await execute(harness, 'secretary_time', {
-    op: 'actual.create', timeTagId: tag.id, startAt: '2026-11-02T09:00:00+08:00',
-    endAt: '2026-11-02T09:30:00+08:00', actualSource: 'user_reported',
-  })
-  assert.equal(actual.block.timeTagId, tag.id)
-  assert.equal((await time.getActual(actual.block.id)).timeTagId, tag.id)
-
-  await harness.ctx.plugin(await import('dsh-secretary-ui-gtd'))
-  assert.ok(harness.ctx.gtd instanceof GtdService)
-  assert.ok(harness.ctx.time instanceof TimeService)
-  const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
-  assert.ok(patch.includes("name: 'dsh-secretary-ui-gtd'"), 'the installable bundle mounts the independent GTD product')
-  assert.ok(patch.includes("name: 'dsh-secretary-time-controller'"), 'the installable bundle mounts the independent Time Host API')
-  assert.ok(patch.includes("name: 'dsh-secretary-ui-time'"), 'the installable bundle mounts the independent Time browser UI')
-  assert.doesNotMatch(patch, /dsh-secretary-panel|secretary\.state|secretary\.command/)
-})
-
 test('Secretary composition registers one coherent assistant and user-only GTD skills over SQLite services', async (t) => {
   const harness = await sqliteHarness(t)
+  const gtdPath = join(harness.tmpdir, 'gtd')
   const gtdAgent = await import('dsh-secretary-gtd-agent')
   const secretary = await import('dsh-secretary')
-  const timePanel = await import('dsh-secretary-time-controller')
-  assert.deepEqual(timePanel.inject, ['time', 'tags'], 'Time product must not inject GTD')
   await harness.ctx.plugin(gtdAgent)
-  await harness.ctx.plugin(secretary, { defaultTimeZone: 'Asia/Shanghai' })
+  await harness.ctx.plugin(secretary, { defaultTimeZone: 'Asia/Shanghai', gtdPath })
 
+  assert.deepEqual([...harness.skills.keys()].sort(), ['gtd-clarify', 'gtd-inbox-capture', 'secretary'])
+  assert.equal(harness.skills.get('secretary').invocation.modelInvocable, true)
+  assert.equal(harness.skills.get('secretary').invocation.userInvocable, true)
   assert.equal(harness.skills.get('gtd-inbox-capture').invocation.modelInvocable, false)
   assert.equal(harness.skills.get('gtd-inbox-capture').invocation.userInvocable, true)
   assert.equal(harness.skills.get('gtd-clarify').invocation.modelInvocable, false)
   assert.equal(harness.skills.get('gtd-clarify').invocation.userInvocable, true)
-  assert.equal(harness.skills.get('secretary').invocation.modelInvocable, true)
-  assert.equal(harness.skills.get('secretary').invocation.userInvocable, true)
-  assert.ok(harness.ctx.gtd instanceof GtdService)
-  assert.ok(harness.ctx.goals instanceof GoalService)
-  assert.ok(harness.ctx.tags instanceof TagService)
-  assert.ok(harness.ctx.time instanceof TimeService)
-  for (const name of ['secretary_gtd', 'secretary_tag', 'secretary_time']) {
-    assert.equal(harness.tools.get(name).parameters.oneOf, undefined)
-    assert.equal(harness.tools.get(name).parameters.type, 'object')
-  }
-  assert.equal(harness.tools.has('secretary_time_block'), false)
-  assert.equal(harness.tools.has('secretary_statistics'), false)
-  assert.equal(harness.routes.has('/api/secretary.state'), false)
-  assert.equal(harness.routes.has('/api/secretary.command'), false)
-  assert.equal(harness.routes.size, 0, 'the final products register no legacy aggregate routes')
 
-  const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
-  for (const row of [
-    "name: '@deepseek-ai/dsh-storage-sqlite'",
-    "name: 'dsh-secretary-storage-domain'",
-    "name: 'dsh-secretary-goal-provider'",
-    "name: 'dsh-secretary-gtd-service'",
-    "name: 'dsh-secretary-tag-service'",
-    "name: 'dsh-secretary-time-block'",
-    "name: 'dsh-secretary-time-controller'",
-    "name: 'dsh-secretary-ui-time'",
-    "name: 'dsh-secretary-ui-gtd'",
-    "name: 'dsh-secretary-tool-gtd'",
-    "name: 'dsh-secretary-tool-tag'",
-    "name: 'dsh-secretary-time-block/tools'",
-    "name: 'dsh-secretary-gtd-agent'",
-    "name: 'dsh-secretary'",
-    "name: '@deepseek-ai/dsh-skill-filesystem'",
-    "name: '@deepseek-ai/dsh-tool-bash'",
-    "name: '@deepseek-ai/dsh-tool-web'",
-    "name: '@deepseek-ai/dsh-tool-todo'",
-    "name: '@deepseek-ai/dsh-tool-goal'",
-    "name: '@deepseek-ai/dsh-compaction-basic'",
-    "name: '@deepseek-ai/dsh-tool-subagent'",
-    "name: '@deepseek-ai/dsh-plan-mode'",
-    "name: '@deepseek-ai/dsh-tool-ask-user'",
-  ]) assert.ok(patch.includes(row), `missing bundle row ${row}`)
-  assert.ok(patch.includes("- id: skill-office\n  disabled: true"), 'office skills must stay disabled')
-  assert.doesNotMatch(patch, /^- id: storage-domain$/m)
-  assert.doesNotMatch(patch, /dsh-secretary-panel|secretary-panel|secretary\.state|secretary\.command/)
-  const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
-  assert.equal(manifest.dependencies['dsh-secretary-panel'], undefined)
-  assert.equal(manifest.dependencies['dsh-secretary-time-controller'], 'workspace:*')
-  assert.equal(manifest.dependencies['dsh-secretary-ui-time'], 'workspace:*')
-  assert.equal(manifest.dependencies['dsh-secretary-ui-gtd'], 'workspace:*')
-})
+  const skill = harness.skills.get('secretary')
+  assert.equal(skill.description, '捕获、澄清、规划、记录、准备或跟进用户的任何承诺或时间时使用；小秘书的全部能力与行为规则在此。')
+  assert.ok(skill.content.endsWith(`- GTD data directory: ${gtdPath}\n`),
+    'the skill content must end with the Current configuration suffix naming the GTD data directory')
+  const suffix = skill.content.slice(skill.content.indexOf('## Current configuration'))
+  assert.ok(suffix.includes('- Default time zone: Asia/Shanghai'))
+  assert.ok(suffix.includes(`- GTD data directory: ${gtdPath}`))
 
-test('Tag deletion protects GTD references and shares its serial boundary with Action create/update', async (t) => {
-  const harness = await sqliteHarness(t)
-  const { tag: time } = await execute(harness, 'secretary_tag', { op: 'create', name: '项目时间', kind: 'time' })
-  const captured = await execute(harness, 'secretary_gtd', {
-    op: 'inbox.capture', title: '保护引用', raw: '标签不能留下悬空引用。', source: 'user_request',
-  })
-  await execute(harness, 'secretary_gtd', {
-    op: 'inbox.clarify', id: captured.item.id,
-    project: { title: '引用保护', outcome: '所有引用一致', type: 'parallel', tagIds: [time.id] },
-    action: { title: '验证删除保护' },
-  })
-  await assert.rejects(execute(harness, 'secretary_tag', { op: 'delete', id: time.id }), /referenced/)
-  assert.equal((await execute(harness, 'secretary_tag', { op: 'get', id: time.id })).tag.name, '项目时间')
-
-  const standalone = await execute(harness, 'secretary_gtd', {
-    op: 'action.create', title: '独立标签事项', tagIds: [time.id],
-  })
-  for (const operation of ['action.create', 'action.update']) {
-    const { tag: race } = await execute(harness, 'secretary_tag', { op: 'create', name: `竞态 ${operation}`, kind: 'time' })
-    const write = operation === 'action.create'
-      ? { op: operation, title: '并发创建', tagIds: [race.id] }
-      : { op: operation, id: standalone.action.id, tagIds: [race.id] }
-    const outcomes = await Promise.allSettled([
-      execute(harness, 'secretary_gtd', write),
-      execute(harness, 'secretary_tag', { op: 'delete', id: race.id }),
-    ])
-    assert.equal(outcomes.filter(outcome => outcome.status === 'fulfilled').length, 1)
-    const survivingTag = await execute(harness, 'secretary_tag', { op: 'get', id: race.id }).catch(() => undefined)
-    const references = (await execute(harness, 'secretary_gtd', { op: 'action.list' })).actions
-      .filter(action => action.tagIds.includes(race.id))
-    if (survivingTag === undefined) assert.equal(references.length, 0)
-    else assert.equal(references.length, 1)
-  }
-})
-
-test('Action effectiveTags accumulate Project and every parent Action without copying inherited direct tagIds', async (t) => {
-  const harness = await sqliteHarness(t)
-  const { tag: time } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
-  const { tag: projectContext } = await execute(harness, 'secretary_tag', { op: 'create', name: '办公室', kind: 'context' })
-  const { tag: parentContext } = await execute(harness, 'secretary_tag', { op: 'create', name: '电脑', kind: 'context' })
-  const { tag: ownTime } = await execute(harness, 'secretary_tag', { op: 'create', name: '写作', kind: 'time' })
-  const captured = await execute(harness, 'secretary_gtd', {
-    op: 'inbox.capture', title: '撰写文档', raw: '完成一篇可发布的文档。', source: 'user_request',
-  })
-  const { project, action: parent } = await execute(harness, 'secretary_gtd', {
-    op: 'inbox.clarify', id: captured.item.id,
-    project: { title: '撰写文档', outcome: '文档发布', type: 'parallel', tagIds: [time.id, projectContext.id] },
-    action: { title: '准备文档内容', tagIds: [parentContext.id] },
-  })
-  const created = await execute(harness, 'secretary_gtd', {
-    op: 'action.create', parentActionId: parent.id, title: '撰写初稿', tagIds: [ownTime.id, parentContext.id],
-  })
-  assert.equal(created.action.projectId, project.id)
-  assert.equal(created.action.parentActionId, parent.id)
-  assert.deepEqual(created.action.tagIds, [ownTime.id, parentContext.id])
-  assert.deepEqual(new Set(created.action.effectiveTags), new Set([time.id, projectContext.id, parentContext.id, ownTime.id]))
-  const fetched = await execute(harness, 'secretary_gtd', { op: 'action.get', id: created.action.id })
-  assert.deepEqual(fetched.action.effectiveTags, created.action.effectiveTags)
-  const effective = await execute(harness, 'secretary_gtd', { op: 'action.effectiveTags', id: created.action.id })
-  assert.deepEqual(effective.tagIds, created.action.effectiveTags)
-  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'action.get', id: parent.id })).action.tagIds, [parentContext.id])
-  assert.deepEqual(JSON.parse(JSON.stringify(created)), created)
-})
-
-test('Project clarification requires exactly one direct time Tag and SAL never invents an outcome', async (t) => {
-  const harness = await sqliteHarness(t)
-  const { tag: time } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
-  const { tag: secondTime } = await execute(harness, 'secretary_tag', { op: 'create', name: '学习', kind: 'time' })
-  const { tag: context } = await execute(harness, 'secretary_tag', { op: 'create', name: '电脑', kind: 'context' })
-  const captured = await execute(harness, 'secretary_gtd', {
-    op: 'inbox.capture', title: '发布版本', raw: '准备并发布下一版。', source: 'user_request',
-  })
-  for (const tagIds of [[], [context.id], [time.id, secondTime.id]]) {
-    await assert.rejects(execute(harness, 'secretary_gtd', {
-      op: 'inbox.clarify', id: captured.item.id,
-      project: { title: '发布版本', outcome: '版本可供用户使用', type: 'parallel', tagIds },
-      action: { title: '检查发布内容' },
-    }), /exactly one direct time tag/)
-  }
-  assert.equal((await execute(harness, 'secretary_gtd', { op: 'inbox.list' })).items.length, 1)
-
-  const clarified = await execute(harness, 'secretary_gtd', {
-    op: 'inbox.clarify', id: captured.item.id,
-    project: { title: '发布版本', outcome: '版本可供用户使用', type: 'parallel', tagIds: [time.id, context.id] },
-    action: { title: '检查发布内容', tagIds: [context.id] },
-  })
-  assert.equal(typeof clarified.project.id, 'number')
-  assert.equal(typeof clarified.action.id, 'number')
-  assert.deepEqual(clarified.project.tagIds, [time.id, context.id])
-  assert.equal(clarified.action.projectId, clarified.project.id)
-  assert.deepEqual(clarified.action.tagIds, [context.id])
-
-  const inbox = await execute(harness, 'secretary_gtd', {
-    op: 'inbox.capture', title: '杂务', raw: '整理一组互不依赖的杂务。', source: 'user_request',
-  })
-  const sal = await execute(harness, 'secretary_gtd', {
-    op: 'inbox.clarify', id: inbox.item.id,
-    project: { title: '零散杂务', type: 'single_action_list', tagIds: [time.id] },
-    action: { title: '缴水电费' },
-  })
-  assert.equal(sal.project.outcome, undefined)
-  assert.equal(sal.project.type, 'single_action_list')
-  assert.deepEqual(JSON.parse(JSON.stringify(sal)), sal)
-})
-
-test('GTD capture and standalone clarification allocate lossless numeric ids without creating a Project', async (t) => {
-  const harness = await sqliteHarness(t)
-  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '个人', kind: 'time' })
-  const captured = await execute(harness, 'secretary_gtd', {
-    op: 'inbox.capture', title: '预约牙医', raw: '下周找个时间预约牙医。', source: 'user_request',
-  })
-  assert.equal(captured.item.id, 1)
-  assert.equal(typeof captured.item.id, 'number')
-  assert.equal(captured.item.raw, '下周找个时间预约牙医。')
-  assert.equal((await execute(harness, 'secretary_gtd', { op: 'project.list' })).projects.length, 0)
-
-  const clarified = await execute(harness, 'secretary_gtd', {
-    op: 'inbox.clarify', id: captured.item.id,
-    action: { title: '打电话预约牙医', tagIds: [tag.id], estimatedMinutes: 10 },
-  })
-  assert.equal(clarified.project, undefined)
-  assert.equal(clarified.action.id, 2)
-  assert.equal(typeof clarified.action.id, 'number')
-  assert.equal(clarified.action.projectId, undefined)
-  assert.equal(clarified.action.parentActionId, undefined)
-  assert.deepEqual(clarified.action.tagIds, [tag.id])
-  assert.equal(clarified.action.availability, 'available')
-  assert.deepEqual(JSON.parse(JSON.stringify(clarified)), clarified)
-  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'inbox.list' })).items, [])
-  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'project.list' })).projects, [])
-  await assert.rejects(execute(harness, 'secretary_gtd', { op: 'action.update', id: clarified.action.id, tagIds: [] }), /standalone action requires its own time tag/)
-  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'action.get', id: clarified.action.id })).action.tagIds, [tag.id])
-  assert.equal(harness.tools.get('secretary_gtd').parameters.properties.id.type, 'integer')
-})
-
-test('Inbox, Project, and Action atomic CRUD rejects structural deletion that would orphan children', async (t) => {
-  const harness = await sqliteHarness(t)
-  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
-  const captured = await execute(harness, 'secretary_gtd', {
-    op: 'inbox.capture', title: '丢弃条目', raw: '这条不需要继续处理。', source: 'user_request',
-  })
-  const discarded = await execute(harness, 'secretary_gtd', { op: 'inbox.delete', id: captured.item.id })
-  assert.equal(discarded.item.raw, '这条不需要继续处理。')
-  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'inbox.list' })).items, [])
-
-  const created = await execute(harness, 'secretary_gtd', {
-    op: 'project.create', title: '原子项目', outcome: '公开 CRUD 可用', type: 'parallel', tagIds: [tag.id],
-  })
-  assert.equal((await execute(harness, 'secretary_gtd', { op: 'project.get', id: created.project.id })).project.title, '原子项目')
-  const parent = await execute(harness, 'secretary_gtd', {
-    op: 'action.create', projectId: created.project.id, title: '父事项',
-  })
-  const child = await execute(harness, 'secretary_gtd', {
-    op: 'action.create', parentActionId: parent.action.id, title: '子事项',
-  })
-  await assert.rejects(execute(harness, 'secretary_gtd', { op: 'action.delete', id: parent.action.id }), /children/)
-  await assert.rejects(execute(harness, 'secretary_gtd', { op: 'project.delete', id: created.project.id }), /actions/)
-  assert.equal((await execute(harness, 'secretary_gtd', { op: 'action.get', id: child.action.id })).action.title, '子事项')
-  await execute(harness, 'secretary_gtd', { op: 'action.delete', id: child.action.id })
-  await execute(harness, 'secretary_gtd', { op: 'action.delete', id: parent.action.id })
-  await execute(harness, 'secretary_gtd', { op: 'project.delete', id: created.project.id })
-  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'project.list' })).projects, [])
-  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'action.list' })).actions, [])
-  await execute(harness, 'secretary_tag', { op: 'delete', id: tag.id })
-})
-
-test('Next Actions contain only currently available leaves across parallel, sequential, SAL, and standalone Actions', async (t) => {
-  const harness = await sqliteHarness(t)
-  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
-  const makeProject = async (title, type) => {
-    const captured = await execute(harness, 'secretary_gtd', {
-      op: 'inbox.capture', title, raw: title, source: 'user_request',
-    })
-    return execute(harness, 'secretary_gtd', {
-      op: 'inbox.clarify', id: captured.item.id,
-      project: { title, ...(type === 'single_action_list' ? {} : { outcome: `${title}完成` }), type, tagIds: [tag.id] },
-      action: { title: `${title} 第一项` },
-    })
-  }
-  const nextIds = async () => (await execute(harness, 'secretary_gtd', { op: 'action.next' })).actions.map(action => action.id)
-
-  const parallel = await makeProject('并行项目', 'parallel')
-  const parallelSecond = await execute(harness, 'secretary_gtd', {
-    op: 'action.create', projectId: parallel.project.id, title: '并行第二项',
-  })
-  assert.deepEqual(new Set(await nextIds()), new Set([parallel.action.id, parallelSecond.action.id]))
-  const child = await execute(harness, 'secretary_gtd', {
-    op: 'action.create', parentActionId: parallel.action.id, title: '并行动作子项',
-  })
-  assert.ok(!(await nextIds()).includes(parallel.action.id), 'parent Action is not a leaf')
-  assert.ok((await nextIds()).includes(child.action.id))
-  assert.ok((await nextIds()).includes(parallelSecond.action.id))
-
-  const sequential = await makeProject('顺序项目', 'sequential')
-  const sequentialSecond = await execute(harness, 'secretary_gtd', {
-    op: 'action.create', projectId: sequential.project.id, title: '顺序第二项',
-  })
-  assert.equal((await execute(harness, 'secretary_gtd', { op: 'action.get', id: sequentialSecond.action.id })).action.availability, 'blocked')
-  assert.ok((await nextIds()).includes(sequential.action.id))
-  assert.ok(!(await nextIds()).includes(sequentialSecond.action.id))
-  await execute(harness, 'secretary_gtd', {
-    op: 'action.update', id: sequential.action.id, deferAt: '2099-01-01T09:00:00+08:00',
-  })
-  assert.ok(!(await nextIds()).includes(sequential.action.id))
-  assert.ok(!(await nextIds()).includes(sequentialSecond.action.id), 'a deferred active predecessor still blocks later siblings')
-  await execute(harness, 'secretary_gtd', { op: 'action.update', id: sequential.action.id, deferAt: null })
-  await execute(harness, 'secretary_gtd', {
-    op: 'action.complete', id: sequential.action.id, completedAt: '2026-11-03T12:00:00+08:00',
-  })
-  assert.ok((await nextIds()).includes(sequentialSecond.action.id))
-
-  const sal = await makeProject('单一行动清单', 'single_action_list')
-  const salSecond = await execute(harness, 'secretary_gtd', {
-    op: 'action.create', projectId: sal.project.id, title: '清单第二项',
-  })
-  assert.ok((await nextIds()).includes(sal.action.id))
-  assert.ok((await nextIds()).includes(salSecond.action.id))
-  const standalone = await execute(harness, 'secretary_gtd', { op: 'action.create', title: '独立下一步', tagIds: [tag.id] })
-  assert.ok((await nextIds()).includes(standalone.action.id))
-
-  const held = await execute(harness, 'secretary_gtd', { op: 'project.update', id: parallel.project.id, status: 'on-hold' })
-  assert.equal(held.project.status, 'on-hold')
-  for (const id of [parallelSecond.action.id, child.action.id]) {
-    assert.equal((await execute(harness, 'secretary_gtd', { op: 'action.get', id })).action.availability, 'unavailable')
-    assert.ok(!(await nextIds()).includes(id))
-  }
-  await execute(harness, 'secretary_gtd', { op: 'project.update', id: parallel.project.id, status: 'active' })
-  const dropped = await execute(harness, 'secretary_gtd', {
-    op: 'action.drop', id: parallelSecond.action.id, droppedAt: '2026-11-03T13:00:00+08:00',
-  })
-  assert.equal(dropped.action.availability, 'unavailable')
-  assert.ok(!(await nextIds()).includes(parallelSecond.action.id))
-  assert.deepEqual(JSON.parse(JSON.stringify(dropped)), dropped)
-})
-
-test('Action date fields are independent offset instants and Forecast queries explicit calendar dates', async (t) => {
-  const harness = await sqliteHarness(t)
-  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
-  const created = await execute(harness, 'secretary_gtd', {
-    op: 'action.create', title: '维护日期语义', tagIds: [tag.id],
-    deferAt: '2000-01-01T09:00:00+08:00', plannedAt: '2026-11-03T23:30:00+08:00',
-    dueAt: '2026-11-04T09:00:00+08:00', estimatedMinutes: 45,
-  })
-  assert.equal(created.action.plannedAt, '2026-11-03T23:30:00+08:00')
-  assert.equal(created.action.dueAt, '2026-11-04T09:00:00+08:00')
-  assert.equal(created.action.estimatedMinutes, 45)
-  assert.equal(created.action.availability, 'available')
-  for (const date of ['2026-11-03', '2026-11-04']) {
-    const forecast = await execute(harness, 'secretary_gtd', { op: 'action.forecast', date, timeZone: 'Asia/Shanghai' })
-    assert.deepEqual(forecast.actions.map(action => action.id), [created.action.id])
-  }
-  assert.deepEqual((await execute(harness, 'secretary_gtd', {
-    op: 'action.forecast', date: '2026-11-05', timeZone: 'Asia/Shanghai',
-  })).actions, [])
-  const utc = await execute(harness, 'secretary_gtd', {
-    op: 'action.create', title: '跨时区截止', tagIds: [tag.id], dueAt: '2026-11-03T01:00:00Z',
-  })
-  assert.deepEqual((await execute(harness, 'secretary_gtd', {
-    op: 'action.forecast', date: '2026-11-03', timeZone: 'Asia/Shanghai',
-  })).actions.map(action => action.id), [created.action.id, utc.action.id])
-
-  const flexible = await execute(harness, 'secretary_gtd', {
-    op: 'action.update', id: created.action.id, deferAt: null, plannedAt: '2099-01-01T09:00:00+08:00', dueAt: '2000-01-01T09:00:00+08:00',
-  })
-  assert.equal(flexible.action.availability, 'available', 'Planned and past Due must not change Availability')
-  const tool = harness.tools.get('secretary_gtd')
-  for (const field of ['deferAt', 'plannedAt', 'dueAt', 'estimatedMinutes']) assert.ok(tool.parameters.properties[field])
-  for (const input of [
-    { plannedAt: '2026-11-03T09:00:00' },
-    { dueAt: '2026-02-31T09:00:00+08:00' },
-    { estimatedMinutes: -2 },
-  ]) await assert.rejects(execute(harness, 'secretary_gtd', { op: 'action.update', id: created.action.id, ...input }))
-  await assert.rejects(execute(harness, 'secretary_gtd', {
-    op: 'action.update', id: created.action.id, action: { preparationResultRef: 'nested-by-mistake' },
-  }), /top-level/)
-  await assert.rejects(execute(harness, 'secretary_gtd', { op: 'action.forecast', date: '2026-02-31', timeZone: 'Asia/Shanghai' }), /invalid date/)
-  const unchanged = await execute(harness, 'secretary_gtd', { op: 'action.get', id: created.action.id })
-  assert.equal(unchanged.action.estimatedMinutes, 45)
-  assert.equal(unchanged.action.plannedAt, '2099-01-01T09:00:00+08:00')
-  assert.deepEqual(JSON.parse(JSON.stringify(flexible)), flexible)
-})
-
-test('clarification restores the original Inbox and removes partial writes after backend failures', async (t) => {
-  for (const failOn of [{ put: 'actions' }, { delete: 'inbox' }]) {
-    const harness = await sqliteHarness(t, undefined, failOn)
-    const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '工作', kind: 'time' })
-    const captured = await execute(harness, 'secretary_gtd', {
-      op: 'inbox.capture', title: '原子澄清', raw: '失败时不能留下半承接状态。', source: 'user_request',
-    })
-    await assert.rejects(
-      execute(harness, 'secretary_gtd', {
-        op: 'inbox.clarify', id: captured.item.id,
-        project: { title: '原子项目', outcome: '失败时全部回滚。', type: 'sequential', tagIds: [tag.id] },
-        action: { title: '不能留下部分写入' },
-      }),
-      /injected/,
-    )
-    assert.equal((await execute(harness, 'secretary_gtd', { op: 'project.list' })).projects.length, 0)
-    assert.equal((await execute(harness, 'secretary_gtd', { op: 'action.list' })).actions.length, 0)
-    const inbox = await execute(harness, 'secretary_gtd', { op: 'inbox.list' })
-    assert.deepEqual(inbox.items.map(item => item.id), [captured.item.id])
-    await harness.close()
-  }
+  assert.deepEqual((await readdir(gtdPath)).sort(), ['GTD.md', 'Inbox.md', 'README.md'])
+  assert.equal((await readFile(join(gtdPath, 'README.md'), 'utf8')).split('\n')[0], '# 小秘书 GTD 数据目录')
+  assert.equal(harness.tools.size, 0, 'session tools are retired; composition must register none')
 })
 
 /** Open the running harness's SQLite file as an outside writer would. */
@@ -2165,69 +1676,19 @@ function externalDatabase(path) {
   return new DatabaseSync(path)
 }
 
-const LEGACY_INBOX_ROW = {
-  id: '5ff171ac-1193-4225-a4db-d55be3880eec',
-  title: '定：新加坡 onsite 还是海外 remote',
-  raw: '历史导入记录，id 是 UUID',
-  source: 'knowledge:life-plan/05-职业路径.md',
-  status: 'open',
-  createdAt: '2026-10-29T09:54:47.841Z',
-}
-
-test('A stored record that no longer matches its schema is quarantined instead of disabling its domain', async (t) => {
-  const directory = await mkdtemp(join(tmpdir(), 'dsh-secretary-legacy-'))
-  const databasePath = join(directory, 'secretary.sqlite')
-  t.after(() => rm(directory, { recursive: true, force: true }))
-
-  // First boot materializes the tables; the legacy row then lands while nothing is running.
-  const warm = await sqliteHarness(t, databasePath)
-  await warm.close()
-  const writer = externalDatabase(databasePath)
-  writer.prepare('insert into u_secretary_gtd_inbox(key, value) values (?, ?)')
-    .run(LEGACY_INBOX_ROW.id, JSON.stringify(LEGACY_INBOX_ROW))
-  writer.close()
-
-  const harness = await sqliteHarness(t, databasePath)
-  // The domain opens: one unreadable record must not take GTD down.
-  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'inbox.list' })).items, [])
-  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'project.list' })).projects, [])
-
-  // The record survives, moved aside with its reason, so nothing is silently lost.
-  const reader = externalDatabase(databasePath)
-  const quarantined = reader.prepare('select value from u_secretary_quarantine_records').all()
-  reader.close()
-  assert.equal(quarantined.length, 1)
-  const record = JSON.parse(quarantined[0].value)
-  assert.equal(record.domain, 'secretary_gtd')
-  assert.equal(record.table, 'inbox')
-  assert.equal(record.key, LEGACY_INBOX_ROW.id)
-  assert.deepEqual(record.raw, LEGACY_INBOX_ROW)
-  assert.match(record.reason, /inbox id must be a positive integer/)
-
-  // Tag deletion is no longer collateral damage of the GTD failure.
-  const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '临时', kind: 'time' })
-  assert.equal((await execute(harness, 'secretary_tag', { op: 'delete', id: tag.id })).tag.id, tag.id)
-})
-
 test('Reload re-reads data written outside the running services, without a host restart', async (t) => {
   const harness = await sqliteHarness(t)
   const { tag } = await execute(harness, 'secretary_tag', { op: 'create', name: '技术', kind: 'time' })
   const writer = externalDatabase(harness.databasePath)
   writer.prepare('update u_secretary_tag_tags set value = ? where key = ?')
     .run(JSON.stringify({ ...tag, name: '技术（外部改名）' }), String(tag.id))
-  writer.prepare('insert into u_secretary_gtd_inbox(key, value) values (?, ?)').run('1', JSON.stringify({
-    id: 1, title: '外部捕获', raw: '迁移脚本写入', source: 'migration', status: 'open', createdAt: '2026-11-09T00:00:00.000Z',
-  }))
   writer.close()
 
   // Services still serve their loaded snapshot; that is the documented cache.
   assert.equal((await execute(harness, 'secretary_tag', { op: 'list' })).tags[0].name, '技术')
-  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'inbox.list' })).items, [])
 
   await execute(harness, 'secretary_tag', { op: 'reload' })
-  await execute(harness, 'secretary_gtd', { op: 'reload' })
   assert.equal((await execute(harness, 'secretary_tag', { op: 'list' })).tags[0].name, '技术（外部改名）')
-  assert.deepEqual((await execute(harness, 'secretary_gtd', { op: 'inbox.list' })).items.map(item => item.title), ['外部捕获'])
 })
 
 test('Time product reloadWindow re-reads Tag and Time facts after an out-of-band change', async (t) => {

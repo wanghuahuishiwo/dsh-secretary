@@ -1,5 +1,5 @@
 ---
-description: "小秘书-时间块的 Host 产品 API：七个产品级 Typert Remote 方法；供迁移 Remote、排查产品生命周期或核对领域调用边界的用户与维护者阅读。"
+description: "小秘书-时间块的 Host 产品 API 与 Agent CLI 的 Remote 面：九个产品级 Typert Remote 方法；供迁移 Remote、排查产品生命周期或核对领域调用边界的用户与维护者阅读。"
 kind: "package-reference"
 ---
 
@@ -7,7 +7,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包提供“小秘书-时间块”的 Host 产品服务 `TimeProductService`：把画布需要的三模块窗口、paint／replace／update／delete、DeepTime 批量操作与显式重读暴露为七个 Typert Remote 方法，调用既有 `TimeService` 与 `TagService`。浏览器 UI 由 [`client/ui-time`](../../client/ui-time/README.md) 拥有，本包不含 React 或界面代码。
+本包提供“小秘书-时间块”的 Host 产品服务 `TimeProductService`：把画布需要的三模块窗口、paint／replace／update／delete、DeepTime 批量操作与显式重读暴露为七个画布 Typert Remote 方法，调用既有 `TimeService` 与 `TagService`；另提供 `TagProductService`（`secretaryTag` namespace），其 `agentInvoke` 与 `secretaryTime/agentInvoke` 一起承载退役会话工具的全部 op 面，供 `dsh-secretary` CLI 经 `/api` 调用。浏览器 UI 由 [`client/ui-time`](../../client/ui-time/README.md) 拥有，本包不含 React 或界面代码。
 
 ## 目录
 
@@ -72,4 +72,4 @@ kind: "package-reference"
 
 - 不包含 React、样式或浏览器生命周期；UI 在 `client/ui-time`。
 - 不包含 GTD、Goal、Tag 管理或设置页面。
-- 不提供计划模板、Tag 写入、GTD 或开始／停止实录的额外 Remote 方法；这些领域能力不因未暴露 Remote 而被删除。
+- `agentInvoke` 承载 CLI 的全量 op 面（含计划模板与实录 start/stop）；GTD 不设 Remote——GTD 数据面是 Markdown。

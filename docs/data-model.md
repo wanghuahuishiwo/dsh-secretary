@@ -7,7 +7,7 @@
 
 | 模块 | 职责 | 是否拥有独立事实 |
 |---|---|---|
-| GTD | 复刻 OmniFocus 的核心逻辑，管理承诺、项目、行动及其可用性。 | 是 |
+| GTD | 管理承诺、项目、行动及其可用性。 | 是（Markdown 数据面，见 §2） |
 | 时间 | 管理时间计划与时间实录，覆盖工作及全部生活时间。 | 是 |
 | **Tag** | 管理标签类型、层级、关联和查询汇总；拥有 `tags` 表。 | **是** |
 | Goal | 当前没有 Goal 事实；只有 bundle 级空 GoalService。 | 否；没有 Goal 实体或表 |
@@ -18,6 +18,8 @@ GTD 和时间不是对全部模块的穷尽。模块、入口和共享边界见 
 **派生视图不是一级产品，而是各模块内部的读取方式**：GTD 内部有 Next Actions、Today、Forecast；Time 内部有计划、实录和深度时间视图；Tag 内部有按层级筛选与汇总的视图。它们共同遵守一条设计原则：从同一事实源即时派生，不另存一份视图数据。统计、预算与对账属于另行专题，不因该原则而自动进入当前范围。
 
 ## 2. GTD 事实与边界
+
+GTD 事实存放在插件自有的 Markdown 数据面（`$DSH_HOME/storages/secretary/gtd/`，契约见目录内 README.md）：checkbox 表达行动状态、缩进表达层级、Obsidian 式标签表达属性、标题表达项目；由秘书／普通 agent／用户三方经通用文档工具或 Obsidian 直接读写，现读现写。旧的 SQLite GTD 域（projects / actions / inbox 表）已退役。下述边界与方法论语义不因载体改变。
 
 ### 2.1 进入系统的条件
 
@@ -113,9 +115,8 @@ interface Tag {
 
 ### 4.4 GTD 时间标签与全层级继承
 
-- 每个 Project 必须设置一个 `kind = time` 的时间标签；其所有后代 Action 自动继承，无需逐个设置。
-- Project 或父 Action 的**所有 Tags**（包括 `time` 与 `context`）都向子 Action 派生；Action 自己设置 Tags 是追加，不覆盖或阻断任何祖先继承。
-- 没有 Project 或父 Action 的独立 Action 必须自己设置时间标签，才能保证每个 Action 都有有效时间标签。
+- 项目段的 `#标签` 对其下所有行动生效；行动行的 `#标签` 是追加，不覆盖或阻断继承。
+- 独立行动必须自己带时间标签，才能保证每个行动都有有效时间标签。
 - `time` 标签因此可用于 TimeBlock 和 GTD Project／Action；`context` 仍用于 GTD 情境分类。TimeBlock 与 GTD 之间只共享标签，不建立直接结构化关联。
 
 ```text
@@ -178,7 +179,7 @@ Secretary 的 GTD、Tag、Time 三个领域都由 [storage domain 包装层](../
 
 ### 6.1 重新加载
 
-`secretary_tag`、`secretary_gtd`、`secretary_time` 各提供 `reload` 动作：关闭当前领域、按同一份 spec 重新打开，让之后的读写落在新快照上。它不重启宿主、不改写任何事实，也不触发领域间的联动。外部改库后必须显式 reload；否则服务继续返回旧值，用旧 id 上色还会把事实写到错误标签上。画布顶部提供同一件事的产品入口：刷新按钮调用 `TimeProductService.reloadWindow`，重读标签与时间块后重画当前窗口。
+CLI（`dsh-secretary`）的 `tag reload` 与 `time reload` 关闭当前领域、按同一份 spec 重新打开，让之后的读写落在新快照上。它不重启宿主、不改写任何事实，也不触发领域间的联动。外部改库后必须显式 reload；否则服务继续返回旧值，用旧 id 上色还会把事实写到错误标签上。画布顶部提供同一件事的产品入口：刷新按钮调用 `TimeProductService.reloadWindow`，重读标签与时间块后重画当前窗口。GTD 数据面是 Markdown，现读即所见，无 reload。
 
 ### 6.2 坏记录隔离
 

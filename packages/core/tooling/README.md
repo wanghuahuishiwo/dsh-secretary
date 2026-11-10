@@ -7,7 +7,7 @@ kind: "package-reference"
 
 ## 概述
 
-把 tool 定义注册进宿主 `tools` 服务，并统一 `OUTPUT` 渲染；不实现具体工具的领域语义。
+共享的 `OUTPUT` 输出约定与 `noConfig` 配置 schema；会话内工具已退役（#51），本包不再提供 tool 注册。
 
 ## 使用
 

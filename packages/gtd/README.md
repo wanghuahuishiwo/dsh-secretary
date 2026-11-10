@@ -13,11 +13,9 @@ GTD 能力族：Inbox、Project、Action 事实与派生查询，及其模型工
 
 | 包 | 名称 | 角色 |
 |---|---|---|
-| [`service/`](service/README.md) | `dsh-secretary-gtd-service` | `GtdService` 与 `./contract` |
-| [`tool-gtd/`](tool-gtd/README.md) | `dsh-secretary-tool-gtd` | 面向模型的 `secretary_gtd` 工具 |
 | [`agent/`](agent/README.md) | `dsh-secretary-gtd-agent` | 用户侧 GTD 技能与技能资产 |
 
 ## 约束
 
-- `service` 不注册工具或技能；`tool-gtd`、`agent` 只通过 `./contract` 与领域事实交互。
+- GTD 数据面是 Markdown（`gtdPath` 目录）；`agent` 只注册技能，SQLite GTD 域与工具已随 #51 退役。
 - 跨包只依赖 Service contract，不 import 其他包的内部源码。

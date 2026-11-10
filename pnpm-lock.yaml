@@ -246,15 +246,15 @@ importers:
       '@deepseek-ai/dsh-storage-sqlite':
         specifier: 0.2.2-rc.1
         version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)(@deepseek-ai/dsh-storage@0.2.2-rc.1(@deepseek-ai/cordis@4.1.0))
+      dsh-secretary-cli:
+        specifier: workspace:*
+        version: link:../../secretary/cli
       dsh-secretary-goal-provider:
         specifier: workspace:*
         version: link:../../goal/provider
       dsh-secretary-gtd-agent:
         specifier: workspace:*
         version: link:../../gtd/agent
-      dsh-secretary-gtd-service:
-        specifier: workspace:*
-        version: link:../../gtd/service
       dsh-secretary-skill-resources:
         specifier: workspace:*
         version: link:../../core/skill-resources
@@ -270,12 +270,6 @@ importers:
       dsh-secretary-time-controller:
         specifier: workspace:*
         version: link:../../api/time-controller
-      dsh-secretary-tool-gtd:
-        specifier: workspace:*
-        version: link:../../gtd/tool-gtd
-      dsh-secretary-tool-tag:
-        specifier: workspace:*
-        version: link:../../tag/tool-tag
       dsh-secretary-ui-gtd:
         specifier: workspace:*
         version: link:../../client/ui-gtd
@@ -416,37 +410,7 @@ importers:
         specifier: ^0.25.10
         version: 0.25.12
 
-  packages/gtd/service:
-    dependencies:
-      '@deepseek-ai/cordis':
-        specifier: 4.1.0
-        version: 4.1.0
-      dsh-secretary-tag-service:
-        specifier: workspace:*
-        version: link:../../tag/service
-      dsh-secretary-validation:
-        specifier: workspace:*
-        version: link:../../core/validation
-    devDependencies:
-      esbuild:
-        specifier: ^0.25.10
-        version: 0.25.12
-
-  packages/gtd/tool-gtd:
-    dependencies:
-      '@deepseek-ai/cordis':
-        specifier: 4.1.0
-        version: 4.1.0
-      dsh-secretary-gtd-service:
-        specifier: workspace:*
-        version: link:../service
-      dsh-secretary-tooling:
-        specifier: workspace:*
-        version: link:../../core/tooling
-    devDependencies:
-      esbuild:
-        specifier: ^0.25.10
-        version: 0.25.12
+  packages/secretary/cli: {}
 
   packages/storage/domain:
     dependencies:
@@ -480,22 +444,6 @@ importers:
         specifier: ^0.25.10
         version: 0.25.12
 
-  packages/tag/tool-tag:
-    dependencies:
-      '@deepseek-ai/cordis':
-        specifier: 4.1.0
-        version: 4.1.0
-      dsh-secretary-tag-service:
-        specifier: workspace:*
-        version: link:../service
-      dsh-secretary-tooling:
-        specifier: workspace:*
-        version: link:../../core/tooling
-    devDependencies:
-      esbuild:
-        specifier: ^0.25.10
-        version: 0.25.12
-
   packages/time/time-block:
     dependencies:
       '@deepseek-ai/cordis':
@@ -504,9 +452,6 @@ importers:
       dsh-secretary-tag-service:
         specifier: workspace:*
         version: link:../../tag/service
-      dsh-secretary-tooling:
-        specifier: workspace:*
-        version: link:../../core/tooling
       dsh-secretary-validation:
         specifier: workspace:*
         version: link:../../core/validation

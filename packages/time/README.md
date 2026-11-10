@@ -13,7 +13,7 @@ Time 领域能力族。组目录是纯容器：不包含 `package.json` 或源�
 
 | 包 | 名称 | 角色 |
 |---|---|---|
-| [`time-block/`](time-block/README.md) | `dsh-secretary-time-block` | TimeService、`./contract` 与 `secretary_time` 工具 |
+| [`time-block/`](time-block/README.md) | `dsh-secretary-time-block` | TimeService 与 `./contract` |
 
 ## 约束
 

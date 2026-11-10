@@ -44,7 +44,7 @@ kind: "package-reference"
 
 ## 延伸阅读
 
-- [GTD 领域包](../../gtd/service/README.md)
+- [GTD 技能包](../../gtd/agent/README.md)
 - [当前 GTD 产品范围](../../../docs/prd/gtd.md)
 - [OmniFocus 原型说明](../../../design/gtd/README.md)
 

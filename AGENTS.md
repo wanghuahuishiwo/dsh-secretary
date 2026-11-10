@@ -22,12 +22,12 @@
 | 产品模块 | 入口 | 领域服务 | 当前范围 |
 |---|---|---|---|
 | 小秘书-时间块 | DSH 右侧栏 | `TimeService` + `TimeProductService` | 生产 UI 与 Remote |
-| 小秘书-事项 | DSH 左侧栏 + `main` | `GtdService` | 入口与空白页，完整界面后置 |
+| 小秘书-事项 | DSH 左侧栏 + `main` | Markdown GTD 数据面（`gtdPath`） | 入口与空白页，完整界面后置 |
 | 小秘书-目标 | 独立入口 + 空白 `main` | `GoalService`（bundle 级空实现） | 空壳入口；实体、模型、Remote、UI 后置 |
 
 - **Tag**：共享模块，唯一 `TagService` 与 `tags` 表；`time` / `context` 只是 `kind`。共享 `TagManager` UI/Remote 待实现，不是独立产品入口。
 - **Storage / Core**：基础设施。
-- **Secretary Agent / bundle**：工具、技能与装配，不是产品 UI。
+- **Secretary Agent / bundle**：技能、Markdown GTD 数据面与 CLI 装配，不是产品 UI。会话内工具已退役：time/tag 经 CLI（`dsh-secretary-cli`），GTD 经通用文档工具。
 - **包分组**：`packages/<能力族>/<包>`，组只是容器；包地图见 [packages/README.md](packages/README.md)，结构与角色拆分决策见 [ADR 0010](docs/adr/0010-package-groups-and-roles.md)。
 - `goal-panel`、TagManager UI/Remote 尚未实现；空壳或规划不表示产品已完成。
 
@@ -46,16 +46,15 @@ packages/
 ├── goal/         上游空 Goal Provider
 │   └── provider/
 ├── tag/          统一 Tag 能力
-│   ├── service/
-│   └── tool-tag/
-├── gtd/          GTD 能力
-│   ├── service/
-│   ├── tool-gtd/
+│   └── service/
+├── gtd/          GTD 技能
 │   └── agent/
 ├── time/         Time 领域能力
-│   └── time-block/      Time Service 与 Agent tools
+│   └── time-block/      TimeService 与 DeepTime
 ├── api/          Host 产品 API
-│   └── time-controller/ TimeProductService、./typert 与 ./remote
+│   └── time-controller/ TimeProductService、TagProductService（agentInvoke CLI 面）
+├── secretary/    Agent 自有运行代码
+│   └── cli/             dsh-secretary CLI（bin）
 ├── client/       浏览器产品 UI
 │   ├── ui-time/         纯 React UI、TimeAdapter 契约与右栏插件
 │   └── ui-gtd/          左栏入口与空白 main

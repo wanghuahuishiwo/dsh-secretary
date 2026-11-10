@@ -7,7 +7,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包注册两个用户可调用、模型不可自动调用的 GTD 技能：`gtd-inbox-capture` 与 `gtd-clarify`。技能只引导用户交互，不拥有事项事实；事实由 [`gtd-service`](../service/README.md) 保存。
+本包注册两个用户可调用、模型不可自动调用的 GTD 技能：`gtd-inbox-capture` 与 `gtd-clarify`。技能只引导用户交互，不拥有事项事实；事实是 Markdown 数据面（`gtdPath` 目录，由 secretary skill 的配置后缀注入真实路径）。
 
 ## 使用本包
 
@@ -25,7 +25,7 @@ kind: "package-reference"
 
 ## 延伸阅读
 
-- [GTD Service](../service/README.md)
+
 - [GTD 产品范围](../../../docs/prd/gtd.md)
 
 ## 模型体验

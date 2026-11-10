@@ -8,6 +8,7 @@
   },
   "files": [
     "src/index.ts",
+    "src/agent-ops.ts",
     "src/types.ts"
   ],
   "references": [{ "path": "../../tag/service" }, { "path": "../../time/time-block" }]

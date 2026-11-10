@@ -33,7 +33,7 @@ dsh plugin --profile <name> add /绝对路径/dsh-secretary/packages/bundle/secr
 
 ### 安装后获得什么
 
-- Secretary Agent 及其 GTD／Secretary 技能与 `secretary_gtd`、`secretary_tag`、`secretary_time` 工具。
+- Secretary Agent 及其技能；time/tag 能力经 CLI（`dsh-secretary-cli`）+ shell-env 注入，GTD 经 Markdown 数据面（`gtdPath`，首启自动播种）。
 - 独立 Time 右栏和 GTD 左栏入口。
 - 上游空 Goal Provider，以及默认写入 `$DSH_HOME/storages/secretary.db` 的共享 SQLite。
 
