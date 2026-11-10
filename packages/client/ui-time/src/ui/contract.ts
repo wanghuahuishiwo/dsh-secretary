@@ -142,7 +142,8 @@ export interface TimeProductProps {
   /**
    * The product day this surface opens on. Production omits it and follows the
    * host's local day; a fixture preview pins one so screenshots and scenarios
-   * stay reproducible. The adapter's `TimeView.today` stays authoritative.
+   * stay reproducible. Each `TimeView` answer anchors `TimeView.today`, and the
+   * surface advances it on its own clock after midnight.
    */
   readonly today?: string
 }

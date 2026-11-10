@@ -211,6 +211,46 @@ export function durationLabel(minutes: number): string {
 
 export const WEEKDAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
+/** One display moment: the local minute and the local day it falls on. */
+export interface LocalNow {
+  readonly minute: number
+  readonly day: string
+}
+
+/** A `LocalNow` a host answered with, plus when the client received it. */
+export interface NowAnchor extends LocalNow {
+  /** The client clock reading that goes with the answer. */
+  readonly atMs: number
+}
+
+/** Pin a host answer as the starting point of local time. */
+export function anchorNow(minute: number, day: string, atMs: number): NowAnchor {
+  return { minute, day, atMs }
+}
+
+/**
+ * The local “now” a client can show without asking the host: the anchored
+ * minute plus every wall-clock minute boundary crossed since the answer
+ * arrived. Counting boundaries (rather than flooring elapsed time) makes the
+ * indicator move exactly on the minute edge even when the answer arrives
+ * mid-minute. A clock that jumps back never moves it back; the next host
+ * answer re-anchors it. Boundaries are counted as real elapsed minutes, so a
+ * daylight-saving shift inside the running day is only corrected by the next
+ * host answer.
+ */
+export function nowAt(anchor: NowAnchor, atMs: number): LocalNow {
+  const crossed = Math.floor(atMs / 60_000) - Math.floor(anchor.atMs / 60_000)
+  const elapsed = Math.max(0, crossed)
+  const total = anchor.minute + elapsed
+  return { minute: total % 1440, day: addDays(anchor.day, Math.floor(total / 1440)) }
+}
+
+/** Milliseconds until the next whole minute, so ticks stay on the minute edge. */
+export function nextMinuteDelay(atMs: number): number {
+  const intoMinute = ((atMs % 60_000) + 60_000) % 60_000
+  return intoMinute === 0 ? 60_000 : 60_000 - intoMinute
+}
+
 
 /**
  * The pure date/time toolkit as one object. Fixtures, tests and boundary code
@@ -240,4 +280,7 @@ export const timeMath = {
   minutesOfRecord,
   cellRecords,
   durationLabel,
+  anchorNow,
+  nowAt,
+  nextMinuteDelay,
 }

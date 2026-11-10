@@ -60,7 +60,7 @@ OpenDesign 组合根是 `design/time-block/src/App.tsx`：创建 `FixtureTimeAda
 
 `FixtureTimeAdapter` 实现 `TimeAdapter`，纯内存、无网络/SQLite/生产 DSH 依赖：
 
-- 固定演示今天 `2026-11-06`、当前时刻 `14:20`。
+- 固定演示今天 `2026-11-06`；当前时刻以 `14:20` 为锚点，随后按预览页本机时钟每分钟推进（与生产同一套「现在」通道，见 `docs/prd/time-block.md`）。
 - 多日窗口 `from = today - 3`、`to = today + 10`；`TimeProduct` 打开时定位于 fixture 今天。
 - 计划与实录各含今天、昨天、明天的块；当前周含 高 / 中 / 低 深度数据。
 - `paint` / `erase`（`tagId: null`）/ `undo` / `paintDeep` / `updateBlock` / `deleteBlock` 全部在内存完成，每个写命令返回新的 `TimeView`；Undo 只影响当前层。

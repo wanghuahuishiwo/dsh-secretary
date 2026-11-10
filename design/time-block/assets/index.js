@@ -14573,11 +14573,11 @@
   });
 
   // time-block/src/index.tsx
-  var import_react8 = __toESM(require_react(), 1);
+  var import_react9 = __toESM(require_react(), 1);
   var import_client = __toESM(require_client(), 1);
 
   // time-block/src/App.tsx
-  var import_react7 = __toESM(require_react(), 1);
+  var import_react8 = __toESM(require_react(), 1);
 
   // ../packages/client/ui-time/lib/ui.js
   var import_react = __toESM(require_react(), 1);
@@ -14595,6 +14595,7 @@
   var import_jsx_runtime7 = __toESM(require_jsx_runtime(), 1);
   var import_jsx_runtime8 = __toESM(require_jsx_runtime(), 1);
   var import_jsx_runtime9 = __toESM(require_jsx_runtime(), 1);
+  var import_react7 = __toESM(require_react(), 1);
   var import_jsx_runtime10 = __toESM(require_jsx_runtime(), 1);
   var CELL = 10;
   var PER_HOUR = 60 / CELL;
@@ -14717,6 +14718,19 @@
     return minutes % 60 === 0 ? `${hours} \u5C0F\u65F6` : `${hours} \u5C0F\u65F6 ${minutes % 60} \u5206`;
   }
   var WEEKDAY_LABELS = ["\u5468\u4E00", "\u5468\u4E8C", "\u5468\u4E09", "\u5468\u56DB", "\u5468\u4E94", "\u5468\u516D", "\u5468\u65E5"];
+  function anchorNow(minute, day, atMs) {
+    return { minute, day, atMs };
+  }
+  function nowAt(anchor, atMs) {
+    const crossed = Math.floor(atMs / 6e4) - Math.floor(anchor.atMs / 6e4);
+    const elapsed = Math.max(0, crossed);
+    const total = anchor.minute + elapsed;
+    return { minute: total % 1440, day: addDays(anchor.day, Math.floor(total / 1440)) };
+  }
+  function nextMinuteDelay(atMs) {
+    const intoMinute = (atMs % 6e4 + 6e4) % 6e4;
+    return intoMinute === 0 ? 6e4 : 6e4 - intoMinute;
+  }
   var timeMath = {
     CELL,
     PER_HOUR,
@@ -14740,7 +14754,10 @@
     runsOf,
     minutesOfRecord,
     cellRecords,
-    durationLabel
+    durationLabel,
+    anchorNow,
+    nowAt,
+    nextMinuteDelay
   };
   var WEEKDAYS = ["\u4E00", "\u4E8C", "\u4E09", "\u56DB", "\u4E94", "\u516D", "\u65E5"];
   function monthMatrix(month) {
@@ -15696,6 +15713,48 @@
       }
     };
   }
+  function useLocalNow(anchor, root2) {
+    const [now, setNow] = (0, import_react7.useState)(
+      () => anchor === void 0 ? void 0 : nowAt(anchor, Date.now())
+    );
+    const [awake, setAwake] = (0, import_react7.useState)(
+      () => typeof document === "undefined" || document.visibilityState !== "hidden"
+    );
+    const onScreen = (0, import_react7.useRef)(true);
+    (0, import_react7.useEffect)(() => {
+      if (anchor === void 0 || !awake) return;
+      const snap = () => setNow(nowAt(anchor, Date.now()));
+      snap();
+      let timer = setTimeout(function tick() {
+        snap();
+        timer = setTimeout(tick, nextMinuteDelay(Date.now()));
+      }, nextMinuteDelay(Date.now()));
+      return () => {
+        clearTimeout(timer);
+      };
+    }, [anchor, awake]);
+    (0, import_react7.useEffect)(() => {
+      if (typeof document === "undefined") return;
+      const element = root2.current;
+      const sync = () => {
+        setAwake(document.visibilityState !== "hidden" && onScreen.current);
+      };
+      let observer;
+      if (element !== null && typeof IntersectionObserver !== "undefined") {
+        observer = new IntersectionObserver((entries) => {
+          onScreen.current = entries.some((entry) => entry.isIntersecting);
+          sync();
+        });
+        observer.observe(element);
+      }
+      document.addEventListener("visibilitychange", sync);
+      return () => {
+        observer?.disconnect();
+        document.removeEventListener("visibilitychange", sync);
+      };
+    }, [root2]);
+    return now;
+  }
   var timeStyles = `
 /* ---------- module tokens: the only palette source for both shells ---------- */
 .tb-app {
@@ -16071,6 +16130,11 @@
     const [topDate, setTopDate] = (0, import_react.useState)(() => openingDate);
     const [weekStart, setWeekStart] = (0, import_react.useState)(() => weekStartOf(openingDate));
     const [view, setView] = (0, import_react.useState)();
+    const [nowAnchor, setNowAnchor] = (0, import_react.useState)();
+    const rememberAnswer = (0, import_react.useCallback)((next) => {
+      setNowAnchor(anchorNow(next.nowMinute, next.today, Date.now()));
+    }, []);
+    const now = useLocalNow(nowAnchor, appRef);
     const [drawer, setDrawer] = (0, import_react.useState)(false);
     const [sheet, setSheet] = (0, import_react.useState)();
     const [busy, setBusy] = (0, import_react.useState)(false);
@@ -16096,13 +16160,20 @@
       const next = await adapter.load({ anchor, from: range.from, to: range.to, weekStart });
       if (revision.current !== ticket) return;
       setView(next);
+      rememberAnswer(next);
       setError("");
-    }, [adapter, anchor, range, weekStart]);
+    }, [adapter, anchor, range, rememberAnswer, weekStart]);
     (0, import_react.useEffect)(() => {
       void load().catch((reason) => {
         setError(messageOf(reason));
       });
     }, [load]);
+    const lastDay = (0, import_react.useRef)(void 0);
+    (0, import_react.useEffect)(() => {
+      if (now === void 0 || lastDay.current === now.day) return;
+      lastDay.current = now.day;
+      if (view !== void 0 && !view.days.includes(now.day)) void load();
+    }, [load, now, view]);
     const heldRef = (0, import_react.useRef)(false);
     const viewRef = (0, import_react.useRef)(void 0);
     viewRef.current = view;
@@ -16117,7 +16188,10 @@
       if (adapter.watch === void 0 || view === void 0) return;
       const ticket = revision.current;
       const reload = createChangeReload({
-        load: () => adapter.load({ anchor, from: range.from, to: range.to, weekStart }),
+        load: () => adapter.load({ anchor, from: range.from, to: range.to, weekStart }).then((next) => {
+          rememberAnswer(next);
+          return next;
+        }),
         current: () => viewRef.current ?? view,
         apply: (next) => {
           if (revision.current !== ticket) return;
@@ -16131,7 +16205,7 @@
         if (changeRef.current === reload) changeRef.current = void 0;
         reload.dispose();
       };
-    }, [adapter, anchor, range, view === void 0, weekStart]);
+    }, [adapter, anchor, range, rememberAnswer, view === void 0, weekStart]);
     (0, import_react.useEffect)(() => {
       heldRef.current = busy || sheet !== void 0 || picker !== null;
       if (!heldRef.current) changeRef.current?.release();
@@ -16144,6 +16218,7 @@
         const next = await adapter.refresh({ anchor, from: range.from, to: range.to, weekStart });
         if (revision.current === ticket) {
           setView(next);
+          rememberAnswer(next);
           setError("");
         }
         say("\u5DF2\u5237\u65B0");
@@ -16154,7 +16229,7 @@
       } finally {
         setBusy(false);
       }
-    }, [adapter, anchor, range, say, weekStart]);
+    }, [adapter, anchor, range, rememberAnswer, say, weekStart]);
     const runWrite = (0, import_react.useCallback)(async (operation, message) => {
       const ticket = revision.current + 1;
       revision.current = ticket;
@@ -16163,6 +16238,7 @@
         const next = await operation();
         if (revision.current === ticket) {
           setView(next);
+          rememberAnswer(next);
           setError("");
         }
         say(message);
@@ -16175,7 +16251,7 @@
       } finally {
         setBusy(false);
       }
-    }, [say]);
+    }, [rememberAnswer, say]);
     const extendRange = (0, import_react.useCallback)((side) => {
       setRange((previous) => {
         const next = side === "before" ? { from: addDays(previous.from, -7), to: previous.to } : { from: previous.from, to: addDays(previous.to, 7) };
@@ -16189,7 +16265,7 @@
       setTopDate(date);
       setFocus((previous) => ({ date, token: previous.token + 1 }));
     }, []);
-    const productToday = view?.today ?? openingDate;
+    const productToday = now?.day ?? view?.today ?? openingDate;
     const step = (0, import_react.useCallback)((amount) => {
       if (module === "deep") {
         setWeekStart(amount === 0 ? weekStartOf(productToday) : addDays(weekStart, amount));
@@ -16258,6 +16334,7 @@
         const next = await adapter.undo(layer);
         if (next === void 0) return;
         if (revision.current === ticket) {
+          rememberAnswer(next);
           setView(next);
           setError("");
         }
@@ -16269,7 +16346,7 @@
       } finally {
         setBusy(false);
       }
-    }, [adapter, busy, layer, say, view]);
+    }, [adapter, busy, layer, rememberAnswer, say, view]);
     const tags = (0, import_react.useMemo)(() => (view?.tags ?? []).map((tag) => ({
       id: indexes.tag.number(tag.id),
       name: tag.name,
@@ -16345,8 +16422,8 @@
               {
                 layer,
                 days: view.days,
-                today: view.today,
-                nowMinute: view.nowMinute,
+                today,
+                nowMinute: now?.minute ?? view.nowMinute,
                 focus,
                 onExtend: extendRange,
                 onTopDateChange: setTopDate,
@@ -16704,15 +16781,15 @@
     );
   }
   function App() {
-    const adapter = (0, import_react7.useMemo)(() => new FixtureTimeAdapter(), []);
-    const [theme, setTheme] = (0, import_react7.useState)("dark");
-    const [railWidth, setRailWidth] = (0, import_react7.useState)(DEFAULT_RAIL);
-    const widthRef = (0, import_react7.useRef)(railWidth);
+    const adapter = (0, import_react8.useMemo)(() => new FixtureTimeAdapter(), []);
+    const [theme, setTheme] = (0, import_react8.useState)("dark");
+    const [railWidth, setRailWidth] = (0, import_react8.useState)(DEFAULT_RAIL);
+    const widthRef = (0, import_react8.useRef)(railWidth);
     widthRef.current = railWidth;
-    (0, import_react7.useEffect)(() => {
+    (0, import_react8.useEffect)(() => {
       document.documentElement.dataset.theme = theme;
     }, [theme]);
-    const startResize = (0, import_react7.useCallback)((event) => {
+    const startResize = (0, import_react8.useCallback)((event) => {
       event.preventDefault();
       const startX = event.clientX;
       const startWidth = widthRef.current;
@@ -16745,7 +16822,7 @@
   var import_jsx_runtime12 = __toESM(require_jsx_runtime(), 1);
   var root = document.getElementById("root");
   if (root === null) throw new Error("\u7F3A\u5C11\u8BBE\u8BA1\u9884\u89C8\u6302\u8F7D\u70B9 #root");
-  (0, import_client.createRoot)(root).render(/* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_react8.StrictMode, { children: /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(App, {}) }));
+  (0, import_client.createRoot)(root).render(/* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_react9.StrictMode, { children: /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(App, {}) }));
 })();
 /*! Bundled license information:
 
