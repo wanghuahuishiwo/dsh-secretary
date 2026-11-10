@@ -1,15 +1,30 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process'
 import { access } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
-const PROJECT_NAME = 'dsh-secretary 设计'
+const PROJECT_PREFIX = 'dsh-secretary 设计'
 const DAEMON_MARKER = '/Contents/Resources/app/prebundled/daemon/daemon-sidecar.mjs'
 
 function sh(command, args) {
   return execFileSync(command, args, { encoding: 'utf8' })
+}
+
+/** 一个 worktree 对应一个 OD 项目：项目名带当前分支，临时路径直接拒绝。 */
+function resolveProjectName() {
+  if (/^\/(private\/)?tmp\/|^\/var\/folders\//.test(repoRoot)) {
+    throw new Error(`OpenDesign 项目必须指向稳定目录，不要在临时路径注册：${repoRoot}\n把 worktree 放到 ~/workspace/ 下再执行。`)
+  }
+  let branch = 'detached'
+  try {
+    branch = sh('git', ['-C', repoRoot, 'rev-parse', '--abbrev-ref', 'HEAD']).trim()
+  } catch {
+    // 非 git 目录仍允许接入，只是项目名不带分支。
+  }
+  return branch === 'detached' ? `${PROJECT_PREFIX} · detached` : `${PROJECT_PREFIX} · ${branch}`
 }
 
 function findDaemon() {
@@ -54,6 +69,7 @@ function findDaemon() {
   }
 }
 
+const PROJECT_NAME = resolveProjectName()
 const daemon = findDaemon()
 const cliPath = `${daemon.appPath}${DAEMON_MARKER.replace('daemon-sidecar.mjs', 'daemon-cli.mjs')}`
 
@@ -76,6 +92,20 @@ function cli(args) {
 const daemonUrl = `http://127.0.0.1:${daemon.port}`
 const projects = JSON.parse(cli(['project', 'list', '--daemon-url', daemonUrl, '--json'])).projects
 const existing = projects.find((project) => project.metadata?.baseDir === repoRoot)
+const sameBranch = projects.filter((project) => project.name === PROJECT_NAME && project.metadata?.baseDir !== repoRoot)
+const stale = projects.filter((project) => {
+  const base = project.metadata?.baseDir
+  return typeof base === 'string' && base.startsWith('/') && !existsSync(base)
+})
+
+if (sameBranch.length > 0) {
+  console.warn(`注意：同名项目已指向其它目录：\n${sameBranch.map((project) => `  ${project.id}  ${project.metadata?.baseDir}`).join('\n')}\n` +
+    '同一分支只应有一个 worktree；确认后可用 `od project delete <id>` 清理。')
+}
+if (stale.length > 0) {
+  console.warn(`发现指向已不存在目录的僵尸项目：\n${stale.map((project) => `  ${project.id}  ${project.name}  ${project.metadata?.baseDir}`).join('\n')}\n` +
+    '用 `od project delete <id>` 清理。')
+}
 
 if (existing) {
   console.log(`OpenDesign 已接入：${existing.name} (${existing.id})`)

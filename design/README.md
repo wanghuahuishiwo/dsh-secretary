@@ -50,7 +50,16 @@ OpenDesign 桌面端使用 folder-backed 项目读取仓库根。首次接入或
 pnpm --dir design od
 ```
 
-命令复用已指向本仓库的项目；没有时创建 `dsh-secretary 设计`。完成后在 OpenDesign 的「设计文件」中选择模块入口。
+命令按当前 `baseDir` 复用项目；没有时创建项目。完成后在 OpenDesign 的「设计文件」中选择模块入口。
+
+### OpenDesign 与分支 / worktree
+
+OD 项目是「目录指针 + 项目级评审状态」，没有分支概念；我们的开发模式是「feature 分支 + 独立 worktree」。约定如下：
+
+- **一个 worktree = 一个 OD 项目**，项目名带当前分支：`dsh-secretary 设计 · <branch>`；`main`/`master` 的项目是设计基线。
+- **只在稳定路径注册**：worktree 放 `~/workspace/` 下；`/tmp`、`/var/folders` 会被脚本拒绝。
+- **评审状态按项目隔离**：同一分支反复迭代保留评论；跨分支不共享。设计结论必须随 PR 落到 `design/`，不能只活在某个 worktree 的 OD 项目里。
+- **worktree 生命周期跟随项目**：分支合入、worktree 删除后，用 `od project delete <id>` 清掉对应项目；脚本会提示指向已不存在目录的僵尸项目。
 
 ## 新增模块
 
