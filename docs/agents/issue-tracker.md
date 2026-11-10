@@ -13,7 +13,7 @@ python3 ~/.team-skills/scripts/driver.py resolve --project-root <项目根> --na
 - 使用本机 `gh` 和已认证的 github.com 账号；所有 Issue 命令显式传 `--repo wanghuahuishiwo/dsh-secretary`。
 - 首次及认证变化时使用 `gh auth status` 核对身份，凭据不写入项目文档或日志。
 - 创建前只在目标仓库查重；写入失败或超时先回读，不重复创建。
-- 不将 GitHub Issues 评论称为 MR、CI、附件上传或远程合入结果；这些能力未在当前 driver 中声明。
+- 不将 GitHub Issues 评论称为 MR、CI 或远程合入结果；附件上传只作图片证据，不替代 CI 或日志链接。
 
 ## 类型、状态与阶段
 
