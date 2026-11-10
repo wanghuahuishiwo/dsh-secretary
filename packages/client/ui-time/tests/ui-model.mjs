@@ -104,3 +104,54 @@ test('the time zone of a local date can be read explicitly when a caller needs i
   assert.equal(typeof timeZoneOf(), 'string')
   assert.ok(timeZoneOf().length > 0)
 })
+
+test('the local now stands still inside a minute and moves one minute at a time after it', () => {
+  const at = Date.parse('2026-11-10T09:08:20+08:00')
+  const anchor = timeMath.anchorNow(548, '2026-11-10', at)
+
+  assert.deepEqual(timeMath.nowAt(anchor, at), { minute: 548, day: '2026-11-10' }, 'the host answer is the starting point')
+  assert.deepEqual(timeMath.nowAt(anchor, at + 30_000), { minute: 548, day: '2026-11-10' }, 'inside the same minute nothing moves')
+  assert.deepEqual(timeMath.nowAt(anchor, at + 61_000), { minute: 549, day: '2026-11-10' }, 'one minute later the indicator is one minute on')
+  assert.deepEqual(timeMath.nowAt(anchor, at + 60 * 60_000), { minute: 608, day: '2026-11-10' }, 'an hour later it is one hour on')
+})
+
+test('the local now crosses an hour and a new year without a host read', () => {
+  const beforeTen = timeMath.anchorNow(9 * 60 + 59, '2026-11-10', 0)
+  assert.deepEqual(timeMath.nowAt(beforeTen, 2 * 60_000), { minute: 601, day: '2026-11-10' }, '9:59 + 2 min is 10:01 of the same day')
+
+  const newYearsEve = timeMath.anchorNow(23 * 60 + 59, '2026-12-31', 0)
+  assert.deepEqual(timeMath.nowAt(newYearsEve, 2 * 60_000), { minute: 1, day: '2027-01-01' }, 'past midnight both the minute and the day roll')
+})
+
+test('a client clock that jumps backwards never moves the local now backwards', () => {
+  const anchor = timeMath.anchorNow(548, '2026-11-10', 10_000)
+  assert.deepEqual(timeMath.nowAt(anchor, 5_000), { minute: 548, day: '2026-11-10' })
+})
+
+test('a long sleep moves the local now by the whole span at once', () => {
+  const anchor = timeMath.anchorNow(9 * 60 + 8, '2026-11-10', 0)
+  const slept = 3 * 60 * 60_000 + 17 * 60_000
+  assert.deepEqual(timeMath.nowAt(anchor, slept), { minute: 745, day: '2026-11-10' }, '3h17m of sleep lands on 12:25')
+})
+
+test('a fresh host answer re-anchors the local now instead of accumulating drift', () => {
+  const first = timeMath.anchorNow(548, '2026-11-10', 0)
+  assert.equal(timeMath.nowAt(first, 42 * 60_000).minute, 590, '42 minutes of local ticking reach 09:50')
+  const corrected = timeMath.anchorNow(591, '2026-11-10', 42 * 60_000)
+  assert.deepEqual(timeMath.nowAt(corrected, 42 * 60_000), { minute: 591, day: '2026-11-10' }, 'the host wins after a re-read')
+})
+
+test('the tick waits for the next minute boundary', () => {
+  assert.equal(timeMath.nextMinuteDelay(0), 60_000, 'exactly on a boundary waits a whole minute')
+  assert.equal(timeMath.nextMinuteDelay(1), 59_999)
+  assert.equal(timeMath.nextMinuteDelay(30_000), 30_000)
+  assert.equal(timeMath.nextMinuteDelay(59_999), 1)
+  assert.equal(timeMath.nextMinuteDelay(60_000), 60_000)
+})
+
+test('the local now crosses into the next minute exactly on a wall-clock minute boundary', () => {
+  const received = Date.parse('2026-11-10T09:08:20+08:00')
+  const anchor = timeMath.anchorNow(548, '2026-11-10', received)
+  assert.deepEqual(timeMath.nowAt(anchor, Date.parse('2026-11-10T09:08:59.999+08:00')), { minute: 548, day: '2026-11-10' }, 'the answer arrives mid-minute; the rest of that minute still shows 09:08')
+  assert.deepEqual(timeMath.nowAt(anchor, Date.parse('2026-11-10T09:09:00+08:00')), { minute: 549, day: '2026-11-10' }, 'the wall clock minute boundary is the moment the indicator moves')
+})

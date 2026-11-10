@@ -11,9 +11,10 @@ import { TimeHeader, dayLabel, weekLabel, type TimeModule } from './TimeHeader.t
 import { Toast } from './Toast.tsx'
 import { createChangeReload, type ChangeReload } from './changeReload.ts'
 import {
-  addDays, localDate, weekStartOf,
-  type DayRecord, type Run, type TimeTag,
+  addDays, anchorNow, localDate, weekStartOf,
+  type DayRecord, type NowAnchor, type Run, type TimeTag,
 } from './model.ts'
+import { useLocalNow } from './useLocalNow.ts'
 import { timeStyles } from './styles.ts'
 
 /**
@@ -76,6 +77,14 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
   const [topDate, setTopDate] = useState(() => openingDate)
   const [weekStart, setWeekStart] = useState(() => weekStartOf(openingDate))
   const [view, setView] = useState<TimeView>()
+  // The host is authoritative at every answer; between answers the surface
+  // advances “now” on its own clock. Every answer re-anchors it, including one
+  // whose data turns out to be equal and therefore never reaches `view`.
+  const [nowAnchor, setNowAnchor] = useState<NowAnchor>()
+  const rememberAnswer = useCallback((next: TimeView) => {
+    setNowAnchor(anchorNow(next.nowMinute, next.today, Date.now()))
+  }, [])
+  const now = useLocalNow(nowAnchor, appRef)
   const [drawer, setDrawer] = useState(false)
   const [sheet, setSheet] = useState<SheetTarget>()
   const [busy, setBusy] = useState(false)
@@ -108,12 +117,22 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
     const next = await adapter.load({ anchor, from: range.from, to: range.to, weekStart })
     if (revision.current !== ticket) return
     setView(next)
+    rememberAnswer(next)
     setError('')
-  }, [adapter, anchor, range, weekStart])
+  }, [adapter, anchor, range, rememberAnswer, weekStart])
 
   useEffect(() => {
     void load().catch((reason: unknown) => { setError(messageOf(reason)) })
   }, [load])
+
+  // A surface kept open longer than the loaded window spans loses its new
+  // “today” when the local day rolls past the window edge; one read wins it back.
+  const lastDay = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (now === undefined || lastDay.current === now.day) return
+    lastDay.current = now.day
+    if (view !== undefined && !view.days.includes(now.day)) void load()
+  }, [load, now, view])
 
   // A local interaction owns the surface while a write is in flight or an
   // editor is open; pushed repaints hold back until it is released.
@@ -133,7 +152,8 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
     if (adapter.watch === undefined || view === undefined) return
     const ticket = revision.current
     const reload = createChangeReload({
-      load: () => adapter.load({ anchor, from: range.from, to: range.to, weekStart }),
+      load: () => adapter.load({ anchor, from: range.from, to: range.to, weekStart })
+        .then((next) => { rememberAnswer(next); return next }),
       current: () => viewRef.current ?? view,
       apply: (next) => {
         if (revision.current !== ticket) return
@@ -147,7 +167,7 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
       if (changeRef.current === reload) changeRef.current = undefined
       reload.dispose()
     }
-  }, [adapter, anchor, range, view === undefined, weekStart])
+  }, [adapter, anchor, range, rememberAnswer, view === undefined, weekStart])
 
   useEffect(() => {
     heldRef.current = busy || sheet !== undefined || picker !== null
@@ -163,6 +183,7 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
       const next = await adapter.refresh({ anchor, from: range.from, to: range.to, weekStart })
       if (revision.current === ticket) {
         setView(next)
+        rememberAnswer(next)
         setError('')
       }
       say('已刷新')
@@ -173,7 +194,7 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
     } finally {
       setBusy(false)
     }
-  }, [adapter, anchor, range, say, weekStart])
+  }, [adapter, anchor, range, rememberAnswer, say, weekStart])
 
   const runWrite = useCallback(async (
     operation: () => Promise<TimeView>, message: string,
@@ -185,6 +206,7 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
       const next = await operation()
       if (revision.current === ticket) {
         setView(next)
+        rememberAnswer(next)
         setError('')
       }
       say(message)
@@ -197,7 +219,7 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
     } finally {
       setBusy(false)
     }
-  }, [say])
+  }, [rememberAnswer, say])
 
   const extendRange = useCallback((side: 'before' | 'after') => {
     setRange(previous => {
@@ -216,9 +238,10 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
     setFocus(previous => ({ date, token: previous.token + 1 }))
   }, [])
 
-  // The adapter's `today` is authoritative once loaded, so 今天 / 本周 land on the
-  // product day even when the host clock and a pinned fixture disagree.
-  const productToday = view?.today ?? openingDate
+  // The adapter's `today` is authoritative once loaded, and the local clock keeps
+  // it current after midnight, so 今天 / 本周 land on the product day even when
+  // the host clock and a pinned fixture disagree.
+  const productToday = now?.day ?? view?.today ?? openingDate
 
   const step = useCallback((amount: number) => {
     if (module === 'deep') {
@@ -298,6 +321,7 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
       const next = await adapter.undo(layer)
       if (next === undefined) return
       if (revision.current === ticket) {
+        rememberAnswer(next)
         setView(next)
         setError('')
       }
@@ -309,7 +333,7 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
     } finally {
       setBusy(false)
     }
-  }, [adapter, busy, layer, say, view])
+  }, [adapter, busy, layer, rememberAnswer, say, view])
 
   const tags = useMemo<TimeTag[]>(() => (view?.tags ?? []).map(tag => ({
     id: indexes.tag.number(tag.id),
@@ -387,7 +411,7 @@ export function TimeProduct({ adapter, theme = 'dark', today: openingDay }: Time
           <section className="tb-view on">
             <TimeCanvas
               key={module}
-              layer={layer} days={view.days} today={view.today} nowMinute={view.nowMinute}
+              layer={layer} days={view.days} today={today} nowMinute={now?.minute ?? view.nowMinute}
               focus={focus} onExtend={extendRange} onTopDateChange={setTopDate} records={records[layer]} tags={tags}
               busy={busy} onAssign={(runs, tagId, mode) => void paint(layer, runs, tagId, mode)}
               onEdit={(date, record) => setSheet({ layer, date, record })}
