@@ -1,0 +1,6 @@
+{"type": "tool-workflow/run-start", "seq": 314, "time": 1794384563719, "data": {"runId": "2a265344-95f5-41cd-b5fc-6dacfa978f6c", "name": "wayfinder-70-spike-official"}}
+{"type": "tool-workflow/run-end", "seq": 315, "time": 1794384564019, "data": {"runId": "2a265344-95f5-41cd-b5fc-6dacfa978f6c", "stopReason": "error"}}
+{"type": "tool-workflow/run-start", "seq": 322, "time": 1794384567091, "data": {"runId": "8eb06e40-9bd1-49a5-af14-8ae282957f00", "name": "wayfinder-70-spike-official"}}
+{"type": "tool-workflow/agent-start", "seq": 324, "time": 1794384567213, "data": {"runId": "8eb06e40-9bd1-49a5-af14-8ae282957f00", "seq": 1, "label": "assessment", "phase": "Assessment", "childId": "52944543-ecbe-43ee-a90a-642539b1a893"}}
+{"type": "tool-workflow/agent-end", "seq": 325, "time": 1794384573025, "data": {"runId": "8eb06e40-9bd1-49a5-af14-8ae282957f00", "seq": 1, "outcome": "completed"}}
+{"type": "tool-workflow/run-end", "seq": 326, "time": 1794384573042, "data": {"runId": "8eb06e40-9bd1-49a5-af14-8ae282957f00", "stopReason": "completed"}}

@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "name": "wf70 · nodeflow 最小判断流",
+  "description": "Trigger → Code(SourceScope+Gate) → Agent(Assessment) → Code(Decision)：wayfinder #70 原型，节点 0.2.0 口径（Code=Python、Agent 无 schema）",
+  "nodes": [
+    {
+      "id": "t1",
+      "type": "workflow",
+      "position": { "x": 40, "y": 240 },
+      "data": {
+        "kind": "trigger",
+        "label": "aone bug 事件",
+        "text": "{\"source\":\"aone\",\"kind\":\"bug\",\"id\":\"AONE-12345\",\"title\":\"登录接口 5xx 无法登录\",\"status\":\"afk\",\"body\":\"线上登录接口返回 502，影响部分用户，疑似刚合入的 session 过期逻辑；工单已交给 agent 处理。\",\"actor\":\"user:zhangsan\"}"
+      },
+      "style": { "width": 124, "height": 124 }
+    },
+    {
+      "id": "c-scope-gate",
+      "type": "workflow",
+      "position": { "x": 240, "y": 240 },
+      "data": {
+        "kind": "code",
+        "label": "SourceScope + Gate",
+        "language": "python",
+        "timeout": "30",
+        "onError": "stop",
+        "code": "import json, os\nraw = os.environ.get('DSH_INPUT', '')\ntry:\n    ev = json.loads(raw) if raw.strip() else {}\nexcept Exception:\n    ev = {'raw': raw}\nscope = {'source': ev.get('source'), 'kind': ev.get('kind')}\nreasons = []\nif scope['source'] != 'aone' or scope['kind'] != 'bug':\n    reasons.append('source out of scope')\nif ev.get('status') != 'afk':\n    reasons.append('ticket not afk')\nout = {'scope': scope, 'gate': {'pass': len(reasons) == 0, 'reasons': reasons}, 'event': ev}\nprint(json.dumps(out, ensure_ascii=False))"
+      },
+      "style": { "width": 124, "height": 124 }
+    },
+    {
+      "id": "a-assess",
+      "type": "workflow",
+      "position": { "x": 460, "y": 240 },
+      "data": {
+        "kind": "agent",
+        "label": "Assessment",
+        "timeout": "180",
+        "onError": "stop",
+        "prompt": "你是 Agent 调度中心的 Assessment 节点。上游输入是一个 JSON（含 scope / gate / event）。只输出一个 JSON 对象，不要解释、不要代码围栏。字段契约：priority 取 P1/P2/P3；route 取 worker（可 AFK 派 coding worker）/hitl（必须等人调研）/ignore（无需处理）；reason 为一句中文理由；echo 原样嵌套上游 JSON（echo.scope / echo.gate / echo.event，不许改写）。"
+      },
+      "style": { "width": 212, "height": 128 }
+    },
+    {
+      "id": "c-decision",
+      "type": "workflow",
+      "position": { "x": 800, "y": 240 },
+      "data": {
+        "kind": "code",
+        "label": "Decision",
+        "language": "python",
+        "timeout": "30",
+        "onError": "stop",
+        "code": "import json, os\nraw = os.environ.get('DSH_INPUT', '')\ntext = raw.strip()\nif text.startswith('```'):\n    lines = text.splitlines()[1:]\n    if lines and lines[-1].strip().startswith('```'):\n        lines = lines[:-1]\n    text = '\\n'.join(lines)\ntry:\n    a = json.loads(text)\nexcept Exception:\n    a = {'route': None, 'parse_error': True, 'echo': {'gate': {'pass': False, 'reasons': ['unparseable-assessment']}}}\necho = a.get('echo') or {}\ngate = echo.get('gate') or {}\nroute = a.get('route')\nok = gate.get('pass') is True and route in ('worker', 'hitl', 'ignore')\nout = {\n    'id': (echo.get('event') or {}).get('id'),\n    'assignment': ('coding-worker' if route == 'worker' else route) if ok else 'drop',\n    'priority': a.get('priority'),\n    'basis': a.get('reason'),\n    'gatePass': gate.get('pass') is True,\n    'gateReasons': gate.get('reasons') or ([] if gate.get('pass') is True else ['missing-gate-echo']),\n}\nprint(json.dumps(out, ensure_ascii=False))"
+      },
+      "style": { "width": 124, "height": 124 }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "t1", "target": "c-scope-gate" },
+    { "id": "e2", "source": "c-scope-gate", "target": "a-assess" },
+    { "id": "e3", "source": "a-assess", "target": "c-decision" }
+  ]
+}
