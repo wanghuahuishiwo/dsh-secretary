@@ -4,7 +4,7 @@ driver: tracker
 provider: github
 ---
 
-本 driver 使用本机已认证的 GitHub CLI `gh` 操作 GitHub Issues。操作前读取项目 `docs/agents/issue-tracker.md`，核对 `repository` 为明确的 `owner/repo`，并使用 `gh auth status` 核对 github.com 身份。所有 Issue 命令显式传 `--repo <owner/repo>`，不使用 CLI 默认仓库或父项目资源。
+本 driver 使用本机已认证的 GitHub CLI `gh` 操作 GitHub Issues。操作前读取项目 `docs/agents/issue-tracker.md`，核对 `repository` 为明确的 `owner/repo`，并使用统一入口 `python3 scripts/gh-with-proxy-fallback.py auth status` 核对 github.com 身份。本文所有 `gh` 命令均指该入口，不直接依赖 `PATH` 或手动清理代理环境。入口在本机代理不可达时自动直连并记录原因，不绕过非 loopback 代理。所有 Issue 命令显式传 `--repo <owner/repo>`，不使用 CLI 默认仓库或父项目资源。
 
 driver 是 Markdown 执行说明，由当前 agent 使用实际工具完成，不是自动运行的 API。凭据由 `gh` 管理，不写入文件或输出日志。状态准入、父子、阻塞和业务授权由调用方负责。
 

@@ -10,8 +10,8 @@ python3 ~/.team-skills/scripts/driver.py resolve --project-root <项目根> --na
 
 ## 依赖与资源边界
 
-- 使用本机 `gh` 和已认证的 github.com 账号；所有 Issue 命令显式传 `--repo wanghuahuishiwo/dsh-secretary`。
-- 首次及认证变化时使用 `gh auth status` 核对身份，凭据不写入项目文档或日志。
+- 使用仓库统一入口 `python3 scripts/gh-with-proxy-fallback.py` 调用本机已认证的 GitHub CLI `gh`；本机代理可达时沿用代理，仅当配置的是不可达 loopback 代理时明确记录并直连，不绕过非 loopback 代理。文档中的 `gh` 命令均指该入口，所有 Issue 命令显式传 `--repo wanghuahuishiwo/dsh-secretary`。
+- 首次及认证变化时使用 `python3 scripts/gh-with-proxy-fallback.py auth status` 核对身份，凭据不写入项目文档或日志。
 - 创建前只在目标仓库查重；写入失败或超时先回读，不重复创建。
 - 不将 GitHub Issues 评论称为 MR、CI 或远程合入结果；附件上传只作图片证据，不替代 CI 或日志链接。
 
