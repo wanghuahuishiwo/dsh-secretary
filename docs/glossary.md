@@ -79,6 +79,20 @@
 | DSH Schedule | 宿主的定时唤醒能力，只负责投递提示，不是时间计划、Repeat、实际执行或完成回执。 |
 | Service | 插件暴露给其他插件的 Cordis capability。 |
 | Projection | 从权威事实即时派生的读取结果，如 Availability、Forecast 和各种视图，不另存事实。 |
+| DSH 宿主进程 | 运行一个 DSH profile 的操作系统进程，是角色插件的装载载体；一个宿主可以装载多个逻辑角色，角色数不等于进程数。 |
+| 角色插件集 | 共同实现中心或节点角色的一组 DSH 插件，由 profile 决定装载组合；不是独立进程的同义词。 |
+| Gateway | agent-dispatch 的通用事件通道与独立服务，只拥有自身传输与投递领域，不承载中心、节点或具体业务语义；不是 DSH 进程内 Remote 路由。 |
+| NATS | agent-dispatch 一期 Gateway 使用的开源消息基础设施；中心与节点通过官方客户端接入，不直接互连。 |
+| JetStream | NATS 官方持久化子系统，提供消息存储、消费 ACK、重投与恢复；不是中心权威事件历史。 |
+| NATS Services | NATS 官方在线服务发现机制，提供服务名、版本、metadata、endpoints 与 `$SRV` 查询，用于中心与节点发现彼此及通用能力路由；不作为持久注册中心，业务 metadata 不由 Gateway 解释。 |
+| nodeId | 节点初始化时生成并持久保存的逻辑身份，用于构造稳定的 CloudEvents `source`；普通重启不变，与 NATS Services 每次在线运行生成的临时实例 ID 不同。 |
+| CloudEvents | agent-dispatch 事件信封遵循的 CNCF 开放规范；一期使用 Core、JSON Event Format 与 NATS structured binding 1.0.2，线上 `specversion` 为 `1.0`，业务数据放在 `data`。 |
+| dataschema | CloudEvents 的可选 URI 属性，指向事件 `data` 的 schema；一期透传但不强制获取或校验，只有实际需要固定结构的消费者才按需使用。 |
+| Transactional Outbox | 一种可靠发布模式：业务结果与待发布事件在同一持久事务中保存，再由中继以稳定事件 ID 发布和重试；用于覆盖本地提交后、发布前崩溃的双写缺口，不提供端到端恰好一次。 |
+| NKey | NATS 内建的密钥对认证机制；客户端以私有 seed 对服务器随机挑战签名，服务端以公钥验证。它负责连接身份认证，subject permissions 负责发布／订阅授权；不是长期逻辑 `nodeId`，也不替代 TLS、用户隔离或事件 `source` 认证。 |
+| Gateway 设置 | DSH 中配置本机或远程 Gateway 的入口；本机模式包含进程控制与自动连接配置，远程模式只配置本机客户端，不提供远程进程控制。 |
+| 本机 Gateway 控制器 | DSH 中显式启动、手动重启、停止和展示本机独立 Gateway 进程状态的操作入口，不内嵌 Gateway 实现，也不承担自动守护。 |
+| User | agent-dispatch 的使用者与隔离主体；不同用户的事件、节点和数据分属各自的隔离边界。 |
 
 ## 6. 必须保持的边界
 
