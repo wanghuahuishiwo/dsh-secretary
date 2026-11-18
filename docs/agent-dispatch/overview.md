@@ -80,7 +80,7 @@
 - **JetStream 发布去重映射**：`Nats-Msg-Id` 使用事件 `id`，它是独立的 JetStream metadata，不是 CloudEvents 属性，也不替代消费端长期幂等。
 - **事件类型（type）**：点分命名空间，语义的唯一载体。家族示例：`node.*`（节点领域事件）、`task.*`（任务认领/结果）、领域事件（`aone.bug.created`、`mr.comment`、`ci.finished`）、`human.*`（人的审批/回填）。类型开放扩展；**新增插件事件绝不允许通过修改公共基础包实现**，`type + subject` 的命名权与业务语义归各自插件。
 - **插件事件与校验边界**：新增 `type + subject` 所需的订阅、durable consumer 和 JetStream 捕获配置均在线创建或更新，不需要中心修改代码、审批或重启。一期只统一校验事件信封，**不强制获取 `dataschema`，也不做全事件 `data` 校验**；`dataschema` 作为 CloudEvents 可选属性透传，但中心不因存储／转发事件就访问外网。通用 `dataschema` 分发、缓存与全事件 `data` 校验延后出现真实需求再设计；graph 节点输入结构与校验留到 graph 执行引擎后续规格，不在 Gateway 协议中定案。完整事件目录从插件声明与运行时注册信息派生。
-- **key（可选项目扩展）**：事件找 graph 实例的关联键（如 `approval:T-1`）；不是 CloudEvents Core 属性，Gateway 只透传、不解释，graph 引擎只做 key 匹配。
+- **信封扩展（#85 修订 #83）**：DSH 不定义任何 CloudEvents 扩展属性，原 `key` 可选扩展取消；信封保持纯 CloudEvents。事件与 graph 实例的关联 token 由中心侧领域路由节点从 `data` 派生，引擎 `waitFor` 登记名即该 token；thread／时间线概念整体属领域层，底座文档只称"信号名"。
 - **分派守则**：统一信封 ≠ 统一处理。消费者按 NATS subject 订阅，并以事件目录中的 `type + subject` 配对识别事件；没有任何声明认领的事件不产生执行（记 unmatched 可查）。
 - **三处同构**：传输中的事件、引擎事件历史里的记录、可观测读取的数据，同一结构——领域只要发事件，时间线/因果链/审计/重放/指标自动覆盖，无需单独埋点。
 
