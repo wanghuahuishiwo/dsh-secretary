@@ -142,10 +142,24 @@ async run(ctx, { ticket }) {
 
 ---
 
-## 3. 未定项（空白，非结论）
+## 3. 中心内部 Ticket（工作单元）
+
+> 决策出处：wayfinder [#90](https://github.com/wanghuishiwo/dsh-secretary/issues/90)（已关）。
+
+- **实体地位**：内部 Ticket 是中心的持久化权威实体，持有结构化领域事实，不从事件流派生。事件（外部采集、worker 回写）职责收窄为**输入与触发**：中心处理器消费事件、按领域规则落笔。graph 引擎的事件历史（重放/恢复）属引擎领域——**引擎领域靠事件重放，Ticket 领域靠结构化事实**，两者分层。
+- **写入权**：只有中心能改 Ticket，一切变更由中心侧调度 graph 节点的副作用落笔；与 graph 实例无领域关联。每次变更追加**操作记录** `{at, operator(worker), action, from→to, 理由?}`，无匿名变更：中心调度署名其具名 PM worker，worker 回写署名该 worker，人操作署名人的 worker 名。
+- **worker 统一模型**：一切执行者都是 worker：`{ name, kind: person|agent, 所在节点(人为 null) }`。人也是 worker；agent worker 各自起名，全局唯一。hitl / afk 不进状态机、不做标签，是当前 assignee kind 的派生投影（person→hitl，agent→afk）。
+- **属性（核心模板 = Linear，辅助 = Jira 字段语义 / 云效操作日志）**：`id / title / description`；`status = open / working / closed`（closed 后不可改写）；`resolution`（closed 必填）= `done / failed / cancelled / rejected / dropped`；`assignee`（worker 引用，空=待领取）；`labels`；`externalRefs[] = {system, kind, nativeId, url}`（只引用不镜像，适配器注册表，一期只实现 aone）；`follows`（前序票引用）；追加式子记录：**评论**、**操作记录**。派生不存储：hitl/afk、指派历史、面板阶段。
+- **无 Assignment 实体**：指派历史 = 操作记录中 assignee 变更的串联；attempt / session 等运行时事实归任务执行领域（#84）。
+- **复活语义**：closed 的票被**人的消息**关联到 → 回 `open` 继续追加；机器触发一律开新票并以 `follows` 引用旧票；被人 `cancelled` 的不可复活。
+
+---
+
+## 4. 未定项（空白，非结论）
 
 - 任务路由到哪台节点（能力标签 / 槽位）
 - 节点本地事件历史与中心权威事件历史的汇合细节（全量回传 vs 摘要+引用）
+- 事件→Ticket 的关联路由细则（token 派生，含人的消息如何关联到已关票触发复活）
 - 任务完成的可靠判定（agent 会话不由 agent 自己汇报；宿主适配器用确定性信号检测：退出码 / RPC 完成 / 回合结束 / 心跳超时——归 #74 HostAdapter 设计）
 - 凭据与安全（token 如何交给节点与任务，不进模型上下文）
 - graph 版本化（改图不破坏运行中/睡着的实例）
