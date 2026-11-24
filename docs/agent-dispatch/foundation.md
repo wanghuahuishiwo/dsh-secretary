@@ -28,6 +28,17 @@ graph 引擎是一个 **DSH 插件**，谁装载谁就有：
 
 同一个引擎、同一套开发模型（run / ctx / runTask / waitFor）、同一套观测。**铁律：系统的权威记录只由中心追加（单一写入点）**——节点上任务 graph 的本地历史，经 `task.result` 等事件回传汇入中心的权威事件历史，观测仍是一条流。
 
+**选型（[#92](https://github.com/wanghuahuishiwo/dsh-secretary/issues/92)，已关）**：自研轻量内核、从零写，不采用现成引擎、不 fork 社区插件。
+
+- **自研内核**：事件历史与重放、waitFor 登记与事件唤醒、durable 定时器、graphNodes 注册表、任务执行器、NATS 接入与三叉路由、Outbox 事务。
+- **复用 DSH 外壳**：worker 执行载体与起会话（`ctx.subagents` / `ctx.agents`）、画布 UI 壳（client 插件 + slot + Remote）、装配与双引擎隔离（bundle + `cordis:group` + isolate + dsh-hmr）、进程内事件（cordis）、单表存储（`ctx.storageDomain`）。
+- **节点扩展点**：DSH 无现成 graph node 注册表，自建 `ctx.graphNodes.register(defineNode(...))`，置于角色 realm 内，第三方 bundle 依赖该服务即可注册节点。
+- **画布**：`@xyflow/react`。它是节点编辑器底座，不是 ComfyUI 观感；多端口、连线类型颜色、类型禁连、节点内表单需自绘。
+- **节点由声明自动渲染**：`defineNode` 中声明端口（名称、方向、类型）与内嵌控件，画布据此自动生成节点外观。graph node 保持纯 TS，不写前端；不开放自定义节点组件（出现真实需求再评估）。端口类型在声明处定义一次，连线校验与着色都从它读取。
+- **已知约束**：`ctx.storageDomain` 无跨表事务与二级索引（Outbox 用单表或自管 SQLite）；storage-sqlite 单写者（事件历史用独立文件）；工具不向 root `ctx.tools` 注册；引擎不依赖 DSH schedule，也不占用 workflowEngine key。
+- **证据**：[graph-engine-options.md](evidence/graph-engine-options.md)（外部引擎对比）、[dsh-plugin-ecosystem.md](evidence/dsh-plugin-ecosystem.md)（DSH 宿主与插件生态）、[dsh-community-workflow-plugins.md](evidence/dsh-community-workflow-plugins.md)（开源 DSH 工作流插件）。
+- **MVP PoC 首批验证项**：durable 定时器正确性；non-determinism 指纹匹配的粒度与报错语义；graph 版本化与重放一致性；graphNodes 注册表与 Loader / isolate 集成；@xyflow/react 做出 ComfyUI 手感的实际工作量。
+
 概念（本模块全部概念，按层次分组）：
 
 ### 1.2 图的结构
@@ -79,6 +90,7 @@ async run(ctx, { ticket }) {
 - 开发规范 4 条：纯逻辑随便写；副作用必须 runTask；等外部必须 waitFor；时间/随机用调包版全局（自动记账）。vm 防误不防恶，恶意代码靠任务执行器进程隔离。
 - **HITL = await**：人机闭环就是 waitFor（提问是副作用、回答是事件命中）；hitl/afk 状态 = 实例位置的投影。
 - **任务队列 / 工作器（Task Queue / Worker）**：runTask 纸条的执行侧（Temporal 概念）。
+- **agent 节点**（[#84](https://github.com/wanghuahuishiwo/dsh-secretary/issues/84)，已关）：底座在 worker 侧提供的唯一标准 graph node。`run()` 内经 `ctx.runTask` 调宿主（一期 dsh `ctx.agents`）起会话、跑一个 agent 回合；回合结束且无后台工作即返回 `{最终消息, 结构化输出, 写出的原生 ID}`，出错抛错、实例失败。派工 = 中心发一条事件即结束实例，节点 graph 以 entry 认领开实例 → agent 节点 → 发 report 事件；没有"任务"实体，事件 `data` 不带 workdir/ticketId。一期不做 waitFor 回联、执行记录、重派/超时机制、invoke 派工与 pi 适配器。
 
 ---
 
@@ -142,11 +154,53 @@ async run(ctx, { ticket }) {
 
 ---
 
-## 3. 未定项（空白，非结论）
+## 3. 中心内部 Ticket（工作单元）
+
+> 决策出处：wayfinder [#90](https://github.com/wanghuishiwo/dsh-secretary/issues/90)、#91（均已关）。
+
+- **实体地位**：内部 Ticket 是中心的持久化权威实体，持有结构化领域事实，不从事件流派生。事件（外部采集、worker 回写）职责收窄为**输入与触发**：中心处理器消费事件、按领域规则落笔。graph 引擎的事件历史（重放/恢复）属引擎领域——**引擎领域靠事件重放，Ticket 领域靠结构化事实**，两者分层。
+- **写入权**：只有中心能改 Ticket，一切变更由中心侧调度 graph 节点的副作用落笔；与 graph 实例无领域关联。每次变更追加**操作记录** `{at, operator(worker), action, from→to, 理由?}`，无匿名变更：中心调度署名其具名 PM worker，worker 回写署名该 worker，人操作署名人的 worker 名。
+- **worker 统一模型**：一切执行者都是 worker：`{ name, type: user|agent, 所在节点(人为 null) }`（命名跟 GitHub actor `type: User/Bot`）。人也是 worker；agent worker 各自起名，全局唯一。是否在等人直接看 `assignee.type`，不做 hitl/afk 概念。
+- **领域结构（核心模板 = Linear 原样）**：
+  - `status : Todo | In Progress | Done | Canceled`（终态不可改写；不加 resolution、不加 Failed——完成判定定案后回看）；
+  - `assignee : Worker?`（默认 Unassigned，委派=变更+操作记录+通知）；
+  - `labels[]`、`parent : Ticket?`、`relations[] : {type: related|duplicate|blocks, target}`（全 Linear 原封，不另加 follows）；
+  - 子记录（追加式）：**评论** `{at, author(worker), content}`、**操作记录**（≈Linear activity + 云效操作日志）；
+  - **自设计仅两处**：`externalRefs[] : {system, kind, nativeId, url}`（只引用不镜像；分容器级/对象级，路由汇聚只认对象级；适配器注册表，一期只实现 aone）与**执行记录引用位**（结构归任务执行领域）；
+  - 派生不存：children（反查 parent）、inverseRelations；模型双向、存储单向、不双写。
+- **无 Assignment 实体**：指派历史 = 操作记录中 assignee 变更的串联；attempt / session 等运行时事实归任务执行领域（#84）。
+- **复活语义**：终态票（Canceled 除外）被**人**重开 → 回 Todo；机器触发一律开新票并以 `related` 关联旧票。
+- **trigger 与 externalRef**：触发事件的 `data` 携带对象身份（#85 义务），建票时持久化为 externalRefs；一个 externalRef 对应多次 trigger。语义相关（如同群不同票）由决策节点研判，不自动归并。
+
+## 4. 中心工作流（v1）
+
+> 决策出处：wayfinder [#91](https://github.com/wanghuishiwo/dsh-secretary/issues/91)（已关）。骨架参考 superagent 原型，词汇用本仓库术语。
+
+```text
+① 触发事件（data 必带对象级身份）
+     → 被对应链路的入口声明订阅认领（标准 pub/sub；无人认领 → unmatched）
+     → 输入适配器从 data 取对象身份查票（汇聚键 = externalRef，不建 Thread）
+     → [过滤]（确定性规则：自写/噪声/可信来源）不过 → unmatched
+     → [决策]（可调模型）开工 → 创建 Ticket（Todo/Unassigned，operator=PM）
+              已有票 → 推进；忽略/停止 → unmatched（不建 Decision 实体）
+     → [委派]（assign → In Progress + 通知）
+② Report 事件（worker 回写，带 ticketId）→ 直达该票推进节点，不走路由
+     → 推进：置 Done / 重派 / 转给人（底座给动作，流程 graph 给策略）
+③ 定时器 → 引擎内部唤醒事件 → 直接起 Source graph 短实例（不经 Gateway）→ 产出触发事件
+④ 外部系统写回 = worker 的任务内容，中心不碰外部凭据
+```
+
+- **不建的实体**：Thread（汇聚键 = externalRef）、Decision（结局落操作记录/unmatched）、Mandate（不考虑）。
+- **人的介入**：人就是 worker（type=user），对票的评论/操作与 agent 回写同构，都是带票身份的输入，中心只提供落笔入口；agent 问人 = assignee 改为人，无问答实体。
+- **建票时点**：过滤、决策在建票之前；创建（create）与委派（assign）是两条操作记录，票短暂处于 Todo/Unassigned，不丢弃。
+
+---
+
+## 5. 未定项（空白，非结论）
 
 - 任务路由到哪台节点（能力标签 / 槽位）
 - 节点本地事件历史与中心权威事件历史的汇合细节（全量回传 vs 摘要+引用）
-- 任务完成的可靠判定（agent 会话不由 agent 自己汇报；宿主适配器用确定性信号检测：退出码 / RPC 完成 / 回合结束 / 心跳超时——归 #74 HostAdapter 设计）
+- 完成判定、执行记录结构、重派/超时策略、Done 是否细分、宿主适配器（pi）——领域层，等 Ticket 进场后展开（#84 移交）
 - 凭据与安全（token 如何交给节点与任务，不进模型上下文）
 - graph 版本化（改图不破坏运行中/睡着的实例）
 - graph 节点输入结构与校验（固定结构与文本输入的差异、统一校验位置及失败行为）
