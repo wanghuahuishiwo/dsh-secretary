@@ -28,6 +28,16 @@ graph 引擎是一个 **DSH 插件**，谁装载谁就有：
 
 同一个引擎、同一套开发模型（run / ctx / runTask / waitFor）、同一套观测。**铁律：系统的权威记录只由中心追加（单一写入点）**——节点上任务 graph 的本地历史，经 `task.result` 等事件回传汇入中心的权威事件历史，观测仍是一条流。
 
+**选型（[#92](https://github.com/wanghuahuishiwo/dsh-secretary/issues/92)，已关）**：自研轻量内核、从零写，不采用现成引擎、不 fork 社区插件。
+
+- **自研内核**：事件历史与重放、waitFor 登记与事件唤醒、durable 定时器、graphNodes 注册表、任务执行器、NATS 接入与三叉路由、Outbox 事务。
+- **复用 DSH 外壳**：worker 执行载体与起会话（`ctx.subagents` / `ctx.agents`）、画布 UI 壳（client 插件 + slot + Remote）、装配与双引擎隔离（bundle + `cordis:group` + isolate + dsh-hmr）、进程内事件（cordis）、单表存储（`ctx.storageDomain`）。
+- **节点扩展点**：DSH 无现成 graph node 注册表，自建 `ctx.graphNodes.register(defineNode(...))`，置于角色 realm 内，第三方 bundle 依赖该服务即可注册节点。
+- **画布**：`@xyflow/react`。它是节点编辑器底座，不是 ComfyUI 观感；多端口、连线类型颜色、类型禁连、节点内表单需自绘。
+- **已知约束**：`ctx.storageDomain` 无跨表事务与二级索引（Outbox 用单表或自管 SQLite）；storage-sqlite 单写者（事件历史用独立文件）；工具不向 root `ctx.tools` 注册；引擎不依赖 DSH schedule，也不占用 workflowEngine key。
+- **证据**：[graph-engine-options.md](evidence/graph-engine-options.md)（外部引擎对比）、[dsh-plugin-ecosystem.md](evidence/dsh-plugin-ecosystem.md)（DSH 宿主与插件生态）、[dsh-community-workflow-plugins.md](evidence/dsh-community-workflow-plugins.md)（开源 DSH 工作流插件）。
+- **MVP PoC 首批验证项**：durable 定时器正确性；non-determinism 指纹匹配的粒度与报错语义；graph 版本化与重放一致性；graphNodes 注册表与 Loader / isolate 集成；@xyflow/react 做出 ComfyUI 手感的实际工作量。
+
 概念（本模块全部概念，按层次分组）：
 
 ### 1.2 图的结构
