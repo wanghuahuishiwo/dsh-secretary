@@ -90,6 +90,7 @@ async run(ctx, { ticket }) {
 - 开发规范 4 条：纯逻辑随便写；副作用必须 runTask；等外部必须 waitFor；时间/随机用调包版全局（自动记账）。vm 防误不防恶，恶意代码靠任务执行器进程隔离。
 - **HITL = await**：人机闭环就是 waitFor（提问是副作用、回答是事件命中）；hitl/afk 状态 = 实例位置的投影。
 - **任务队列 / 工作器（Task Queue / Worker）**：runTask 纸条的执行侧（Temporal 概念）。
+- **agent 节点**（[#84](https://github.com/wanghuahuishiwo/dsh-secretary/issues/84)，已关）：底座在 worker 侧提供的唯一标准 graph node。`run()` 内经 `ctx.runTask` 调宿主（一期 dsh `ctx.agents`）起会话、跑一个 agent 回合；回合结束且无后台工作即返回 `{最终消息, 结构化输出, 写出的原生 ID}`，出错抛错、实例失败。派工 = 中心发一条事件即结束实例，节点 graph 以 entry 认领开实例 → agent 节点 → 发 report 事件；没有"任务"实体，事件 `data` 不带 workdir/ticketId。一期不做 waitFor 回联、执行记录、重派/超时机制、invoke 派工与 pi 适配器。
 
 ---
 
@@ -199,7 +200,7 @@ async run(ctx, { ticket }) {
 
 - 任务路由到哪台节点（能力标签 / 槽位）
 - 节点本地事件历史与中心权威事件历史的汇合细节（全量回传 vs 摘要+引用）
-- 完成判定定案后回看 Done 是否需细分（如 Failed）
+- 完成判定、执行记录结构、重派/超时策略、Done 是否细分、宿主适配器（pi）——领域层，等 Ticket 进场后展开（#84 移交）
 - 凭据与安全（token 如何交给节点与任务，不进模型上下文）
 - graph 版本化（改图不破坏运行中/睡着的实例）
 - graph 节点输入结构与校验（固定结构与文本输入的差异、统一校验位置及失败行为）
