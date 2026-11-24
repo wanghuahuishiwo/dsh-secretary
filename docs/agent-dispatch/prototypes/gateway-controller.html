@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>原型 · 本机 Gateway 控制器（可丢弃）</title>
+<style>
+  :root { --ink:#1f2328; --mut:#6b7280; --line:#e5e7eb; --bg:#fafafa; --accent:#2563eb; --ok:#15803d; --warn:#b45309; --bad:#b91c1c; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.6 -apple-system,"PingFang SC","Helvetica Neue",sans-serif; color:var(--ink); background:#fff; }
+  main { max-width:1080px; margin:0 auto; padding:28px 24px 80px; }
+  h1 { font-size:22px; margin:0 0 6px; }
+  h2 { font-size:16px; margin:28px 0 10px; }
+  .intro { color:var(--mut); margin:0 0 18px; }
+  .intro b { color:var(--ink); }
+  .note { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:12px 14px; font-size:13.5px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .panel { border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .panel h3 { margin:0 0 10px; font-size:14px; color:var(--mut); font-weight:600; letter-spacing:.02em; }
+  .status { font-size:20px; font-weight:700; margin-bottom:8px; }
+  .s-ok{color:var(--ok)} .s-warn{color:var(--warn)} .s-bad{color:var(--bad)} .s-idle{color:var(--mut)}
+  dl { display:grid; grid-template-columns:120px 1fr; gap:4px 10px; margin:0; font-size:13.5px; }
+  dt { color:var(--mut); } dd { margin:0; font-family:ui-monospace,Menlo,monospace; font-size:12.5px; word-break:break-all; }
+  .changed { color:var(--accent); font-size:13px; min-height:20px; margin-top:8px; }
+  .actions { display:flex; flex-wrap:wrap; gap:8px; }
+  button { font:inherit; font-size:13.5px; padding:6px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; cursor:pointer; }
+  button:hover { border-color:var(--accent); color:var(--accent); }
+  button[disabled] { opacity:.35; cursor:not-allowed; }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  button.primary:hover { filter:brightness(1.08); color:#fff; }
+  button.danger { color:var(--bad); }
+  button.step { background:var(--bg); }
+  button.step.done { opacity:.45; }
+  .tabs { display:flex; gap:6px; border-bottom:1px solid var(--line); margin-bottom:10px; }
+  .tabs button { border:0; border-bottom:2px solid transparent; border-radius:0; padding:8px 12px; color:var(--mut); }
+  .tabs button.on { color:var(--ink); border-bottom-color:var(--accent); }
+  pre { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font-size:12px; margin:0; white-space:pre-wrap; }
+  .scenario-desc { margin:0 0 12px; font-size:14px; }
+  .scenario-steps { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .scenario-steps .arrow { color:var(--mut); }
+  .reset { float:right; }
+</style>
+</head>
+<body>
+<main>
+  <h1>原型 · 本机 Gateway 控制器 <span style="font-size:12px;color:var(--mut)">（可丢弃，回答一张决策票）</span></h1>
+  <p class="intro">
+    <b>要回答的问题</b>：DSH 的设置 UI 与命令行如何管理一个「独立于 DSH、桌面退出后还活着」的本机 Gateway 进程——
+    启动/停止/重启/状态怎么表达；DSH 关掉再打开，怎样认出并重新接管同一个实例；启动中、启动失败、异常退出如何呈现；
+    最少要持久化什么（实例记录、PID、日志位置）。
+    <br><b>原型假设（待你推翻）</b>：① 不做常驻管理器——控制器是一段<b>无状态</b>的共享库，UI 插件和命令行都调它，真相 = 探测操作系统 + 一份实例记录文件；
+    ② 用 nats-server 官方能力做身份与健康探测：启动时传 <code>-n &lt;实例ID&gt;</code> 作为 server name，经监控端口 <code>/varz</code> 读回核对（防 PID 复用误判）；
+    ③ 控制器只在桌面进程里 spawn 一次并以 detached 方式脱手，之后不再持有子进程句柄。
+  </p>
+  <div class="note">
+    怎么玩：左边是<b>控制器看到并显示给用户的状态</b>，右边是<b>模拟的真实世界</b>（操作系统里发生了什么）。先用下方「向导」走一遍刁钻场景，再用「自由操作」乱按。
+    看到不对劲的地方——"这不应该允许吧""我以为是另一种"——就是这张票要的答案。
+  </div>
+
+  <h2>当前状态</h2>
+  <div class="grid">
+    <div class="panel">
+      <h3>控制器视角（UI 面板 / 命令行 status 显示的东西）</h3>
+      <div id="view"></div>
+      <div class="changed" id="changed"></div>
+    </div>
+    <div class="panel">
+      <h3>真实世界（模拟操作系统，用户看不见）</h3>
+      <div id="world"></div>
+    </div>
+  </div>
+  <div class="grid" style="margin-top:16px">
+    <div class="panel"><h3>实例记录文件（持久化的最小契约）</h3><pre id="record"></pre></div>
+    <div class="panel"><h3>Gateway 日志尾部（用户排障入口）</h3><pre id="log"></pre></div>
+  </div>
+
+  <h2>向导（每个标签是一种刁钻场景，按顺序点）</h2>
+  <div class="tabs" id="tabs"></div>
+  <p class="scenario-desc" id="scenarioDesc"></p>
+  <div class="scenario-steps" id="steps"></div>
+
+  <h2>自由操作</h2>
+  <div class="actions" id="free"></div>
+</main>
+
+<script>
+// ---------------------------------------------------------------------------
+// 纯逻辑模块（可整体搬到真实代码）：本机 Gateway 控制器
+// 形态：一个状态机 + 一组纯函数，输入「世界」(模拟 OS 探测结果) 与「记录」，输出显示状态与合法动作。
+// 不碰 DOM。
+// ---------------------------------------------------------------------------
+const GatewayController = (() => {
+  const START_TIMEOUT_MS = 10000;
+
+  const initial = () => ({
+    mode: 'local',              // 'local' | 'remote'
+    record: null,               // 实例记录（持久化）
+    lastAction: null,           // 最近一次控制器动作
+    world: {                    // 真实世界（仅原型用：模拟 OS）
+      procs: [],                // 活着的进程
+      nextPid: 4200,
+      portBusy: false,          // 端口被别的进程占着
+      varzReachable: true,      // 监控端口是否可探（默认可）
+      log: [],
+    },
+  });
+
+  const uid = () => 'gw-' + Math.random().toString(36).slice(2, 8);
+
+  // 模拟：nats-server 进程对象
+  const spawnNats = (w, { serverName, port, monPort, failFast }) => {
+    const pid = w.nextPid++;
+    w.procs.push({ pid, name: 'nats-server', serverName, port, monPort, accepting: true, failFast: !!failFast });
+    return pid;
+  };
+  const killProc = (w, pid) => { w.procs = w.procs.filter(p => p.pid !== pid); };
+  const log = (w, line) => { w.log.push(line); if (w.log.length > 12) w.log.shift(); };
+
+  // 探测：按 PID 找进程，再看是不是我们那个 nats-server
+  const probe = (w, pid) => {
+    if (!pid) return null;
+    const p = w.procs.find(x => x.pid === pid);
+    if (!p) return { alive: false };
+    if (p.name !== 'nats-server') return { alive: true, ours: false, what: p.name };
+    if (!w.varzReachable) return { alive: true, ours: null, what: 'nats-server（/varz 不可达，无法核对身份）' };
+    return { alive: true, ours: p.serverName, accepting: p.accepting, port: p.port, monPort: p.monPort };
+  };
+
+  // 派生显示状态：无状态，每次都重新探测。DSH 重开 = 再调一次这个函数，没有"恢复流程"。
+  const observe = (s) => {
+    if (s.mode === 'remote') {
+      return { status: 'remote', label: '远程模式', tone: 'idle',
+        hint: '只配置远程 Gateway 地址与凭据引用；不控制任何进程。',
+        legal: [] };
+    }
+    const r = s.record;
+    if (!r) {
+      const foreign = s.world.procs.find(p => p.name === 'nats-server');
+      if (foreign) return { status: 'untracked', label: '发现未托管 Gateway', tone: 'warn',
+        hint: `本机有一个不是我们启动的 nats-server（PID ${foreign.pid}），不在控制范围内；如要托管，请先自行停止它再点"启动"。`,
+        legal: ['start'] };
+      return { status: 'none', label: '未启动', tone: 'idle', hint: '尚无实例记录。', legal: ['start'] };
+    }
+    const p = probe(s.world, r.pid);
+    if (p && p.alive && p.ours === false) {
+      return { status: 'stale', label: '记录已失效', tone: 'bad',
+        hint: `PID ${r.pid} 现在是别的进程（${p.what}）。上次的 Gateway 早已不在；可清理记录后重新启动。`,
+        legal: ['forget', 'start'] };
+    }
+    if (p && p.alive && p.ours === null) {
+      return { status: 'unknown', label: '无法确认', tone: 'warn',
+        hint: `PID ${r.pid} 是 nats-server，但 /varz 探测不通，不能确认就是我们的实例，也不敢对它发停止信号。`,
+        legal: ['refresh'] };
+    }
+    if (p && p.alive) {
+      if (p.ours !== r.instanceId) {
+        return { status: 'stale', label: '记录已失效', tone: 'bad',
+          hint: `PID ${r.pid} 是另一个 Gateway（server name ${p.ours} ≠ ${r.instanceId}），PID 被复用了。不接管、不停止。`,
+          legal: ['forget'] };
+      }
+      if (r.state === 'starting') return { status: 'starting', label: '启动中…', tone: 'warn',
+        hint: '进程已起，等待开始接受连接；超过 10 秒未就绪判为启动失败。', legal: [] };
+      if (r.state === 'stopping') return { status: 'stopping', label: '停止中…', tone: 'warn',
+        hint: '已发停止信号，等待进程退出；超过 10 秒未退出则报错，不自动强杀。', legal: [] };
+      return { status: 'running', label: '运行中', tone: 'ok',
+        hint: `接受连接于 ${r.addr}；由${r.launchedBy}启动于 ${r.startedAt}。桌面退出不影响它。`,
+        legal: ['restart', 'stop'] };
+    }
+    // 进程不在
+    if (r.state === 'starting') return { status: 'start-failed', label: '启动失败', tone: 'bad',
+      hint: '进程在就绪前退出，看日志尾部。', legal: ['start', 'forget'] };
+    if (r.state === 'stopping' || r.stopRequestedAt) return { status: 'stopped', label: '已停止', tone: 'idle',
+      hint: `由${r.stopRequestedBy || '某人'}于 ${r.stopRequestedAt || '?'} 显式停止。`, legal: ['start', 'forget'] };
+    return { status: 'crashed', label: '异常退出', tone: 'bad',
+      hint: '上次它在运行，现在进程没了，但没有任何一方请求过停止——可能是崩溃、被 kill 或机器重启。原因只能看日志尾部；控制器不自动重启。',
+      legal: ['start', 'forget'] };
+  };
+
+  // 动作
+  const start = (s, by) => {
+    const o = observe(s);
+    if (!o.legal.includes('start')) return { ...s, lastAction: { by, act: 'start', refused: o.label } };
+    if (s.world.portBusy) {
+      const r = { instanceId: uid(), pid: null, state: 'starting', launchedBy: by, startedAt: '刚刚', addr: 'nats://127.0.0.1:4222',
+        logFile: '<数据目录>/gateway/nats-server.log', configFile: '<数据目录>/gateway/nats-server.conf', stopRequestedAt: null };
+      log(s.world, '[ERR] listen: address already in use');
+      return { ...s, record: r, lastAction: { by, act: 'start', note: '端口被占' } };
+    }
+    const r = { instanceId: uid(), pid: null, state: 'starting', launchedBy: by, startedAt: '刚刚', addr: 'nats://127.0.0.1:4222',
+      logFile: '<数据目录>/gateway/nats-server.log', configFile: '<数据目录>/gateway/nats-server.conf', stopRequestedAt: null };
+    const pid = spawnNats(s.world, { serverName: r.instanceId, port: 4222, monPort: 8222 });
+    r.pid = pid;
+    log(s.world, `[INF] Starting nats-server`); log(s.world, `[INF] Server name: ${r.instanceId}`); log(s.world, `[INF] Listening for client connections on 0.0.0.0:4222`);
+    return { ...s, record: r, lastAction: { by, act: 'start' } };
+  };
+  // 控制器每秒 tick 一次探测。starting→running 是控制器推进；stopping→进程退出是操作系统的事（收到 SIGTERM 后自行退出），控制器只是探测到它没了。
+  const tick = (s) => {
+    const r = s.record; if (!r) return s;
+    if (r.state === 'stopping') { procExit(s, r.pid); return { ...s, record: { ...r, state: 'stopped' } }; }
+    if (r.state === 'starting' && observe(s).status === 'starting') return { ...s, record: { ...r, state: 'running' } };
+    return s;
+  };
+  const stop = (s, by) => {
+    const o = observe(s);
+    if (!o.legal.includes('stop')) return { ...s, lastAction: { by, act: 'stop', refused: o.label } };
+    const r = { ...s.record, state: 'stopping', stopRequestedAt: '刚刚', stopRequestedBy: by };
+    return { ...s, record: r, lastAction: { by, act: 'stop' } };
+  };
+  // 操作系统层面：进程真的退出
+  const procExit = (s, pid) => { killProc(s.world, pid); log(s.world, '[INF] Server exiting..'); return s; };
+  const restart = (s, by) => {
+    const o = observe(s);
+    if (!o.legal.includes('restart')) return { ...s, lastAction: { by, act: 'restart', refused: o.label } };
+    const pid = s.record.pid;
+    const afterStop = { ...stop(s, by + '（重启）'), lastAction: { by, act: 'restart' } };
+    procExit(afterStop, pid);
+    afterStop.record = { ...afterStop.record, state: 'stopped' };
+    return start(afterStop, by + '（重启）');
+  };
+  const forget = (s, by) => ({ ...s, record: null, lastAction: { by, act: 'forget' } });
+  const setMode = (s, mode) => ({ ...s, mode, lastAction: { by: '用户', act: 'setMode', note: mode } });
+
+  // 世界事件（非控制器动作）
+  const evCrash = (s) => { const pid = s.record && s.record.pid; if (pid) { killProc(s.world, pid); log(s.world, '[ERR] runtime panic'); } return { ...s, lastAction: { by: '世界', act: 'crash', note: 'kill -9' } }; };
+  const evPidReuse = (s) => {
+    const pid = s.record && s.record.pid; if (!pid) return s;
+    killProc(s.world, pid);
+    s.world.procs.push({ pid, name: 'node', accepting: false });
+    log(s.world, '(日志停在最后一行)');
+    return { ...s, lastAction: { by: '世界', act: 'pidReuse' } };
+  };
+  const evPortBusy = (s, on) => ({ ...s, world: { ...s.world, portBusy: !!on }, lastAction: { by: '世界', act: 'portBusy', note: on ? '端口被占' : '端口释放' } });
+  const evVarzDown = (s, on) => ({ ...s, world: { ...s.world, varzReachable: !on }, lastAction: { by: '世界', act: 'varzDown', note: on } });
+  const evForeign = (s) => { spawnNats(s.world, { serverName: 'someone-else', port: 4222, monPort: 8222 }); return { ...s, lastAction: { by: '世界', act: 'foreign' } }; };
+  const evReopenDsh = (s) => ({ ...s, lastAction: { by: '用户', act: 'reopenDsh' } });
+
+  return { initial, observe, start, stop, restart, forget, tick, setMode,
+           evCrash, evPidReuse, evPortBusy, evVarzDown, evForeign, evReopenDsh,
+           START_TIMEOUT_MS };
+})();
+
+// ---------------------------------------------------------------------------
+// 页面壳（可丢弃）
+// ---------------------------------------------------------------------------
+const $ = (id) => document.getElementById(id);
+let S = GatewayController.initial();
+
+const ACTIONS = {
+  start:      { label: '启动 Gateway', by: '设置 UI', run: (s) => GatewayController.start(s, '设置 UI'), cls: 'primary' },
+  stop:       { label: '停止', by: '设置 UI', run: (s) => GatewayController.stop(s, '设置 UI'), cls: 'danger' },
+  restart:    { label: '手动重启', by: '设置 UI', run: (s) => GatewayController.restart(s, '设置 UI') },
+  forget:     { label: '清理失效记录', by: '设置 UI', run: (s) => GatewayController.forget(s, '设置 UI') },
+  refresh:    { label: '重新探测', by: '设置 UI', run: (s) => s },
+  cliStart:   { label: '命令行：启动', by: '命令行', run: (s) => GatewayController.start(s, '命令行') },
+  cliStop:    { label: '命令行：停止', by: '命令行', run: (s) => GatewayController.stop(s, '命令行') },
+  cliStatus:  { label: '命令行：status', by: '命令行', run: (s) => s },
+  tick:       { label: '⏱ 过 1 秒', by: '时间', run: (s) => GatewayController.tick(s) },
+  reopen:     { label: '退出并重开 DSH', by: '用户', run: GatewayController.evReopenDsh },
+  crash:      { label: '世界：Gateway 被 kill -9', by: '世界', run: GatewayController.evCrash },
+  pidReuse:   { label: '世界：Gateway 已死且 PID 被别的进程占用', by: '世界', run: GatewayController.evPidReuse },
+  portBusy:   { label: '世界：端口 4222 被占 / 释放', by: '世界', run: (s) => GatewayController.evPortBusy(s, !s.world.portBusy) },
+  varzDown:   { label: '世界：/varz 探测不通 / 恢复', by: '世界', run: (s) => GatewayController.evVarzDown(s, s.world.varzReachable) },
+  foreign:    { label: '世界：别人手动起了一个 nats-server', by: '世界', run: GatewayController.evForeign },
+  mode:       { label: '切换 本机/远程 模式', by: '用户', run: (s) => GatewayController.setMode(s, s.mode === 'local' ? 'remote' : 'local') },
+  reset:      { label: '重置', by: '用户', run: () => GatewayController.initial() },
+};
+
+const SCENARIOS = [
+  { name: '1 · 顺利路径', desc: '第一次启动：进程起来 → 启动中 → 就绪 → 运行中；用户显式停止。注意"启动中"只是一个短暂的过渡态，由控制器每秒探测推进，不是持久事实。', steps: ['start', 'tick', 'stop', 'tick'] },
+  { name: '2 · 桌面退出后继续活着', desc: 'Gateway 是独立进程，DSH 退出不影响它。重开 DSH 没有"恢复"动作——控制器无状态，重新探测一次就接管了同一个实例（server name 对得上）。', steps: ['start', 'tick', 'reopen', 'tick'] },
+  { name: '3 · 崩溃后重开', desc: '桌面关着的时候 Gateway 挂了。重开后控制器不知道退出码，只能靠"没有任何一方请求过停止"判为「异常退出」，并把日志尾部给用户看。它不会自动重启。', steps: ['start', 'tick', 'reopen', 'crash', 'tick', 'start', 'tick'] },
+  { name: '4 · PID 复用陷阱', desc: 'Gateway 死后，操作系统把它原来的 PID 分给了别的进程。只看"PID 还活着"会误判运行中、甚至误杀；靠 /varz 读回 server name 核对才安全。', steps: ['start', 'tick', 'crash', 'pidReuse', 'tick', 'forget', 'start', 'tick'] },
+  { name: '5 · 命令行与 UI 控制同一实例', desc: '无桌面的节点机器用命令行；有桌面的用 UI。两边是同一段无状态库、同一份记录文件，谁先启动都算数，谁停止都会留痕。', steps: ['cliStart', 'tick', 'cliStop', 'tick', 'start', 'tick', 'cliStatus'] },
+  { name: '6 · 启动失败：端口被占', desc: '端口被别的进程占着，nats-server 起来就退出。控制器判为「启动失败」，不重试；清掉占用后用户再启动即可。', steps: ['portBusy', 'start', 'tick', 'portBusy', 'start', 'tick'] },
+  { name: '7 · 探测不通时不敢动手', desc: '/varz 不通时，控制器只知道"PID 是 nats-server"，不能确认是自己的实例——此时不提供停止/重启（不发信号给不确定的进程），只能重新探测。', steps: ['start', 'tick', 'varzDown', 'tick', 'varzDown', 'tick'] },
+  { name: '8 · 未托管的 Gateway', desc: '没记录却探测到本机有 nats-server（别人手动起的）。控制器不接管、不控制，只提示用户。', steps: ['foreign', 'tick', 'reset'] },
+  { name: '9 · 远程模式', desc: '切成远程模式：没有进程可管，只剩地址与凭据引用的配置；切回本机模式，之前的实例还在、状态照样接管。', steps: ['start', 'tick', 'mode', 'mode', 'tick'] },
+];
+let curScenario = 0, stepIdx = 0;
+
+function render() {
+  const o = GatewayController.observe(S);
+  const r = S.record;
+  $('view').innerHTML = `
+    <div class="status s-${o.tone}">${o.label}</div>
+    <div style="font-size:13.5px;margin-bottom:10px">${o.hint}</div>
+    <dl>
+      <dt>模式</dt><dd>${S.mode === 'local' ? '本机（管理本机 Gateway 进程）' : '远程（仅配置连接）'}</dd>
+      <dt>可用动作</dt><dd>${o.legal.length ? o.legal.map(k => ACTIONS[k].label).join(' · ') : '—（等待探测变化）'}</dd>
+    </dl>`;
+  $('world').innerHTML = `
+    <dl>
+      <dt>活着的进程</dt><dd>${S.world.procs.length ? S.world.procs.map(p => `PID ${p.pid} ${p.name}${p.serverName ? '(' + p.serverName + ')' : ''}`).join('<br>') : '（无）'}</dd>
+      <dt>端口 4222</dt><dd>${S.world.portBusy ? '被别的进程占用' : '空闲'}</dd>
+      <dt>/varz 监控口</dt><dd>${S.world.varzReachable ? '可探测' : '不通'}</dd>
+    </dl>`;
+  $('record').textContent = r ? JSON.stringify(r, null, 2) : '（无记录文件）';
+  $('log').textContent = S.world.log.length ? S.world.log.join('\n') : '（空）';
+  const la = S.lastAction;
+  $('changed').textContent = la ? `刚发生：${la.by} → ${ACTIONS[la.act] ? ACTIONS[la.act].label : la.act}${la.refused ? '（被拒绝：当前是「' + la.refused + '」）' : ''}` : '';
+  const free = ['start', 'stop', 'restart', 'tick', 'cliStart', 'cliStop', 'cliStatus', 'reopen', 'crash', 'pidReuse', 'portBusy', 'varzDown', 'foreign', 'mode', 'reset'];
+  $('free').innerHTML = '';
+  for (const k of free) {
+    const a = ACTIONS[k]; const b = document.createElement('button');
+    b.textContent = a.label; if (a.cls) b.className = a.cls;
+    b.onclick = () => { S = a.run(S); stepIdx = SCENARIOS[curScenario].steps.length; render(); };
+    $('free').appendChild(b);
+  }
+  $('tabs').innerHTML = '';
+  SCENARIOS.forEach((sc, i) => { const b = document.createElement('button'); b.textContent = sc.name; b.className = i === curScenario ? 'on' : '';
+    b.onclick = () => { curScenario = i; S = GatewayController.initial(); stepIdx = 0; render(); }; $('tabs').appendChild(b); });
+  const sc = SCENARIOS[curScenario];
+  $('scenarioDesc').textContent = sc.desc;
+  const st = $('steps'); st.innerHTML = '';
+  sc.steps.forEach((k, i) => {
+    const a = ACTIONS[k]; const b = document.createElement('button'); b.className = 'step' + (i < stepIdx ? ' done' : ''); b.textContent = `${i + 1}. ${a.label}`;
+    b.disabled = i !== stepIdx;
+    b.onclick = () => { S = a.run(S); stepIdx = i + 1; render(); };
+    st.appendChild(b); if (i < sc.steps.length - 1) { const s = document.createElement('span'); s.className = 'arrow'; s.textContent = '→'; st.appendChild(s); }
+  });
+  if (stepIdx >= sc.steps.length) { const d = document.createElement('span'); d.style.cssText = 'color:var(--mut);font-size:13px'; d.textContent = '（场景走完，可换标签或到自由操作乱按）'; st.appendChild(d); }
+}
+render();
+</script>
+</body>
+</html>
