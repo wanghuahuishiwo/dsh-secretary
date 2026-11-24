@@ -34,6 +34,7 @@ graph 引擎是一个 **DSH 插件**，谁装载谁就有：
 - **复用 DSH 外壳**：worker 执行载体与起会话（`ctx.subagents` / `ctx.agents`）、画布 UI 壳（client 插件 + slot + Remote）、装配与双引擎隔离（bundle + `cordis:group` + isolate + dsh-hmr）、进程内事件（cordis）、单表存储（`ctx.storageDomain`）。
 - **节点扩展点**：DSH 无现成 graph node 注册表，自建 `ctx.graphNodes.register(defineNode(...))`，置于角色 realm 内，第三方 bundle 依赖该服务即可注册节点。
 - **画布**：`@xyflow/react`。它是节点编辑器底座，不是 ComfyUI 观感；多端口、连线类型颜色、类型禁连、节点内表单需自绘。
+- **节点由声明自动渲染**：`defineNode` 中声明端口（名称、方向、类型）与内嵌控件，画布据此自动生成节点外观。graph node 保持纯 TS，不写前端；不开放自定义节点组件（出现真实需求再评估）。端口类型在声明处定义一次，连线校验与着色都从它读取。
 - **已知约束**：`ctx.storageDomain` 无跨表事务与二级索引（Outbox 用单表或自管 SQLite）；storage-sqlite 单写者（事件历史用独立文件）；工具不向 root `ctx.tools` 注册；引擎不依赖 DSH schedule，也不占用 workflowEngine key。
 - **证据**：[graph-engine-options.md](evidence/graph-engine-options.md)（外部引擎对比）、[dsh-plugin-ecosystem.md](evidence/dsh-plugin-ecosystem.md)（DSH 宿主与插件生态）、[dsh-community-workflow-plugins.md](evidence/dsh-community-workflow-plugins.md)（开源 DSH 工作流插件）。
 - **MVP PoC 首批验证项**：durable 定时器正确性；non-determinism 指纹匹配的粒度与报错语义；graph 版本化与重放一致性；graphNodes 注册表与 Loader / isolate 集成；@xyflow/react 做出 ComfyUI 手感的实际工作量。
