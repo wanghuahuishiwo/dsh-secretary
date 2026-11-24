@@ -68,7 +68,7 @@ const EVENTS = [
 ];
 const GRAPHS = [['aone 工单链路','v3',4],['MR CI 观察','v1',1],['存量评论推进','v2',2]];
 const INSTS = [ ['inst-01a7','aone 工单链路','运行中','ok','3m','MR!123'],['inst-01b2','MR CI 观察','等待 approval:MR!123','warn','2h','MR!123'],['inst-00f3','aone 工单链路','完成','ok','14m','MR!118'],['inst-00e9','存量评论推进','失败','bad','1h','MR!97'] ];
-const HIST = [['12:00:01','graph.started','进入：触发事件 aone.mr.comment'],['12:00:05','task.dispatched','→ agent 节点 @node-7f3a'],['12:00:09','task.completed','最终消息 + 原生 ID'],['12:00:10','waitFor 登记','信号 approval:MR!123，timeout 24h'],['12:00:06','信号命中','human.approval → 继续执行']];
+const HIST = [['12:00:01','graph.started','进入：触发事件 aone.mr.comment'],['12:00:05','task.dispatched','→ agent 节点 @node-7f3a'],['12:00:09','task.completed','最终消息 + 原生 ID'],['12:00:10','waitFor 登记','信号 approval:MR!123，timeout 24h'],['12:20:06','信号命中','human.approval → 继续执行']];
 
 const gwBadge = (big) => `<span class="dot ok"></span>Gateway 运行中 <span class="mut num">${GW.since}</span>`;
 const gwPanel = (compact) => `

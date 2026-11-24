@@ -146,6 +146,13 @@ async run(ctx, { ticket }) {
   - **本机模式**：管理本机独立 Gateway 进程，支持启动、手动重启、停止和运行状态；自动生成本机连接地址并写入本机中心、节点角色的客户端配置，用户不重复填写 URL。
   - **远程模式**：只配置远程 Gateway 地址与凭据引用，只控制本机客户端连接，不提供远程进程的启动、重启、停止或状态控制。agent-dispatch 协议也不暴露远程进程控制 API。
 - 中心与节点分别使用 NATS 内建 **NKey** 用户连接，并以 subject permissions 限制发布、订阅权限。本机模式由 Gateway 设置 UI 生成并保存凭据引用，远程模式配置已有凭据引用；私有 seed 不写入 URL，也不传入模型上下文。本机 loopback 仍要求 NKey，远程连接额外强制 TLS。
+- **凭据与安全**（[#86](https://github.com/wanghuahuishiwo/dsh-secretary/issues/86)，已关）：
+  - **外部系统凭据底座不管**：aone、GitHub、模型 provider 的凭据由各自工具（`a1` 登录态、`gh` keyring、DSH 托管凭据）自行持有，底座不存、不转发、不代理、不检查；agent 使用节点机器上已有的登录身份。没权限即执行报错，按 agent 节点"出错抛错、实例失败"回传中心，底座不重试、不降级。权限由人人工保证。
+  - **NKey 凭据照搬 DSH provider key 模式**：配置（含 nats-server 配置、profile、连接配置）只写**凭据引用**（`NATS_NKEY_SEED_CENTER`、`NATS_NKEY_SEED_NODE`），nats-server 配置只含 public key；基础通信插件经 `ctx.credentials.resolve(ref)` 在进程内取值并直接交给 `nkeyAuthenticator`，业务插件拿不到 seed。seed 存放位置随 DSH 托管凭据实现（当前为 `$DSH_HOME/.credentials.yaml`，0600）；无桌面节点经 `$DSH_HOME/.env` 解析同一引用。
+  - **生成与发放**：NKey 由底座用 nkeys 库生成，不依赖 `nats` CLI／nsc。远程节点由人把节点 seed 文件（一行 `SU…`）带到目标机并写入 `.env`，中心 seed 不离开中心机器；不做在线注册或 export／import 命令。
+  - **轮换与撤销是同一动作**：改 nats-server 配置 → 手动重启 Gateway。不做在线无缝轮换、新旧 key 并存窗口或自动撤销传播。
+  - **最小权限按角色两套**：中心、节点各一份 subject permissions 模板，allowlist 从事件目录派生；不按节点细分，不做 `source` 绑定校验（#83 不变）。
+  - **"不进模型上下文"的边界**：宿主不把 seed 放进 prompt、事件 `data`／headers、Outbox／事件历史／Ticket、日志／trace／Session 文件、任何配置文件、子进程 env；不做工具输出自动脱敏，以"日志／事件历史／会话文件中检索不到 seed"为验收。模型经 shell 读取本机文件属已知残余风险，一期受信边界内接受。
 - 两种模式的连接配置都持久化在所在机器；无桌面节点通过 CLI／配置文件维护同一份配置，不依赖桌面 UI。UI 是操作入口，不限定底层配置存储格式。
 - 由 UI 启动的 Gateway 在 DSH 桌面退出后继续运行，DSH 重开后可以重新识别并控制同一实例；正常停止由用户显式操作，不随桌面联动退出。一期不做崩溃自动重启、自定义守护或第三个常驻管理器。
 - 以后需要无人值守运行时，分别把现有启动命令接入 launchd（macOS）或 systemd（Linux），不改变角色代码。
@@ -201,7 +208,6 @@ async run(ctx, { ticket }) {
 - 任务路由到哪台节点（能力标签 / 槽位）
 - 节点本地事件历史与中心权威事件历史的汇合细节（全量回传 vs 摘要+引用）
 - 完成判定、执行记录结构、重派/超时策略、Done 是否细分、宿主适配器（pi）——领域层，等 Ticket 进场后展开（#84 移交）
-- 凭据与安全（token 如何交给节点与任务，不进模型上下文）
 - graph 版本化（改图不破坏运行中/睡着的实例）
 - graph 节点输入结构与校验（固定结构与文本输入的差异、统一校验位置及失败行为）
 - graph 实例级共享上下文：节点除前置节点输入外，是否支持实例范围内可读写的自定义上下文，及其与事件历史、重放确定性的关系
