@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>原型 · 底座控制台布局（三变体，可丢弃）</title>
+<style>
+  /* 原型专用极简 token；遵守 DESIGN.md：系统字体、4px 步进、平坦、强调色只用于选中/焦点、数字 tabular */
+  :root { --bg:#fff; --sub:#f6f6f7; --line:#e6e6e8; --ink:#1f2328; --mut:#6b7280; --acc:#2563eb; --ok:#15803d; --warn:#b45309; --bad:#b91c1c; }
+  * { box-sizing:border-box; }
+  html,body { height:100%; margin:0; }
+  body { font:13px/1.5 -apple-system,"PingFang SC","Helvetica Neue",sans-serif; color:var(--ink); background:var(--bg); font-variant-numeric:tabular-nums; }
+  button { font:inherit; color:inherit; background:none; border:0; cursor:pointer; padding:0; }
+  .num { font-variant-numeric:tabular-nums; }
+  /* 仿 DSH 三栏壳 */
+  .app { display:grid; grid-template-columns:220px 1fr; height:100vh; }
+  .left { border-right:1px solid var(--line); background:var(--sub); padding:12px 8px; }
+  .left .item { display:block; width:100%; text-align:left; padding:6px 10px; border-radius:6px; color:var(--ink); margin-bottom:2px; }
+  .left .item.on { background:#fff; box-shadow:inset 0 0 0 1px var(--line); font-weight:600; }
+  .main { overflow:hidden; display:flex; flex-direction:column; }
+  /* 通用 */
+  .bar { display:flex; align-items:center; gap:12px; padding:0 16px; height:40px; border-bottom:1px solid var(--line); flex:none; font-size:12.5px; }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--mut); vertical-align:middle; margin-right:6px; }
+  .dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
+  .badge { display:inline-block; padding:1px 7px; border-radius:10px; font-size:11.5px; background:var(--sub); border:1px solid var(--line); }
+  .badge.ok{color:var(--ok)} .badge.warn{color:var(--warn)} .badge.bad{color:var(--bad)}
+  .btn { padding:4px 10px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:12.5px; }
+  .btn:hover { border-color:var(--acc); color:var(--acc); }
+  .mut { color:var(--mut); } .mono { font-family:ui-monospace,Menlo,monospace; font-size:12px; }
+  .row { display:flex; align-items:center; gap:8px; }
+  .grow { flex:1; }
+  .list { list-style:none; margin:0; padding:0; }
+  .list li { display:flex; align-items:center; gap:8px; padding:6px 12px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .list li:hover { background:var(--sub); } .list li.on { background:var(--sub); box-shadow:inset 2px 0 0 var(--acc); }
+  .kv { display:grid; grid-template-columns:88px 1fr; gap:4px 12px; margin:0; font-size:12.5px; } .kv dt{color:var(--mut)} .kv dd{margin:0}
+  .hist { list-style:none; margin:0; padding:0; font-size:12.5px; }
+  .hist li { display:flex; gap:10px; padding:6px 0; border-bottom:1px solid var(--line); }
+  .hist li span.t { color:var(--mut); width:72px; flex:none; }
+  .tabs { display:flex; gap:2px; border-bottom:1px solid var(--line); padding:0 12px; }
+  .tabs button { padding:6px 10px; color:var(--mut); border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .tabs button.on { color:var(--ink); border-bottom-color:var(--acc); }
+  .log { font-family:ui-monospace,Menlo,monospace; font-size:11.5px; white-space:pre-wrap; margin:0; padding:8px 12px; background:var(--sub); border-top:1px solid var(--line); }
+  .card { border:1px solid var(--line); border-radius:8px; padding:12px 14px; text-align:left; }
+  .card:hover { border-color:var(--acc); }
+  .card .big { font-size:20px; font-weight:600; margin:4px 0 2px; }
+  /* 切换器 */
+  #switch { position:fixed; left:50%; bottom:16px; transform:translateX(-50%); background:#111; color:#fff; border-radius:999px; padding:6px 10px; display:flex; gap:10px; align-items:center; font-size:12.5px; box-shadow:0 4px 16px rgba(0,0,0,.2); z-index:9; }
+  #switch button { color:#fff; width:26px; height:26px; border-radius:50%; } #switch button:hover{background:#333}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="left">
+    <button class="item">小秘书-事项</button>
+    <button class="item">小秘书-时间块</button>
+    <button class="item on">底座控制台</button>
+  </nav>
+  <main class="main" id="main"></main>
+</div>
+<div id="switch"></div>
+<script>
+// ───────── 共用假数据 ─────────
+const GW = { state:'运行中', since:'2d 3h', addr:'nats://127.0.0.1:4222', ver:'2.15.3', pid:4312, by:'控制台', mode:'本机' };
+const LOG = [`[INF] 11-22 20:01:12 Server name: dsh-gateway`, `[INF] 11-22 20:01:12 Listening for client connections on 127.0.0.1:4222`, `[INF] 11-22 20:01:12 JetStream enabled`, `[INF] 11-22 20:01:13 Server is ready`];
+const NODES = [ {id:'node-7f3a…(本机)', roles:'中心 + 节点', on:'在线', since:'2d 3h'}, {id:'node-c21e…(macbook)', roles:'节点', on:'离线', since:'1h 前'} ];
+const EVENTS = [
+  ['12:00:01','aone.mr.comment','node-7f3a','✓ 已认领'],['12:00:02','ci.finished','node-7f3a','✓ 已认领'],['12:00:02','mr.comment','node-7f3a','✖ unmatched'],
+  ['12:00:03','task.claimed','node-7f3a','✓'],['12:00:03','task.result','node-7f3a','✓ 已认领'],['12:00:05','ci.finished','node-7f3a','✓ 已认领'],['12:00:06','human.approval','human','✓ 唤醒实例'],
+];
+const GRAPHS = [['aone 工单链路','v3',4],['MR CI 观察','v1',1],['存量评论推进','v2',2]];
+const INSTS = [ ['inst-01a7','aone 工单链路','运行中','ok','3m','MR!123'],['inst-01b2','MR CI 观察','等待 approval:MR!123','warn','2h','MR!123'],['inst-00f3','aone 工单链路','完成','ok','14m','MR!118'],['inst-00e9','存量评论推进','失败','bad','1h','MR!97'] ];
+const HIST = [['12:00:01','graph.started','进入：触发事件 aone.mr.comment'],['12:00:05','task.dispatched','→ agent 节点 @node-7f3a'],['12:00:09','task.completed','最终消息 + 原生 ID'],['12:00:10','waitFor 登记','信号 approval:MR!123，timeout 24h'],['12:00:06','信号命中','human.approval → 继续执行']];
+
+const gwBadge = (big) => `<span class="dot ok"></span>Gateway 运行中 <span class="mut num">${GW.since}</span>`;
+const gwPanel = (compact) => `
+  <dl class="kv">
+    <dt>状态</dt><dd><span class="dot ok"></span>${GW.state} · 已运行 <span class="num">${GW.since}</span></dd>
+    <dt>地址</dt><dd class="mono">${GW.addr}</dd>
+    <dt>版本</dt><dd class="mono">${GW.ver}</dd>
+    <dt>进程</dt><dd class="mono">pid ${GW.pid} · 由${GW.by}启动</dd>
+    <dt>模式</dt><dd>${GW.mode} <span class="mut">（远程模式只配地址 + 凭据引用）</span></dd>
+  </dl>
+  <div class="row" style="margin-top:12px"><button class="btn">↻ 手动重启</button><button class="btn">■ 停止</button><button class="btn">切换为远程模式…</button></div>
+  ${compact ? '' : `<div class="mut" style="margin:12px 0 4px">日志尾部 · <span class="mono">~/.dsh/gateway/nats-server.log</span></div><pre class="log" style="border:1px solid var(--line)">${LOG.join('\n')}</pre>`}`;
+const nodesList = () => `<ul class="list">${NODES.map(n=>`<li><span class="dot ${n.on==='在线'?'ok':'bad'}"></span><span class="mono">${n.id}</span><span class="mut">${n.roles}</span><span class="grow"></span><span class="mut">${n.on} · ${n.since}</span></li>`).join('')}</ul>`;
+const eventRows = () => EVENTS.map(e=>`<li><span class="mono mut num" style="width:56px">${e[0]}</span><span class="mono">${e[1]}</span><span class="mut mono">${e[2]}</span><span class="grow"></span><span class="${e[3].includes('unmatched')?'badge bad':'mut'}">${e[3]}</span></li>`).join('');
+const histList = (mode) => HIST.map(h=>`<li><span class="t num">${h[0]}</span><span class="mono" style="width:120px;flex:none">${h[1]}</span><span>${mode==='json'?`{"type":"${h[1]}","data":{…}}`:h[2]}</span></li>`).join('');
+
+// ───────── 变体 A：左侧二级导航 + 列表-详情两栏 ─────────
+const A = {
+  name: '二级导航 + 两栏',
+  render(el) {
+    let sec = A.sec || 'Graph', inst = 0, view = '时间线';
+    const draw = () => {
+      let body = '';
+      if (sec === 'Gateway') body = `<div style="display:grid;grid-template-columns:260px 1fr;height:100%"><div style="border-right:1px solid var(--line);padding:14px 16px">${gwPanel(true)}</div><div style="padding:14px 16px;overflow:auto"><div class="mut" style="margin-bottom:4px">日志尾部 · <span class="mono">~/.dsh/gateway/nats-server.log</span></div><pre class="log" style="border:1px solid var(--line)">${LOG.join('\n')}</pre><div class="mut" style="margin:16px 0 4px">设置（持久化于 <span class="mono">~/.dsh/gateway/settings.json</span>）</div><dl class="kv"><dt>客户端端口</dt><dd class="mono">127.0.0.1:4222</dd><dt>监控端口</dt><dd class="mono">127.0.0.1:8222（仅 loopback）</dd><dt>JetStream</dt><dd class="mono">~/.dsh/gateway/jetstream</dd><dt>nats-server</dt><dd class="mono">/opt/homebrew/bin/nats-server</dd></dl></div></div>`;
+      else if (sec === '节点') body = `<div style="display:grid;grid-template-columns:1fr;height:100%;overflow:auto">${nodesList()}<div class="mut" style="padding:12px 16px">点节点看：nodeId、角色、在线时长、最近心跳。</div></div>`;
+      else if (sec === '事件') body = `<div style="display:grid;grid-template-columns:1fr;height:100%;overflow:auto"><div class="bar" style="border-bottom:0"><span class="badge">跟随中 · 新事件自动追加</span><span class="badge">unmatched 12</span><span class="grow"></span><button class="btn">暂停</button></div><ul class="list">${eventRows()}</ul></div>`;
+      else body = `<div style="display:grid;grid-template-columns:300px 1fr;height:100%">
+        <div style="border-right:1px solid var(--line);overflow:auto"><div class="bar"><span class="grow">实例</span><span class="badge ok">运行中 1</span><span class="badge warn">等待 1</span></div><ul class="list">${INSTS.map((i,k)=>`<li class="${k===inst?'on':''}" data-i="${k}"><span class="dot ${i[3]}"></span><span class="mono">${i[0]}</span><span class="mut">${i[1]}</span><span class="grow"></span><span class="mut num">${i[4]}</span></li>`).join('')}</ul>
+          <div class="bar" style="border-top:1px solid var(--line);border-bottom:0"><span class="grow">graph 定义</span></div><ul class="list">${GRAPHS.map(g=>`<li><span class="mono">${g[0]}</span><span class="mut">${g[1]}</span><span class="grow"></span><span class="mut num">${g[2]} 实例</span></li>`).join('')}</ul></div>
+        <div style="overflow:auto"><div class="bar"><span class="dot ${INSTS[inst][3]}"></span><span class="mono">${INSTS[inst][0]}</span><span class="badge ${INSTS[inst][3]}">${INSTS[inst][2]}</span><span class="grow"></span><span class="mut">${INSTS[inst][1]} · 时长 <span class="num">${INSTS[inst][4]}</span> · 关联 ${INSTS[inst][5]}</span></div>
+          <div class="tabs">${['时间线','全部','紧凑','JSON'].map(v=>`<button class="${v===view?'on':''}" data-v="${v}">${v}</button>`).join('')}</div>
+          <ul class="hist" style="padding:8px 16px">${histList(view)}</ul></div></div>`;
+      el.innerHTML = `<div class="bar">${gwBadge()}<span class="mut">节点 <span class="num">1/2</span></span><span class="badge bad">unmatched 12</span><span class="grow"></span><span class="mut">⌘K 命令</span></div>
+        <div style="display:grid;grid-template-columns:132px 1fr;flex:1;min-height:0">
+          <nav style="border-right:1px solid var(--line);padding:8px 6px">${['Gateway','节点','事件','Graph'].map(s=>`<button class="item ${s===sec?'on':''}" data-s="${s}" style="display:block;width:100%;text-align:left;padding:6px 10px;border-radius:6px;margin-bottom:2px;${s===sec?'background:var(--sub);box-shadow:inset 2px 0 0 var(--acc);font-weight:600':''}">${s}</button>`).join('')}<div style="margin:12px 10px 4px" class="mut">⌄ 设置</div></nav>
+          <div style="min-width:0">${body}</div></div>`;
+      el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{sec=b.dataset.s;draw()});
+      el.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{inst=+b.dataset.i;draw()});
+      el.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{view=b.dataset.v;draw()});
+    };
+    draw();
+  }
+};
+
+// ───────── 变体 B：顶部标签页 + 卡片总览 ─────────
+const B = {
+  name: '顶部标签 + 总览',
+  render(el) {
+    let tab = B.tab || '总览';
+    const draw = () => {
+      let body = '';
+      if (tab === '总览') body = `<div style="padding:16px;overflow:auto;height:100%">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+          <button class="card" data-t="Gateway"><div class="mut">Gateway</div><div class="big"><span class="dot ok"></span>运行中</div><div class="mut num">本机 · 2d 3h · 2.15.3</div></button>
+          <button class="card" data-t="节点"><div class="mut">节点</div><div class="big num">1 / 2 在线</div><div class="badge bad">1 离线 1h</div></button>
+          <button class="card" data-t="事件"><div class="mut">事件</div><div class="big num">120 / min</div><div class="badge bad">12 unmatched</div></button>
+          <button class="card" data-t="Graph"><div class="mut">Graph</div><div class="big num">5 运行 · 2 等待</div><div class="badge bad">1 失败</div></button></div>
+        <h3 style="font-size:13px;margin:20px 0 6px">最近异常</h3><ul class="list" style="border:1px solid var(--line);border-radius:8px;overflow:hidden">
+          <li><span class="dot bad"></span>inst-00e9 失败 · 存量评论推进 · 1h 前<span class="grow"></span><span class="mut">Graph ›</span></li>
+          <li><span class="dot bad"></span>mr.comment unmatched ×12 · 最近 12:00:02<span class="grow"></span><span class="mut">事件 ›</span></li>
+          <li><span class="dot bad"></span>node-c21e 离线 1h<span class="grow"></span><span class="mut">节点 ›</span></li></ul></div>`;
+      else if (tab === 'Gateway') body = `<div style="display:grid;grid-template-columns:1fr 1fr;height:100%"><div style="padding:16px;overflow:auto">${gwPanel(false)}</div><div style="padding:16px;border-left:1px solid var(--line);overflow:auto"><div class="mut" style="margin-bottom:4px">设置</div><dl class="kv"><dt>模式</dt><dd>本机</dd><dt>客户端端口</dt><dd class="mono">127.0.0.1:4222</dd><dt>监控端口</dt><dd class="mono">127.0.0.1:8222</dd><dt>nats-server</dt><dd class="mono">/opt/homebrew/bin/nats-server</dd><dt>凭据引用</dt><dd class="mono">NATS_NKEY_SEED_CENTER / _NODE</dd></dl><div class="mut" style="margin-top:12px">nats-server.conf 每次启动自动生成，不可手改。</div></div></div>`;
+      else if (tab === '节点') body = nodesList();
+      else if (tab === '事件') body = `<div class="bar" style="border-bottom:0"><span class="badge">跟随中</span><span class="badge">unmatched 12</span><span class="grow"></span><button class="btn">暂停</button></div><ul class="list">${eventRows()}</ul>`;
+      else body = `<div style="padding:16px;overflow:auto;height:100%"><div class="mut" style="margin-bottom:4px">graph 定义 › 实例（整页，跳页进入实例详情）</div><ul class="list" style="border:1px solid var(--line);border-radius:8px;overflow:hidden">${INSTS.map(i=>`<li><span class="dot ${i[3]}"></span><span class="mono">${i[0]}</span><span class="mut">${i[1]}</span><span class="grow"></span><span class="badge ${i[3]}">${i[2]}</span><span class="mut num" style="width:60px">${i[4]}</span></li>`).join('')}</ul>
+        <div class="mut" style="margin:20px 0 6px">› inst-01a7 详情（另起一页）</div><div class="tabs" style="padding:0;border:1px solid var(--line);border-radius:8px 8px 0 0">${['时间线','全部','紧凑','JSON'].map((v,k)=>`<button class="${k?'':'on'}">${v}</button>`).join('')}</div><ul class="hist" style="padding:8px 12px;border:1px solid var(--line);border-top:0;border-radius:0 0 8px 8px">${histList()}</ul></div>`;
+      el.innerHTML = `<div class="bar" style="gap:0"><span style="font-weight:600;margin-right:12px">底座控制台</span><div class="tabs" style="border:0;padding:0">${['总览','Gateway','节点','事件','Graph'].map(t=>`<button class="${t===tab?'on':''}" data-t="${t}">${t}</button>`).join('')}</div><span class="grow"></span><span class="badge bad">3 异常</span></div>${body}`;
+      el.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{tab=b.dataset.t;draw()});
+    };
+    draw();
+  }
+};
+
+// ───────── 变体 C：单页仪表盘 + 右抽屉 ─────────
+const C = {
+  name: '单页仪表盘 + 抽屉',
+  render(el) {
+    let open = false, paused = false, sel = 2;
+    const draw = () => {
+      el.innerHTML = `<div class="bar"><span style="font-weight:600">底座控制台</span><span class="badge">本机 ▾</span><span class="dot ok"></span>运行中 <span class="mut num">2d 3h</span><button class="btn">▶ 启动</button><button class="btn">■ 停止</button><button class="btn">↻ 重启</button><span class="grow"></span><span class="badge">⌘K</span></div>
+      <div style="display:grid;grid-template-columns:236px 1fr ${open?'320px':''};flex:1;min-height:0">
+        <aside style="border-right:1px solid var(--line);overflow:auto;font-size:12.5px">
+          <div style="padding:10px 12px;border-bottom:1px solid var(--line)"><div class="mut" style="margin-bottom:6px">GATEWAY</div><dl class="kv" style="grid-template-columns:64px 1fr"><dt>地址</dt><dd class="mono">127.0.0.1:4222</dd><dt>版本</dt><dd class="mono">2.15.3</dd></dl><div class="mut" style="margin:6px 0 2px">日志尾部</div><pre class="log" style="border:0;background:none;padding:0">${LOG.slice(-2).join('\n')}</pre></div>
+          <div style="padding:10px 12px;border-bottom:1px solid var(--line)"><div class="mut" style="margin-bottom:6px">节点 <span class="num">1 / 2</span> 在线</div>${NODES.map(n=>`<div class="row" style="padding:2px 0"><span class="dot ${n.on==='在线'?'ok':'bad'}"></span><span class="mono">${n.id.slice(0,10)}</span><span class="grow"></span><span class="mut">${n.roles}</span></div>`).join('')}</div>
+          <div style="padding:10px 12px"><div class="mut" style="margin-bottom:6px">GRAPH <span class="num">5 运行 · 2 等待</span></div>${INSTS.slice(0,3).map(i=>`<div class="row" style="padding:2px 0"><span class="dot ${i[3]}"></span><span class="mono">${i[0]}</span><span class="grow"></span><span class="mut num">${i[4]}</span></div>`).join('')}<div class="mut" style="margin-top:6px">› 三层导航需跳出本页</div></div></aside>
+        <section style="min-width:0;overflow:hidden;display:flex;flex-direction:column"><div class="bar" style="border-bottom:0"><span class="grow">事件流 <span class="badge">全部 type ▾</span></span>${paused?'<span class="badge warn">已暂停 · 3 条新</span><button class="btn" id="follow">恢复跟随</button>':'<span class="badge">跟随中</span>'}<span class="badge bad">unmatched 12 ▾</span></div>
+          <ul class="list" id="stream" style="overflow:auto;flex:1">${eventRows()}</ul></section>
+        ${open?`<aside style="border-left:1px solid var(--line);padding:12px 14px;overflow:auto"><div class="row" style="margin-bottom:10px"><span class="grow" style="font-weight:600">事件详情</span><button class="btn" id="close">Esc</button></div><dl class="kv"><dt>id</dt><dd class="mono">evt-${sel}9f2…</dd><dt>type</dt><dd class="mono">${EVENTS[sel][1]}</dd><dt>source</dt><dd class="mono">urn:dsh:node:7f3a</dd><dt>time</dt><dd class="mono num">${EVENTS[sel][0]}</dd></dl><div class="mut" style="margin:10px 0 4px">▾ data (CloudEvents)</div><pre class="log" style="border:1px solid var(--line)">{"specversion":"1.0","data":{"mr":"MR!123",…}}</pre><div class="mut" style="margin-top:10px">相关事件 ›</div></aside>`:''}</div>`;
+      el.querySelectorAll('#stream li').forEach((li,k)=>li.onclick=()=>{open=true;sel=k;draw()});
+      const c = el.querySelector('#close'); if (c) c.onclick=()=>{open=false;draw()};
+      const f = el.querySelector('#follow'); if (f) f.onclick=()=>{paused=false;draw()};
+      el.querySelector('#stream').onscroll = (e)=>{ if (e.target.scrollTop < 4 && !paused) {} else if (e.target.scrollTop > 4 && !paused) { paused = true; draw(); } };
+    };
+    draw();
+  }
+};
+
+const VARIANTS = { A, B, C };
+const params = new URLSearchParams(location.search);
+let cur = (params.get('variant') || 'A').toUpperCase(); if (!VARIANTS[cur]) cur = 'A';
+function show() {
+  VARIANTS[cur].render(document.getElementById('main'));
+  document.getElementById('switch').innerHTML = `<button id="prev">←</button><span><b>${cur}</b> · ${VARIANTS[cur].name}</span><button id="next">→</button>`;
+  document.getElementById('prev').onclick = () => go(-1); document.getElementById('next').onclick = () => go(1);
+  params.set('variant', cur); history.replaceState(null, '', '?' + params);
+}
+function go(d) { const ks = Object.keys(VARIANTS); cur = ks[(ks.indexOf(cur) + d + ks.length) % ks.length]; show(); }
+document.addEventListener('keydown', (e) => { if (/INPUT|TEXTAREA/.test(document.activeElement.tagName) || document.activeElement.isContentEditable) return; if (e.key === 'ArrowLeft') go(-1); if (e.key === 'ArrowRight') go(1); });
+show();
+</script>
+</body>
+</html>
