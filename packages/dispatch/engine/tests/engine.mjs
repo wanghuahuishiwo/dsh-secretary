@@ -64,7 +64,7 @@ test('activity results are appended to the history and emit hands the event to t
   const { instanceIds: [id] } = await engine.feed({ id: 'e1', type: 'task.assigned', data: { ticket: 'T-1' } })
 
   assert.deepEqual(engine.history.listByInstance(id).map(r => [r.kind, r.nodeId ?? null, r.payload]), [
-    ['instance.opened', null, { node: 'work', event: { id: 'e1', type: 'task.assigned', data: { ticket: 'T-1' } }, inputs: { ticket: 'T-1' } }],
+    ['instance.opened', null, { node: 'work', edges: [], event: { id: 'e1', type: 'task.assigned', data: { ticket: 'T-1' } }, inputs: { ticket: 'T-1' } }],
     ['node.started', 'work', { inputs: { ticket: 'T-1' } }],
     ['activity.completed', 'work', { name: 'agent', fingerprint: await fingerprintOf('agent', { prompt: 'T-1' }), result: { text: 'done T-1' } }],
     ['activity.completed', 'work', { name: 'emit', fingerprint: await fingerprintOf('emit', { type: 'work.reported', data: { note: 'done T-1' } }), result: null }],
@@ -73,6 +73,98 @@ test('activity results are appended to the history and emit hands the event to t
   assert.deepEqual(emitted, [{ id: emitted[0].id, type: 'work.reported', data: { note: 'done T-1' } }])
   assert.match(emitted[0].id, /^[0-9a-f-]{36}$/)
   assert.equal(agentRuns, 1)
+})
+
+test('edges chain nodes in order and hand upstream outputs to the downstream node as its inputs', async t => {
+  const engine = harness(t)
+  const order = []
+  engine.nodes.register(defineNode({
+    name: 'work',
+    inputs: { ticket },
+    outputs: { note: text },
+    async run(_ctx, { ticket }) { order.push(`work ${ticket}`); return { note: `done ${ticket}` } },
+  }))
+  engine.nodes.register(defineNode({
+    name: 'report',
+    inputs: { note: text },
+    outputs: { note: text },
+    async run(ctx, { note }) { order.push(`report ${note}`); await ctx.activities.emit({ type: 'work.reported', data: { note } }); return { note: `reported ${note}` } },
+  }))
+  engine.setEmitSink(() => {})
+  engine.declareEntry({ graph: 'task', on: 'task.assigned', node: 'work', edges: [{ from: 'work', to: 'report' }], output: { ticket }, adapt: event => event.data })
+
+  const { instanceIds: [id] } = await engine.feed({ id: 'e1', type: 'task.assigned', data: { ticket: 'T-1' } })
+
+  assert.deepEqual(order, ['work T-1', 'report done T-1'])
+  assert.deepEqual(engine.history.listByInstance(id).map(r => [r.kind, r.nodeId ?? null, r.payload.inputs ?? r.payload.outputs ?? null]), [
+    ['instance.opened', null, { ticket: 'T-1' }],
+    ['node.started', 'work', { ticket: 'T-1' }],
+    ['node.completed', 'work', { note: 'done T-1' }],
+    ['node.started', 'report', { note: 'done T-1' }],
+    ['activity.completed', 'report', null],
+    ['node.completed', 'report', { note: 'reported done T-1' }],
+  ])
+  assert.deepEqual(await engine.resume(id), { instanceId: id, status: 'completed', outputs: { note: 'reported done T-1' } })
+  assert.deepEqual(order, ['work T-1', 'report done T-1'])
+})
+
+test('after a crash mid-chain, resume returns completed nodes from the history and only re-runs the unfinished node', async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'dispatch-engine-'))
+  const historyPath = join(dir, 'history.sqlite')
+  const event = { id: 'e1', type: 'task.assigned', data: { ticket: 'T-1' } }
+  const chain = (engine, state) => {
+    engine.nodes.register(defineNode({ name: 'work', inputs: { ticket }, outputs: { note: text }, async run(_ctx, { ticket }) { state.work += 1; return { note: `done ${ticket}` } } }))
+    engine.nodes.register(defineNode({
+      name: 'report',
+      inputs: { note: text },
+      outputs: { note: text },
+      async run(ctx, { note }) {
+        state.report += 1
+        const agent = await ctx.activities.agent({ prompt: note })
+        await ctx.activities.emit({ type: 'work.reported', data: { note: agent.text } })
+        return { note: agent.text }
+      },
+    }))
+    engine.declareEntry({ graph: 'task', on: 'task.assigned', node: 'work', edges: [{ from: 'work', to: 'report' }], output: { ticket }, adapt: e => e.data })
+  }
+  const crashedState = { work: 0, report: 0 }
+  const crashed = new DispatchEngine(new Context(), { role: 'node', historyPath })
+  chain(crashed, crashedState)
+  crashed.activities.register('agent', async () => ({ text: 'done' }))
+  // The process dies while the emit is in flight: nothing after the agent turn reaches the history.
+  crashed.setEmitSink(() => crashed.history.close())
+  await assert.rejects(crashed.feed(event))
+  assert.deepEqual(crashedState, { work: 1, report: 1 })
+
+  const ctx = new Context()
+  const engine = new DispatchEngine(ctx, { role: 'node', historyPath })
+  t.after(() => { engine.close(); ctx.fiber.dispose(); rmSync(dir, { recursive: true, force: true }) })
+  assert.deepEqual(engine.history.instanceIds().flatMap(id => engine.history.listByInstance(id).map(r => [r.kind, r.nodeId])), [
+    ['instance.opened', undefined], ['node.started', 'work'], ['node.completed', 'work'], ['node.started', 'report'], ['activity.completed', 'report'],
+  ])
+  const state = { work: 0, report: 0 }
+  const emitted = []
+  let agentRuns = 0
+  engine.setEmitSink(e => emitted.push(e))
+  engine.activities.register('agent', async () => { agentRuns += 1; return { text: 'rerun' } })
+  chain(engine, state)
+
+  const outcome = await engine.resume(engine.history.instanceIds()[0])
+
+  assert.deepEqual(outcome, { instanceId: engine.history.instanceIds()[0], status: 'completed', outputs: { note: 'done' } })
+  assert.deepEqual(state, { work: 0, report: 1 })
+  assert.equal(agentRuns, 0)
+  assert.deepEqual(emitted.map(e => e.type), ['work.reported'])
+  assert.deepEqual(engine.history.listByInstance(outcome.instanceId).map(r => [r.kind, r.nodeId, r.payload.inputs ?? r.payload.result ?? r.payload.outputs ?? r.payload.error ?? null]), [
+    ['instance.opened', undefined, { ticket: 'T-1' }],
+    ['node.started', 'work', { ticket: 'T-1' }],
+    ['node.completed', 'work', { note: 'done T-1' }],
+    ['node.started', 'report', { note: 'done T-1' }],
+    ['activity.completed', 'report', { text: 'done' }],
+    ['node.started', 'report', { note: 'done T-1' }],
+    ['activity.completed', 'report', null],
+    ['node.completed', 'report', { note: 'done' }],
+  ])
 })
 
 function crashingWorker(engine, state) {
@@ -157,6 +249,44 @@ test('entries are checked against the entry node input ports when declared', t =
   assert.throws(
     () => engine.declareEntry({ graph: 'dispatch', on: 'ticket.opened', node: 'assign', output: { ticket, extra: text }, adapt: event => event.data }),
     /do not match the inputs of node "assign"/,
+  )
+})
+
+test('edges are checked against the port sets and type labels of both nodes when declared', t => {
+  const engine = harness(t)
+  engine.nodes.register(defineNode({ name: 'work', inputs: { ticket }, outputs: { note: text }, async run() { return { note: '' } } }))
+  engine.nodes.register(defineNode({ name: 'report', inputs: { note: text }, outputs: { summary: text }, async run(_ctx, { note }) { return { summary: note } } }))
+  engine.nodes.register(defineNode({ name: 'count', inputs: { note: { type: 'number', check: value => typeof value === 'number' } }, outputs: {}, async run() { return {} } }))
+  const entry = { graph: 'task', on: 'task.assigned', node: 'work', output: { ticket }, adapt: event => event.data }
+  assert.equal(engine.declareEntry({ ...entry, edges: [{ from: 'work', to: 'report' }] })(), undefined)
+
+  assert.throws(
+    () => engine.declareEntry({ ...entry, edges: [{ from: 'work', to: 'missing' }] }),
+    /edge "work" -> "missing" names unregistered node "missing"/,
+  )
+  assert.throws(
+    () => engine.declareEntry({ ...entry, edges: [{ from: 'missing', to: 'work' }] }),
+    /edge "missing" -> "work" names unregistered node "missing"/,
+  )
+  assert.throws(
+    () => engine.declareEntry({ ...entry, edges: [{ from: 'work', to: 'count' }] }),
+    /edge "work" -> "count" output ports do not match the inputs of node "count": port "note" of output of node "work" \(type "text"\) is incompatible with port "note" of input of node "count" \(type "number"\)/,
+  )
+  assert.throws(
+    () => engine.declareEntry({ ...entry, edges: [{ from: 'work', to: 'report' }, { from: 'work', to: 'count' }] }),
+    /more than one edge from node "work"/,
+  )
+  assert.throws(
+    () => engine.declareEntry({ ...entry, edges: [{ from: 'report', to: 'work' }] }),
+    /edge into entry node "work"/,
+  )
+  assert.throws(
+    () => engine.declareEntry({ ...entry, edges: [{ from: 'report', to: 'report' }] }),
+    /edge cycle at node "report"/,
+  )
+  assert.throws(
+    () => engine.declareEntry({ ...entry, edges: [{ from: 'work', to: 'report' }, { from: 'report', to: 'report' }] }),
+    /has more than one edge into node "report"/,
   )
 })
 

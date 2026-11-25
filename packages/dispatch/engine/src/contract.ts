@@ -56,6 +56,12 @@ export interface GraphNodeRegistry {
   list(): NodeDefinition[]
 }
 
+/** A sequential chain link: when `from` completes, its outputs become the inputs of `to`. */
+export interface Edge {
+  readonly from: string
+  readonly to: string
+}
+
 /** An entry: which event type opens an instance of which graph, entering at which node with adapted inputs. */
 export interface EntryDeclaration {
   readonly graph: string
@@ -63,6 +69,8 @@ export interface EntryDeclaration {
   readonly on: string
   /** Registered node the instance enters. */
   readonly node: string
+  /** Sequential chain behind the entry node; `to` runs with the outputs of `from` as its inputs. */
+  readonly edges?: readonly Edge[]
   /** Output ports of the adapter; must match the entry node's input ports. */
   readonly output: Record<string, Port>
   adapt(event: DispatchEvent): Record<string, unknown> | Promise<Record<string, unknown>>

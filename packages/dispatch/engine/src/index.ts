@@ -1,11 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { Service, type Context } from '@deepseek-ai/cordis'
-import { openEventHistory, type EventHistory } from './history.ts'
-import type { ActivityHandler, ActivityRegistry, DispatchEvent, EmitSink, EmitInput, EntryDeclaration, FeedOutcome, GraphNodeRegistry, NodeDefinition, Port, ResumeOutcome, RunContext } from './contract.ts'
+import { openEventHistory, type EventHistory, type HistoryRecord } from './history.ts'
+import type { ActivityHandler, ActivityRegistry, DispatchEvent, Edge, EmitSink, EmitInput, EntryDeclaration, FeedOutcome, GraphNodeRegistry, NodeDefinition, Port, ResumeOutcome, RunContext } from './contract.ts'
 
 export type { EventHistory, HistoryKind, HistoryRecord } from './history.ts'
 export { defineNode } from './contract.ts'
-export type { ActivityHandler, Activities, AgentResult, DispatchEvent, EmitSink, EmitInput, EntryDeclaration, FeedOutcome, GraphNodeRegistry, NodeDefinition, Port, ResumeOutcome, RunContext } from './contract.ts'
+export type { ActivityHandler, Activities, AgentResult, DispatchEvent, Edge, EmitSink, EmitInput, EntryDeclaration, FeedOutcome, GraphNodeRegistry, NodeDefinition, Port, ResumeOutcome, RunContext } from './contract.ts'
 
 export interface Config {
   /** Which role this engine serves; center and node each load their own engine with its own history. */
@@ -62,6 +62,20 @@ function sortKeys(value: unknown): unknown {
 /** `sha256(canonical([type, name, args]))` — type is always `activity` in phase 1. */
 export function fingerprint(name: string, args: unknown): string {
   return createHash('sha256').update(canonical(['activity', name, args])).digest('hex')
+}
+
+/** First port whose set or type label differs between `a` and `b`, with both sides named; `undefined` when compatible. */
+function portMismatch(a: Record<string, Port>, b: Record<string, Port>, aSide: string, bSide: string): string | undefined {
+  for (const [name, port] of Object.entries(a)) {
+    if (!(name in b)) return `port "${name}" of ${aSide} (type "${port.type}") has no counterpart on ${bSide}`
+  }
+  for (const [name, port] of Object.entries(b)) {
+    if (!(name in a)) return `port "${name}" of ${bSide} (type "${port.type}") has no counterpart on ${aSide}`
+  }
+  for (const [name, port] of Object.entries(a)) {
+    if (port.type !== b[name]!.type) return `port "${name}" of ${aSide} (type "${port.type}") is incompatible with port "${name}" of ${bSide} (type "${b[name]!.type}")`
+  }
+  return undefined
 }
 
 function samePorts(a: Record<string, Port>, b: Record<string, Port>): boolean {
@@ -135,6 +149,7 @@ export class DispatchEngine extends Service {
     if (!samePorts(entry.output, node.inputs)) {
       throw new Error(`dispatch: entry for "${entry.on}" output ports do not match the inputs of node "${entry.node}"`)
     }
+    this.checkEdges(entry)
     const list = this.entries.get(entry.on) ?? []
     list.push(entry)
     this.entries.set(entry.on, list)
@@ -142,6 +157,33 @@ export class DispatchEngine extends Service {
       const remaining = (this.entries.get(entry.on) ?? []).filter(candidate => candidate !== entry)
       if (remaining.length === 0) this.entries.delete(entry.on)
       else this.entries.set(entry.on, remaining)
+    }
+  }
+
+  /** Rejects anything but a straight chain behind the entry node, and any edge whose ports do not line up. */
+  private checkEdges(entry: EntryDeclaration): void {
+    const edges = entry.edges ?? []
+    const fail = (detail: string): never => { throw new Error(`dispatch: entry for "${entry.on}" ${detail}`) }
+    for (const { from, to } of edges) {
+      if (this.nodes.get(from) === undefined) fail(`edge "${from}" -> "${to}" names unregistered node "${from}"`)
+      if (this.nodes.get(to) === undefined) fail(`edge "${from}" -> "${to}" names unregistered node "${to}"`)
+    }
+    for (const { from, to } of edges) {
+      if (edges.filter(edge => edge.from === from).length > 1) fail(`has more than one edge from node "${from}"`)
+      if (edges.filter(edge => edge.to === to).length > 1) fail(`has more than one edge into node "${to}"`)
+      if (to === entry.node) fail(`has an edge into entry node "${entry.node}"`)
+    }
+    const next = (nodeId: string): string | undefined => edges.find(edge => edge.from === nodeId)?.to
+    for (const start of new Set(edges.flatMap(edge => [edge.from, edge.to]))) {
+      const seen = new Set<string>()
+      for (let cursor: string | undefined = start; cursor !== undefined; cursor = next(cursor)) {
+        if (seen.has(cursor)) fail(`has an edge cycle at node "${cursor}"`)
+        seen.add(cursor)
+      }
+    }
+    for (const { from, to } of edges) {
+      const mismatch = portMismatch(this.nodes.get(from)!.outputs, this.nodes.get(to)!.inputs, `output of node "${from}"`, `input of node "${to}"`)
+      if (mismatch !== undefined) fail(`edge "${from}" -> "${to}" output ports do not match the inputs of node "${to}": ${mismatch}`)
     }
   }
 
@@ -157,8 +199,9 @@ export class DispatchEngine extends Service {
     for (const entry of entries) {
       const instanceId = randomUUID()
       const inputs = await entry.adapt(event)
-      this.history.append({ kind: 'instance.opened', instanceId, graphId: entry.graph, eventId: event.id, payload: { node: entry.node, event, inputs } })
-      await this.runNode(instanceId, entry.graph, entry.node)
+      const edges = entry.edges ?? []
+      this.history.append({ kind: 'instance.opened', instanceId, graphId: entry.graph, eventId: event.id, payload: { node: entry.node, edges, event, inputs } })
+      await this.runChain(instanceId, entry.graph, entry.node, edges, this.history.listByInstance(instanceId))
       instanceIds.push(instanceId)
     }
     return { matched: true, instanceIds }
@@ -169,24 +212,39 @@ export class DispatchEngine extends Service {
     const records = this.history.listByInstance(instanceId)
     const opened = records[0]
     if (opened === undefined || opened.kind !== 'instance.opened') throw new Error(`dispatch: no opened instance "${instanceId}"`)
-    const { node } = opened.payload as { node: string }
-    return { instanceId, ...await this.runNode(instanceId, opened.graphId!, node, records) }
+    const { node, edges } = opened.payload as { node: string; edges: Edge[] }
+    return { instanceId, ...await this.runChain(instanceId, opened.graphId!, node, edges, records) }
   }
 
-  private async runNode(instanceId: string, graphId: string, nodeId: string, records = this.history.listByInstance(instanceId)): Promise<Omit<ResumeOutcome, 'instanceId'>> {
+  /** Runs the entry node, then follows the chain until a node fails or a node has no outgoing edge. */
+  private async runChain(instanceId: string, graphId: string, entry: string, edges: readonly Edge[], records: HistoryRecord[]): Promise<Omit<ResumeOutcome, 'instanceId'>> {
+    const { inputs } = records[0].payload as { inputs: Record<string, unknown> }
+    let nodeId = entry
+    let values = inputs
+    for (;;) {
+      const outcome = await this.runNode(instanceId, graphId, nodeId, values, records)
+      if (outcome.status !== 'completed') return outcome
+      const edge = edges.find(candidate => candidate.from === nodeId)
+      if (edge === undefined) return outcome
+      nodeId = edge.to
+      values = outcome.outputs as Record<string, unknown>
+    }
+  }
+
+  /** Runs one node of the chain with the given inputs; a node with a `node.completed` record is returned, not re-run. */
+  private async runNode(instanceId: string, graphId: string, nodeId: string, inputs: Record<string, unknown>, records: HistoryRecord[]): Promise<Omit<ResumeOutcome, 'instanceId'>> {
     const definition = this.nodes.get(nodeId)
-    const completed = records.find(record => record.kind === 'node.completed')
+    const completed = records.find(record => record.kind === 'node.completed' && record.nodeId === nodeId)
     if (completed !== undefined) return outcomeOf(completed.payload as NodeCompleted)
-    const opened = records[0].payload as { inputs: Record<string, unknown> }
-    this.history.append({ kind: 'node.started', instanceId, graphId, nodeId, payload: { inputs: opened.inputs } })
+    this.history.append({ kind: 'node.started', instanceId, graphId, nodeId, payload: { inputs } })
     if (definition === undefined) throw new Error(`dispatch: no node "${nodeId}" registered`)
     let payload: NodeCompleted
     try {
-      checkPorts(definition.inputs, opened.inputs)
-      const recorded = records.filter(record => record.kind === 'activity.completed').map(record => record.payload as RecordedCall)
+      checkPorts(definition.inputs, inputs)
+      const recorded = records.filter(record => record.kind === 'activity.completed' && record.nodeId === nodeId).map(record => record.payload as RecordedCall)
       const cursor = { index: 0 }
       const run = (name: string, args: unknown) => this.callActivity(instanceId, graphId, nodeId, recorded, cursor, name, args)
-      payload = { outputs: await definition.run({ activities: runProxy(run) }, opened.inputs) }
+      payload = { outputs: await definition.run({ activities: runProxy(run) }, inputs) }
     } catch (error) {
       payload = { error: error instanceof Error ? error.message : String(error) }
     }
