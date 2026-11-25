@@ -60,6 +60,8 @@ packages/
 ├── client/       浏览器产品 UI
 │   ├── ui-time/         纯 React UI、TimeAdapter 契约与右栏插件
 │   └── ui-gtd/          左栏入口与空白 main
+├── dispatch/     agent-dispatch 底座
+│   └── engine/          graph 执行引擎内核（节点注册表、入口、事件历史、重放）
 └── bundle/       可安装装配
     └── secretary/       bundle、Preset 与 Secretary 技能
 

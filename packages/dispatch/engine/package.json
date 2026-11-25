@@ -1,0 +1,33 @@
+{
+  "name": "dsh-secretary-dispatch-engine",
+  "version": "0.1.0",
+  "description": "agent-dispatch graph execution engine kernel: node registry, entries, event history and replay.",
+  "license": "MIT",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./contract": "./lib/contract.js",
+    "./history": "./lib/history.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/**/*.js"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "prepare": "node build.mjs",
+    "test": "node build.mjs && node --test tests/*.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.25.10",
+    "typescript": "^6.0.3"
+  }
+}

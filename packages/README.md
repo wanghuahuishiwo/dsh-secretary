@@ -21,6 +21,7 @@ kind: "package-group"
 | [`time/`](time/README.md) | Time 领域能力族 |
 | [`api/`](api/README.md) | Host 产品 API（Typert Remote controller） |
 | [`secretary/`](secretary/README.md) | Agent 自有运行代码（CLI） |
+| [`dispatch/`](dispatch/README.md) | agent-dispatch 底座：graph 执行引擎 |
 | [`client/`](client/README.md) | 浏览器产品 UI 与客户端插件 |
 | [`bundle/`](bundle/README.md) | 可安装 bundle（preset、patch 与装配） |
 
@@ -37,6 +38,7 @@ kind: "package-group"
 | [`gtd/agent`](gtd/agent/README.md) | gtd | GTD 用户技能 | `.` |
 | [`time/time-block`](time/time-block/README.md) | time | `TimeService` | `.`、`./contract` |
 | [`secretary/cli`](secretary/cli/README.md) | secretary | `dsh-secretary` CLI（agent 薄客户端） | `./bin` |
+| [`dispatch/engine`](dispatch/engine/README.md) | dispatch | graph 执行引擎内核：节点注册表、入口、事件历史与重放 | `.`、`./contract`、`./history` |
 | [`api/time-controller`](api/time-controller/README.md) | api | `TimeProductService`、`TagProductService` 与 Remote 契约 | `.`、`./types`、`./typert`、`./remote` |
 | [`client/ui-time`](client/ui-time/README.md) | client | 纯 React UI + `TimeAdapter` 契约 + 右栏插件 | `./ui`、`./client` |
 | [`client/ui-gtd`](client/ui-gtd/README.md) | client | 左栏入口 + 空白 main | `.`、`./client` |
