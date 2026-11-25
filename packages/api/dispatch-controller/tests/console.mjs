@@ -130,6 +130,8 @@ test('events: the stream is paged newest-first with the engine history of each e
   assert.equal(page.events[1].history[0].kind, 'instance.opened')
   assert.equal(page.events[1].history[0].instanceId, 'inst-1')
   assert.deepEqual(page.events[1].history[0].payload, { a: 1 })
+  assert.deepEqual(Object.keys(page.events[1].history[0]), ['seq', 'at', 'kind', 'instanceId', 'graphId', 'eventId', 'payload'], 'the engine\'s own record shape')
+  assert.deepEqual(Object.keys(page.events[0].history[0]), ['seq', 'at', 'kind', 'instanceId', 'graphId', 'eventId', 'payload'])
   assert.deepEqual([page.events[0].history[0].kind, page.events[0].history[0].instanceId, page.events[0].history[0].payload], ['unmatched', null, null])
 
   // Smaller page, then further back from its oldest sequence; past the first message there is nothing more.

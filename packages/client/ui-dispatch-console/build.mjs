@@ -25,7 +25,18 @@ const client = {
   target: 'es2022',
   jsx: 'automatic',
   sourcemap: true,
-  external: ['react', 'react-dom', 'react/jsx-runtime', 'react-dom/client', '@deepseek-ai/*'],
+  // Only the host UI packages stay external; the generated Remote (and `dsh-typert-protocol/remote-info`) is inlined,
+  // because the web module table has no entry for it.
+  external: [
+    'react', 'react-dom', 'react/jsx-runtime', 'react-dom/client',
+    '@deepseek-ai/cordis',
+    '@deepseek-ai/dsh-api-gateway/client',
+    '@deepseek-ai/dsh-client-ui-layout/client',
+    '@deepseek-ai/dsh-client-ui-primitives',
+    '@deepseek-ai/dsh-client-ui-renderer/client',
+    '@deepseek-ai/dsh-client-ui-sidebar/client',
+    '@deepseek-ai/dsh-client-ui-slots',
+  ],
   banner: {
     js: `window.__ModuleLoader__.load({ id: ${JSON.stringify(ID)}, factory: (require) => {\nvar module = { exports: {} }; var exports = module.exports;`,
   },

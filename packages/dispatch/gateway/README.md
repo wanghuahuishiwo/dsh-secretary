@@ -48,11 +48,11 @@ kind: "package-reference"
 | 文件 | 内容 |
 |---|---|
 | `settings.json` | `mode`（`local`/`remote`）、`clientPort`（4222）、`monitorPort`（8222）、`binary`、`remote { url, credentials { center?, node? } }`、`keys { center { ref, publicKey }, node {…} } \| null`。不含 seed。 |
-| `nats-server.conf` | 派生物：`listen: 127.0.0.1:<clientPort>`、`http: 127.0.0.1:<monitorPort>`、`jetstream.store_dir`、`authorization.users[].nkey`（仅公钥）及各角色的 `permission`（两套模板：JetStream 基础 subject + 该角色声明的事件 subject，见 [`messaging`](../messaging/README.md#文件与权限)） |
+| `nats-server.conf` | 派生物：`listen: 127.0.0.1:<clientPort>`、`http: 127.0.0.1:<monitorPort>`、`jetstream.store_dir`、`authorization.users[].nkey`（仅公钥）及各角色的 `permission`（两套模板：固定 subject + 该角色声明可 publish 的事件 subject，subscribe 恒为全部事件，见 [`messaging`](../messaging/README.md#文件与权限)） |
 | `launch.json` | `pid`、`startedAt`、`by`（`console`/`cli`）、`stopRequestedAt?`、`exit? { reason: stopped \| abnormal, at }` |
 | `nats-server.log` | 子进程 stdout/stderr |
 | `jetstream/` | 显式 `store_dir`；nats-server 会在其后再加一级 `jetstream/`，实际存储在 `jetstream/jetstream/`，`/varz` 报告的也是后者（状态比对按此进行） |
-| `permissions.center.json` / `permissions.node.json` | 各角色声明的事件 subject（`{ publish: [], subscribe: [] }`），基础通信插件写、本包读；不含通配符，缺失视为该角色无事件权限 |
+| `permissions.center.json` / `permissions.node.json` | 各角色声明的事件 subject（`{ publish: [], subscribe: [] }`），基础通信插件写、本包读；不含通配符，缺失视为该角色不能 publish 任何事件（读取不受它裁剪） |
 
 `GatewayStatus.state`：`not-started` / `starting` / `running` / `stopping` / `stopped` / `start-failed` / `abnormal-exit` / `record-invalid` / `unknown` / `unmanaged` / `remote`（中文见 `STATE_LABELS`），另带 `version`（`/varz`）、`pid`、`startedAt`、`startedBy`、`endedAt`、`clientUrl`、`monitorUrl`、`binary { configured, found, hint? }`、`logTail?`、`detail?`。
 

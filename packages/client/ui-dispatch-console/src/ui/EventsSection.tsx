@@ -28,6 +28,8 @@ export function EventsSection({ adapter }: { readonly adapter: DispatchConsoleAd
   const [error, setError] = useState<string | undefined>()
   const [detail, setDetail] = useState<StreamEvent | undefined>()
   const scroll = useRef<HTMLDivElement>(null)
+  /** Set for the whole older-page read: scroll events of one render must not start a second one. */
+  const readingOlder = useRef(false)
   const keepScroll = useRef<{ top: number; height: number } | undefined>(undefined)
   /** `following` inside the mark callback without re-opening the watch stream on every change. */
   const isFollowing = useRef(following)
@@ -43,17 +45,25 @@ export function EventsSection({ adapter }: { readonly adapter: DispatchConsoleAd
   }
   const readOlder = async () => {
     const oldest = list.events[list.events.length - 1]
-    if (oldest === undefined || list.loadingOlder || oldest.seq <= list.firstSeq) return
+    if (oldest === undefined || readingOlder.current || oldest.seq <= list.firstSeq) return
+    readingOlder.current = true
     const element = scroll.current
     if (element) keepScroll.current = { top: element.scrollTop, height: element.scrollHeight }
     setList({ ...list, loadingOlder: true })
     try {
       const page = await adapter.listEvents({ before: oldest.seq, limit: PAGE_SIZE })
-      setList(current => ({ events: [...page.events, ...current.events], firstSeq: page.firstSeq, loadingOlder: false }))
+      // A newer page may have arrived meanwhile: keep each sequence once, newest first.
+      setList(current => {
+        const known = new Set(current.events.map(item => item.seq))
+        const events = [...page.events.filter(item => !known.has(item.seq)), ...current.events].sort((a, b) => b.seq - a.seq)
+        return { events, firstSeq: page.firstSeq, loadingOlder: false }
+      })
       setError(undefined)
     } catch (cause) {
       setList(current => ({ ...current, loadingOlder: false }))
       report(cause)
+    } finally {
+      readingOlder.current = false
     }
   }
   const resume = () => {
@@ -91,7 +101,10 @@ export function EventsSection({ adapter }: { readonly adapter: DispatchConsoleAd
     if (element.scrollHeight - element.scrollTop - element.clientHeight < OLDER_TRIGGER_PX) void readOlder()
   }
 
-  if (detail !== undefined) return <EventDetail event={detail} onBack={() => setDetail(undefined)} />
+  /** The list remounts at its top, so returning from the detail follows the newest events again. */
+  const backToList = () => { setDetail(undefined); resume() }
+
+  if (detail !== undefined) return <EventDetail event={detail} onBack={backToList} />
   const oldest = list.events[list.events.length - 1]
   return (
     <section aria-label="事件" className="dc-events">

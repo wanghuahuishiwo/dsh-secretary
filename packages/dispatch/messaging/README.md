@@ -97,12 +97,12 @@ kind: "package-reference"
 | JetStream stream `dsh-events` | File + Limits，`store_dir` 由 Gateway 显式设置；`subjects` 随声明在线 `streams.update` 追加 |
 | durable consumer | 每个角色每个订阅 subject 一个：`<role>-<type 以 - 连接>-<sha256(subject) 前 8 位>`，`filter_subject` = 该 subject，`ack_policy: explicit` |
 
-两套 permissions 模板（由 `dispatch/gateway` 渲染，均附带 JetStream 所需的 `$JS.API.>`、`$JS.ACK.>` publish 与 `_INBOX.>` subscribe）：
+两套 permissions 模板（由 `dispatch/gateway` 渲染）。固定部分：publish 放行 `$JS.API.>`、`$JS.ACK.>`、`_INBOX.>`（JetStream 与 service 应答），subscribe 放行 `$JS.API.>`、`_INBOX.>`、`$SRV.>`、`dsh.events.>`；只有中心额外放行 publish `$SRV.PING`、`$SRV.INFO`（service discovery，#105）。**读路径不受事件目录裁剪**：两个角色都能订阅全部事件 subject，声明的 `subscribe` 只约束本地 `messaging/not-declared`，不进 `nats-server.conf`。
 
-| 角色 | publish allow | subscribe allow |
-|---|---|---|
-| 中心 | JetStream + `dsh.events.<center 声明 publish 的 type>` | JetStream + `dsh.events.<center 声明 subscribe 的 type>` |
-| 节点 | JetStream + `dsh.events.<node 声明 publish 的 type>` | JetStream + `dsh.events.<node 声明 subscribe 的 type>` |
+| 角色 | publish allow（事件部分） |
+|---|---|
+| 中心 | `dsh.events.<center 声明 publish 的 type>` |
+| 节点 | `dsh.events.<node 声明 publish 的 type>` |
 
 没有声明文件的角色只保留 JetStream 基础权限，事件地址空间对其关闭。越权发布在 Gateway 立刻被拒，客户端表现为发布抛错（`@nats-io` v3 SDK：`RequestError`，`cause` 为 `PermissionViolationError`，消息 `Permissions Violation for Publish to "<subject>"`）。
 

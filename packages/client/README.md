@@ -15,7 +15,7 @@ kind: "package-group"
 |---|---|---|
 | [`ui-time/`](ui-time/README.md) | `dsh-secretary-ui-time` | 纯 UI `./ui`、右栏插件 `./client` |
 | [`ui-gtd/`](ui-gtd/README.md) | `dsh-secretary-ui-gtd` | 左栏入口与空白 main |
-| [`ui-dispatch-console/`](ui-dispatch-console/README.md) | `dsh-secretary-ui-dispatch-console` | 底座控制台壳与 Gateway 分区 |
+| [`ui-dispatch-console/`](ui-dispatch-console/README.md) | `dsh-secretary-ui-dispatch-console` | 底座控制台壳与 Gateway／节点／事件分区 |
 
 ## 约束
 

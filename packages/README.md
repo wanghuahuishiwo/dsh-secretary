@@ -42,8 +42,8 @@ kind: "package-group"
 | [`api/time-controller`](api/time-controller/README.md) | api | `TimeProductService`、`TagProductService` 与 Remote 契约 | `.`、`./types`、`./typert`、`./remote` |
 | [`dispatch/gateway`](dispatch/gateway/README.md) | dispatch | 无状态 Gateway（nats-server）管理与 CLI 契约 | `.` |
 | [`dispatch/messaging`](dispatch/messaging/README.md) | dispatch | 基础通信插件：NKey 连接、CloudEvents 信封、nodeId、stream/consumer 在线创建 | `.`、`./contract` |
-| [`api/dispatch-controller`](api/dispatch-controller/README.md) | api | 底座控制台 Remote `secretaryDispatch`（Gateway 设置／状态／启停） | `.`、`./types`、`./typert`、`./remote` |
-| [`client/ui-dispatch-console`](client/ui-dispatch-console/README.md) | client | 底座控制台壳与 Gateway 分区 | `.`、`./client` |
+| [`api/dispatch-controller`](api/dispatch-controller/README.md) | api | 底座控制台 Remote `secretaryDispatch`（Gateway 设置／状态／启停；节点 service discovery 与事件 stream 分页读） | `.`、`./types`、`./typert`、`./remote` |
+| [`client/ui-dispatch-console`](client/ui-dispatch-console/README.md) | client | 底座控制台壳与 Gateway／节点／事件分区 | `.`、`./client` |
 | [`client/ui-time`](client/ui-time/README.md) | client | 纯 React UI + `TimeAdapter` 契约 + 右栏插件 | `./ui`、`./client` |
 | [`client/ui-gtd`](client/ui-gtd/README.md) | client | 左栏入口 + 空白 main | `.`、`./client` |
 | [`bundle/secretary`](bundle/secretary/README.md) | bundle | 唯一安装入口：preset、skills、cordis.patch | `.` |

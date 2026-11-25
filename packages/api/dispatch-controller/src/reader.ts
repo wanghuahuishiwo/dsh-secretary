@@ -164,7 +164,18 @@ export function readHistory(historyPath: string | undefined, eventIds: readonly 
   try {
     const byEvent = db.prepare('SELECT * FROM history WHERE eventId = ? ORDER BY seq')
     for (const eventId of eventIds) {
-      const rows = (byEvent.all(eventId) as Array<Record<string, unknown>>).map(row => ({ ...row, payload: JSON.parse(String(row.payload)) }))
+      const rows = (byEvent.all(eventId) as Array<Record<string, unknown>>).map(row => {
+        // The engine's own record shape (`openEventHistory`): absent ids are omitted, the others stay as stored.
+        const record: Record<string, unknown> = {}
+        for (const [key, value] of Object.entries(row)) {
+          if (value === null) {
+            if (key === 'instanceId' || key === 'graphId') record[key] = null
+            continue
+          }
+          record[key] = key === 'payload' ? JSON.parse(String(value)) : value
+        }
+        return record
+      })
       if (rows.length > 0) out.set(eventId, rows)
     }
   } finally {

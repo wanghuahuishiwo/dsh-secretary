@@ -332,6 +332,15 @@ importers:
       '@deepseek-ai/dsh-storage':
         specifier: 0.2.2-rc.1
         version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)
+      '@nats-io/jetstream':
+        specifier: 3.5.0
+        version: 3.5.0
+      '@nats-io/services':
+        specifier: 3.5.0
+        version: 3.5.0
+      dsh-secretary-dispatch-engine:
+        specifier: workspace:*
+        version: link:../../dispatch/engine
       dsh-secretary-dispatch-gateway:
         specifier: workspace:*
         version: link:../../dispatch/gateway
