@@ -142,7 +142,10 @@ async run(ctx, { ticket }) {
 
 - DSH 桌面 App 按现有方式启动桌面 Host，desktop profile 装载中心与节点角色；无桌面的节点机器使用自定义常驻 DSH profile，以 `dsh` 前台命令启动。
 - **节点始终由所在机器本地启动**，启动后主动连接配置的 Gateway 地址；中心只负责派工，不远程创建节点进程。
-- **底座控制台**（[#87](https://github.com/wanghuahuishiwo/dsh-secretary/issues/87)，已关）：底座的管理与观测入口，是底座级的，不承载 agent-dispatch 业务层（Ticket、过滤/决策/委派）。形态为 DSH 左栏一项「底座控制台」、主区整页；页内左栏按对象类型分四个分区 **Gateway / 节点 / 事件 / Graph**，每个分区是整页列表 → 点一行进整页详情（页签切子视图），设置是独立子页签（产品结构蓝本 Docker Desktop）。页顶常显 Gateway 状态、节点在线数与 unmatched 数；Gateway 非正常运行时经 `shell.overlay` 出一条状态提示并可点入，正常运行时不显示。交互相抄 GitHub Actions（表格、状态图标、自动刷新），事件流抄 Grafana Explore（暂停／跟随、点行展开）。**一期只建壳与 Gateway 分区**；节点、事件、Graph 分区的内容各自出票。Graph 分区将来加「画布」页签承载 @xyflow 只读视图，不改结构。
+- **底座控制台**（[#87](https://github.com/wanghuahuishiwo/dsh-secretary/issues/87)，已关）：底座的管理与观测入口，是底座级的，不承载 agent-dispatch 业务层（Ticket、过滤/决策/委派）。形态为 DSH 左栏一项「底座控制台」、主区整页；页内左栏按对象类型分四个分区 **Gateway / 节点 / 事件 / Graph**，每个分区是整页列表 → 点一行进整页详情（页签切子视图），设置是独立子页签（产品结构蓝本 Docker Desktop）。页顶常显 Gateway 状态与节点在线数；Gateway 非正常运行时经 `shell.overlay` 出一条状态提示并可点入，正常运行时不显示。交互相抄 GitHub Actions（表格、状态图标、自动刷新），事件流抄 Grafana Explore（暂停／跟随、点行展开）。Graph 分区将来加「画布」页签承载 @xyflow 只读视图，不改结构。
+- **控制台总原则（[#94](https://github.com/wanghuahuishiwo/dsh-secretary/issues/94)，已关）**：只做底层官方能力与既定记录的**原样视图**——不新增存储、不派生状态、不加工字段、不做过滤；**可观测性原则是不藏任何东西**：事件 `data`、metadata、消费记录全部原样展示，不折叠、不截断、不脱敏。控制台读路径不受 subject permissions 裁剪（修订 [#86](https://github.com/wanghuahuishiwo/dsh-secretary/issues/86) 中「allowlist 从事件目录派生」在读路径上的部分；写路径与节点账号不变）。
+- **节点分区（#94）**：中心用 `nats.js` 官方 service discovery（`$SRV.PING`）取回在线服务列表，原样交给控制台。一张表，一行一个在线服务实例，行内展开完整 JSON（服务名、实例 ID、版本、metadata、endpoints）；10 秒自动刷新；页顶节点在线数 = 在线实例数。一期不做详情页、不做任何操作按钮、不做离线目录（#83 所述离线目录链路不需要，留在未定项）。
+- **事件分区（#94）**：数据源是 JetStream stream 本身——中心经 `nats.js` 官方 JetStream API 建 ephemeral pull consumer 读取，新事件从同一 consumer 续读，浏览器经 Remote 不直连 NATS；不建事件流水，保留随 stream Limits 配置。列表无过滤控件：列 = 信封全部属性（事件有什么显示什么）+ 引擎消费记录原样（开了／唤醒了哪个实例，无记录即空，不贴标签、不计数）；`data` 原样 JSON 不截断；默认最近 200 条、滚到顶再往前加载；最新在上、默认跟随，上滚即暂停并出「N 条新事件」，点击回到最新。详情页 = 完整信封 JSON + 完整消费记录 JSON。引擎事件历史一期需有读接口，记录形状归 graph 执行引擎 MVP 规格，控制台照原样读；断链靠人看链路（消费记录为空、或流末尾无后续事件）。
 - Gateway 分区在本机模式与远程模式之间二选一：
   - **本机模式**：管理本机独立 Gateway 进程，支持启动、手动重启、停止和运行状态；自动生成本机连接地址并写入本机中心、节点角色的客户端配置，用户不重复填写 URL。
   - **远程模式**：只配置远程 Gateway 地址与凭据引用，只控制本机客户端连接，不提供远程进程的启动、重启、停止或状态控制。agent-dispatch 协议也不暴露远程进程控制 API。
@@ -216,5 +219,7 @@ async run(ctx, { ticket }) {
 - graph 版本化（改图不破坏运行中/睡着的实例）
 - graph 节点输入结构与校验（固定结构与文本输入的差异、统一校验位置及失败行为）
 - graph 实例级共享上下文：节点除前置节点输入外，是否支持实例范围内可读写的自定义上下文，及其与事件历史、重放确定性的关系
-- 可观测查询面细节、可用性分级与 DB 演进（#77 / #78 吸收）
+- 节点离线目录（#83 所述「由中心持久化」，一期链路不需要）
+- 引擎事件历史的记录形状与读接口（控制台事件分区的消费记录列依赖它，随 graph 执行引擎 MVP 规格定）
+- 可用性分级与 DB 演进（#77 / #78 吸收；观测查询面已由 #94 定为原样视图、不另存）
 - graph 引擎 MVP 边界与实现拆分（后续 /to-spec）
