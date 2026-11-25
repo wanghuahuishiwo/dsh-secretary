@@ -56,6 +56,7 @@
     看到不对劲的地方——"这不应该允许吧""我以为是另一种"——就是这张票要的答案。
   </div>
 
+  <div class="note" style="border-color:#b45309;background:#fffbeb"><b>已结单（#87）后的勘误</b>：本原型定案时有两处被推翻——① 每次启动一个新 <code>instanceId</code> 作 server name 的"身份"设计已撤回，Gateway 没有身份概念，认进程靠 pid 活着 + <code>/varz</code> 的端口与 <code>jetstream.config.store_dir</code> 与本机配置一致；② 就绪探针不能用"/varz 可达"（监控口早于客户端端口启动），改用官方 <code>GET /healthz?js-enabled-only=true</code>。另："控制器"一词在定案中改称"Gateway 管理"，其入口是"底座控制台"。其余状态机（启动中／运行中／停止中／启动失败／异常退出／记录失效／无法确认／未托管）按原型定案。</div>
   <h2>当前状态</h2>
   <div class="grid">
     <div class="panel">
