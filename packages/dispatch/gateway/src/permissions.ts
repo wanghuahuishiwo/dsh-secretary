@@ -44,7 +44,7 @@ export function renderPermissions(permissions: SubjectPermissions): string[] {
   const allow = (base: string[], subjects: readonly string[]) => `[${[...base, ...subjects.map(subject => `"${subject}"`)].join(', ')}]`
   return [
     'permission: {',
-    `  publish: { allow: ${allow(JETSTREAM_PUBLISH, permissions.publish)} }`,
+    `  publish: { allow: ${allow(JETSTREAM_PUBLISH, permissions.publish)} },`,
     `  subscribe: { allow: ${allow(JETSTREAM_SUBSCRIBE, permissions.subscribe)} }`,
     '}',
   ]

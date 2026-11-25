@@ -103,26 +103,29 @@ test('permissions: each role gets its own subject permissions block; JetStream s
   const conf = renderServerConfig(settings, paths, permissions)
   const [centerBlock, nodeBlock] = ['center', 'node'].map(role => {
     const lines = conf.split('\n')
-    return lines.slice(lines.indexOf(`    { nkey: ${settings.keys[role].publicKey}`), lines.indexOf('    }', lines.indexOf(`    { nkey: ${settings.keys[role].publicKey}`)) + 1)
+    const start = lines.findIndex(line => line.startsWith(`    { nkey: ${settings.keys[role].publicKey}`))
+    return lines.slice(start, start + lines.slice(start).findIndex(line => line.startsWith('    }')) + 1)
       .map((line, index, all) => line.slice(index === all.length - 1 ? 4 : 6)).join('\n')
   })
   assert.deepEqual(centerBlock, [
-    `nkey: ${center.publicKey}`,
+    `nkey: ${center.publicKey},`,
     'permission: {',
-    '  publish: { allow: ["$JS.API.>", "$JS.ACK.>", "dsh.events.task.assigned"] }',
+    '  publish: { allow: ["$JS.API.>", "$JS.ACK.>", "dsh.events.task.assigned"] },',
     '  subscribe: { allow: ["$JS.API.>", "_INBOX.>", "dsh.events.aone.bug.created"] }',
     '}',
-    '}',
+    '},',
   ].join('\n'))
+  assert.equal(conf.split('\n').filter(line => line === '    },').length, 1, 'exactly one comma between the two users')
   assert.deepEqual(nodeBlock, [
-    `nkey: ${node.publicKey}`,
+    `nkey: ${node.publicKey},`,
     'permission: {',
-    '  publish: { allow: ["$JS.API.>", "$JS.ACK.>", "dsh.events.aone.bug.created", "dsh.events.task.result"] }',
+    '  publish: { allow: ["$JS.API.>", "$JS.ACK.>", "dsh.events.aone.bug.created", "dsh.events.task.result"] },',
     '  subscribe: { allow: ["$JS.API.>", "_INBOX.>", "dsh.events.task.assigned"] }',
     '}',
     '}',
   ].join('\n'))
   assert.ok(conf.indexOf(`nkey: ${center.publicKey}`) < conf.indexOf(`nkey: ${node.publicKey}`), 'users keep the center, node order')
+  assert.match(conf, new RegExp(`\\n    }\\n  \\]\\n}\\n$`), 'the last user has no trailing comma')
   assert.ok(!conf.includes(center.seed) && !conf.includes(node.seed))
 })
 

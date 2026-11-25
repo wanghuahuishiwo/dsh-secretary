@@ -190,13 +190,16 @@ export function renderServerConfig(
     '}',
     'authorization {',
     '  users: [',
-    ...( ['center', 'node'] as const).map(role => {
+    ...( ['center', 'node'] as const).map((role, index, roles) => {
+      // Standard nats-server.conf punctuation: a comma between the fields of a user and between the users.
+      const comma = index === roles.length - 1 ? '' : ','
+      const nkey = `    { nkey: ${settings.keys?.[role]?.publicKey}`
       const declared = permissions[role]
-      if (declared === undefined) return `    { nkey: ${settings.keys?.[role]?.publicKey} }`
+      if (declared === undefined) return `${nkey} }${comma}`
       return [
-        `    { nkey: ${settings.keys?.[role]?.publicKey}`,
+        `${nkey},`,
         ...renderPermissions(declared).map(line => `      ${line}`),
-        '    }',
+        `    }${comma}`,
       ].join('\n')
     }),
     '  ]',
