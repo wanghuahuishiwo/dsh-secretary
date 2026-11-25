@@ -64,3 +64,20 @@ test('inbox: the first acceptance is recorded with its stream position, the same
   assert.match(record.acceptedAt, /^\d{4}-\d{2}-\d{2}T/)
   assert.deepEqual(outbox.transaction(tx => [tx.seen(event.id), tx.seen('nope')]), [true, false])
 })
+
+test('afterCommit callbacks run only once the transaction has committed, in order; a rolled-back transaction runs none', async t => {
+  const { outbox } = await store(t)
+  const seen = []
+  outbox.transaction((tx) => {
+    tx.afterCommit(() => seen.push('first'))
+    tx.afterCommit(() => seen.push(`second, row visible: ${tx.db.prepare('SELECT COUNT(*) AS n FROM tickets').get().n}`))
+    seen.push('inside')
+    tx.db.prepare('INSERT INTO tickets VALUES (?, ?)').run('T-3', 'New')
+  })
+  assert.deepEqual(seen, ['inside', 'first', 'second, row visible: 1'])
+  assert.throws(() => outbox.transaction((tx) => {
+    tx.afterCommit(() => seen.push('rolled back'))
+    throw new Error('nope')
+  }), /nope/)
+  assert.equal(seen.length, 3)
+})

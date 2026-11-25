@@ -55,6 +55,8 @@ export interface OutboxTransaction {
   /** Record that an event is accepted; returns `false` when its id was already accepted. */
   accept(event: CloudEvent, meta: { readonly subject: string; readonly stream: string; readonly seq: number }): boolean
   seen(eventId: string): boolean
+  /** Run `fn` after this transaction commits; a rollback runs none. Work that is not a row (an execution) belongs here. */
+  afterCommit(fn: () => void): void
 }
 
 export interface Outbox {
@@ -120,6 +122,8 @@ export function openOutbox(path: string): Outbox {
     ) as T
   }
   function transaction<T>(fn: (tx: OutboxTransaction) => T): T {
+    const after: (() => void)[] = []
+    const commit = () => { db.exec('COMMIT'); open = false; for (const fn of after) fn() }
     if (open) throw new MessagingError('messaging/outbox-busy', 'dispatch: a transaction is already open on this connection')
     open = true
     db.exec('BEGIN IMMEDIATE')
@@ -140,10 +144,11 @@ export function openOutbox(path: string): Outbox {
         return true
       },
       seen: eventId => seen.get(eventId) !== undefined,
+      afterCommit: fn => { after.push(fn) },
     }
     try {
       // A promise-returning callback keeps the transaction open until it settles, so a handler commits when it resolves.
-      return settle(fn(tx), () => { db.exec('COMMIT'); open = false })
+      return settle(fn(tx), commit)
     } catch (error) {
       db.exec('ROLLBACK')
       open = false

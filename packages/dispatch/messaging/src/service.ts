@@ -96,7 +96,7 @@ export class NatsDispatchMessaging extends DispatchMessaging {
   /** Resolves when the Gateway connection is up; rejects with the reason when it never came up. */
   readonly ready: Promise<void>
 
-  private readonly catalog: EventCatalog
+  override readonly catalog: EventCatalog
   private readonly session: Promise<Session>
   private readonly subscriptions = new Set<SubscriptionHandle>()
   override readonly outbox: Outbox
@@ -250,6 +250,7 @@ export class NatsDispatchMessaging extends DispatchMessaging {
   /**
    * Durable acceptance (#100): the Inbox row, what the handler writes through `tx` and the ACK are in that order.
    * A handler that throws rolls back its acceptance and the message is redelivered; an already accepted id is ACKed silently.
+ * What the handler schedules with `tx.afterCommit` runs once the acceptance is committed.
    */
   private async deliver(message: JsMsg, handler: EventHandler): Promise<void> {
     const meta = { subject: message.subject, stream: STREAM_NAME, seq: message.seq }

@@ -76,11 +76,12 @@ kind: "package-reference"
 | 成员 | 说明 |
 |---|---|
 | `role` / `nodeId` | 角色；节点的持久身份（中心为 `undefined`） |
+| `catalog` | 本角色的事件目录 `{ publish, subscribe }`；[`dispatch/engine`](../engine/README.md) 据它订阅入图事件并校验 `emit` |
 | `publish({ type, data, id?, time?, datacontenttype?, dataschema? })` | 把事件写进 Outbox（一个只含该事件的 `transaction`），中继以 `Nats-Msg-Id = event.id` 发布并重试到收到 PubAck 为止；那时才返回 `{ event, stream, seq, duplicate }`。Gateway 不在线时一直 pending，不丢、不拒绝 |
-| `outbox.transaction(tx => { … })` | **业务结果与待发事件同一事务**：回调里用 `tx.db`（`node:sqlite` 的 `DatabaseSync`，与 Outbox 同一文件同一连接）写业务表、用 `tx.publish({ type, data, id?, time? }, source)` 排队事件；抛错全部回滚。回调返回 Promise 时事务保持到它 settle。同步，不可嵌套（嵌套抛 `messaging/outbox-busy`） |
+| `outbox.transaction(tx => { … })` | **业务结果与待发事件同一事务**：回调里用 `tx.db`（`node:sqlite` 的 `DatabaseSync`，与 Outbox 同一文件同一连接）写业务表、用 `tx.publish({ type, data, id?, time? }, source)` 排队事件；`tx.afterCommit(fn)` 登记提交后才执行的回调（只做行以外的事，例如启动一次执行）；抛错全部回滚、`afterCommit` 不跑。回调返回 Promise 时事务保持到它 settle。同步，不可嵌套（嵌套抛 `messaging/outbox-busy`） |
 | `outbox.pending()` / `outbox.entries()` / `outbox.accepted()` | 读接口：待发事件、全部 Outbox 记录（旧→新）、Inbox 受理记录（旧→新），均为普通对象，控制台原样展示 |
 | `kickRelay()` | 立即唤醒中继（提交后已自动唤醒；轮询兜底） |
-| `subscribe({ type }, handler)` | 在线确保 stream 捕获与 durable consumer；收到合法事件时在 Inbox 事务里调用 `handler(event, { subject, stream, seq }, tx)`：受理记录、handler 经 `tx` 写下的业务行、consumer ACK 依次发生；已受理过的 `event.id` 直接 ACK，不再调用 handler。返回 `{ type, subject, durable, stop() }` |
+| `subscribe({ type }, handler)` | 在线确保 stream 捕获与 durable consumer；收到合法事件时在 Inbox 事务里调用 `handler(event, { subject, stream, seq }, tx)`：受理记录、handler 经 `tx` 写下的业务行、consumer ACK 依次发生，`tx.afterCommit` 登记的回调在提交后、ACK 前执行；已受理过的 `event.id` 直接 ACK，不再调用 handler。返回 `{ type, subject, durable, stop() }` |
 | 事件 `dispatch/envelope-rejected` | 收到不合规信封时发出 `{ role, subject, stream, seq, reason }`，消息被 `term()`，不投递、不重投；同时写 logger。Cordis 事件不按 realm 隔离，同宿主各角色 realm 的监听器都会收到，按 `role` 过滤 |
 
 ## 信封与地址
@@ -119,7 +120,7 @@ Transactional Outbox（#100，依据 #83 §可靠发布与持久受理）。不�
   - `inbox(id PK, type, subject, stream, seq, acceptedAt)`，`id` = 事件 id。
 - **业务结果与事件同一事务**：业务表可以建在同一文件里（`messaging.outbox.db.exec(...)`），在 `outbox.transaction(tx => { … })` 内用 `tx.db` 写业务行、`tx.publish(...)` 排队事件，一起提交或一起回滚。回调返回 Promise 时，事务保持到它 settle；期间该连接上的另一个 `transaction` 抛 `messaging/outbox-busy`。同一 `id` 不能排两次（`messaging/outbox-duplicate-id`）。
 - **中继**：连接就绪后在插件内启动（`ctx.effect` 随插件停止），按 `createdAt` 顺序取 `pending`，逐条 `js.publish(..., { msgID: event.id })`，收到 PubAck 即 `markPublished` 并唤醒等待中的 `publish`；失败记 `attempts`/`lastError`，1 秒后重试，无上限、不丢。每次提交会唤醒它，另有 1 秒轮询兜底，所以崩溃重启后无需任何操作即继续补发。一轮内按顺序发布，前一条失败则本轮停下，下一轮从头重试。
-- **持久受理**：`deliver` 在 `outbox.transaction` 里先 `tx.accept`（向 `inbox` 插入；已存在即返回 false，不再调 handler）再调 handler；事务提交后才 `ack()`。handler 抛错则受理记录一并回滚并 `nak()` 重投。**ACK 只表示持久受理，不表示执行完成**：handler 应把「接下这件事」的事实写进 `tx`，执行本身在事务外进行。
+- **持久受理**：`deliver` 在 `outbox.transaction` 里先 `tx.accept`（向 `inbox` 插入；已存在即返回 false，不再调 handler）再调 handler；事务提交后才 `ack()`。handler 抛错则受理记录一并回滚并 `nak()` 重投。**ACK 只表示持久受理，不表示执行完成**：handler 应把「接下这件事」的事实写进 `tx`，执行本身用 `tx.afterCommit` 放到事务外（[`dispatch/engine`](../engine/README.md) 的入图就是这样接的：引擎的事件历史表也在本文件里，记录与事件同一事务）。
 - **可能重复，不替代长期幂等**：JetStream 的 `Nats-Msg-Id` 去重只有短期窗口（默认 2 分钟），超过窗口的重复发布会在 stream 里留下多份；Inbox 保证同一 `event.id` 只受理一次，但 Inbox 不是业务效果的幂等键，业务效果自己的幂等仍由业务负责。
 - **不是高可用**：一期 stream R=1，Outbox 文件也是单机单份；File 存储、durable consumer 与 Outbox 解决的是**重启恢复**（进程崩溃、NATS 重启），不解决机器或磁盘永久丢失。
 

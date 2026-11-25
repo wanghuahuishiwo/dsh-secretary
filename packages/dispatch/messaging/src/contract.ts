@@ -4,6 +4,7 @@
  */
 import { Service, type Context } from '@deepseek-ai/cordis'
 import type { GatewayRole } from 'dsh-secretary-dispatch-gateway'
+import type { EventCatalog } from './catalog.ts'
 import type { CloudEvent, EventInput } from './envelope.ts'
 import type { Outbox, OutboxTransaction } from './outbox.ts'
 
@@ -63,6 +64,8 @@ export abstract class DispatchMessaging extends Service {
   abstract readonly role: GatewayRole
   /** The persisted node identity; `undefined` for the center. */
   abstract readonly nodeId: string | undefined
+  /** The role's event catalog (its `publish` / `subscribe` declaration); what may be queued or subscribed locally. */
+  abstract readonly catalog: EventCatalog
 
   /** The role's Outbox and Inbox store; `transaction` is where a business result and its event commit together. */
   abstract readonly outbox: Outbox
