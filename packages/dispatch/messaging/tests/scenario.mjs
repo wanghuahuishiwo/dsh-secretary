@@ -13,9 +13,9 @@ import { jetstream, jetstreamManager } from '@nats-io/jetstream'
 import { nkeyAuthenticator } from '@nats-io/nats-core'
 import { connect } from '@nats-io/transport-node'
 import {
-  CREDENTIAL_REFS, gatewayPaths, isProcessAlive, locateNatsServer, saveSettings, startGateway, stopGateway,
+  CREDENTIAL_REFS, gatewayPaths, isProcessAlive, locateNatsServer, probeGateway, saveSettings, startGateway, stopGateway,
 } from 'dsh-secretary-dispatch-gateway'
-import { SERVICE_KEY, STREAM_NAME, writePermissions } from 'dsh-secretary-dispatch-messaging'
+import { SERVICE_KEY, STREAM_NAME, durableName, writePermissions } from 'dsh-secretary-dispatch-messaging'
 import * as MESSAGING from 'dsh-secretary-dispatch-messaging'
 
 const HINT = '需要真实的 nats-server 二进制。安装后重跑：brew install nats-server，或用 DSH_NATS_SERVER=<二进制路径> 指定。'
@@ -75,31 +75,34 @@ async function startLink(t, binary) {
   }
   async function bootRole(config) {
     const realm = root.isolate(SERVICE_KEY)
-    await realm.plugin(MESSAGING, { dshHome, ...config })
-    return { realm, messaging: realm.get(SERVICE_KEY) }
+    const plugin = realm.plugin(MESSAGING, { dshHome, ...config })
+    await plugin
+    return { realm, plugin, messaging: realm.get(SERVICE_KEY) }
   }
   return { dshHome, root, bootRole, rawClient, stored }
 }
 
 const CENTER = { role: 'center', publish: ['task.assigned'], subscribe: ['aone.bug.created', 'node.heartbeat'] }
+/** The center before it declares an interest in node heartbeats. */
+const CENTER_FIRST = { ...CENTER, subscribe: ['aone.bug.created'] }
 const NODE = { role: 'node', initNodeId: true, publish: ['aone.bug.created', 'node.heartbeat'], subscribe: ['task.assigned'] }
 
 /** Both roles linked through the Gateway with their permissions applied; collects what each role receives and rejects. */
-async function linked(t, binary) {
+async function linked(t, binary, { center: centerConfig = CENTER } = {}) {
   const link = await startLink(t, binary)
   // Declared first, so the derived nats-server.conf carries them when the Gateway starts.
-  await writePermissions(link.dshHome, 'center', CENTER)
+  await writePermissions(link.dshHome, 'center', centerConfig)
   await writePermissions(link.dshHome, 'node', NODE)
   await stopGateway(link.dshHome)
   await startGateway(link.dshHome)
-  const center = await link.bootRole(CENTER)
+  const center = await link.bootRole(centerConfig)
   const node = await link.bootRole(NODE)
   const received = []
   const rejected = []
   for (const role of ['center', 'node']) {
     const { realm, messaging } = role === 'center' ? center : node
     realm.on('dispatch/envelope-rejected', event => { if (event.role === role) rejected.push({ role, ...event }) })
-    for (const type of role === 'center' ? CENTER.subscribe : NODE.subscribe) {
+    for (const type of role === 'center' ? centerConfig.subscribe : NODE.subscribe) {
       await messaging.subscribe({ type }, (event, meta) => { received.push({ role, type, event, meta }) })
     }
   }
@@ -212,17 +215,39 @@ export function register(test, { strict }) {
     assert.deepEqual(seqs, [first.seq, (third ?? second).seq])
   })
 
-  test('a type subscribed later gets its stream capture and durable consumer online; nothing restarts', { skip, timeout: 90_000 }, async t => {
+  test('a type declared later gets its stream capture and durable consumer online; the Gateway does not restart', { skip, timeout: 90_000 }, async t => {
     const probe = await requireNatsServer()
     if (!probe.found) assert.fail(`${HINT}（当前未找到 ${probe.configured}）`)
-    const link = await linked(t, probe.found ? probe.configured : binary)
+    // The center starts without node.heartbeat in its catalog: neither the stream nor a consumer knows the subject yet.
+    const link = await linked(t, probe.found ? probe.configured : binary, { center: CENTER_FIRST })
+    const subject = 'dsh.events.node.heartbeat'
+    const durable = durableName('center', subject)
     const jsm = await jetstreamManager(await link.rawClient('center'))
-    const handle = await link.center.messaging.subscribe({ type: 'node.heartbeat' }, () => {})
-    await eventually(async () => (await jsm.streams.info(STREAM_NAME)).config.subjects.includes('dsh.events.node.heartbeat'))
-    const consumers = await jsm.consumers.list(STREAM_NAME).next()
-    assert.ok(consumers.some(info => info.name === handle.durable && info.config.filter_subject === handle.subject))
-    await link.node.messaging.publish({ type: 'node.heartbeat', data: { up: true } })
+    const durables = async () => (await jsm.consumers.list(STREAM_NAME).next()).map(info => info.name).sort()
+    const pid = (await probeGateway(link.dshHome)).pid
+    assert.ok(isProcessAlive(pid))
+    assert.ok(!(await jsm.streams.info(STREAM_NAME)).config.subjects.includes(subject), 'the stream does not capture the subject yet')
+    assert.ok(!(await durables()).includes(durable), 'no durable consumer for the subject yet')
+
+    // The catalog is fixed when the plugin loads: a type outside it is refused locally, so a later declaration goes
+    // through a plugin reload with the widened config (the cordis way to apply a new config), not a live API.
+    await assert.rejects(link.center.messaging.subscribe({ type: 'node.heartbeat' }, () => {}), { code: 'messaging/not-declared' })
+    const nodeSession = link.node.messaging.session
+    await link.center.plugin.dispose()
+    const center = await link.bootRole({ ...CENTER_FIRST, subscribe: [...CENTER_FIRST.subscribe, 'node.heartbeat'] })
+    assert.equal((await probeGateway(link.dshHome)).pid, pid, 'the Gateway process is the same')
+    assert.ok(isProcessAlive(pid))
+    assert.equal(link.node.messaging.session, nodeSession, 'the node connection is not rebuilt')
+    // The permissions the Gateway loaded at start do not list this subject for the center: the reload rewrites the
+    // permissions file, and the running server must still deliver the new consumer's messages.
+    const handle = await center.messaging.subscribe({ type: 'node.heartbeat' }, (event, meta) => { link.received.push({ role: 'center', type: 'node.heartbeat', event, meta }) })
+    await eventually(async () => (await jsm.streams.info(STREAM_NAME)).config.subjects.includes(subject))
+    assert.ok((await durables()).includes(durable))
+    const heartbeat = await link.node.messaging.publish({ type: 'node.heartbeat', data: { up: true } })
     await eventually(() => link.received.some(item => item.type === 'node.heartbeat'))
+    const got = link.received.find(item => item.type === 'node.heartbeat')
+    assert.deepEqual([got.event, got.meta.subject, got.meta.seq, handle.subject, handle.durable], [heartbeat.event, subject, heartbeat.seq, subject, durable])
     await handle.stop()
+    assert.equal((await probeGateway(link.dshHome)).pid, pid)
   })
 }
