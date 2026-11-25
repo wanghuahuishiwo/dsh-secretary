@@ -51,7 +51,7 @@ kind: "package-reference"
 | `nats-server.conf` | 派生物：`listen: 127.0.0.1:<clientPort>`、`http: 127.0.0.1:<monitorPort>`、`jetstream.store_dir`、`authorization.users[].nkey`（仅公钥）及各角色的 `permission`（两套模板：JetStream 基础 subject + 该角色声明的事件 subject，见 [`messaging`](../messaging/README.md#文件与权限)） |
 | `launch.json` | `pid`、`startedAt`、`by`（`console`/`cli`）、`stopRequestedAt?`、`exit? { reason: stopped \| abnormal, at }` |
 | `nats-server.log` | 子进程 stdout/stderr |
-| `jetstream/` | 显式 `store_dir` |
+| `jetstream/` | 显式 `store_dir`；nats-server 会在其后再加一级 `jetstream/`，实际存储在 `jetstream/jetstream/`，`/varz` 报告的也是后者（状态比对按此进行） |
 | `permissions.center.json` / `permissions.node.json` | 各角色声明的事件 subject（`{ publish: [], subscribe: [] }`），基础通信插件写、本包读；不含通配符，缺失视为该角色无事件权限 |
 
 `GatewayStatus.state`：`not-started` / `starting` / `running` / `stopping` / `stopped` / `start-failed` / `abnormal-exit` / `record-invalid` / `unknown` / `unmanaged` / `remote`（中文见 `STATE_LABELS`），另带 `version`（`/varz`）、`pid`、`startedAt`、`startedBy`、`endedAt`、`clientUrl`、`monitorUrl`、`binary { configured, found, hint? }`、`logTail?`、`detail?`。
@@ -61,7 +61,7 @@ kind: "package-reference"
 <details>
 <summary>实现说明与源码定位</summary>
 
-- `src/status.ts`：认进程 = `process.kill(pid, 0)` 存活 **且** `/varz` 的 `port` 等于 `clientPort`、`jetstream.config.store_dir` 等于本机 `jetstream/`；对不上即 `record-invalid`，不接管、不发信号。pid 已死时：有 `exit.stopped` 或 `stopRequestedAt` → `stopped`；启动后 10 秒内结束 → `start-failed`；其余 → `abnormal-exit`；客户端端口被别的进程占用 → `unmanaged`。
+- `src/status.ts`：认进程 = `process.kill(pid, 0)` 存活 **且** `/varz` 的 `port` 等于 `clientPort`、`jetstream.config.store_dir` 等于本机 `jetstream/jetstream/`（nats-server 追加后的值）；对不上即 `record-invalid`，不接管、不发信号。pid 已死时：有 `exit.stopped` 或 `stopRequestedAt` → `stopped`；启动后 10 秒内结束 → `start-failed`；其余 → `abnormal-exit`；客户端端口被别的进程占用 → `unmanaged`。
 - `src/manage.ts`：启动前先探测，`running/starting/stopping` 直接返回（两边同时启动靠端口占用自然互斥，不加锁）。子进程只得到 `PATH/HOME/TMPDIR/LANG/LC_ALL/USER`，不继承宿主环境。
 - `src/nkey.ts`：编码 = base32（RFC 4648 字母表）于 `[prefix, payload, CRC-16/X-MODEM 小端]`；公钥派生经 PKCS#8 → SPKI，参考向量由官方 nkeys.js 1.1.0 生成。
 
@@ -69,6 +69,6 @@ kind: "package-reference"
 
 ## 已知限制与后续工作
 
-- 本机未安装 nats-server：真实进程链路由 bundle 测试 `tests/gateway.mjs` 覆盖（缺二进制时明确失败），尚未在真机跑通；其余逻辑用 `tests/fixtures/fake-nats-server.mjs` 验证。
-- subject permissions 在 Gateway 启动时读取，声明变化后需重启 Gateway 才生效；真实 nats-server 上的权限拒绝行为尚未在真机验证。
+- 真实进程链路由 bundle 测试 `tests/gateway.mjs` 覆盖（缺二进制时明确失败）；`tests/real.mjs` 在设了 `DSH_NATS_SERVER` 时针对真机验证 store_dir 比对，其余逻辑用 `tests/fixtures/fake-nats-server.mjs` 验证（它同样模拟 `store_dir` 追加 `jetstream/`）。
+- subject permissions 在 Gateway 启动时读取，声明变化后需重启 Gateway 才生效。
 - CLI 不能首次生成 NKey（没有凭据存储）：本机模式首次启动请在控制台完成，或预先在环境变量／`$DSH_HOME/.env` 放好两个 seed。

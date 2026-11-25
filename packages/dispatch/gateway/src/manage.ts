@@ -119,17 +119,26 @@ export async function startGateway(dshHome: string, options: StartOptions = {}):
     const response = await fetch(`${monitorUrl}/healthz?js-enabled-only=true`, { signal: AbortSignal.timeout(500) }).catch(() => undefined)
     return response?.ok === true
   }, readyTimeoutMs)
-  if (ready !== true) {
-    if (ready === 'exited') await exited
-    else {
+  /** A failed start leaves no process behind: SIGTERM the child we spawned (2 s), then record the abnormal exit. */
+  const abandon = async (exitedAlready: boolean): Promise<string> => {
+    let outcome = '进程已自行退出'
+    if (!exitedAlready && isProcessAlive(record.pid)) {
       process.kill(record.pid, 'SIGTERM')
-      await Promise.race([exited, delay(2000)])
+      outcome = await Promise.race([exited.then(() => '已终止该进程'), delay(2000).then(() => `已发 SIGTERM 但进程 ${record.pid} 2 秒内未退出，请人工检查`)])
     }
     await writeLaunch(dshHome, { ...record, exit: { reason: 'abnormal', at: new Date().toISOString() } })
+    return outcome
+  }
+  if (ready !== true) {
+    const outcome = await abandon(ready === 'exited')
+    const after = await probeGateway(dshHome)
+    throw new GatewayError('gateway/start-failed', `nats-server ${readyTimeoutMs / 1000} 秒内未就绪（/healthz?js-enabled-only=true），${outcome}；日志见 ${paths.log}`, after)
   }
   const after = await probeGateway(dshHome)
   if (after.state !== 'running') {
-    throw new GatewayError('gateway/start-failed', `nats-server ${readyTimeoutMs / 1000} 秒内未就绪（/healthz?js-enabled-only=true），已终止该进程；日志见 ${paths.log}`, after)
+    // Ready, yet the record does not recognise it (see `varzMatches`): still a failed start, so the child goes too.
+    const outcome = await abandon(false)
+    throw new GatewayError('gateway/start-failed', `nats-server 已就绪但状态探测为「${after.label}」${after.detail === undefined ? '' : `（${after.detail}）`}，${outcome}；日志见 ${paths.log}`, await probeGateway(dshHome))
   }
   return after
 }

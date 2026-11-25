@@ -15,7 +15,8 @@ process.stdout.write(`fake nats-server v9.9.9 mode=${mode}\n`)
 if (mode === 'ignore-sigterm') process.on('SIGTERM', () => { process.stdout.write('SIGTERM ignored\n') })
 if (mode === 'exit') process.exit(3)
 if (mode === 'deaf') { setInterval(() => {}, 1000); await new Promise(() => {}) }
-const varz = { server_id: 'FAKE', version: '9.9.9', port: Number(listen), jetstream: { enabled: true, config: { store_dir: mode === 'wrong-store' ? '/elsewhere' : storeDir } } }
+// Like the real nats-server, which reports the configured store_dir with `jetstream/` appended.
+const varz = { server_id: 'FAKE', version: '9.9.9', port: Number(listen), jetstream: { enabled: true, config: { store_dir: mode === 'wrong-store' ? '/elsewhere' : `${storeDir.replace(/\/+$/, '')}/jetstream` } } }
 createServer((req, res) => {
   if (req.url === '/varz') { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(varz)); return }
   if (req.url === '/healthz?js-enabled-only=true') { res.statusCode = 200; res.end('ok'); return }

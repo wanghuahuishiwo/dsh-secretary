@@ -11,7 +11,7 @@ export { readPermissions } from './permissions.ts'
 export type { SubjectPermissions } from './permissions.ts'
 export type { BinaryProbe } from './binary.ts'
 export {
-  READY_TIMEOUT_MS, STATE_LABELS, STOP_TIMEOUT_MS, isProcessAlive, probeGateway,
+  JETSTREAM_STORE_SUBDIR, READY_TIMEOUT_MS, STATE_LABELS, STOP_TIMEOUT_MS, isProcessAlive, probeGateway,
 } from './status.ts'
 export type { GatewayState, GatewayStatus, LaunchRecord } from './status.ts'
 export { restartGateway, startGateway, stopGateway } from './manage.ts'

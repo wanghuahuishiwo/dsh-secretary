@@ -1,5 +1,6 @@
 import { open, readFile } from 'node:fs/promises'
 import { connect } from 'node:net'
+import { join } from 'node:path'
 import { locateNatsServer } from './binary.ts'
 import { gatewayPaths } from './paths.ts'
 import { readSettings, type GatewaySettings } from './settings.ts'
@@ -144,11 +145,14 @@ async function logTail(dshHome: string): Promise<string | undefined> {
   }
 }
 
-/** `/varz` must describe the Gateway we configured: same client port, same explicit store_dir. */
+/** nats-server appends this directory to the configured `jetstream.store_dir`; `/varz` reports the result. */
+export const JETSTREAM_STORE_SUBDIR = 'jetstream'
+
+/** `/varz` must describe the Gateway we configured: same client port, same (derived) store_dir. */
 function varzMatches(varz: Record<string, unknown> | undefined, settings: GatewaySettings, jetstream: string): boolean {
   if (varz === undefined) return false
   const storeDir = (varz.jetstream as { config?: { store_dir?: unknown } } | undefined)?.config?.store_dir
-  return varz.port === settings.clientPort && storeDir === jetstream
+  return varz.port === settings.clientPort && storeDir === join(jetstream, JETSTREAM_STORE_SUBDIR)
 }
 
 const ageMs = (at: string) => Date.now() - Date.parse(at)
