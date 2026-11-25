@@ -142,10 +142,11 @@ async run(ctx, { ticket }) {
 
 - DSH 桌面 App 按现有方式启动桌面 Host，desktop profile 装载中心与节点角色；无桌面的节点机器使用自定义常驻 DSH profile，以 `dsh` 前台命令启动。
 - **节点始终由所在机器本地启动**，启动后主动连接配置的 Gateway 地址；中心只负责派工，不远程创建节点进程。
-- Gateway 保留独立命令行入口，同时一期提供 **Gateway 设置 UI**，在本机模式与远程模式之间二选一：
+- **底座控制台**（[#87](https://github.com/wanghuahuishiwo/dsh-secretary/issues/87)，已关）：底座的管理与观测入口，是底座级的，不承载 agent-dispatch 业务层（Ticket、过滤/决策/委派）。形态为 DSH 左栏一项「底座控制台」、主区整页；页内左栏按对象类型分四个分区 **Gateway / 节点 / 事件 / Graph**，每个分区是整页列表 → 点一行进整页详情（页签切子视图），设置是独立子页签（产品结构蓝本 Docker Desktop）。页顶常显 Gateway 状态、节点在线数与 unmatched 数；Gateway 非正常运行时经 `shell.overlay` 出一条状态提示并可点入，正常运行时不显示。交互相抄 GitHub Actions（表格、状态图标、自动刷新），事件流抄 Grafana Explore（暂停／跟随、点行展开）。**一期只建壳与 Gateway 分区**；节点、事件、Graph 分区的内容各自出票。Graph 分区将来加「画布」页签承载 @xyflow 只读视图，不改结构。
+- Gateway 分区在本机模式与远程模式之间二选一：
   - **本机模式**：管理本机独立 Gateway 进程，支持启动、手动重启、停止和运行状态；自动生成本机连接地址并写入本机中心、节点角色的客户端配置，用户不重复填写 URL。
   - **远程模式**：只配置远程 Gateway 地址与凭据引用，只控制本机客户端连接，不提供远程进程的启动、重启、停止或状态控制。agent-dispatch 协议也不暴露远程进程控制 API。
-- 中心与节点分别使用 NATS 内建 **NKey** 用户连接，并以 subject permissions 限制发布、订阅权限。本机模式由 Gateway 设置 UI 生成并保存凭据引用，远程模式配置已有凭据引用；私有 seed 不写入 URL，也不传入模型上下文。本机 loopback 仍要求 NKey，远程连接额外强制 TLS。
+- 中心与节点分别使用 NATS 内建 **NKey** 用户连接，并以 subject permissions 限制发布、订阅权限。本机模式由控制台 Gateway 分区生成并保存凭据引用，远程模式配置已有凭据引用；私有 seed 不写入 URL，也不传入模型上下文。本机 loopback 仍要求 NKey，远程连接额外强制 TLS。
 - **凭据与安全**（[#86](https://github.com/wanghuahuishiwo/dsh-secretary/issues/86)，已关）：
   - **外部系统凭据底座不管**：aone、GitHub、模型 provider 的凭据由各自工具（`a1` 登录态、`gh` keyring、DSH 托管凭据）自行持有，底座不存、不转发、不代理、不检查；agent 使用节点机器上已有的登录身份。没权限即执行报错，按 agent 节点"出错抛错、实例失败"回传中心，底座不重试、不降级。权限由人人工保证。
   - **NKey 凭据照搬 DSH provider key 模式**：配置（含 nats-server 配置、profile、连接配置）只写**凭据引用**（`NATS_NKEY_SEED_CENTER`、`NATS_NKEY_SEED_NODE`），nats-server 配置只含 public key；基础通信插件经 `ctx.credentials.resolve(ref)` 在进程内取值并直接交给 `nkeyAuthenticator`，业务插件拿不到 seed。seed 存放位置随 DSH 托管凭据实现（当前为 `$DSH_HOME/.credentials.yaml`，0600）；无桌面节点经 `$DSH_HOME/.env` 解析同一引用。
@@ -153,8 +154,12 @@ async run(ctx, { ticket }) {
   - **轮换与撤销是同一动作**：改 nats-server 配置 → 手动重启 Gateway。不做在线无缝轮换、新旧 key 并存窗口或自动撤销传播。
   - **最小权限按角色两套**：中心、节点各一份 subject permissions 模板，allowlist 从事件目录派生；不按节点细分，不做 `source` 绑定校验（#83 不变）。
   - **"不进模型上下文"的边界**：宿主不把 seed 放进 prompt、事件 `data`／headers、Outbox／事件历史／Ticket、日志／trace／Session 文件、任何配置文件、子进程 env；不做工具输出自动脱敏，以"日志／事件历史／会话文件中检索不到 seed"为验收。模型经 shell 读取本机文件属已知残余风险，一期受信边界内接受。
-- 两种模式的连接配置都持久化在所在机器；无桌面节点通过 CLI／配置文件维护同一份配置，不依赖桌面 UI。UI 是操作入口，不限定底层配置存储格式。
-- 由 UI 启动的 Gateway 在 DSH 桌面退出后继续运行，DSH 重开后可以重新识别并控制同一实例；正常停止由用户显式操作，不随桌面联动退出。一期不做崩溃自动重启、自定义守护或第三个常驻管理器。
+- 两种模式的连接配置都持久化在所在机器；无桌面节点通过 CLI／配置文件维护同一份配置，不依赖桌面 UI。UI 是操作入口，不限定底层配置存储格式。远程模式的设置 = Gateway 地址 + 本机已启用角色各自的凭据引用映射，按 profile 启用的角色裁剪字段。
+- **Gateway 管理逻辑是一段无状态的共享逻辑**，不常驻、不持有进程句柄；控制台按钮与命令行 `dsh-secretary gateway start|stop|restart|status` 都调用它，命令行在连接宿主的检查之前分流，DSH 未运行时同样可用；两边同时启动靠端口占用自然互斥，不加锁。启动直接以 `child_process.spawn({detached:true})` + `unref` 脱手，stdio 指向日志文件；**不经 `ctx.subprocess` / `ctx.jobs`**（二者都随宿主退出终止子进程）。由控制台或命令行启动的 Gateway 在 DSH 桌面退出后继续运行，DSH 重开后重新探测即接管，没有"恢复"流程。
+- **认进程不靠身份**：Gateway 没有身份概念；鉴权身份是中心、节点两个 NKey 账号，它们只需要 Gateway 地址与自身的凭据引用。管理逻辑凭启动记录里的 pid（`process.kill(pid, 0)`）与 `/varz` 返回的客户端端口、`jetstream.config.store_dir` 是否等于本机配置来确认"这是我们的进程"；对不上即不接管、不发信号。
+- 文件均在 `$DSH_HOME/gateway/`：`settings.json`（模式、端口、二进制路径）、`nats-server.conf`（**派生物**，每次启动由设置与公钥重写，不可手改，改设置在下次启动或手动重启生效）、`nats-server.log`、`launch.json`（上次启动的 pid、时间、启动方、停止请求）、`jetstream/`（JetStream 数据，显式设置 `store_dir`，不用默认临时目录）。无桌面节点以 `DSH_HOME` 定位同一目录。
+- **不自动启动、不自动重启、不联动卸载**：DSH 启动只探测不拉起，未运行时在控制台醒目提示"启动"；卸载或升级 bundle 不停止 Gateway；正常停止只由用户显式操作。启动 10 秒未就绪判「启动失败」并终止该进程；停止发 SIGTERM 后 10 秒未退出报错、不强杀。退出原因只分「显式停止」与「非正常结束」（崩溃、被 kill、机器重启不区分）两类，附日志尾部。
+- 固定端口：客户端 `127.0.0.1:4222`、监控口 `127.0.0.1:8222`，只绑 loopback，设置可改；被占即「启动失败」，不自动换端口。就绪探针用官方 `GET /healthz?js-enabled-only=true`（监控口早于客户端端口启动，`/varz` 可达不代表可连接）；不使用 `-P` pidfile（写后不删、绑端口前就写）。nats-server 二进制由用户自备（Homebrew formula `nats-server` 或官方 release，无官方 npm 包），控制台探测 PATH 并允许手填路径，缺失时提示安装命令；状态里显示 `/varz` 的版本。
 - 以后需要无人值守运行时，分别把现有启动命令接入 launchd（macOS）或 systemd（Linux），不改变角色代码。
 
 **外部系统 / 人**仍不归我们运行：外部系统经节点采集器参与；人既是事件源（审批/回填），也是监督者（面板）。
