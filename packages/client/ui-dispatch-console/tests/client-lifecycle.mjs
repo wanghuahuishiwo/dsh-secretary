@@ -34,7 +34,7 @@ function fakeContext(t) {
   const disposers = []
   t.after(() => { for (const dispose of disposers.reverse()) dispose?.() })
   const state = { status: { state: 'running', label: '运行中', mode: 'local', clientUrl: 'nats://127.0.0.1:4222', binary: { configured: 'nats-server', found: true } } }
-  const remote = Object.fromEntries(['readStatus', 'start', 'stop', 'restart', 'readSettings', 'updateSettings'].map(method => [method, async () => state.status]))
+  const remote = Object.fromEntries(['readStatus', 'start', 'stop', 'restart', 'readSettings', 'updateSettings'].map(method => [method, async () => ({ ok: true, value: state.status })]))
   const ctx = {
     state,
     remote: { secretaryDispatch: remote, async $mount(contribution) { ctx.mounted = contribution; return async () => { ctx.unmounted = true } } },

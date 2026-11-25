@@ -54,8 +54,6 @@ packages/
 │   └── agent/
 ├── time/         Time 领域能力
 │   └── time-block/      TimeService 与 DeepTime
-├── dispatch/     agent-dispatch 底座共享逻辑
-│   └── gateway/         无状态 nats-server 管理（settings/NKey/状态/启停/CLI 契约）
 ├── api/          Host 产品 API
 │   ├── time-controller/ TimeProductService、TagProductService（agentInvoke CLI 面）
 │   └── dispatch-controller/ 底座控制台 Remote secretaryDispatch（Gateway 设置／状态／启停）
@@ -65,6 +63,9 @@ packages/
 │   ├── ui-time/         纯 React UI、TimeAdapter 契约与右栏插件
 │   ├── ui-gtd/          左栏入口与空白 main
 │   └── ui-dispatch-console/ 底座控制台壳（四分区，Gateway 已填）
+├── dispatch/     agent-dispatch 底座
+│   ├── gateway/         无状态 nats-server 管理（settings/NKey/状态/启停/CLI 契约）
+│   └── engine/          graph 执行引擎内核（节点注册表、入口、事件历史、重放）
 └── bundle/       可安装装配
     └── secretary/       bundle、Preset 与 Secretary 技能
 
