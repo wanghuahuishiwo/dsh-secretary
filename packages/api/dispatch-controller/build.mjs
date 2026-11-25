@@ -1,4 +1,4 @@
-/** Builds the Host dispatch service; sibling workspace packages stay external. */
+/** Builds the Host dispatch service; sibling workspace packages and the official NATS clients stay external. */
 import { build, context } from 'esbuild'
 import { mkdir } from 'node:fs/promises'
 
@@ -11,7 +11,7 @@ const options = {
   format: 'esm',
   platform: 'node',
   target: 'node22',
-  external: ['@deepseek-ai/*', 'dsh-secretary-*'],
+  external: ['@deepseek-ai/*', 'dsh-secretary-*', '@nats-io/*'],
 }
 
 if (process.argv.includes('--watch')) {

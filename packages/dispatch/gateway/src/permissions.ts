@@ -12,9 +12,15 @@ export interface SubjectPermissions {
   readonly subscribe: readonly string[]
 }
 
-/** Every role needs the JetStream API and its reply inboxes; ACK is a publish on `$JS.ACK.>`. */
-const JETSTREAM_PUBLISH = ['"$JS.API.>"', '"$JS.ACK.>"']
-const JETSTREAM_SUBSCRIBE = ['"$JS.API.>"', '"_INBOX.>"']
+/**
+ * Fixed subjects of every role: the JetStream API and its reply inboxes (ACK is a publish on `$JS.ACK.>`), plus the
+ * subjects of a hosted NATS service (it listens under `$SRV.>` and answers on inboxes). Reading is never trimmed by
+ * the event catalog: every role may subscribe to all events, so the console's read path sees the stream as it is.
+ */
+const ALWAYS_PUBLISH = ['"$JS.API.>"', '"$JS.ACK.>"', '"_INBOX.>"']
+const ALWAYS_SUBSCRIBE = ['"$JS.API.>"', '"_INBOX.>"', '"$SRV.>"', '"dsh.events.>"']
+/** Only the center runs service discovery (`ping`/`info` requests). */
+const DISCOVERY_PUBLISH = ['"$SRV.PING"', '"$SRV.INFO"']
 
 const EVENT_SUBJECT = /^dsh\.events\.[a-z0-9][a-z0-9_-]*(\.[a-z0-9][a-z0-9_-]*)*$/
 
@@ -40,12 +46,13 @@ function parse(path: string, text: string): SubjectPermissions {
 }
 
 /** The `permission: { … }` body of one user in `nats-server.conf`. */
-export function renderPermissions(permissions: SubjectPermissions): string[] {
+export function renderPermissions(role: GatewayRole, permissions: SubjectPermissions): string[] {
+  const publish = role === 'center' ? [...ALWAYS_PUBLISH, ...DISCOVERY_PUBLISH] : ALWAYS_PUBLISH
   const allow = (base: string[], subjects: readonly string[]) => `[${[...base, ...subjects.map(subject => `"${subject}"`)].join(', ')}]`
   return [
     'permission: {',
-    `  publish: { allow: ${allow(JETSTREAM_PUBLISH, permissions.publish)} },`,
-    `  subscribe: { allow: ${allow(JETSTREAM_SUBSCRIBE, permissions.subscribe)} }`,
+    `  publish: { allow: ${allow(publish, permissions.publish)} },`,
+    `  subscribe: { allow: ${allow(ALWAYS_SUBSCRIBE, [])} }`,
     '}',
   ]
 }

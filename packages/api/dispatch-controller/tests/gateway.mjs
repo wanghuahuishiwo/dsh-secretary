@@ -40,11 +40,12 @@ async function harness(t) {
   return { service, stored, dshHome, settings }
 }
 
-test('the Remote exposes exactly the six Gateway methods on namespace secretaryDispatch', async () => {
+test('the Remote exposes the six Gateway methods and the three console read methods on namespace secretaryDispatch', async () => {
   const remote = await import('../lib/typert.remote-client.js')
   assert.deepEqual(remote.default.descriptors.map(item => `${item.namespace}/${item.method}`), [
-    'secretaryDispatch/readSettings', 'secretaryDispatch/readStatus', 'secretaryDispatch/restart',
-    'secretaryDispatch/start', 'secretaryDispatch/stop', 'secretaryDispatch/updateSettings',
+    'secretaryDispatch/listEvents', 'secretaryDispatch/listServices', 'secretaryDispatch/readSettings',
+    'secretaryDispatch/readStatus', 'secretaryDispatch/restart',
+    'secretaryDispatch/start', 'secretaryDispatch/stop', 'secretaryDispatch/updateSettings', 'secretaryDispatch/watch',
   ])
   for (const descriptor of remote.default.descriptors) {
     assert.equal(descriptor.result.mode, 'strict', descriptor.method)

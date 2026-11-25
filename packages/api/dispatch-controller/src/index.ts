@@ -1,20 +1,25 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
-import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
+import { Remote, RemoteError, RemoteStream, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import {
   GatewayError, defaultDshHome, probeGateway, readSettings, restartGateway, startGateway, stopGateway,
   updateSettings,
 } from 'dsh-secretary-dispatch-gateway'
 import type { GatewaySettings, GatewayStatus, SecretStore } from 'dsh-secretary-dispatch-gateway'
+import { ConsoleReader } from './reader.ts'
 import { toSettingsPatch } from './types.ts'
-import type { UpdateGatewaySettings } from './types.ts'
+import type { EventQuery, UpdateGatewaySettings } from './types.ts'
 
-export type { GatewayKeyRef, GatewayMode, GatewaySettings, GatewayState, GatewayStatus, UpdateGatewaySettings } from './types.ts'
+export type {
+  EventPage, EventQuery, GatewayKeyRef, GatewayMode, GatewaySettings, GatewayState, GatewayStatus, ServiceInstance, StreamEvent, UpdateGatewaySettings,
+} from './types.ts'
 export { toSettingsPatch } from './types.ts'
 
 export interface Config {
   /** DSH home that owns `gateway/`; defaults to `$DSH_HOME`, else `~/.dsh`. */
   readonly dshHome?: string
+  /** SQLite file of the center engine's event history, read-only; omitted means no consumption records are shown. */
+  readonly historyPath?: string
 }
 
 export const Config = {
@@ -26,11 +31,14 @@ export const Config = {
       if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
         return { issues: [{ message: 'dispatch: config must be an object' }] }
       }
-      const { dshHome } = raw as Record<string, unknown>
+      const { dshHome, historyPath } = raw as Record<string, unknown>
       if (dshHome !== undefined && (typeof dshHome !== 'string' || dshHome === '')) {
         return { issues: [{ message: 'dispatch: dshHome must be a non-empty string' }] }
       }
-      return { value: dshHome === undefined ? {} : { dshHome } }
+      if (historyPath !== undefined && (typeof historyPath !== 'string' || historyPath === '')) {
+        return { issues: [{ message: 'dispatch: historyPath must be a non-empty string' }] }
+      }
+      return { value: { ...(dshHome === undefined ? {} : { dshHome }), ...(historyPath === undefined ? {} : { historyPath }) } }
     },
   },
 }
@@ -43,11 +51,13 @@ function remoteFailure(error: unknown, operation: string): never {
   throw new RemoteError('secretaryDispatch/gateway-error', `gateway ${operation} failed: ${error instanceof Error ? error.message : String(error)}`, { code: 'gateway/unknown' }, { cause: error })
 }
 
-/** Host application Service for the dispatch foundation console: Gateway management only in this ticket. */
+/** Host application Service for the dispatch foundation console: Gateway management, and the read path of #105. */
 export class DispatchGatewayService extends TypertRemoteService {
   private readonly dshHome: string
   /** Seeds live in DSH-managed credentials; this object is the only path to them. */
   private readonly secrets: SecretStore
+  /** The console read path: service discovery and stream paging with the center credential. */
+  private readonly reader: ConsoleReader
 
   constructor(ctx: Context, config: Config = {}) {
     super(ctx, 'dispatchGateway', { namespace: 'secretaryDispatch' })
@@ -56,6 +66,41 @@ export class DispatchGatewayService extends TypertRemoteService {
     this.secrets = {
       async resolve(ref) { return (await credentials.resolve(credentialRef(ref)))?.value },
       async set(ref, value) { await credentials.set(credentialRef(ref), value) },
+    }
+    this.reader = new ConsoleReader(this.dshHome, this.secrets, config.historyPath)
+    ctx.effect(() => () => { void this.reader.close() }, 'dispatchGateway: console reader')
+  }
+
+  /** JSON text of `ServiceInstance[]`: online NATS services exactly as the official discovery returned them. */
+  @Remote('listServices')
+  async listServices(): Promise<string> {
+    return JSON.stringify(await this.reader.listServices())
+  }
+
+  /** JSON text of one `EventPage`: the stream newest first, each event with the engine history rows naming it. */
+  @Remote('listEvents')
+  async listEvents(query: EventQuery): Promise<string> {
+    return JSON.stringify(await this.reader.listEvents({ before: query.before ?? Number.MAX_SAFE_INTEGER, limit: query.limit ?? 200 }))
+  }
+
+  /** One mark per event the Gateway delivers from now on; the stream carries no data, the client re-reads. */
+  @Remote({ name: 'watch', mode: 'stream' })
+  watch(): RemoteStream<{ changed: true }> {
+    let wake: (() => void) | undefined
+    const marks: Array<{ changed: true }> = []
+    const unsubscribe = this.reader.onEvent(() => { marks.push({ changed: true }); wake?.() })
+    return {
+      async *[Symbol.asyncIterator]() {
+        try {
+          for (;;) {
+            while (marks.length > 0) yield marks.shift()!
+            await new Promise<void>(resolve => { wake = resolve })
+          }
+        } finally {
+          wake = undefined
+          unsubscribe()
+        }
+      },
     }
   }
 

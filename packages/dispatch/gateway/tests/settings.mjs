@@ -87,15 +87,16 @@ test('derived nats-server.conf binds loopback, points store_dir at the explicit 
   assert.throws(() => renderServerConfig({ ...settings, mode: 'remote' }, paths), { code: 'gateway/remote-mode' })
 })
 
-test('permissions: each role gets its own subject permissions block; JetStream subjects are always allowed', async t => {
+test('permissions: each role gets its own publish allowlist; reading every event and JetStream is always allowed', async t => {
   const dshHome = await home(t)
   const paths = gatewayPaths(dshHome)
   const center = createNKeyPair(), node = createNKeyPair()
   const settings = { ...DEFAULT, keys: { center: { ref: CREDENTIAL_REFS.center, publicKey: center.publicKey }, node: { ref: CREDENTIAL_REFS.node, publicKey: node.publicKey } } }
   assert.deepEqual(await readPermissions(dshHome), { center: { publish: [], subscribe: [] }, node: { publish: [], subscribe: [] } })
-  // No declared events: the event address space stays closed for the role.
+  // No declared events: nothing may be published, but every event stays readable by the console's read path.
   const closed = renderServerConfig(settings, paths, await readPermissions(dshHome))
-  assert.ok(!closed.includes('"dsh.events.'), closed)
+  assert.ok(!closed.includes('publish: { allow: ["$JS.API.>", "$JS.ACK.>", "dsh.events.'), closed)
+  assert.equal(closed.split('"dsh.events.>"').length - 1, 2, closed)
   const permissions = {
     center: { publish: ['dsh.events.task.assigned'], subscribe: ['dsh.events.aone.bug.created'] },
     node: { publish: ['dsh.events.aone.bug.created', 'dsh.events.task.result'], subscribe: ['dsh.events.task.assigned'] },
@@ -110,8 +111,8 @@ test('permissions: each role gets its own subject permissions block; JetStream s
   assert.deepEqual(centerBlock, [
     `nkey: ${center.publicKey},`,
     'permission: {',
-    '  publish: { allow: ["$JS.API.>", "$JS.ACK.>", "dsh.events.task.assigned"] },',
-    '  subscribe: { allow: ["$JS.API.>", "_INBOX.>", "dsh.events.aone.bug.created"] }',
+    '  publish: { allow: ["$JS.API.>", "$JS.ACK.>", "_INBOX.>", "$SRV.PING", "$SRV.INFO", "dsh.events.task.assigned"] },',
+    '  subscribe: { allow: ["$JS.API.>", "_INBOX.>", "$SRV.>", "dsh.events.>"] }',
     '}',
     '},',
   ].join('\n'))
@@ -119,8 +120,8 @@ test('permissions: each role gets its own subject permissions block; JetStream s
   assert.deepEqual(nodeBlock, [
     `nkey: ${node.publicKey},`,
     'permission: {',
-    '  publish: { allow: ["$JS.API.>", "$JS.ACK.>", "dsh.events.aone.bug.created", "dsh.events.task.result"] },',
-    '  subscribe: { allow: ["$JS.API.>", "_INBOX.>", "dsh.events.task.assigned"] }',
+    '  publish: { allow: ["$JS.API.>", "$JS.ACK.>", "_INBOX.>", "dsh.events.aone.bug.created", "dsh.events.task.result"] },',
+    '  subscribe: { allow: ["$JS.API.>", "_INBOX.>", "$SRV.>", "dsh.events.>"] }',
     '}',
     '}',
   ].join('\n'))

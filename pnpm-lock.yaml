@@ -212,6 +212,18 @@ importers:
 
   packages/api/dispatch-controller:
     dependencies:
+      '@nats-io/jetstream':
+        specifier: 3.5.0
+        version: 3.5.0
+      '@nats-io/nats-core':
+        specifier: 3.5.0
+        version: 3.5.0
+      '@nats-io/services':
+        specifier: 3.5.0
+        version: 3.5.0
+      '@nats-io/transport-node':
+        specifier: 3.5.0
+        version: 3.5.0
       dsh-secretary-dispatch-gateway:
         specifier: workspace:*
         version: link:../../dispatch/gateway
@@ -231,6 +243,12 @@ importers:
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.2
+      dsh-secretary-dispatch-engine:
+        specifier: workspace:*
+        version: link:../../dispatch/engine
+      dsh-secretary-dispatch-messaging:
+        specifier: workspace:*
+        version: link:../../dispatch/messaging
       esbuild:
         specifier: ^0.25.10
         version: 0.25.12
@@ -892,6 +910,10 @@ packages:
     resolution: {integrity: sha512-NC+JksVZl0zwpwsO6aIvsivqcqzgI2db0gCris/bSdZx56CdyniphijTfcjieUpR4HwZEiiid67NEviQ16sveA==}
     engines: {node: '>= 20'}
 
+  '@nats-io/services@3.5.0':
+    resolution: {integrity: sha512-2fb8iwC03pF9sLwMq998fqslomZ9T2GZqHTCDsw4hCBuJAd/Jb/1HsiHPSqDtSPf/gokMSr2kubjv8uxSbvHIA==}
+    engines: {node: '>= 22'}
+
   '@nats-io/transport-node@3.5.0':
     resolution: {integrity: sha512-5Ebt62tnQsrrb3p+aHJt0+zRHAkxbUhhD+8HnHNBTYRgXJ2X2LgvOD19EiiAISdW7yR4IQSmsdvpfX+I5oG5ew==}
     engines: {node: '>= 22'}
@@ -1399,6 +1421,10 @@ snapshots:
       tweetnacl: 1.0.3
 
   '@nats-io/nuid@3.1.0': {}
+
+  '@nats-io/services@3.5.0':
+    dependencies:
+      '@nats-io/nats-core': 3.5.0
 
   '@nats-io/transport-node@3.5.0':
     dependencies:

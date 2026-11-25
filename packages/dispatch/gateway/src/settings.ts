@@ -198,7 +198,7 @@ export function renderServerConfig(
       if (declared === undefined) return `${nkey} }${comma}`
       return [
         `${nkey},`,
-        ...renderPermissions(declared).map(line => `      ${line}`),
+        ...renderPermissions(role, declared).map(line => `      ${line}`),
         `    }${comma}`,
       ].join('\n')
     }),
