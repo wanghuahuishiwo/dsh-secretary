@@ -11,8 +11,11 @@ import contribution from 'dsh-secretary-dispatch-controller/remote'
 import { Console } from '../ui/Console.tsx'
 import type { DispatchConsoleAdapter, GatewayStatus } from '../ui/contract.ts'
 import { GatewayNotice } from '../ui/GatewayNotice.tsx'
+import { EventsSection } from '../ui/EventsSection.tsx'
 import { GatewaySection } from '../ui/GatewaySection.tsx'
+import { NodesSection } from '../ui/NodesSection.tsx'
 import { RemoteDispatchAdapter } from './remoteAdapter.ts'
+import { NODES_POLL_MS, createNodesFeed, type NodesFeed } from './nodesFeed.ts'
 import { STATUS_POLL_MS, createStatusFeed, type StatusFeed } from './statusFeed.ts'
 
 /** One stable identity addresses both the launcher and its main registration. */
@@ -24,6 +27,10 @@ function ConsoleIcon({ size }: { readonly size: number }) {
 }
 
 function useStatus(feed: StatusFeed): GatewayStatus | undefined {
+  return useSyncExternalStore(feed.subscribe, feed.getSnapshot, feed.getSnapshot)
+}
+
+function useNodes(feed: NodesFeed) {
   return useSyncExternalStore(feed.subscribe, feed.getSnapshot, feed.getSnapshot)
 }
 
@@ -39,26 +46,32 @@ function useTheme(): 'light' | 'dark' {
   ) ? 'dark' : 'light'
 }
 
-/** A section placeholder until its ticket lands; the nav and the layout stay as they are. */
+/** The Graph section placeholder until its ticket lands; the nav and the layout stay as they are. */
 function ReservedSection({ label }: { readonly label: string }) {
   return <p className="dc-placeholder">{label} 分区尚未实现。</p>
 }
 
 function registerUi(ctx: ClientContext, adapter: DispatchConsoleAdapter): void {
   const feed = createStatusFeed(adapter)
+  const nodesFeed = createNodesFeed(adapter)
   const open = () => { ctx.layout.selectPanel(PANEL_ID) }
   ctx.effect(() => feed.start(STATUS_POLL_MS), 'dispatch-console: status polling')
+  ctx.effect(() => nodesFeed.start(NODES_POLL_MS), 'dispatch-console: nodes polling')
 
   const Main = () => {
     const status = useStatus(feed)
+    const nodes = useNodes(nodesFeed)
     const theme = useTheme()
     return (
       <Console
         status={status}
+        nodeCount={nodes?.error === undefined ? nodes?.services.length : undefined}
         theme={theme}
         renderSection={section => section === 'gateway'
           ? <GatewaySection adapter={adapter} status={status} refresh={feed.refresh} />
-          : <ReservedSection label={section === 'nodes' ? '节点' : section === 'events' ? '事件' : 'Graph'} />}
+          : section === 'nodes' ? <NodesSection services={nodes?.services} error={nodes?.error} />
+            : section === 'events' ? <EventsSection adapter={adapter} />
+              : <ReservedSection label="Graph" />}
       />
     )
   }

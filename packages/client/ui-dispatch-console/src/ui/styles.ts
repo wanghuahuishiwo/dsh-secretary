@@ -64,6 +64,19 @@ export const consoleTokens = `${variables}
 .dc-table td:first-child { color: var(--dc-muted); white-space: nowrap; }
 .dc-field { display: grid; grid-template-columns: 140px 1fr; gap: 8px; align-items: center; margin-bottom: 8px; max-width: 560px; }
 .dc-field label { color: var(--dc-muted); }
+.dc-grid { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.dc-grid th { text-align: left; font-weight: 600; padding: 4px 12px 4px 0; border-bottom: 1px solid var(--dc-border); white-space: nowrap; color: var(--dc-muted); }
+.dc-grid td { padding: 4px 12px 4px 0; vertical-align: top; border-bottom: 1px solid var(--dc-border); }
+.dc-grid button { border: 0; background: transparent; color: var(--dc-accent); font: inherit; padding: 0 4px; cursor: pointer; }
+.dc-cell-json { white-space: pre-wrap; word-break: break-all; max-width: 480px; }
+.dc-json { margin: 0; white-space: pre-wrap; word-break: break-all; font-family: var(--dc-mono); font-size: 12px; }
+.dc-events { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.dc-events-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.dc-events-table tbody tr { cursor: pointer; }
+.dc-events-table tbody tr:hover { background: var(--dc-surface); }
+.dc-new { align-self: flex-start; margin-bottom: 8px; font: inherit; padding: 4px 10px; border: 1px solid var(--dc-accent); border-radius: 6px; background: var(--dc-bg); color: var(--dc-accent); cursor: pointer; }
+.dc-event-detail button { font: inherit; padding: 4px 10px; border: 1px solid var(--dc-border); border-radius: 6px; background: var(--dc-bg); color: var(--dc-text); cursor: pointer; }
+.dc-event-detail pre + pre { margin-top: 12px; }
 .dc-field input { font: inherit; padding: 4px 8px; border: 1px solid var(--dc-border); border-radius: 6px; background: var(--dc-bg); color: var(--dc-text); }
 `
 

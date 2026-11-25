@@ -32,9 +32,11 @@ const client = {
   footer: { js: 'return module.exports; } });' },
 }
 
+const ui = { entryPoints: ['src/ui/index.ts'], outfile: 'lib/ui.js', bundle: true, format: 'esm', platform: 'neutral', target: 'es2022', jsx: 'automatic', external: ['react', 'react/jsx-runtime'] }
+
 if (process.argv.includes('--watch')) {
-  const [hostBuilder, clientBuilder] = await Promise.all([context(host), context(client)])
-  await Promise.all([hostBuilder.watch(), clientBuilder.watch()])
+  const [hostBuilder, clientBuilder, uiBuilder] = await Promise.all([context(host), context(client), context(ui)])
+  await Promise.all([hostBuilder.watch(), clientBuilder.watch(), uiBuilder.watch()])
 } else {
-  await Promise.all([build(host), build(client)])
+  await Promise.all([build(host), build(client), build(ui)])
 }

@@ -9,6 +9,8 @@ export interface ConsoleProps {
   readonly status: GatewayStatus | undefined
   /** Renders the body of one section; the shell owns navigation and the header only. */
   readonly renderSection: (section: SectionId) => ReactNode
+  /** Online service instances; `undefined` while the first read is in flight. */
+  readonly nodeCount: number | undefined
   readonly theme?: 'light' | 'dark'
 }
 
@@ -23,15 +25,14 @@ function HeaderStatus({ status }: { readonly status: GatewayStatus | undefined }
 }
 
 /** The console shell: header (Gateway status + node count), page-local left nav, full-page content. */
-export function Console({ status, renderSection, theme = 'light' }: ConsoleProps) {
+export function Console({ status, renderSection, nodeCount, theme = 'light' }: ConsoleProps) {
   const [active, setActive] = useState<SectionId>('gateway')
   return (
     <div className="dc" data-dc-theme={theme}>
       <style>{consoleTokens}</style>
       <header className="dc-header" aria-label="底座状态">
         <HeaderStatus status={status} />
-        {/* 在线节点数来自 NATS service discovery（基础通信工单），此前只留数位。 */}
-        <span className="dc-muted">节点在线　—</span>
+        <span className="dc-muted" data-dc-node-count={nodeCount}>节点在线　{nodeCount === undefined ? '—' : nodeCount}</span>
       </header>
       <div className="dc-body">
         <nav className="dc-nav" aria-label="底座分区">

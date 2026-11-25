@@ -33,8 +33,14 @@ function fakeContext(t) {
   const effects = []
   const disposers = []
   t.after(() => { for (const dispose of disposers.reverse()) dispose?.() })
-  const state = { status: { state: 'running', label: '运行中', mode: 'local', clientUrl: 'nats://127.0.0.1:4222', binary: { configured: 'nats-server', found: true } } }
-  const remote = Object.fromEntries(['readStatus', 'start', 'stop', 'restart', 'readSettings', 'updateSettings'].map(method => [method, async () => ({ ok: true, value: state.status })]))
+  const state = {
+    status: { state: 'running', label: '运行中', mode: 'local', clientUrl: 'nats://127.0.0.1:4222', binary: { configured: 'nats-server', found: true } },
+    services: [{ id: 'i-1', name: 'worker', version: '1' }, { id: 'i-2', name: 'worker', version: '1' }],
+  }
+  const remote = Object.fromEntries([
+    ...['readStatus', 'start', 'stop', 'restart', 'readSettings', 'updateSettings'].map(method => [method, async () => ({ ok: true, value: state.status })]),
+    ['listServices', async () => ({ ok: true, value: JSON.stringify(state.services) })],
+  ])
   const ctx = {
     state,
     remote: { secretaryDispatch: remote, async $mount(contribution) { ctx.mounted = contribution; return async () => { ctx.unmounted = true } } },
@@ -70,15 +76,21 @@ function polling(effects, disposers) {
   return async () => { const stop = start(); await settle(); stop() }
 }
 
-test('the shell shows the Gateway state in the header with four page-local sections; three stay reserved', async t => {
+test('the shell shows the Gateway state and the online node count in the header with four page-local sections; Graph stays reserved', async t => {
   const { registration } = load()
-  const { ctx, slots, effects, disposers } = fakeContext(t)
+  const { ctx, slots, effects, disposers, state } = fakeContext(t)
   await registration.apply(ctx)
   await polling(effects, disposers)()
   const html = render(slots.get('main').component, {})
   assert.match(html, /<strong>Gateway<\/strong>/)
   assert.match(html, /运行中/)
-  assert.match(html, /节点在线/)
+  assert.match(html, /节点在线　2</, 'the header count is the online instance count')
+  assert.ok(effects.some(effect => effect.label.includes('nodes polling')), 'the node list is polled by a plugin effect')
+  state.services = []
+  const stopNodes = effects.find(effect => effect.label.includes('nodes polling')).fn()
+  await settle()
+  stopNodes()
+  assert.match(render(slots.get('main').component, {}), /节点在线　0</, 'no label, just the count')
   for (const label of ['Gateway', '节点', '事件', 'Graph']) assert.ok(html.includes(`>${label}</button>`), label)
   assert.match(html, /aria-label="Gateway"/)
   assert.match(html, /<button>停止<\/button><button>重启<\/button>/, 'a running Gateway offers stop and restart')
