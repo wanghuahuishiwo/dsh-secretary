@@ -8,6 +8,7 @@ export type GatewayErrorCode =
   | 'gateway/not-installed'
   | 'gateway/remote-mode'
   | 'gateway/not-managed'
+  | 'gateway/invalid-permissions'
   | 'gateway/start-failed'
   | 'gateway/stop-timeout'
   | 'gateway/usage'

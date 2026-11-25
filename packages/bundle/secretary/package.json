@@ -31,10 +31,10 @@
     "build": "node build.mjs",
     "dev": "node build.mjs --watch",
     "prepare": "node build.mjs",
-    "test": "node --test tests/tracer.mjs tests/gateway.mjs && node --test tests/browser.mjs",
+    "test": "node --test tests/tracer.mjs tests/gateway.mjs tests/messaging.mjs && node --test tests/browser.mjs",
     "test:browser": "node --test tests/browser.mjs",
     "test:installed": "node --test tests/installed.mjs",
-    "test:tracer": "node --test tests/tracer.mjs tests/gateway.mjs"
+    "test:tracer": "node --test tests/tracer.mjs tests/gateway.mjs tests/messaging.mjs"
   },
   "dependencies": {
     "@deepseek-ai/cordis": "4.1.0",
@@ -55,8 +55,9 @@
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",
     "@deepseek-ai/dsh-storage": "0.2.2-rc.1",
+    "dsh-secretary-dispatch-gateway": "workspace:*",
+    "dsh-secretary-dispatch-messaging": "workspace:*",
     "esbuild": "^0.25.10",
-    "playwright": "1.62.1",
-    "dsh-secretary-dispatch-gateway": "workspace:*"
+    "playwright": "1.62.1"
   }
 }

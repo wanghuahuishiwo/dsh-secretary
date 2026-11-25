@@ -31,14 +31,15 @@ kind: "package-reference"
 | `startGateway(dshHome, { by, secrets?, readyTimeoutMs?, env? })` | detached `child_process.spawn` + `unref`，10 秒内 `/healthz?js-enabled-only=true` 未就绪即 SIGTERM 并判 `start-failed` |
 | `stopGateway(dshHome, { stopTimeoutMs? })` | SIGTERM，10 秒未退出报 `stop-timeout`，绝不 SIGKILL |
 | `restartGateway` | 显式重启 = stop 再 start；stop 超时则不启动 |
-| `renderServerConfig(settings, paths)` | 派生 `nats-server.conf` 文本（每次启动重写） |
+| `renderServerConfig(settings, paths, permissions?)` | 派生 `nats-server.conf` 文本（每次启动重写）；`permissions` 缺省时用户不带 subject permissions |
+| `readPermissions(dshHome)` | 读两个角色的 `permissions.<role>.json`（由基础通信插件按事件目录写出），`startGateway` 启动时自动读取 |
 | `createNKeyPair()` / `nkeyPublicKeyFromSeed(seed)` | 中心／节点 NKey 用户；seed `SU…`，公钥 `U…` |
 | `locateNatsServer(configured)` | PATH 或手填路径探测，缺失时带 `brew install nats-server` 提示 |
 | `gatewayCommand(args, io)` → exit code | CLI 契约：0 成功、1 `{"error":{code,message}}` 到 stderr、2 usage |
 
 `secrets` 是 `{ resolve(ref), set(ref, value) }`：Host 侧由 `ctx.credentials` 实现，CLI 侧只从环境变量 `resolve`、不能 `set`。首次本机启动缺公钥时生成两个 NKey，seed 经 `set` 存入 `NATS_NKEY_SEED_CENTER` / `NATS_NKEY_SEED_NODE`，公钥写回 settings。
 
-错误统一为 `GatewayError { code }`：`gateway/invalid-settings`、`gateway/keys-missing`、`gateway/keys-unavailable`、`gateway/not-installed`、`gateway/remote-mode`、`gateway/not-managed`、`gateway/start-failed`、`gateway/stop-timeout`。启动／停止失败时 `error.status` 带当时的状态。
+错误统一为 `GatewayError { code }`：`gateway/invalid-settings`、`gateway/keys-missing`、`gateway/keys-unavailable`、`gateway/not-installed`、`gateway/remote-mode`、`gateway/not-managed`、`gateway/start-failed`、`gateway/stop-timeout`、`gateway/invalid-permissions`。启动／停止失败时 `error.status` 带当时的状态。
 
 ## 文件与字段
 
@@ -47,10 +48,11 @@ kind: "package-reference"
 | 文件 | 内容 |
 |---|---|
 | `settings.json` | `mode`（`local`/`remote`）、`clientPort`（4222）、`monitorPort`（8222）、`binary`、`remote { url, credentials { center?, node? } }`、`keys { center { ref, publicKey }, node {…} } \| null`。不含 seed。 |
-| `nats-server.conf` | 派生物：`listen: 127.0.0.1:<clientPort>`、`http: 127.0.0.1:<monitorPort>`、`jetstream.store_dir`、`authorization.users[].nkey`（仅公钥） |
+| `nats-server.conf` | 派生物：`listen: 127.0.0.1:<clientPort>`、`http: 127.0.0.1:<monitorPort>`、`jetstream.store_dir`、`authorization.users[].nkey`（仅公钥）及各角色的 `permission`（两套模板：JetStream 基础 subject + 该角色声明的事件 subject，见 [`messaging`](../messaging/README.md#文件与权限)） |
 | `launch.json` | `pid`、`startedAt`、`by`（`console`/`cli`）、`stopRequestedAt?`、`exit? { reason: stopped \| abnormal, at }` |
 | `nats-server.log` | 子进程 stdout/stderr |
 | `jetstream/` | 显式 `store_dir` |
+| `permissions.center.json` / `permissions.node.json` | 各角色声明的事件 subject（`{ publish: [], subscribe: [] }`），基础通信插件写、本包读；不含通配符，缺失视为该角色无事件权限 |
 
 `GatewayStatus.state`：`not-started` / `starting` / `running` / `stopping` / `stopped` / `start-failed` / `abnormal-exit` / `record-invalid` / `unknown` / `unmanaged` / `remote`（中文见 `STATE_LABELS`），另带 `version`（`/varz`）、`pid`、`startedAt`、`startedBy`、`endedAt`、`clientUrl`、`monitorUrl`、`binary { configured, found, hint? }`、`logTail?`、`detail?`。
 
@@ -68,5 +70,5 @@ kind: "package-reference"
 ## 已知限制与后续工作
 
 - 本机未安装 nats-server：真实进程链路由 bundle 测试 `tests/gateway.mjs` 覆盖（缺二进制时明确失败），尚未在真机跑通；其余逻辑用 `tests/fixtures/fake-nats-server.mjs` 验证。
-- `nats-server.conf` 暂不写 subject permissions（allowlist 从事件目录派生，归基础通信工单）。
+- subject permissions 在 Gateway 启动时读取，声明变化后需重启 Gateway 才生效；真实 nats-server 上的权限拒绝行为尚未在真机验证。
 - CLI 不能首次生成 NKey（没有凭据存储）：本机模式首次启动请在控制台完成，或预先在环境变量／`$DSH_HOME/.env` 放好两个 seed。

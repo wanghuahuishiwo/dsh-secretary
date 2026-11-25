@@ -1,5 +1,6 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import type { GatewayRole } from './nkey.ts'
 
 /** `$DSH_HOME` when set, else the DSH default `~/.dsh` (same rule as the DSH home-paths helper). */
 export function defaultDshHome(env: NodeJS.ProcessEnv = process.env): string {
@@ -15,6 +16,8 @@ export interface GatewayPaths {
   readonly log: string
   readonly launch: string
   readonly jetstream: string
+  /** Subject permissions a role declares for itself; the messaging plugin writes it, the Gateway reads it at start. */
+  readonly permissions: (role: GatewayRole) => string
 }
 
 export function gatewayPaths(dshHome: string): GatewayPaths {
@@ -26,5 +29,6 @@ export function gatewayPaths(dshHome: string): GatewayPaths {
     log: join(dir, 'nats-server.log'),
     launch: join(dir, 'launch.json'),
     jetstream: join(dir, 'jetstream'),
+    permissions: role => join(dir, `permissions.${role}.json`),
   }
 }

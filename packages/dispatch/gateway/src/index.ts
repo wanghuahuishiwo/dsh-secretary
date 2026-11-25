@@ -7,6 +7,8 @@ export type { GatewayPaths } from './paths.ts'
 export { DEFAULT_SETTINGS, readSettings, renderServerConfig, saveSettings, updateSettings } from './settings.ts'
 export type { GatewayKeyRef, GatewayMode, GatewaySettings, GatewaySettingsPatch } from './settings.ts'
 export { NATS_SERVER_INSTALL_HINT, locateNatsServer } from './binary.ts'
+export { readPermissions } from './permissions.ts'
+export type { SubjectPermissions } from './permissions.ts'
 export type { BinaryProbe } from './binary.ts'
 export {
   READY_TIMEOUT_MS, STATE_LABELS, STOP_TIMEOUT_MS, isProcessAlive, probeGateway,

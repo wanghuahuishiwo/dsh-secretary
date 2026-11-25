@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import {
   CREDENTIAL_REFS, GatewayError, createNKeyPair, defaultDshHome, gatewayPaths, readSettings, renderServerConfig,
-  saveSettings, updateSettings,
+  saveSettings, updateSettings, readPermissions, DEFAULT_SETTINGS as DEFAULT,
 } from '../lib/index.js'
 
 async function home(t) {
@@ -31,7 +31,9 @@ test('defaultDshHome follows DSH_HOME, else ~/.dsh; every Gateway file lives und
   delete process.env.DSH_HOME
   assert.equal(defaultDshHome(), join(process.env.HOME, '.dsh'))
   const paths = gatewayPaths('/tmp/x/y')
-  assert.deepEqual(paths, {
+  assert.equal(paths.permissions('node'), '/tmp/x/y/gateway/permissions.node.json')
+  const { permissions: _permissions, ...files } = paths
+  assert.deepEqual(files, {
     dir: '/tmp/x/y/gateway', settings: '/tmp/x/y/gateway/settings.json', conf: '/tmp/x/y/gateway/nats-server.conf',
     log: '/tmp/x/y/gateway/nats-server.log', launch: '/tmp/x/y/gateway/launch.json', jetstream: '/tmp/x/y/gateway/jetstream',
   })
@@ -83,4 +85,58 @@ test('derived nats-server.conf binds loopback, points store_dir at the explicit 
   assert.ok(!conf.includes(center.seed) && !conf.includes(node.seed) && !conf.includes('SU'), 'no seed in the derived config')
   assert.throws(() => renderServerConfig({ ...settings, keys: null }, paths), { code: 'gateway/keys-missing' })
   assert.throws(() => renderServerConfig({ ...settings, mode: 'remote' }, paths), { code: 'gateway/remote-mode' })
+})
+
+test('permissions: each role gets its own subject permissions block; JetStream subjects are always allowed', async t => {
+  const dshHome = await home(t)
+  const paths = gatewayPaths(dshHome)
+  const center = createNKeyPair(), node = createNKeyPair()
+  const settings = { ...DEFAULT, keys: { center: { ref: CREDENTIAL_REFS.center, publicKey: center.publicKey }, node: { ref: CREDENTIAL_REFS.node, publicKey: node.publicKey } } }
+  assert.deepEqual(await readPermissions(dshHome), { center: { publish: [], subscribe: [] }, node: { publish: [], subscribe: [] } })
+  // No declared events: the event address space stays closed for the role.
+  const closed = renderServerConfig(settings, paths, await readPermissions(dshHome))
+  assert.ok(!closed.includes('"dsh.events.'), closed)
+  const permissions = {
+    center: { publish: ['dsh.events.task.assigned'], subscribe: ['dsh.events.aone.bug.created'] },
+    node: { publish: ['dsh.events.aone.bug.created', 'dsh.events.task.result'], subscribe: ['dsh.events.task.assigned'] },
+  }
+  const conf = renderServerConfig(settings, paths, permissions)
+  const [centerBlock, nodeBlock] = ['center', 'node'].map(role => {
+    const lines = conf.split('\n')
+    return lines.slice(lines.indexOf(`    { nkey: ${settings.keys[role].publicKey}`), lines.indexOf('    }', lines.indexOf(`    { nkey: ${settings.keys[role].publicKey}`)) + 1)
+      .map((line, index, all) => line.slice(index === all.length - 1 ? 4 : 6)).join('\n')
+  })
+  assert.deepEqual(centerBlock, [
+    `nkey: ${center.publicKey}`,
+    'permission: {',
+    '  publish: { allow: ["$JS.API.>", "$JS.ACK.>", "dsh.events.task.assigned"] }',
+    '  subscribe: { allow: ["$JS.API.>", "_INBOX.>", "dsh.events.aone.bug.created"] }',
+    '}',
+    '}',
+  ].join('\n'))
+  assert.deepEqual(nodeBlock, [
+    `nkey: ${node.publicKey}`,
+    'permission: {',
+    '  publish: { allow: ["$JS.API.>", "$JS.ACK.>", "dsh.events.aone.bug.created", "dsh.events.task.result"] }',
+    '  subscribe: { allow: ["$JS.API.>", "_INBOX.>", "dsh.events.task.assigned"] }',
+    '}',
+    '}',
+  ].join('\n'))
+  assert.ok(conf.indexOf(`nkey: ${center.publicKey}`) < conf.indexOf(`nkey: ${node.publicKey}`), 'users keep the center, node order')
+  assert.ok(!conf.includes(center.seed) && !conf.includes(node.seed))
+})
+
+test('permissions: a role file is read back per role; a malformed or wildcarded file is an error, not a silent allow', async t => {
+  const dshHome = await home(t)
+  const paths = gatewayPaths(dshHome)
+  assert.equal(paths.permissions('center'), join(paths.dir, 'permissions.center.json'))
+  await mkdir(paths.dir, { recursive: true })
+  await writeFile(paths.permissions('node'), `${JSON.stringify({ publish: ['dsh.events.task.result'], subscribe: [] })}\n`)
+  assert.deepEqual(await readPermissions(dshHome), {
+    center: { publish: [], subscribe: [] }, node: { publish: ['dsh.events.task.result'], subscribe: [] },
+  })
+  await writeFile(paths.permissions('center'), '{ not json')
+  await assert.rejects(readPermissions(dshHome), { code: 'gateway/invalid-permissions' })
+  await writeFile(paths.permissions('center'), JSON.stringify({ publish: ['dsh.events.>'], subscribe: [] }))
+  await assert.rejects(readPermissions(dshHome), { code: 'gateway/invalid-permissions' })
 })

@@ -3,6 +3,7 @@ import { dirname } from 'node:path'
 import { GatewayError } from './errors.ts'
 import { isNKeyPublicKey, type GatewayRole } from './nkey.ts'
 import { gatewayPaths } from './paths.ts'
+import { renderPermissions, type SubjectPermissions } from './permissions.ts'
 
 export type GatewayMode = 'local' | 'remote'
 
@@ -170,8 +171,12 @@ export async function saveSettings(dshHome: string, settings: GatewaySettings): 
   return settings
 }
 
-/** The derived `nats-server.conf` text: loopback ports, explicit JetStream store_dir, public keys only. */
-export function renderServerConfig(settings: GatewaySettings, paths: { readonly jetstream: string }): string {
+/** The derived `nats-server.conf` text: loopback ports, explicit JetStream store_dir, public keys with each role's subject permissions. */
+export function renderServerConfig(
+  settings: GatewaySettings,
+  paths: { readonly jetstream: string },
+  permissions: Readonly<Partial<Record<GatewayRole, SubjectPermissions>>> = {},
+): string {
   if (settings.mode === 'remote') throw new GatewayError('gateway/remote-mode', '远程模式不管理本机 Gateway 进程，没有 nats-server.conf')
   const users = (['center', 'node'] as const).map(role => settings.keys?.[role]?.publicKey)
   if (users.some(key => key === undefined)) throw new GatewayError('gateway/keys-missing', '中心／节点 NKey 公钥缺失，无法生成 nats-server.conf')
@@ -185,7 +190,15 @@ export function renderServerConfig(settings: GatewaySettings, paths: { readonly 
     '}',
     'authorization {',
     '  users: [',
-    ...users.map(key => `    { nkey: ${key} }`),
+    ...( ['center', 'node'] as const).map(role => {
+      const declared = permissions[role]
+      if (declared === undefined) return `    { nkey: ${settings.keys?.[role]?.publicKey} }`
+      return [
+        `    { nkey: ${settings.keys?.[role]?.publicKey}`,
+        ...renderPermissions(declared).map(line => `      ${line}`),
+        '    }',
+      ].join('\n')
+    }),
     '  ]',
     '}',
     '',

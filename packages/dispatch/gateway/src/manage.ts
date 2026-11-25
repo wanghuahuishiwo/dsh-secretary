@@ -3,6 +3,7 @@ import { mkdir, open, readFile, writeFile } from 'node:fs/promises'
 import { GatewayError } from './errors.ts'
 import { createNKeyPair, nkeyPublicKeyFromSeed, CREDENTIAL_REFS, type GatewayRole } from './nkey.ts'
 import { requireNatsServer } from './binary.ts'
+import { readPermissions } from './permissions.ts'
 import { gatewayPaths } from './paths.ts'
 import { renderServerConfig, readSettings, saveSettings, type GatewayKeyRef, type GatewaySettings } from './settings.ts'
 import {
@@ -51,7 +52,7 @@ async function ensureKeys(settings: GatewaySettings, secrets: SecretStore | unde
 async function materialize(dshHome: string, settings: GatewaySettings): Promise<string> {
   const paths = gatewayPaths(dshHome)
   await mkdir(paths.jetstream, { recursive: true })
-  const conf = renderServerConfig(settings, paths)
+  const conf = renderServerConfig(settings, paths, await readPermissions(dshHome))
   await writeFile(paths.conf, conf)
   return conf
 }
