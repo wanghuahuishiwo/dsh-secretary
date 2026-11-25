@@ -82,6 +82,30 @@
       ],
       "dsh-secretary-ui-gtd/client": [
         "./packages/client/ui-gtd/src/client/index.tsx"
+      ],
+      "dsh-secretary-dispatch-gateway": [
+        "./packages/dispatch/gateway/src/index.ts"
+      ],
+      "dsh-secretary-dispatch-controller": [
+        "./packages/api/dispatch-controller/src/index.ts"
+      ],
+      "dsh-secretary-dispatch-controller/types": [
+        "./packages/api/dispatch-controller/src/types.ts"
+      ],
+      "dsh-secretary-ui-dispatch-console": [
+        "./packages/client/ui-dispatch-console/src/index.ts"
+      ],
+      "dsh-secretary-ui-dispatch-console/client": [
+        "./packages/client/ui-dispatch-console/src/client/index.tsx"
+      ],
+      "dsh-secretary-dispatch-engine": [
+        "./packages/dispatch/engine/src/index.ts"
+      ],
+      "dsh-secretary-dispatch-engine/contract": [
+        "./packages/dispatch/engine/src/contract.ts"
+      ],
+      "dsh-secretary-dispatch-engine/history": [
+        "./packages/dispatch/engine/src/history.ts"
       ]
     }
   },
