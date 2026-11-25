@@ -5,7 +5,7 @@
  */
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type { Context } from '@deepseek-ai/cordis'
-import { AckPolicy, jetstream, jetstreamManager } from '@nats-io/jetstream'
+import { AckPolicy, JetStreamApiCodes, jetstream, jetstreamManager } from '@nats-io/jetstream'
 import type { ConsumerMessages, JetStreamClient, JetStreamManager, JsMsg } from '@nats-io/jetstream'
 import { nkeyAuthenticator, type NatsConnection } from '@nats-io/nats-core'
 import { JetStreamApiError } from '@nats-io/jetstream'
@@ -147,7 +147,8 @@ export class NatsDispatchMessaging extends DispatchMessaging {
     try {
       current = (await jsm.streams.info(STREAM_NAME)).config.subjects
     } catch (error) {
-      if (!(error instanceof JetStreamApiError && error.code === 40406)) throw error // anything else is not "stream missing"
+      // 10059 (StreamNotFound) is what nats-server answers for a stream that does not exist yet; anything else is a real failure.
+      if (!(error instanceof JetStreamApiError && error.code === JetStreamApiCodes.StreamNotFound)) throw error
     }
     const plan = planStream(current, subjects)
     if (plan.create) await jsm.streams.add({ name: STREAM_NAME, subjects: plan.subjects, storage: 'file', retention: 'limits' })
@@ -202,7 +203,7 @@ export class NatsDispatchMessaging extends DispatchMessaging {
       event = parseEvent(message.subject, message.data)
     } catch (error) {
       message.term() // an invalid envelope is never going to become valid: do not redeliver
-      this.ctx.emit('dispatch/envelope-rejected', { ...meta, reason: (error as Error).message } satisfies RejectedEvent)
+      this.ctx.emit('dispatch/envelope-rejected', { role: this.role, ...meta, reason: (error as Error).message } satisfies RejectedEvent)
       return
     }
     try {

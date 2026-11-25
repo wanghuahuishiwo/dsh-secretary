@@ -20,9 +20,9 @@ import * as MESSAGING from 'dsh-secretary-dispatch-messaging'
 
 const HINT = '需要真实的 nats-server 二进制。安装后重跑：brew install nats-server，或用 DSH_NATS_SERVER=<二进制路径> 指定。'
 
-export function requireNatsServer() {
+export async function requireNatsServer() {
   const configured = process.env.DSH_NATS_SERVER ?? 'nats-server'
-  return { configured, ...locateNatsServer(configured) }
+  return { configured, ...(await locateNatsServer(configured)) }
 }
 
 async function freePort() {
@@ -98,7 +98,7 @@ async function linked(t, binary) {
   const rejected = []
   for (const role of ['center', 'node']) {
     const { realm, messaging } = role === 'center' ? center : node
-    realm.on('dispatch/envelope-rejected', event => rejected.push({ role, ...event }))
+    realm.on('dispatch/envelope-rejected', event => { if (event.role === role) rejected.push({ role, ...event }) })
     for (const type of role === 'center' ? CENTER.subscribe : NODE.subscribe) {
       await messaging.subscribe({ type }, (event, meta) => { received.push({ role, type, event, meta }) })
     }
@@ -111,7 +111,7 @@ export function register(test, { strict }) {
   const skip = binary === undefined && !strict ? 'set DSH_NATS_SERVER=<nats-server binary> to run against a real Gateway' : false
 
   test('same host, two realms: center → node and node → center travel the real Gateway; wire format, Nats-Msg-Id, nodeId', { skip, timeout: 90_000 }, async t => {
-    const probe = requireNatsServer()
+    const probe = await requireNatsServer()
     if (!probe.found) assert.fail(`${HINT}（当前未找到 ${probe.configured}）`)
     const link = await linked(t, probe.found ? probe.configured : binary)
     assert.equal(link.root.get(SERVICE_KEY), undefined, 'the service key is private to each role realm')
@@ -140,11 +140,12 @@ export function register(test, { strict }) {
     // What lies in the stream is the CloudEvents JSON with Nats-Msg-Id = event.id.
     const jsm = await jetstreamManager(await link.rawClient('node'))
     const info = await jsm.streams.info(STREAM_NAME)
+    // The center also subscribed to node.heartbeat above, which is captured online like any other subscription.
     assert.deepEqual({ storage: info.config.storage, retention: info.config.retention, subjects: info.config.subjects },
-      { storage: 'file', retention: 'limits', subjects: ['dsh.events.aone.bug.created', 'dsh.events.task.assigned'] })
+      { storage: 'file', retention: 'limits', subjects: ['dsh.events.aone.bug.created', 'dsh.events.node.heartbeat', 'dsh.events.task.assigned'] })
     const stored = await jsm.streams.getMessage(STREAM_NAME, { seq: sent.seq })
     assert.equal(stored.subject, 'dsh.events.task.assigned')
-    assert.equal(stored.headers.get('Nats-Msg-Id'), sent.event.id)
+    assert.equal(stored.header.get('Nats-Msg-Id'), sent.event.id)
     assert.deepEqual(JSON.parse(new TextDecoder().decode(stored.data)), sent.event)
     assert.equal(info.config.storage, 'file')
 
@@ -157,31 +158,41 @@ export function register(test, { strict }) {
   })
 
   test('a bad envelope is rejected and recorded, never delivered; a publish outside the role’s permissions is refused by the Gateway', { skip, timeout: 90_000 }, async t => {
-    const probe = requireNatsServer()
+    const probe = await requireNatsServer()
     if (!probe.found) assert.fail(`${HINT}（当前未找到 ${probe.configured}）`)
     const link = await linked(t, probe.found ? probe.configured : binary)
+    // Cordis events cross role realms: every realm hears every rejection, so a listener tells them apart by `role`.
+    const rejectedBy = role => link.rejected.filter(item => item.role === role)
     const rogue = jetstream(await link.rawClient('node'))
     const bad = { specversion: '1.0', id: '11111111-1111-4111-8111-111111111111', source: 'urn:dsh:center', type: 'aone.bug.created', time: '2026-11-14T10:00:00Z' }
     await rogue.publish('dsh.events.aone.bug.created', new TextEncoder().encode(JSON.stringify(bad)), { msgID: bad.id })
     const good = await link.node.messaging.publish({ type: 'aone.bug.created', data: { ok: true } })
-    await eventually(() => link.received.length === 1 && link.rejected.length === 1)
+    await eventually(() => link.received.length === 1 && rejectedBy('center').length === 1)
     assert.deepEqual(link.received[0].event, good.event, 'only the valid event reaches the handler')
-    assert.equal(link.rejected[0].reason.includes('data'), true, link.rejected[0].reason)
+    assert.equal(rejectedBy('center')[0].reason.includes('data'), true, rejectedBy('center')[0].reason)
+    assert.equal(rejectedBy('node').length, 0, 'the node role does not subscribe to this subject')
     await new Promise(resolve => setTimeout(resolve, 300))
     assert.equal(link.received.length, 1, 'the rejected message is terminated, not redelivered')
 
-    // The center user may publish task.assigned only: its attempt on the node's subject gets no JetStream response.
+    // The center user may publish task.assigned only: the Gateway refuses its publish on the node's subject outright.
     const centerRaw = jetstream(await link.rawClient('center'))
-    await assert.rejects(centerRaw.publish('dsh.events.aone.bug.created', new TextEncoder().encode(JSON.stringify({ ...bad, source: 'urn:dsh:center', data: 1 })), { msgID: '22222222-2222-4222-8222-222222222222', timeout: 3_000 }))
+    await assert.rejects(
+      centerRaw.publish('dsh.events.aone.bug.created', new TextEncoder().encode(JSON.stringify({ ...bad, source: 'urn:dsh:center', data: 1 })), { msgID: '22222222-2222-4222-8222-222222222222', timeout: 3_000 }),
+      /Permissions Violation for Publish to "dsh\.events\.aone\.bug\.created"/,
+    )
     const before = link.received.length
     const sneaky = { ...bad, type: 'task.assigned', source: 'urn:dsh:center', data: { forged: true } }
-    await rogue.publish('dsh.events.task.assigned', new TextEncoder().encode(JSON.stringify(sneaky)), { msgID: sneaky.id })
+    await assert.rejects(
+      rogue.publish('dsh.events.task.assigned', new TextEncoder().encode(JSON.stringify(sneaky)), { msgID: sneaky.id }),
+      /Permissions Violation for Publish to "dsh\.events\.task\.assigned"/,
+      'the node user has no publish right on task.assigned',
+    )
     await new Promise(resolve => setTimeout(resolve, 500))
-    assert.equal(link.received.length, before, 'the node user has no publish right on task.assigned: nothing arrives')
+    assert.equal(link.received.length, before, 'nothing arrives')
   })
 
   test('after a Gateway restart both connections recover by the official reconnect and the durable consumers resume', { skip, timeout: 120_000 }, async t => {
-    const probe = requireNatsServer()
+    const probe = await requireNatsServer()
     if (!probe.found) assert.fail(`${HINT}（当前未找到 ${probe.configured}）`)
     const link = await linked(t, probe.found ? probe.configured : binary)
     const first = await link.center.messaging.publish({ type: 'task.assigned', data: { n: 1 } })
@@ -191,6 +202,10 @@ export function register(test, { strict }) {
     await stopGateway(link.dshHome)
     const second = await link.center.messaging.publish({ type: 'task.assigned', data: { n: 2 } }).catch(error => ({ error }))
     await startGateway(link.dshHome)
+    // A request issued while the official client is still reconnecting is dropped by the SDK (it times out, it is not
+    // replayed), so wait for the plugin's own connection to answer again before publishing the second event.
+    const { nc } = await link.center.messaging.session
+    await eventually(async () => { await nc.request('$JS.API.STREAM.INFO.dsh-events', new Uint8Array(), { timeout: 500 }); return true })
     const third = second.error === undefined ? null : await link.center.messaging.publish({ type: 'task.assigned', data: { n: 2 } })
     await eventually(() => link.received.filter(item => item.role === 'node').length === 2)
     const seqs = link.received.filter(item => item.role === 'node').map(item => item.meta.seq).sort()
@@ -198,7 +213,7 @@ export function register(test, { strict }) {
   })
 
   test('a type subscribed later gets its stream capture and durable consumer online; nothing restarts', { skip, timeout: 90_000 }, async t => {
-    const probe = requireNatsServer()
+    const probe = await requireNatsServer()
     if (!probe.found) assert.fail(`${HINT}（当前未找到 ${probe.configured}）`)
     const link = await linked(t, probe.found ? probe.configured : binary)
     const jsm = await jetstreamManager(await link.rawClient('center'))

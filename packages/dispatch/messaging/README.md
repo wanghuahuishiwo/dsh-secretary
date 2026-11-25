@@ -78,7 +78,7 @@ kind: "package-reference"
 | `role` / `nodeId` | 角色；节点的持久身份（中心为 `undefined`） |
 | `publish({ type, data, id?, time?, datacontenttype?, dataschema? })` | 以本角色 `source` 构造并校验信封，发布到 `dsh.events.<type>`，`Nats-Msg-Id = event.id`；返回 `{ event, stream, seq, duplicate }`。传 `id`/`time` 可用同一事件重试 |
 | `subscribe({ type }, handler)` | 在线确保 stream 捕获与 durable consumer，收到合法事件调用 `handler(event, { subject, stream, seq })`；返回 `{ type, subject, durable, stop() }` |
-| 事件 `dispatch/envelope-rejected` | 收到不合规信封时发出 `{ subject, stream, seq, reason }`，消息被 `term()`，不投递、不重投；同时写 logger |
+| 事件 `dispatch/envelope-rejected` | 收到不合规信封时发出 `{ role, subject, stream, seq, reason }`，消息被 `term()`，不投递、不重投；同时写 logger。Cordis 事件不按 realm 隔离，同宿主各角色 realm 的监听器都会收到，按 `role` 过滤 |
 
 ## 信封与地址
 
@@ -104,7 +104,7 @@ kind: "package-reference"
 | 中心 | JetStream + `dsh.events.<center 声明 publish 的 type>` | JetStream + `dsh.events.<center 声明 subscribe 的 type>` |
 | 节点 | JetStream + `dsh.events.<node 声明 publish 的 type>` | JetStream + `dsh.events.<node 声明 subscribe 的 type>` |
 
-没有声明文件的角色只保留 JetStream 基础权限，事件地址空间对其关闭。越权发布在 Gateway 被丢弃，客户端表现为 JetStream 发布无响应。
+没有声明文件的角色只保留 JetStream 基础权限，事件地址空间对其关闭。越权发布在 Gateway 立刻被拒，客户端表现为发布抛错（`@nats-io` v3 SDK：`RequestError`，`cause` 为 `PermissionViolationError`，消息 `Permissions Violation for Publish to "<subject>"`）。
 
 ## 理解实现
 
@@ -121,8 +121,9 @@ kind: "package-reference"
 
 ## 已知限制与后续工作
 
-- **真实 Gateway 场景未在本机验证**（本机没有 nats-server）。`tests/scenario.mjs` 覆盖：同宿主中心↔节点互发、坏信封被拒并记录、越权发布被 Gateway 拒绝、Gateway 重启后自动恢复、新增 type 在线生效。设 `DSH_NATS_SERVER=<二进制>` 后跑 `pnpm test`，或 `pnpm --filter dsh-secretary test:tracer`（缺二进制时明确失败并提示 `brew install nats-server`）。
+- 真实 Gateway 场景（已在 nats-server 2.15.3 上跑通）。`tests/scenario.mjs` 覆盖：同宿主中心↔节点互发、坏信封被拒并记录、越权发布被 Gateway 拒绝、Gateway 重启后自动恢复、新增 type 在线生效。设 `DSH_NATS_SERVER=<二进制>` 后跑 `pnpm test`，或 `pnpm --filter dsh-secretary test:tracer`（缺二进制时明确失败并提示 `brew install nats-server`）。
 - **permissions 在 Gateway 启动时生效**：声明变化后需重启 Gateway（`restartGateway`）；plugin 加载时写文件，若 Gateway 先于 plugin 启动，要再重启一次 Gateway 才会带上该角色的 permissions。
 - **订阅回调 ACK 语义是临时最简**：handler 正常返回即 `ack()`，抛错 `nak()` 重投；「本地去重与受理提交后才 ACK」由 #100 替换。Outbox、受理记录也不在本包。
 - `jsm.streams.update` 并发追加 subject 没有重试；两个角色同时首次发布不同 type 时理论上可能冲突一次，重试即可。
-- 远程 `tls://` 只做了地址校验并打开 TLS，未验证证书等选项；JetStream 权限所需 subject（`$JS.API.>`、`$JS.ACK.>`、`_INBOX.>`）来自 NATS 官方文档，待真实服务器验证。
+- 远程 `tls://` 只做了地址校验并打开 TLS，未验证证书等选项。JetStream 权限 subject（`$JS.API.>`、`$JS.ACK.>`、`_INBOX.>`）已在真机验证够用。
+- Gateway 重启期间（客户端官方重连完成前，约 1–2 秒）发起的 `publish`/`subscribe` 会以 SDK 的 `TimeoutError` 失败，SDK 不会在重连后补发该请求；调用方需自行重试。

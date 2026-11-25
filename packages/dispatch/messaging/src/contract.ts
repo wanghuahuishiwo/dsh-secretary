@@ -41,6 +41,8 @@ export interface SubscriptionHandle {
 
 /** Cordis event emitted when a received event fails envelope validation; the message is terminated, not redelivered. */
 export interface RejectedEvent {
+  /** The role whose subscription rejected it: Cordis events are not scoped to a role realm, listeners must filter. */
+  readonly role: GatewayRole
   readonly subject: string
   readonly stream: string
   readonly seq: number
