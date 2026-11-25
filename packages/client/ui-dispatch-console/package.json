@@ -1,0 +1,57 @@
+{
+  "name": "dsh-secretary-ui-dispatch-console",
+  "version": "0.1.0",
+  "description": "Dispatch foundation console browser plugin: a left-Sidebar entry, a full-page main with four object sections (Gateway filled; 节点/事件/Graph reserved) and the `shell.overlay` Gateway notice.",
+  "license": "MIT",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/**/*.js"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-api-gateway",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-slots"
+      ],
+      "platform": "web"
+    }
+  },
+  "dependencies": {
+    "dsh-secretary-dispatch-controller": "workspace:*"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.1.0",
+    "@deepseek-ai/dsh-typert-protocol": ">=0.2.2-rc.1 <0.3.0"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch",
+    "prepare": "node build.mjs",
+    "test": "node --test tests/*.mjs"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh-api-gateway": ">=0.2.2-rc.1 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-layout": ">=0.2.2-rc.1 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-primitives": ">=0.2.2-rc.1 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.2-rc.1 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-sidebar": ">=0.2.2-rc.1 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-slots": ">=0.2.2-rc.1 <0.3.0",
+    "@types/react": "^19.0.0",
+    "esbuild": "^0.25.10",
+    "react": "^19.0.0",
+    "react-dom": "^19.3.1"
+  }
+}

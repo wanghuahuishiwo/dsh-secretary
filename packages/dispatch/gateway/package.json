@@ -1,0 +1,32 @@
+{
+  "name": "dsh-secretary-dispatch-gateway",
+  "version": "0.1.0",
+  "description": "Stateless Gateway (nats-server) management shared by the dispatch console and the dsh-secretary CLI: settings, NKey, derived config, process probe and start/stop/restart.",
+  "license": "MIT",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/**/*.js",
+    "lib/types/**/*.d.ts"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json && node build.mjs",
+    "prepare": "node build.mjs",
+    "test": "node --test tests/*.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.10",
+    "typescript": "^6.0.3"
+  }
+}

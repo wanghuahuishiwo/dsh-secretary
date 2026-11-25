@@ -19,6 +19,7 @@ kind: "package-group"
 | [`tag/`](tag/README.md) | 统一 TagService |
 | [`gtd/`](gtd/README.md) | GTD 用户技能资源 |
 | [`time/`](time/README.md) | Time 领域能力族 |
+| [`dispatch/`](dispatch/README.md) | agent-dispatch 底座共享逻辑（Gateway 管理） |
 | [`api/`](api/README.md) | Host 产品 API（Typert Remote controller） |
 | [`secretary/`](secretary/README.md) | Agent 自有运行代码（CLI） |
 | [`client/`](client/README.md) | 浏览器产品 UI 与客户端插件 |
@@ -38,6 +39,9 @@ kind: "package-group"
 | [`time/time-block`](time/time-block/README.md) | time | `TimeService` | `.`、`./contract` |
 | [`secretary/cli`](secretary/cli/README.md) | secretary | `dsh-secretary` CLI（agent 薄客户端） | `./bin` |
 | [`api/time-controller`](api/time-controller/README.md) | api | `TimeProductService`、`TagProductService` 与 Remote 契约 | `.`、`./types`、`./typert`、`./remote` |
+| [`dispatch/gateway`](dispatch/gateway/README.md) | dispatch | 无状态 Gateway（nats-server）管理与 CLI 契约 | `.` |
+| [`api/dispatch-controller`](api/dispatch-controller/README.md) | api | 底座控制台 Remote `secretaryDispatch`（Gateway 设置／状态／启停） | `.`、`./types`、`./typert`、`./remote` |
+| [`client/ui-dispatch-console`](client/ui-dispatch-console/README.md) | client | 底座控制台壳与 Gateway 分区 | `.`、`./client` |
 | [`client/ui-time`](client/ui-time/README.md) | client | 纯 React UI + `TimeAdapter` 契约 + 右栏插件 | `./ui`、`./client` |
 | [`client/ui-gtd`](client/ui-gtd/README.md) | client | 左栏入口 + 空白 main | `.`、`./client` |
 | [`bundle/secretary`](bundle/secretary/README.md) | bundle | 唯一安装入口：preset、skills、cordis.patch | `.` |
@@ -49,6 +53,8 @@ bundle/secretary → client/ui-time ─┐
                                      ├→ api/time-controller → time/time-block + tag/service
 bundle/secretary → client/ui-gtd     │                          └→ goal/provider → storage/domain → core/*
 bundle/secretary → secretary/cli ───┘（CLI 经 /api 调用 secretaryTime/secretaryTag agentInvoke）
+bundle/secretary → client/ui-dispatch-console → api/dispatch-controller ─┐
+bundle/secretary → secretary/cli（gateway 子命令）────────────────────┴→ dispatch/gateway（零运行时依赖）
 ```
 
 - Host 产品 API 只依赖领域 Service contract，不 import 其他产品的 UI 或插件。

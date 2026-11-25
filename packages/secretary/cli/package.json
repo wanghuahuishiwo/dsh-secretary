@@ -1,7 +1,7 @@
 {
   "name": "dsh-secretary-cli",
   "version": "0.1.0",
-  "description": "Thin agent CLI exposing the running DSH host's secretaryTime / secretaryTag Remotes to any bash shell.",
+  "description": "Thin agent CLI exposing the running DSH host's secretaryTime / secretaryTag Remotes to any bash shell, plus `dsh-secretary gateway start|stop|restart|status`, which needs no host.",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -16,5 +16,8 @@
   ],
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
+  },
+  "dependencies": {
+    "dsh-secretary-dispatch-gateway": "workspace:*"
   }
 }

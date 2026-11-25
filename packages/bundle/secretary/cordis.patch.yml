@@ -39,6 +39,16 @@
     - id: secretary-ui-time
       name: 'dsh-secretary-ui-time'
 
+    # 底座控制台：Host 侧 Gateway 管理（Remote `secretaryDispatch`）与浏览器壳分属两个包。
+    # Gateway 管理是无状态共享逻辑（dispatch/gateway），进程为 detached nats-server，不随宿主退出。
+    - id: secretary-dispatch-controller
+      name: 'dsh-secretary-dispatch-controller'
+      config:
+        dshHome: !!js dshHomePath()
+
+    - id: secretary-ui-dispatch-console
+      name: 'dsh-secretary-ui-dispatch-console'
+
     # 独立事项产品：左栏入口与空白 main；没有 GTD Remote/API。
     - id: secretary-ui-gtd
       name: 'dsh-secretary-ui-gtd'

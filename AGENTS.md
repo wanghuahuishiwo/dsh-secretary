@@ -24,6 +24,7 @@
 | 小秘书-时间块 | DSH 右侧栏 | `TimeService` + `TimeProductService` | 生产 UI 与 Remote |
 | 小秘书-事项 | DSH 左侧栏 + `main` | Markdown GTD 数据面（`gtdPath`） | 入口与空白页，完整界面后置 |
 | 小秘书-目标 | 独立入口 + 空白 `main` | `GoalService`（bundle 级空实现） | 空壳入口；实体、模型、Remote、UI 后置 |
+| 底座控制台 | DSH 左栏 → 主区整页 | `dispatch/gateway`（无状态 Gateway 管理） | 壳 + Gateway 分区；节点／事件／Graph 留位 |
 
 - **Tag**：共享模块，唯一 `TagService` 与 `tags` 表；`time` / `context` 只是 `kind`。共享 `TagManager` UI/Remote 待实现，不是独立产品入口。
 - **事实所有权**：每个领域拥有自己的事实与存储，模型、语义与边界写在该能力族自己的 README，不设全局数据模型文档；其他领域只经该领域公开的契约依赖，不另建平行事实。
@@ -53,13 +54,17 @@ packages/
 │   └── agent/
 ├── time/         Time 领域能力
 │   └── time-block/      TimeService 与 DeepTime
+├── dispatch/     agent-dispatch 底座共享逻辑
+│   └── gateway/         无状态 nats-server 管理（settings/NKey/状态/启停/CLI 契约）
 ├── api/          Host 产品 API
-│   └── time-controller/ TimeProductService、TagProductService（agentInvoke CLI 面）
+│   ├── time-controller/ TimeProductService、TagProductService（agentInvoke CLI 面）
+│   └── dispatch-controller/ 底座控制台 Remote secretaryDispatch（Gateway 设置／状态／启停）
 ├── secretary/    Agent 自有运行代码
 │   └── cli/             dsh-secretary CLI（bin）
 ├── client/       浏览器产品 UI
 │   ├── ui-time/         纯 React UI、TimeAdapter 契约与右栏插件
-│   └── ui-gtd/          左栏入口与空白 main
+│   ├── ui-gtd/          左栏入口与空白 main
+│   └── ui-dispatch-console/ 底座控制台壳（四分区，Gateway 已填）
 └── bundle/       可安装装配
     └── secretary/       bundle、Preset 与 Secretary 技能
 

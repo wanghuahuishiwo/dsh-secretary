@@ -210,6 +210,34 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  packages/api/dispatch-controller:
+    dependencies:
+      dsh-secretary-dispatch-gateway:
+        specifier: workspace:*
+        version: link:../../dispatch/gateway
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.1.0
+        version: 4.1.0
+      '@deepseek-ai/dsh-credentials':
+        specifier: 0.2.2-rc.1
+        version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)
+      '@deepseek-ai/dsh-typert-protocol':
+        specifier: '>=0.2.2-rc.1 <0.3.0'
+        version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.19.2
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
   packages/api/time-controller:
     dependencies:
       dsh-secretary-tag-service:
@@ -249,6 +277,9 @@ importers:
       dsh-secretary-cli:
         specifier: workspace:*
         version: link:../../secretary/cli
+      dsh-secretary-dispatch-controller:
+        specifier: workspace:*
+        version: link:../../api/dispatch-controller
       dsh-secretary-goal-provider:
         specifier: workspace:*
         version: link:../../goal/provider
@@ -270,6 +301,9 @@ importers:
       dsh-secretary-time-controller:
         specifier: workspace:*
         version: link:../../api/time-controller
+      dsh-secretary-ui-dispatch-console:
+        specifier: workspace:*
+        version: link:../../client/ui-dispatch-console
       dsh-secretary-ui-gtd:
         specifier: workspace:*
         version: link:../../client/ui-gtd
@@ -280,12 +314,58 @@ importers:
       '@deepseek-ai/dsh-storage':
         specifier: 0.2.2-rc.1
         version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)
+      dsh-secretary-dispatch-gateway:
+        specifier: workspace:*
+        version: link:../../dispatch/gateway
       esbuild:
         specifier: ^0.25.10
         version: 0.25.12
       playwright:
         specifier: 1.62.1
         version: 1.62.1
+
+  packages/client/ui-dispatch-console:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.1.0
+        version: 4.1.0
+      '@deepseek-ai/dsh-typert-protocol':
+        specifier: '>=0.2.2-rc.1 <0.3.0'
+        version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)
+      dsh-secretary-dispatch-controller:
+        specifier: workspace:*
+        version: link:../../api/dispatch-controller
+    devDependencies:
+      '@deepseek-ai/dsh-api-gateway':
+        specifier: '>=0.2.2-rc.1 <0.3.0'
+        version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)
+      '@deepseek-ai/dsh-client-ui-layout':
+        specifier: '>=0.2.2-rc.1 <0.3.0'
+        version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)
+      '@deepseek-ai/dsh-client-ui-primitives':
+        specifier: '>=0.2.2-rc.1 <0.3.0'
+        version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)
+      '@deepseek-ai/dsh-client-ui-renderer':
+        specifier: '>=0.2.2-rc.1 <0.3.0'
+        version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)
+      '@deepseek-ai/dsh-client-ui-sidebar':
+        specifier: '>=0.2.2-rc.1 <0.3.0'
+        version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: '>=0.2.2-rc.1 <0.3.0'
+        version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.3.0
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
+      react:
+        specifier: ^19.0.0
+        version: 19.3.1
+      react-dom:
+        specifier: ^19.3.1
+        version: 19.3.1(react@19.3.1)
 
   packages/client/ui-gtd:
     dependencies:
@@ -384,6 +464,15 @@ importers:
         specifier: ^0.25.10
         version: 0.25.12
 
+  packages/dispatch/gateway:
+    devDependencies:
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
   packages/goal/provider:
     dependencies:
       '@deepseek-ai/cordis':
@@ -410,7 +499,11 @@ importers:
         specifier: ^0.25.10
         version: 0.25.12
 
-  packages/secretary/cli: {}
+  packages/secretary/cli:
+    dependencies:
+      dsh-secretary-dispatch-gateway:
+        specifier: workspace:*
+        version: link:../../dispatch/gateway
 
   packages/storage/domain:
     dependencies:
@@ -514,6 +607,11 @@ packages:
 
   '@deepseek-ai/dsh-client-ui-slots@0.2.2-rc.1':
     resolution: {integrity: sha512-asUGj3a5vSvUht/mBhFalFcad/YBwF9HWdY1XuIDZ7+Dx1mVrPPVG8JlIKnLZX51BnCNGr52VsjsJoErRaD3bg==}
+    peerDependencies:
+      '@deepseek-ai/cordis': ~4.1.0
+
+  '@deepseek-ai/dsh-credentials@0.2.2-rc.1':
+    resolution: {integrity: sha512-yo6G/wjwFhykAFXJhRdxh+LosWoq5ULYf+zFG9Wreyf6oDQHGP+OHk13+XboNWBkqsUhz/LdWNRwuwFjc/1xwg==}
     peerDependencies:
       '@deepseek-ai/cordis': ~4.1.0
 
@@ -1072,6 +1170,11 @@ snapshots:
   '@deepseek-ai/dsh-client-ui-slots@0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)':
     dependencies:
       '@deepseek-ai/cordis': 4.1.0
+
+  '@deepseek-ai/dsh-credentials@0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)':
+    dependencies:
+      '@deepseek-ai/cordis': 4.1.0
+      '@deepseek-ai/dsh-brand': 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)
 
   '@deepseek-ai/dsh-deque@0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)':
     dependencies:
