@@ -5,11 +5,12 @@
 import { Service, type Context } from '@deepseek-ai/cordis'
 import type { GatewayRole } from 'dsh-secretary-dispatch-gateway'
 import type { CloudEvent, EventInput } from './envelope.ts'
+import type { Outbox, OutboxTransaction } from './outbox.ts'
 
 /** Cordis service key; isolate it per role group. */
 export const SERVICE_KEY = 'dispatchMessaging'
 
-/** A published event as stored by JetStream. */
+/** A published event as stored by JetStream; `publish` resolves with it once the relay saw the PubAck. */
 export interface PublishedEvent {
   readonly event: CloudEvent
   readonly stream: string
@@ -24,8 +25,13 @@ export interface EventMeta {
   readonly seq: number
 }
 
-/** Receives one valid event; it is ACKed when it resolves and redelivered when it throws. */
-export type EventHandler = (event: CloudEvent, meta: EventMeta) => void | Promise<void>
+/**
+ * Receives one valid event that was not accepted before. It runs inside the Inbox transaction: rows written through
+ * `tx` (the acceptance itself included) commit together when the handler resolves, and only then is the consumer ACK
+ * sent. The ACK means durable acceptance, not that the execution finished; a throw rolls back and redelivers.
+ * An event whose id is already in the Inbox is ACKed without calling the handler.
+ */
+export type EventHandler = (event: CloudEvent, meta: EventMeta, tx: OutboxTransaction) => void | Promise<void>
 
 /** One subscription: the NATS subject is derived from the event `type`. */
 export interface EventSubscription {
@@ -58,8 +64,17 @@ export abstract class DispatchMessaging extends Service {
   /** The persisted node identity; `undefined` for the center. */
   abstract readonly nodeId: string | undefined
 
-  /** Build a DSH event from the role's `source`, validate it and publish it with `Nats-Msg-Id = event.id`. */
+  /** The role's Outbox and Inbox store; `transaction` is where a business result and its event commit together. */
+  abstract readonly outbox: Outbox
+
+  /**
+   * Queue an event in the Outbox and resolve once the relay saw its PubAck (`Nats-Msg-Id = event.id`), however many
+   * Gateway restarts or retries that takes. Without the Gateway it stays pending; it is never dropped.
+   */
   abstract publish(input: EventInput): Promise<PublishedEvent>
+
+  /** Wake the relay: drain the pending events now instead of at the next poll. */
+  abstract kickRelay(): void
 
   /** Subscribe to an event type with a durable consumer created or reused online. */
   abstract subscribe(subscription: EventSubscription, handler: EventHandler): Promise<SubscriptionHandle>

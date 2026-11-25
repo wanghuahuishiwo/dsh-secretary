@@ -14,7 +14,7 @@ agent-dispatch 底座能力族。组目录是纯容器：不包含 `package.json
 | 包 | 名称 | 角色 |
 |---|---|---|
 | [`gateway/`](gateway/README.md) | `dsh-secretary-dispatch-gateway` | 无状态 Gateway（nats-server）管理：settings、NKey、派生配置、状态探测、start/stop/restart、CLI 契约 |
-| [`messaging/`](messaging/README.md) | `dsh-secretary-dispatch-messaging` | 基础通信插件：NKey 连接 Gateway、CloudEvents 信封（DSH profile）、nodeId 身份、stream 与 durable consumer 在线创建 |
+| [`messaging/`](messaging/README.md) | `dsh-secretary-dispatch-messaging` | 基础通信插件：NKey 连接 Gateway、CloudEvents 信封（DSH profile）、nodeId 身份、stream 与 durable consumer 在线创建、Transactional Outbox 可靠发布与持久受理后才 ACK、Transactional Outbox 可靠发布与持久受理后才 ACK |
 | [`engine/`](engine/README.md) | `dsh-secretary-dispatch-engine` | graph 执行引擎内核：节点注册表、入口、事件历史与重放 |
 
 ## 约束

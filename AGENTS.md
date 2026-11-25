@@ -65,7 +65,7 @@ packages/
 │   └── ui-dispatch-console/ 底座控制台壳（四分区，Gateway／节点／事件已填，Graph 留位）
 ├── dispatch/     agent-dispatch 底座
 │   ├── gateway/         无状态 nats-server 管理（settings/NKey/状态/启停/CLI 契约）
-│   ├── messaging/       基础通信（NKey 连接、CloudEvents 信封、nodeId、stream/consumer 在线创建）
+│   ├── messaging/       基础通信（NKey 连接、CloudEvents 信封、nodeId、stream/consumer 在线创建、Outbox 可靠发布与持久受理）
 │   └── engine/          graph 执行引擎内核（节点注册表、入口、事件历史、重放）
 └── bundle/       可安装装配
     └── secretary/       bundle、Preset 与 Secretary 技能
