@@ -120,6 +120,8 @@ export class DispatchEngine extends Service {
   private readonly handlers = new Map<string, Executor>()
   private readonly subscriptions = new Set<SubscriptionHandle>()
   private emitSink: EmitSink | undefined
+  private recovery: Promise<void> | undefined
+  private recoverAgain = false
 
   constructor(ctx: Context, config: Config) {
     super(ctx, 'dispatchEngine')
@@ -131,6 +133,7 @@ export class DispatchEngine extends Service {
       register: definition => {
         if (definitions.has(definition.name)) throw new Error(`dispatch: node "${definition.name}" is already registered`)
         definitions.set(definition.name, definition)
+        if (this.gateway !== undefined) this.recoverUnfinished()
         return () => { definitions.delete(definition.name) }
       },
       get: name => definitions.get(name),
@@ -145,8 +148,47 @@ export class DispatchEngine extends Service {
     }
   }
 
+  /**
+   * Resumes every instance of this role that an earlier run left unfinished: each goes through `resume`, which returns
+   * what the history already holds and runs only what it does not. Runs once the nodes it stops at are registered, so it
+   * is kicked when the engine loads and again on every node registration; one instance is never resumed twice at a time.
+   * The first run is awaited before the subscriptions go up, so nothing is delivered while it holds the Outbox.
+   */
+  private recoverUnfinished(): Promise<void> {
+    if (this.recovery !== undefined) {
+      this.recoverAgain = true
+      return this.recovery
+    }
+    this.recovery = (async () => {
+      for (;;) {
+        this.recoverAgain = false
+        for (const instanceId of this.history.instanceIds()) {
+          const records = this.history.listByInstance(instanceId)
+          const stoppedAt = unfinishedNode(records)
+          if (stoppedAt === undefined) continue
+          if (this.nodes.get(stoppedAt) === undefined) {
+            this.ctx.logger.warn(`dispatchEngine: instance ${instanceId} is unfinished and waits for node "${stoppedAt}" to be registered`)
+            continue
+          }
+          try {
+            const outcome = await this.resume(instanceId)
+            this.ctx.logger.info(`dispatchEngine: resumed instance ${instanceId} (${outcome.status})`)
+          } catch (error) {
+            this.ctx.logger.error(`dispatchEngine: instance ${instanceId} could not be resumed: ${error instanceof Error ? error.message : String(error)}`)
+          }
+        }
+        if (!this.recoverAgain) return
+      }
+    })().finally(() => {
+      this.recovery = undefined
+      if (this.recoverAgain) void this.recoverUnfinished()
+    })
+    return this.recovery
+  }
+
   /** One durable consumer per declared type; sequential, because adding stream subjects concurrently can collide. */
   private async subscribeAll(): Promise<void> {
+    await this.recoverUnfinished()
     for (const type of this.gateway!.catalog.subscribe) {
       try {
         this.subscriptions.add(await this.gateway!.subscribe({ type }, this.receive))
@@ -356,6 +398,25 @@ export class DispatchEngine extends Service {
 }
 
 const LIFECYCLE: readonly string[] = [STARTED, FINISHED]
+
+/**
+ * The node an instance stopped at: the first node of its recorded chain without a `node.completed`; `undefined` when the
+ * instance has ended, i.e. a node failed or the last node of the chain completed.
+ */
+export function unfinishedNode(records: readonly HistoryRecord[]): string | undefined {
+  const opened = records[0]
+  if (opened === undefined || opened.kind !== 'instance.opened') return undefined
+  const { node: entry, edges = [] } = opened.payload as { node: string; edges?: Edge[] }
+  let nodeId = entry
+  for (;;) {
+    const completed = records.find(record => record.kind === 'node.completed' && record.nodeId === nodeId)
+    if (completed === undefined) return nodeId
+    if ((completed.payload as NodeCompleted).error !== undefined) return undefined
+    const edge = edges.find(candidate => candidate.from === nodeId)
+    if (edge === undefined) return undefined
+    nodeId = edge.to
+  }
+}
 
 /** `node.completed` payload: the node's outputs, or the error that failed it. */
 type NodeCompleted = { outputs?: unknown; error?: string }

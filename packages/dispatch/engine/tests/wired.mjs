@@ -27,8 +27,8 @@ async function until(predicate) {
 }
 
 /** A host whose `dispatchMessaging` is a stand-in: real Outbox file, subscriptions kept in memory. */
-async function wired(t, { role = 'center', publish = [STARTED, FINISHED, 'work.reported'], subscribe = ['task.assigned'] } = {}) {
-  const dir = mkdtempSync(join(tmpdir(), 'dispatch-engine-wired-'))
+async function wired(t, { role = 'center', publish = [STARTED, FINISHED, 'work.reported'], subscribe = ['task.assigned'], dir } = {}) {
+  dir ??= mkdtempSync(join(tmpdir(), 'dispatch-engine-wired-'))
   const outbox = openOutbox(join(dir, 'outbox.sqlite'))
   const handlers = new Map()
   const messaging = {
@@ -144,4 +144,55 @@ test('wired on a node: the source of lifecycle and node events is the node ident
   assert.deepEqual(await engine.resume(instanceId), { instanceId, status: 'completed', outputs: { note: 'T-1' } })
   assert.equal(runs, 1)
   assert.equal(outbox.entries().length, 3, 'no second finished event')
+})
+
+test('wired: an instance a previous host left unfinished is resumed when the engine loads, without repeating what already happened', async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'dispatch-engine-wired-'))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  // The first host: `work` has emitted and completed, `report` is stuck in an activity when the host goes away.
+  const before = await wired(t, { dir, subscribe: ['task.assigned', 'task.report'] })
+  before.engine.nodes.register(defineNode({ name: 'work', inputs: { ticket }, outputs: { ticket }, async run(ctx, { ticket }) {
+    await ctx.activities.emit({ type: 'work.reported', data: { ticket } })
+    return { ticket }
+  } }))
+  before.engine.activities.register('wait', () => new Promise(() => {}))
+  before.engine.nodes.register(defineNode({ name: 'report', inputs: { ticket }, outputs: { note: text }, async run(ctx, { ticket }) {
+    await ctx.activities.wait({ ticket })
+    return { note: `reported ${ticket}` }
+  } }))
+  before.engine.declareEntry({ graph: 'report', on: 'task.report', node: 'work', edges: [{ from: 'work', to: 'report' }], output: { ticket }, adapt: event => event.data })
+  await before.deliver({ id: 'e1', type: 'task.report', source: 'urn:dsh:node:x', data: { ticket: 'T-3' } })
+  await until(() => before.engine.history.listByInstance(before.engine.history.instanceIds()[0]).length === 5)
+  const [instanceId] = before.engine.history.instanceIds()
+  const queuedBefore = before.outbox.entries().map(entry => entry.event.id)
+  before.ctx.fiber.dispose()
+
+  // The restarted host: nodes are registered after the engine has loaded, as in a real assembly.
+  let workRuns = 0
+  let reportRuns = 0
+  const after = await wired(t, { dir, subscribe: ['task.assigned', 'task.report'] })
+  await new Promise(resolve => setTimeout(resolve, 50))
+  assert.equal(after.outbox.entries().length, 2, 'nothing runs while the node it stopped at is not registered')
+  after.engine.activities.register('wait', async () => 'waited')
+  after.engine.nodes.register(defineNode({ name: 'work', inputs: { ticket }, outputs: { ticket }, async run() {
+    workRuns += 1
+    return {}
+  } }))
+  after.engine.nodes.register(defineNode({ name: 'report', inputs: { ticket }, outputs: { note: text }, async run(ctx, { ticket }) {
+    reportRuns += 1
+    await ctx.activities.wait({ ticket })
+    return { note: `reported ${ticket}` }
+  } }))
+  await until(() => after.outbox.entries().length === 3)
+
+  const [started, nodeEvent, finished] = after.outbox.entries().map(entry => entry.event)
+  assert.deepEqual([started.type, nodeEvent.type, finished.type], [STARTED, 'work.reported', FINISHED])
+  assert.deepEqual(finished.data, { instanceId, graphId: 'report', outcome: 'ok' })
+  assert.deepEqual([started.id, nodeEvent.id], queuedBefore, 'started and the node event are the copies the first host queued')
+  assert.deepEqual(after.engine.history.listByInstance(instanceId).map(r => [r.kind, r.nodeId ?? null]), [
+    ['instance.opened', null], ['node.started', 'work'], ['activity.completed', 'work'], ['node.completed', 'work'], ['node.started', 'report'],
+    ['node.started', 'report'], ['activity.completed', 'report'], ['node.completed', 'report'],
+  ])
+  assert.equal(workRuns, 0, 'the completed node was not re-run')
+  assert.equal(reportRuns, 1)
 })

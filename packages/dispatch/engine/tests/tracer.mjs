@@ -84,7 +84,7 @@ export function register(test, { strict }) {
     assert.match(center.engine.history.listByInstance(events[2].data.instanceId).at(-1).payload.error, /node blew up/)
   })
 
-  test('#102: a host that dies right after a node emitted its event resumes on restart without emitting it again', { skip, timeout: 120_000 }, async t => {
+  test('#102: a host that dies right after a node emitted its event resumes on restart without being told to and without emitting it again', { skip, timeout: 120_000 }, async t => {
     const { dshHome, root, rawClient, stored } = await linked(t)
     // A real process exit right after the `emit` committed: the next node calls `crash`, which exits the host once.
     const script = `
@@ -114,13 +114,12 @@ export function register(test, { strict }) {
     await sender.messaging.publish({ type: 'task.report', data: { ticket: 'T-3' } })
     assert.deepEqual(await dead, { code: 9, signal: null }, stderr)
 
-    // The restarted host finds the unfinished instance by its history and resumes it: replay injects the recorded emit.
+    // The restarted host finds the unfinished instance by its history and resumes it on its own: replay injects the recorded emit.
     const center = await bootRole(root, dshHome, CENTER)
     let crashes = 0
     graph(center.engine, () => { crashes += 1; return null })
     const [instanceId] = center.engine.history.instanceIds()
     assert.deepEqual(center.engine.history.listByInstance(instanceId).map(record => record.kind), ['instance.opened', 'node.started', 'activity.completed', 'node.completed', 'node.started'], 'the host died while `report` ran')
-    assert.deepEqual(await center.engine.resume(instanceId), { instanceId, status: 'completed', outputs: { ticket: 'T-3' } })
 
     await eventually(async () => (await streamEvents(nc)).filter(event => event.type === FINISHED).length === 1)
     const events = await streamEvents(nc)

@@ -66,7 +66,8 @@ Service key 为 `dispatchEngine`（引擎）与 `graphNodes`（注册表），`i
 | `nodes.register(defineNode(...))`（即 `ctx.graphNodes.register`） | 注册节点；同名重复注册抛错。返回取消函数 |
 | `declareEntry({ graph, on, node, edges?, output, adapt })` | 声明入口。`output` 的端口集合与 `type` 标签必须与进入节点的 `inputs` 一致，`edges` 每条连线的端口也必须兼容（见下节），否则声明时抛错 |
 | `feed(event)` | 喂一条事件 `{ id, type, data? }`。有入口认领则为每个入口开一个实例并跑完；没有则记 `unmatched`。接了基础通信时这是 subscribe handler 在做的事，业务代码一般不直接调 |
-| `resume(instanceId)` | 按历史重放该实例；已完成的实例直接返回结果不再执行 |
+| `resume(instanceId)` | 按历史重放该实例；已完成的实例直接返回结果不再执行。接基础通信时引擎启动后会自己对未结束的实例调它（见「事件历史」），宿主不必再调 |
+| `unfinishedNode(records)` | 工具函数：按「事件历史」的判定返回实例停在的节点，已结束则 `undefined` |
 | `activities.register(name, handler)` | 注册 activity 的执行侧。`emit` 由引擎提供，不可覆盖 |
 | `setEmitSink(sink)` | 只在不接基础通信时用：`ctx.activities.emit({ type, data })` 把事件 `{ id, type, data }` 交给的 sink；未设置时 `emit` 抛错 |
 | `history` | 事件历史：`listByInstance`、`listByEventId`、`instanceIds` |
@@ -107,7 +108,9 @@ engine.declareEntry({
 
 ### 事件历史
 
-只追加，记录形状 `{ seq, at, kind, instanceId, graphId, nodeId?, eventId?, payload }`。没有新增 kind：实例是否结束、结果如何，看链上最后一个 `node.completed`（`payload.error` 有值即失败）。实例结束后不会自动 `resume`，重启后由宿主对未结束的实例调 `resume(instanceId)`。`kind`：`instance.opened`（payload 为进入节点 `node`、连线 `edges`、原始事件与适配后的输入）、`node.started`（payload 为该节点的 `inputs`）、`activity.completed`（每次 activity 完成，payload `{ name, fingerprint, result }`）、`node.completed`（payload 为 `outputs` 或 `error`）、`unmatched`（无实例，`instanceId`／`graphId` 为 `null`）。
+只追加，记录形状 `{ seq, at, kind, instanceId, graphId, nodeId?, eventId?, payload }`。没有新增 kind：实例是否结束，按 `instance.opened` 记下的连线从进入节点往后走，走到**第一个没有 `node.completed` 的节点**即未结束、停在该节点；某节点的 `node.completed` 带 `payload.error`（失败）或链尾节点已完成，即实例已结束（结果看那条 `node.completed`）。
+
+**自动恢复**（#97 故事 28）：接基础通信时，引擎加载后按 `seq` 顺序找出本角色所有未结束的实例，逐个走 `resume`——已完成节点与 `activity.completed` 直接取回、不重跑，未完成节点从头跑。它等实例停在的节点注册后才动（引擎加载时跑一次，之后每次 `nodes.register` 再跑），所以节点与它们要用的 activity 要像对待新事件一样先注册好；节点一直没注册的实例保持未结束并记 warn 日志。某个实例恢复失败只影响它自己：节点内的失败照常记 `node.completed(error)` 并发一份 `graph.instance.finished outcome=error`，其余错误记 error 日志、实例留待下次重试。已完成的事件不会再发：Outbox 里未发布的事件由中继以同一 `event.id`（`Nats-Msg-Id`）补发，已发布的 JetStream 判重复。不经基础通信直接构造的引擎不自动恢复，由宿主调 `resume`。`kind`：`instance.opened`（payload 为进入节点 `node`、连线 `edges`、原始事件与适配后的输入）、`node.started`（payload 为该节点的 `inputs`）、`activity.completed`（每次 activity 完成，payload `{ name, fingerprint, result }`）、`node.completed`（payload 为 `outputs` 或 `error`）、`unmatched`（无实例，`instanceId`／`graphId` 为 `null`）。
 
 ## 理解实现
 
@@ -120,7 +123,7 @@ engine.declareEntry({
 
 ## 验证
 
-从本包目录运行 `pnpm test`（先 build 再跑 node:test）：`tests/engine.mjs`、`tests/history.mjs` 覆盖注册节点与入口、事件开实例、activity 结果入历史、重启后重放不重跑、指纹不匹配报错、入口类型检查、顺序链执行与值传递、连线声明校验、链中途崩溃后按节点粒度恢复与双引擎隔离；`tests/wired.mjs` 用真实的 Outbox／Inbox 加一个替身的订阅面覆盖入图、`emit`、生命周期事件与未声明 type 的拒绝；`tests/tracer.mjs` 是真实 nats-server 上的验收（设 `DSH_NATS_SERVER` 后运行，或经 `pnpm --filter dsh-secretary test:tracer`，缺二进制时明确失败）。
+从本包目录运行 `pnpm test`（先 build 再跑 node:test）：`tests/engine.mjs`、`tests/history.mjs` 覆盖注册节点与入口、事件开实例、activity 结果入历史、重启后重放不重跑、指纹不匹配报错、入口类型检查、顺序链执行与值传递、连线声明校验、链中途崩溃后按节点粒度恢复与双引擎隔离；`tests/wired.mjs` 用真实的 Outbox／Inbox 加一个替身的订阅面覆盖入图、`emit`、生命周期事件、未声明 type 的拒绝与重启后自动恢复未结束实例；`tests/tracer.mjs` 是真实 nats-server 上的验收（设 `DSH_NATS_SERVER` 后运行，或经 `pnpm --filter dsh-secretary test:tracer`，缺二进制时明确失败）。
 
 ## 已知限制与后续工作
 
@@ -128,4 +131,4 @@ engine.declareEntry({
 - 端口的结构校验在运行时对实际值执行（入口对适配器输出，连线对上游 outputs）；声明时只比较端口集合与 `type` 标签。
 - `agent` 的宿主接入与骨架 graph 由 #103 完成。
 - 入图只按事件目录订阅、只走入口（三叉路由的 ①waitFor 唤醒不做）；接了基础通信的实例在事件受理提交后于事务外执行，执行期间同一连接上的另一个事务仍会得到 `messaging/outbox-busy`，所以入口 `adapt` 应保持同步或很短。
-- 重启后不自动 `resume` 未结束的实例（见「事件历史」）。
+- 自动恢复只由节点注册触发；实例停在的节点已注册、但它接下来调用的 activity 尚未注册时，该实例按既有失败路径记为失败（与同一时刻到达的新事件相同）。恢复与投递共用一条 Outbox 连接，首次恢复在订阅建立之前跑完；之后由注册触发的恢复若与一次投递的事务撞上，会得到 `messaging/outbox-busy` 并重试。
