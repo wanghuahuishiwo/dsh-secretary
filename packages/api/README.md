@@ -14,6 +14,7 @@ Host 产品 API：Typert Remote controller。组目录是纯容器：不包含 `
 | 包 | 名称 | 角色 |
 |---|---|---|
 | [`time-controller/`](time-controller/README.md) | `dsh-secretary-time-controller` | TimeProductService，导出 `./types`、`./typert`、`./remote` |
+| [`dispatch-controller/`](dispatch-controller/README.md) | `dsh-secretary-dispatch-controller` | 底座控制台 Remote `secretaryDispatch`（Gateway + 节点／事件读路径），导出 `./types`、`./typert`、`./remote` |
 
 ## 约束
 

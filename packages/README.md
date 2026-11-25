@@ -21,6 +21,7 @@ kind: "package-group"
 | [`time/`](time/README.md) | Time 领域能力族 |
 | [`api/`](api/README.md) | Host 产品 API（Typert Remote controller） |
 | [`secretary/`](secretary/README.md) | Agent 自有运行代码（CLI） |
+| [`dispatch/`](dispatch/README.md) | agent-dispatch 底座：Gateway 管理、基础通信、graph 执行引擎 |
 | [`client/`](client/README.md) | 浏览器产品 UI 与客户端插件 |
 | [`bundle/`](bundle/README.md) | 可安装 bundle（preset、patch 与装配） |
 
@@ -37,7 +38,12 @@ kind: "package-group"
 | [`gtd/agent`](gtd/agent/README.md) | gtd | GTD 用户技能 | `.` |
 | [`time/time-block`](time/time-block/README.md) | time | `TimeService` | `.`、`./contract` |
 | [`secretary/cli`](secretary/cli/README.md) | secretary | `dsh-secretary` CLI（agent 薄客户端） | `./bin` |
+| [`dispatch/engine`](dispatch/engine/README.md) | dispatch | graph 执行引擎内核：节点注册表、入口、事件历史与重放 | `.`、`./contract`、`./history` |
 | [`api/time-controller`](api/time-controller/README.md) | api | `TimeProductService`、`TagProductService` 与 Remote 契约 | `.`、`./types`、`./typert`、`./remote` |
+| [`dispatch/gateway`](dispatch/gateway/README.md) | dispatch | 无状态 Gateway（nats-server）管理与 CLI 契约 | `.` |
+| [`dispatch/messaging`](dispatch/messaging/README.md) | dispatch | 基础通信插件：NKey 连接、CloudEvents 信封、nodeId、stream/consumer 在线创建、Outbox 可靠发布与持久受理 | `.`、`./contract` |
+| [`api/dispatch-controller`](api/dispatch-controller/README.md) | api | 底座控制台 Remote `secretaryDispatch`（Gateway 设置／状态／启停；节点 service discovery 与事件 stream 分页读） | `.`、`./types`、`./typert`、`./remote` |
+| [`client/ui-dispatch-console`](client/ui-dispatch-console/README.md) | client | 底座控制台壳与 Gateway／节点／事件分区 | `.`、`./client` |
 | [`client/ui-time`](client/ui-time/README.md) | client | 纯 React UI + `TimeAdapter` 契约 + 右栏插件 | `./ui`、`./client` |
 | [`client/ui-gtd`](client/ui-gtd/README.md) | client | 左栏入口 + 空白 main | `.`、`./client` |
 | [`bundle/secretary`](bundle/secretary/README.md) | bundle | 唯一安装入口：preset、skills、cordis.patch | `.` |
@@ -49,6 +55,9 @@ bundle/secretary → client/ui-time ─┐
                                      ├→ api/time-controller → time/time-block + tag/service
 bundle/secretary → client/ui-gtd     │                          └→ goal/provider → storage/domain → core/*
 bundle/secretary → secretary/cli ───┘（CLI 经 /api 调用 secretaryTime/secretaryTag agentInvoke）
+bundle/secretary → client/ui-dispatch-console → api/dispatch-controller ─┐
+bundle/secretary → secretary/cli（gateway 子命令）────────────────────┴→ dispatch/gateway（零运行时依赖）
+（角色插件集）→ dispatch/messaging（@nats-io 官方客户端）→ Gateway 进程 ← dispatch/gateway（permissions 文件）
 ```
 
 - Host 产品 API 只依赖领域 Service contract，不 import 其他产品的 UI 或插件。

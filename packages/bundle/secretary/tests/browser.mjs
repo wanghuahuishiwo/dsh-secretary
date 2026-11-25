@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { mkdir, mkdtemp, symlink, writeFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
+import { stopGateway } from 'dsh-secretary-dispatch-gateway'
 import { clearDialogs, openTimeRemote } from './open-time-product.mjs'
 import { seedWorkspace } from './workspace-fixture.mjs'
 
@@ -1052,3 +1054,213 @@ test('Time Remote product preserves DeepTime inheritance, restart, host themes, 
 })
 
 
+
+/** -----------------------------------------------------------------------
+ * 底座控制台：节点与事件分区（#105）。真实 `dsh web` + 真实 Gateway（经 Host 自己的 Remote 启动）。
+ * --------------------------------------------------------------------- */
+
+/** The console alone: the Host dispatch service (with the center engine history), its browser plugin and the test fixture. */
+async function writeConsoleOverlay(home) {
+  await seedWorkspace(home, ROOT)
+  const profile = join(home, 'profiles', 'web')
+  await mkdir(join(profile, 'node_modules'), { recursive: true })
+  const links = [['dsh-secretary-dispatch-controller', 'packages/api/dispatch-controller'], ['dsh-secretary-ui-dispatch-console', 'packages/client/ui-dispatch-console']]
+  const dependencies = {}
+  for (const [name, relative] of links) {
+    const directory = join(ROOT, relative)
+    await symlink(directory, join(profile, 'node_modules', name), 'dir')
+    dependencies[name] = `link:${directory}`
+  }
+  await writeFile(join(profile, 'package.json'), JSON.stringify({
+    name: 'dsh-profile-web', private: true, dependencies,
+    dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] } },
+  }, null, 2))
+  const overlay = join(home, 'console-overlay.yml')
+  await writeFile(overlay, [
+    '- id: ui-settings-general',
+    '  config:',
+    "    welcomeNoticeVersion: '2026-09-28.1'",
+    '- id: ui-settings-account',
+    '  config:',
+    '    version: 1',
+    '    step: done',
+    '    usage: detailed',
+    '    developerTools: true',
+    '    purpose: null',
+    '    process: standard',
+    '    completion: api-key',
+    '- insert:',
+    '    - id: secretary-browser-dispatch-controller',
+    "      name: 'dsh-secretary-dispatch-controller'",
+    '      config:',
+    '        dshHome: !!js dshHomePath()',
+    `        historyPath: ${JSON.stringify(join(home, 'history', 'center.sqlite'))}`,
+    '    - id: secretary-browser-dispatch-console',
+    "      name: 'dsh-secretary-ui-dispatch-console'",
+    '    - id: secretary-browser-dispatch-fixture',
+    `      name: 'file://${join(ROOT, 'packages/bundle/secretary/tests/fixtures/dispatch-fixture.mjs')}'`,
+    '',
+  ].join('\n'))
+  return overlay
+}
+
+async function dispatchFixture(page, body) {
+  return page.evaluate(async payload => {
+    const response = await fetch('/api/secretary-test.dispatch', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload),
+    })
+    const text = await response.text()
+    if (!response.ok) throw new Error(`dispatch fixture ${payload.op} failed (${response.status}): ${text}`)
+    return JSON.parse(text)
+  }, body)
+}
+
+/** One table row as `{ header: cell text }`; JSON cells keep their exact text. */
+const rowObject = locator => locator.evaluate(row => {
+  const cells = [...row.querySelectorAll('td')]
+  const headers = [...row.closest('table').querySelectorAll('thead th')].map(th => th.textContent)
+  return Object.fromEntries(headers.map((header, index) => [header, cells[index].textContent]))
+})
+
+test('底座控制台 lists the online service instances and the stream as they lie, follows, pauses and pages back', { timeout: 300_000 }, async (t) => {
+  const binary = process.env.DSH_NATS_SERVER ?? 'nats-server'
+  assert.ok(existsSync(binary), `需要真实的 nats-server 二进制：设置 DSH_NATS_SERVER（当前 ${binary}）`)
+  const home = await mkdtemp(join(tmpdir(), 'dsh-secretary-console-browser-'))
+  const overlay = await writeConsoleOverlay(home)
+  const server = await boot(home, overlay)
+  const browser = await chromium.launch()
+  const page = await browser.newPage({ viewport: { width: 1600, height: 900 } })
+  const errors = []
+  collectPageErrors(page, errors)
+  t.after(async () => {
+    await browser.close()
+    await server.stop()
+    try { await stopGateway(home) } catch { /* never started */ }
+    await rm(home, { recursive: true, force: true })
+  })
+  try {
+    await page.goto(server.url, { waitUntil: 'domcontentloaded' })
+    await clearDialogs(page)
+    await page.getByText(/^(Default workspace|默认工作区)$/).first().waitFor({ timeout: 15_000 })
+    const linked = await dispatchFixture(page, { op: 'link', dshHome: home, historyPath: join(home, 'history', 'center.sqlite'), binary, clientPort: 4222, monitorPort: 8222 })
+    const { published, service } = linked
+    const lastSeq = published[published.length - 1].seq
+
+    await page.getByRole('button', { name: '底座控制台', exact: true }).click()
+    const main = page.locator('.dc')
+    await main.locator('.dc-header').waitFor({ timeout: 30_000 })
+    await main.locator('[data-dc-node-count="1"]').waitFor({ timeout: 30_000 })
+
+    // 节点：一行一个在线实例，字段与 discovery 返回逐项一致；行内展开是完整 JSON。
+    await main.getByRole('button', { name: '节点', exact: true }).click()
+    const region = main.getByRole('region', { name: '节点', exact: true })
+    await region.locator('[data-dc-node]').first().waitFor()
+    assert.equal(await region.locator('[data-dc-node]').count(), 1)
+    const nodeRow = await rowObject(region.locator('[data-dc-node]').first())
+    assert.deepEqual(nodeRow, {
+      '': '▸', 服务名: service.name, '实例 ID': service.id, 版本: service.version,
+      metadata: JSON.stringify(service.metadata, null, 2), endpoints: JSON.stringify(service.endpoints, null, 2),
+    })
+    assert.equal(await region.locator('button, input, select').count(), 1, 'the only control is the row expander')
+    await region.locator('[data-dc-node] button').click()
+    const expanded = JSON.parse(await region.locator('[data-dc-node-json] pre').innerText())
+    assert.deepEqual(expanded, service, 'the expanded row is the complete discovery JSON')
+
+    // 事件：默认最近 200 条、最新在上；每一格与 stream 里存的事件逐字段一致。
+    await main.getByRole('button', { name: '事件', exact: true }).click()
+    const events = main.getByRole('region', { name: '事件', exact: true })
+    const list = events.locator('.dc-events-scroll')
+    await events.locator(`[data-dc-event="${lastSeq}"]`).waitFor({ timeout: 30_000 })
+    assert.equal(await events.locator('[data-dc-events]').getAttribute('data-dc-events'), '200', 'the first page is the newest 200')
+    assert.equal(await events.locator('input, select').count(), 0, 'no filter control')
+    const stream = await dispatchFixture(page, { op: 'stream' })
+    const bySeq = new Map(stream.messages.map(item => [item.seq, item]))
+    for (const item of published) assert.deepEqual(bySeq.get(item.seq).event, item.event, `seq ${item.seq} lies in the stream as published`)
+    /** Every rendered row must equal the stored message: each envelope attribute, `data`, and the history. */
+    const checkRows = async () => {
+      const rows = await events.locator('[data-dc-event]').evaluateAll(elements => elements.map(row => {
+        const headers = [...row.closest('table').querySelectorAll('thead th')].map(th => th.textContent)
+        const cells = [...row.querySelectorAll('td')]
+        return Object.fromEntries(headers.map((header, index) => [header, cells[index].textContent]))
+      }))
+      if (rows.some(row => !bySeq.has(Number(row.seq)))) throw new Error(`rows not in stream: ${rows.filter(row => !bySeq.has(Number(row.seq))).map(row => JSON.stringify(row)).slice(0, 3)} | keys ${[...bySeq.keys()].slice(0, 5)}…${[...bySeq.keys()].slice(-3)}`)
+      for (const row of rows) {
+        const seq = Number(row.seq)
+        const { data, ...attributes } = bySeq.get(seq).event
+        for (const [name, value] of Object.entries(attributes)) assert.equal(row[name], JSON.stringify(value), `seq ${seq} ${name}`)
+        assert.equal(row.data, JSON.stringify(data, null, 2), `seq ${seq} data is the complete JSON`)
+        assert.equal(row.history, history(seq), `seq ${seq} history`)
+      }
+      return rows.map(row => Number(row.seq))
+    }
+    /** The engine records naming the event at `seq`, as the console must print them; empty when there is none. */
+    const history = seq => {
+      const record = linked.records[bySeq.get(seq).event.id]
+      return record === undefined ? '' : JSON.stringify([record], null, 2)
+    }
+    const firstPage = await checkRows()
+    assert.deepEqual([firstPage[0], firstPage.length, firstPage[firstPage.length - 1]], [lastSeq, 200, lastSeq - 199])
+    assert.equal(await list.getAttribute('data-dc-following'), 'true')
+    assert.ok(await list.evaluate(element => element.scrollHeight > element.clientHeight), 'the list itself is the scroll container')
+
+    // 滚到列表末尾再往前加载：更早的一页接在下面，补齐 stream 的开头；带消费记录的事件原样显示，没有记录即空。
+    await list.evaluate(element => { element.scrollTop = element.scrollHeight })
+    await events.locator('[data-dc-event="1"]').waitFor({ timeout: 30_000 })
+    const all = await checkRows()
+    // Newest first: the older page follows the first page, down to the first message of the stream.
+    assert.deepEqual(all, [...firstPage, ...stream.messages.map(item => item.seq).slice(0, lastSeq - firstPage.length).reverse()])
+    assert.match(await events.locator('[data-dc-event="2"] td').last().innerText(), /"kind": "instance.opened"/)
+    assert.equal(await events.locator('[data-dc-event="1"] td').last().innerText(), '')
+
+    // 详情：整页，完整信封 JSON 与完整消费记录 JSON；返回列表。
+    await events.locator('[data-dc-event="2"]').click()
+    const withRecord = events.locator('[data-dc-detail="2"]')
+    await withRecord.waitFor()
+    assert.deepEqual(JSON.parse(await withRecord.locator('[data-dc-envelope]').innerText()), bySeq.get(2).event)
+    assert.deepEqual(JSON.parse(await withRecord.locator('[data-dc-history]').innerText()), [linked.records[bySeq.get(2).event.id]])
+    assert.equal(await events.locator('[data-dc-event]').count(), 0, 'the list is replaced by the full page')
+    await withRecord.getByRole('button', { name: '返回事件列表' }).click()
+    // Back on the list, the newest page is shown from its top and the list follows again.
+    await events.locator(`[data-dc-event="${lastSeq}"]`).waitFor()
+    assert.equal(await events.locator('[data-dc-following="true"]').count(), 1)
+
+    // 跟随：回到顶部即恢复跟随，新事件到达就出现在顶部，没有「新事件」按钮。
+    await list.evaluate(element => { element.scrollTop = 0 })
+    await events.locator('[data-dc-following="true"]').waitFor()
+    const live1 = await dispatchFixture(page, { op: 'publish', role: 'center', type: 'task.assigned', data: { n: 'live-1' } })
+    await events.locator(`[data-dc-event="${live1.seq}"]`).waitFor({ timeout: 30_000 })
+    assert.equal(await events.locator('[data-dc-new-events]').count(), 0)
+
+    // 暂停：上滚后不再跟随，计数并给出「N 条新事件」；点击回到最新。
+    await list.evaluate(element => { element.scrollTop = 60 })
+    await events.locator('[data-dc-following="false"]').waitFor()
+    const live = [live1]
+    for (const n of [2, 3]) live.push(await dispatchFixture(page, { op: 'publish', role: 'node', type: 'aone.bug.created', data: { n: `live-${n}` } }))
+    await events.locator('[data-dc-new-events="2"]').waitFor({ timeout: 30_000 })
+    assert.equal(await events.locator('[data-dc-event]').first().getAttribute('data-dc-event'), String(live1.seq), 'the paused list does not move')
+    await events.locator('[data-dc-new-events="2"]').click()
+    await events.locator(`[data-dc-event="${live[2].seq}"]`).waitFor({ timeout: 30_000 })
+    assert.equal(await events.locator('[data-dc-following="true"]').count(), 1)
+    assert.equal(await events.locator('[data-dc-new-events]').count(), 0)
+    assert.equal(await list.evaluate(element => element.scrollTop), 0)
+
+    // 详情：整页，完整信封 JSON 与完整消费记录 JSON；返回列表。
+    await events.locator(`[data-dc-event="${live[2].seq}"]`).click()
+    const detail = events.locator('[data-dc-detail]')
+    await detail.waitFor()
+    assert.equal(await detail.getAttribute('data-dc-detail'), String(live[2].seq))
+    assert.deepEqual(JSON.parse(await detail.locator('[data-dc-envelope]').innerText()), live[2].event)
+    assert.equal(await detail.locator('[data-dc-history]').innerText(), '[]')
+    assert.equal(await detail.locator('a').count(), 0, 'no navigation')
+    assert.equal(await events.locator('[data-dc-event]').count(), 0, 'the list is replaced by the full page')
+    await detail.getByRole('button', { name: '返回事件列表' }).click()
+    await events.locator('[data-dc-event]').first().waitFor()
+    assert.equal(await events.locator('[data-dc-detail]').count(), 0)
+    assert.deepEqual(errors, [])
+  } catch (error) {
+    t.diagnostic(server.output())
+    t.diagnostic(errors.map(item => String(item)).join('\n'))
+    await page.screenshot({ path: join(tmpdir(), 'secretary-console-failure.png'), fullPage: true })
+    throw error
+  }
+})

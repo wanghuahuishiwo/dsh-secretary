@@ -3,7 +3,11 @@
 // for an API cookie on /connect, then calls the secretaryTime / secretaryTag
 // agentInvoke Remotes over the official /api Connection envelope. No domain
 // logic lives here; failures keep the Service contract's codes and messages.
+// `dsh-secretary gateway …` is routed before the host check: it drives the
+// local nats-server through the shared dispatch-gateway package and works
+// while DSH is not running.
 import { randomUUID } from 'node:crypto'
+import { gatewayCommand } from 'dsh-secretary-dispatch-gateway'
 
 const DOMAINS = { time: 'secretaryTime', tag: 'secretaryTag' }
 
@@ -89,16 +93,24 @@ async function invoke(origin, cookie, endpoint, input) {
 }
 
 const [domain, op, ...rest] = process.argv.slice(2)
-const namespace = DOMAINS[domain]
-if (namespace === undefined || op === undefined) {
-  usage(`unknown domain ${JSON.stringify(domain ?? '')}; expected time or tag`)
+
+if (domain === 'gateway') {
+  // Stateless Gateway management: no host connection, `$DSH_HOME/gateway/` only.
+  process.exitCode = await gatewayCommand([op, ...rest].filter(part => part !== undefined), { stdout: process.stdout, stderr: process.stderr })
+} else await hostCommand(domain, op, rest)
+
+async function hostCommand(domain, op, rest) {
+  const namespace = DOMAINS[domain]
+  if (namespace === undefined || op === undefined) {
+    usage(`unknown domain ${JSON.stringify(domain ?? '')}; expected time, tag or gateway`)
+  }
+  const origin = process.env.DSH_SECRETARY_URL
+  const token = process.env.DSH_SECRETARY_TOKEN
+  if (origin === undefined || origin === '' || token === undefined || token === '') {
+    usage('dsh-secretary must run inside a DSH session (missing DSH_SECRETARY_URL / DSH_SECRETARY_TOKEN); start DSH and call it from an agent shell')
+  }
+  const input = { op, ...parseArgs(rest) }
+  const cookie = await connectCookie(origin, token)
+  const value = await invoke(origin, cookie, `${namespace}/agentInvoke`, input)
+  process.stdout.write(`${JSON.stringify(value)}\n`)
 }
-const origin = process.env.DSH_SECRETARY_URL
-const token = process.env.DSH_SECRETARY_TOKEN
-if (origin === undefined || origin === '' || token === undefined || token === '') {
-  usage('dsh-secretary must run inside a DSH session (missing DSH_SECRETARY_URL / DSH_SECRETARY_TOKEN); start DSH and call it from an agent shell')
-}
-const input = { op, ...parseArgs(rest) }
-const cookie = await connectCookie(origin, token)
-const value = await invoke(origin, cookie, `${namespace}/agentInvoke`, input)
-process.stdout.write(`${JSON.stringify(value)}\n`)

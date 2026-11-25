@@ -31,15 +31,16 @@
     "build": "node build.mjs",
     "dev": "node build.mjs --watch",
     "prepare": "node build.mjs",
-    "test": "node --test tests/tracer.mjs && node --test tests/browser.mjs",
+    "test": "node --test tests/tracer.mjs tests/gateway.mjs tests/messaging.mjs tests/outbox.mjs tests/engine.mjs && node --test tests/browser.mjs",
     "test:browser": "node --test tests/browser.mjs",
     "test:installed": "node --test tests/installed.mjs",
-    "test:tracer": "node --test tests/tracer.mjs"
+    "test:tracer": "node --test tests/tracer.mjs tests/gateway.mjs tests/messaging.mjs tests/outbox.mjs tests/engine.mjs"
   },
   "dependencies": {
     "@deepseek-ai/cordis": "4.1.0",
     "@deepseek-ai/dsh-storage-sqlite": "0.2.2-rc.1",
     "dsh-secretary-cli": "workspace:*",
+    "dsh-secretary-dispatch-controller": "workspace:*",
     "dsh-secretary-goal-provider": "workspace:*",
     "dsh-secretary-gtd-agent": "workspace:*",
     "dsh-secretary-skill-resources": "workspace:*",
@@ -47,12 +48,18 @@
     "dsh-secretary-tag-service": "workspace:*",
     "dsh-secretary-time-block": "workspace:*",
     "dsh-secretary-time-controller": "workspace:*",
+    "dsh-secretary-ui-dispatch-console": "workspace:*",
     "dsh-secretary-ui-gtd": "workspace:*",
     "dsh-secretary-ui-time": "workspace:*"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",
     "@deepseek-ai/dsh-storage": "0.2.2-rc.1",
+    "@nats-io/jetstream": "3.5.0",
+    "@nats-io/services": "3.5.0",
+    "dsh-secretary-dispatch-engine": "workspace:*",
+    "dsh-secretary-dispatch-gateway": "workspace:*",
+    "dsh-secretary-dispatch-messaging": "workspace:*",
     "esbuild": "^0.25.10",
     "playwright": "1.62.1"
   }

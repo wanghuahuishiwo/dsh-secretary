@@ -1,0 +1,15 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "noEmit": false,
+    "emitDeclarationOnly": true
+  },
+  "files": [
+    "src/index.ts",
+    "src/reader.ts",
+    "src/types.ts"
+  ],
+  "references": [{ "path": "../../dispatch/gateway/tsconfig.json" }, { "path": "../../dispatch/messaging/tsconfig.json" }]
+}

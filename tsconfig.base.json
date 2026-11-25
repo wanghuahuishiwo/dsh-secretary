@@ -16,7 +16,9 @@
       "@deepseek-ai/dsh-typert-protocol": ["./types/typert-protocol.d.ts"],
       "dsh-secretary-tag-service/contract": ["./packages/tag/service/src/contract.ts"],
       "dsh-secretary-time-block/contract": ["./packages/time/time-block/src/contract.ts"],
-      "dsh-secretary-time-controller/types": ["./packages/api/time-controller/src/types.ts"]
+      "dsh-secretary-time-controller/types": ["./packages/api/time-controller/src/types.ts"],
+      "dsh-secretary-dispatch-gateway": ["./packages/dispatch/gateway/src/index.ts"],
+      "dsh-secretary-dispatch-messaging": ["./packages/dispatch/messaging/src/index.ts"]
     }
   }
 }
