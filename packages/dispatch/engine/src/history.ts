@@ -16,7 +16,10 @@ export interface HistoryRecord extends HistoryInput {
   readonly at: string
 }
 
-/** Append-only event history in its own SQLite file; never shares a database with the host. */
+/**
+ * Append-only event history, never shared with the host: either its own SQLite file, or the `history` table of a
+ * connection owned by someone else (the role's Outbox, so that a record and the event it announces commit together).
+ */
 export interface EventHistory {
   append(input: HistoryInput): HistoryRecord
   listByInstance(instanceId: string): HistoryRecord[]
@@ -27,8 +30,9 @@ export interface EventHistory {
 
 const KINDS: readonly HistoryKind[] = ['instance.opened', 'node.started', 'activity.completed', 'node.completed', 'unmatched']
 
-export function openEventHistory(path: string): EventHistory {
-  const db = new DatabaseSync(path)
+export function openEventHistory(target: string | DatabaseSync): EventHistory {
+  const own = typeof target === 'string'
+  const db = own ? new DatabaseSync(target) : target
   db.exec(`CREATE TABLE IF NOT EXISTS history (
     seq INTEGER PRIMARY KEY AUTOINCREMENT,
     at TEXT NOT NULL,
@@ -67,6 +71,6 @@ export function openEventHistory(path: string): EventHistory {
     listByInstance: instanceId => (byInstance.all(instanceId) as Record<string, unknown>[]).map(read),
     listByEventId: eventId => (byEvent.all(eventId) as Record<string, unknown>[]).map(read),
     instanceIds: () => (instances.all() as { instanceId: string }[]).map(row => row.instanceId),
-    close: () => db.close(),
+    close: () => { if (own) db.close() },
   }
 }

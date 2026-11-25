@@ -499,10 +499,19 @@ importers:
       '@deepseek-ai/cordis':
         specifier: 4.1.0
         version: 4.1.0
+      dsh-secretary-dispatch-messaging:
+        specifier: workspace:*
+        version: link:../messaging
     devDependencies:
+      '@nats-io/jetstream':
+        specifier: 3.5.0
+        version: 3.5.0
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.2
+      dsh-secretary-dispatch-gateway:
+        specifier: workspace:*
+        version: link:../gateway
       esbuild:
         specifier: ^0.25.10
         version: 0.25.12

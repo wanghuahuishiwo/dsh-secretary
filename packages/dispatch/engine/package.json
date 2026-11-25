@@ -23,10 +23,13 @@
     "test": "node build.mjs && node --test tests/*.mjs"
   },
   "dependencies": {
-    "@deepseek-ai/cordis": "4.1.0"
+    "@deepseek-ai/cordis": "4.1.0",
+    "dsh-secretary-dispatch-messaging": "workspace:*"
   },
   "devDependencies": {
+    "@nats-io/jetstream": "3.5.0",
     "@types/node": "^24.0.0",
+    "dsh-secretary-dispatch-gateway": "workspace:*",
     "esbuild": "^0.25.10",
     "typescript": "^6.0.3"
   }

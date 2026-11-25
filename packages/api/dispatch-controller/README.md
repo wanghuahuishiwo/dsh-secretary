@@ -22,7 +22,7 @@ kind: "package-reference"
 
 ### 组合与入口
 
-bundle 的 `secretary-dispatch-controller` 行挂载它，`config.dshHome` 由 `!!js dshHomePath()` 提供（缺省回退 `$DSH_HOME`，再回退 `~/.dsh`）。只注入 `credentials`。`config.historyPath`（可选）是中心引擎事件历史 SQLite 文件，只读打开；缺省不显示消费记录（bundle 尚未装配引擎，装配时在该行加上）。
+bundle 的 `secretary-dispatch-controller` 行挂载它，`config.dshHome` 由 `!!js dshHomePath()` 提供（缺省回退 `$DSH_HOME`，再回退 `~/.dsh`）。只注入 `credentials`。`config.historyPath`（可选）是中心引擎事件历史 SQLite 文件，只读打开；缺省不显示消费记录（bundle 尚未装配引擎，装配时在该行加上）。引擎经插件入口接入基础通信后（#102），历史是中心 Outbox 文件 `dispatch/center/outbox.sqlite` 里的 `history` 表，`historyPath` 指到它（`!!js dshHomePath('dispatch', 'center', 'outbox.sqlite')`）；表名与记录形状不变。
 
 | 出口 | 作用 |
 |---|---|

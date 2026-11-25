@@ -1,17 +1,24 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { Service, type Context } from '@deepseek-ai/cordis'
+import { assertDeclared, CENTER_SOURCE, nodeSource } from 'dsh-secretary-dispatch-messaging'
+import type { DispatchMessaging, EventHandler, OutboxTransaction, SubscriptionHandle } from 'dsh-secretary-dispatch-messaging'
 import { openEventHistory, type EventHistory, type HistoryRecord } from './history.ts'
-import type { ActivityHandler, ActivityRegistry, DispatchEvent, Edge, EmitSink, EmitInput, EntryDeclaration, FeedOutcome, GraphNodeRegistry, NodeDefinition, Port, ResumeOutcome, RunContext } from './contract.ts'
+import type { ActivityRegistry, DispatchEvent, Edge, EmitSink, EmitInput, EntryDeclaration, FeedOutcome, GraphNodeRegistry, NodeDefinition, Port, ResumeOutcome, RunContext } from './contract.ts'
 
 export type { EventHistory, HistoryKind, HistoryRecord } from './history.ts'
 export { defineNode } from './contract.ts'
+export const STARTED = 'graph.instance.started'
+export const FINISHED = 'graph.instance.finished'
 export type { ActivityHandler, Activities, AgentResult, DispatchEvent, Edge, EmitSink, EmitInput, EntryDeclaration, FeedOutcome, GraphNodeRegistry, NodeDefinition, Port, ResumeOutcome, RunContext } from './contract.ts'
 
 export interface Config {
   /** Which role this engine serves; center and node each load their own engine with its own history. */
   readonly role: 'center' | 'node'
-  /** SQLite file for the event history; each engine must own its own. */
-  readonly historyPath: string
+  /**
+   * SQLite file for the event history, for an engine constructed directly where no `dispatchMessaging` is provided;
+   * each engine must then own its own. The plugin entry always has `dispatchMessaging` and keeps its history there.
+   */
+  readonly historyPath?: string
 }
 
 export const Config = {
@@ -29,10 +36,10 @@ export const Config = {
       if (value.role !== 'center' && value.role !== 'node') {
         return { issues: [{ message: 'dispatch: engine config field "role" must be "center" or "node"' }] }
       }
-      if (typeof value.historyPath !== 'string' || value.historyPath === '') {
+      if (value.historyPath !== undefined && (typeof value.historyPath !== 'string' || value.historyPath === '')) {
         return { issues: [{ message: 'dispatch: engine config field "historyPath" must be a file path' }] }
       }
-      return { value: { role: value.role, historyPath: value.historyPath } }
+      return { value: value.historyPath === undefined ? { role: value.role } : { role: value.role, historyPath: value.historyPath } }
     },
   },
 }
@@ -47,6 +54,13 @@ export class NonDeterminismError extends Error {
 }
 
 interface RecordedCall { readonly name: string; readonly fingerprint: string; readonly result: unknown }
+
+/** What the engine needs from the messaging plugin of its role to put events on the stream. */
+type Gateway = Pick<DispatchMessaging, 'role' | 'nodeId' | 'catalog' | 'outbox' | 'subscribe'>
+
+/** Records a completed call and returns its result; inside a `write` it joins that transaction. */
+type Save = (result: unknown, tx?: OutboxTransaction) => unknown
+type Executor = (args: unknown, save: Save) => unknown
 
 /** Canonical JSON (keys sorted) so equal arguments always hash the same. */
 export function canonical(value: unknown): string {
@@ -101,13 +115,17 @@ function checkPorts(ports: Record<string, Port>, values: Record<string, unknown>
 export class DispatchEngine extends Service {
   readonly history: EventHistory
   readonly nodes: GraphNodeRegistry
+  private readonly gateway: Gateway | undefined
   private readonly entries = new Map<string, EntryDeclaration[]>()
-  private readonly handlers = new Map<string, ActivityHandler>()
+  private readonly handlers = new Map<string, Executor>()
+  private readonly subscriptions = new Set<SubscriptionHandle>()
   private emitSink: EmitSink | undefined
 
   constructor(ctx: Context, config: Config) {
     super(ctx, 'dispatchEngine')
-    this.history = openEventHistory(config.historyPath)
+    this.gateway = ctx.get('dispatchMessaging') as Gateway | undefined
+    if (this.gateway === undefined && config.historyPath === undefined) throw new Error('dispatch: engine without dispatchMessaging needs config "historyPath"')
+    this.history = this.gateway === undefined ? openEventHistory(config.historyPath!) : openEventHistory(this.gateway.outbox.db)
     const definitions = new Map<string, NodeDefinition>()
     this.nodes = {
       register: definition => {
@@ -118,27 +136,70 @@ export class DispatchEngine extends Service {
       get: name => definitions.get(name),
       list: () => [...definitions.values()],
     }
-    this.handlers.set('emit', args => this.emit(args as EmitInput))
+    this.handlers.set('emit', (args, save) => this.emit(args as EmitInput, save))
     ctx.provide('graphNodes', this.nodes)
     ctx.effect(() => () => this.close())
+    if (this.gateway !== undefined) {
+      for (const type of LIFECYCLE) assertDeclared(this.gateway.catalog, 'publish', type)
+      void this.subscribeAll()
+    }
   }
 
-  private emit(input: EmitInput): null {
-    if (this.emitSink === undefined) throw new Error('dispatch: emit activity has no sink')
-    this.emitSink({ id: randomUUID(), type: input.type, data: input.data })
+  /** One durable consumer per declared type; sequential, because adding stream subjects concurrently can collide. */
+  private async subscribeAll(): Promise<void> {
+    for (const type of this.gateway!.catalog.subscribe) {
+      try {
+        this.subscriptions.add(await this.gateway!.subscribe({ type }, this.receive))
+      } catch (error) {
+        this.ctx.logger.error(`dispatchEngine: subscription for ${type} failed: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
+  }
+
+  /** `source` of everything this engine puts on the stream: the identity of the role it serves. */
+  private get source(): string {
+    return this.gateway!.role === 'center' ? CENTER_SOURCE : nodeSource(this.gateway!.nodeId as string)
+  }
+
+  /** Runs one unit in a transaction: alone, or inside the transaction of the event being accepted. */
+  private write<T>(tx: OutboxTransaction | undefined, fn: (tx: OutboxTransaction | undefined) => T): T {
+    return tx === undefined && this.gateway !== undefined ? this.gateway.outbox.transaction(active => fn(active)) : fn(tx)
+  }
+
+  private emit(input: EmitInput, save: Save): null {
+    const event = { id: randomUUID(), type: input.type, data: input.data }
+    if (this.gateway === undefined) {
+      if (this.emitSink === undefined) throw new Error('dispatch: emit activity has no sink')
+      this.emitSink(event)
+      save(null)
+      return null
+    }
+    assertDeclared(this.gateway.catalog, 'publish', input.type)
+    // The node event and the record of the call are one commit: a crash leaves both or neither.
+    this.write(undefined, tx => { tx!.publish(event, this.source); save(null, tx) })
     return null
+  }
+
+  /**
+   * The handler of every subscription of the role. `deliver` of the messaging plugin has already recorded the acceptance
+   * in `tx` when this runs: the acceptance, the record the event leads to and the events it announces are one commit.
+   */
+  private readonly receive: EventHandler = (event, _meta, tx) => {
+    return this.route(event, tx).then(() => undefined, (error: unknown) => {
+      this.ctx.logger.error(`dispatchEngine: event ${event.id} was not routed: ${error instanceof Error ? error.message : String(error)}`)
+    })
   }
 
   /** Registers the activity handler the engine calls outside the isolated `run`; `emit` is built in. */
   readonly activities: ActivityRegistry = {
     register: (name, handler) => {
       if (name === 'emit') throw new Error('dispatch: activity "emit" is provided by the engine')
-      this.handlers.set(name, handler)
+      this.handlers.set(name, async (args, save) => save(await handler(args)))
       return () => { this.handlers.delete(name) }
     },
   }
 
-  /** Where `ctx.activities.emit` hands events to; the Gateway plug-in (#102) installs this. */
+  /** Where `ctx.activities.emit` hands events to when no `dispatchMessaging` is wired; unused otherwise. */
   setEmitSink(sink: EmitSink | undefined): void {
     this.emitSink = sink
   }
@@ -150,6 +211,7 @@ export class DispatchEngine extends Service {
       throw new Error(`dispatch: entry for "${entry.on}" output ports do not match the inputs of node "${entry.node}"`)
     }
     this.checkEdges(entry)
+    if (this.gateway !== undefined) assertDeclared(this.gateway.catalog, 'subscribe', entry.on)
     const list = this.entries.get(entry.on) ?? []
     list.push(entry)
     this.entries.set(entry.on, list)
@@ -189,10 +251,15 @@ export class DispatchEngine extends Service {
 
   /** Routes one event: an entry opens a new instance, otherwise the event is recorded as unmatched. */
   async feed(event: DispatchEvent): Promise<FeedOutcome> {
+    return this.route(event)
+  }
+
+  /** `tx` is the transaction accepting the event on the stream; the instances then start once it has committed. */
+  private async route(event: DispatchEvent, tx?: OutboxTransaction): Promise<FeedOutcome> {
     parseEvent(event)
     const entries = this.entries.get(event.type)
     if (entries === undefined || entries.length === 0) {
-      this.history.append({ kind: 'unmatched', instanceId: null, graphId: null, eventId: event.id, payload: { type: event.type } })
+      this.write(tx, () => this.history.append({ kind: 'unmatched', instanceId: null, graphId: null, eventId: event.id, payload: { type: event.type } }))
       return { matched: false, instanceIds: [] }
     }
     const instanceIds: string[] = []
@@ -200,9 +267,14 @@ export class DispatchEngine extends Service {
       const instanceId = randomUUID()
       const inputs = await entry.adapt(event)
       const edges = entry.edges ?? []
-      this.history.append({ kind: 'instance.opened', instanceId, graphId: entry.graph, eventId: event.id, payload: { node: entry.node, edges, event, inputs } })
-      await this.runChain(instanceId, entry.graph, entry.node, edges, this.history.listByInstance(instanceId))
+      this.write(tx, (active) => {
+        this.history.append({ kind: 'instance.opened', instanceId, graphId: entry.graph, eventId: event.id, payload: { node: entry.node, edges, event, inputs } })
+        active?.publish({ type: STARTED, data: { instanceId, graphId: entry.graph, entryEventId: event.id } }, this.source)
+      })
       instanceIds.push(instanceId)
+      const run = () => this.runChain(instanceId, entry.graph, entry.node, edges, this.history.listByInstance(instanceId))
+      if (tx === undefined) await run()
+      else tx.afterCommit(() => { void run().catch((error: unknown) => { this.ctx.logger.error(`dispatchEngine: instance ${instanceId} failed to run: ${error instanceof Error ? error.message : String(error)}`) }) })
     }
     return { matched: true, instanceIds }
   }
@@ -222,17 +294,19 @@ export class DispatchEngine extends Service {
     let nodeId = entry
     let values = inputs
     for (;;) {
-      const outcome = await this.runNode(instanceId, graphId, nodeId, values, records)
-      if (outcome.status !== 'completed') return outcome
       const edge = edges.find(candidate => candidate.from === nodeId)
-      if (edge === undefined) return outcome
+      const outcome = await this.runNode(instanceId, graphId, nodeId, values, records, edge === undefined)
+      if (outcome.status !== 'completed' || edge === undefined) return outcome
       nodeId = edge.to
       values = outcome.outputs as Record<string, unknown>
     }
   }
 
-  /** Runs one node of the chain with the given inputs; a node with a `node.completed` record is returned, not re-run. */
-  private async runNode(instanceId: string, graphId: string, nodeId: string, inputs: Record<string, unknown>, records: HistoryRecord[]): Promise<Omit<ResumeOutcome, 'instanceId'>> {
+  /**
+   * Runs one node of the chain with the given inputs; a node with a `node.completed` record is returned, not re-run.
+   * `last` says no edge leaves the node: when it completes, or when it fails, the instance is finished.
+   */
+  private async runNode(instanceId: string, graphId: string, nodeId: string, inputs: Record<string, unknown>, records: HistoryRecord[], last: boolean): Promise<Omit<ResumeOutcome, 'instanceId'>> {
     const definition = this.nodes.get(nodeId)
     const completed = records.find(record => record.kind === 'node.completed' && record.nodeId === nodeId)
     if (completed !== undefined) return outcomeOf(completed.payload as NodeCompleted)
@@ -248,7 +322,11 @@ export class DispatchEngine extends Service {
     } catch (error) {
       payload = { error: error instanceof Error ? error.message : String(error) }
     }
-    this.history.append({ kind: 'node.completed', instanceId, graphId, nodeId, payload })
+    const outcome = payload.error === undefined ? 'ok' : 'error'
+    this.write(undefined, (tx) => {
+      this.history.append({ kind: 'node.completed', instanceId, graphId, nodeId, payload })
+      if (last || outcome === 'error') tx?.publish({ type: FINISHED, data: { instanceId, graphId, outcome } }, this.source)
+    })
     return outcomeOf(payload)
   }
 
@@ -264,16 +342,20 @@ export class DispatchEngine extends Service {
     }
     const handler = this.handlers.get(name)
     if (handler === undefined) throw new Error(`dispatch: activity "${name}" is not registered`)
-    const result = await handler(args)
-    const stored: unknown = JSON.parse(canonical(result) ?? 'null')
-    this.history.append({ kind: 'activity.completed', instanceId, graphId, nodeId, payload: { name, fingerprint: actual, result: stored } })
-    return result
+    return await handler(args, (value, tx) => {
+      const stored: unknown = JSON.parse(canonical(value) ?? 'null')
+      this.write(tx, () => this.history.append({ kind: 'activity.completed', instanceId, graphId, nodeId, payload: { name, fingerprint: actual, result: stored } }))
+      return value
+    })
   }
 
   close(): void {
     this.history.close()
+    for (const subscription of this.subscriptions) void subscription.stop()
   }
 }
+
+const LIFECYCLE: readonly string[] = [STARTED, FINISHED]
 
 /** `node.completed` payload: the node's outputs, or the error that failed it. */
 type NodeCompleted = { outputs?: unknown; error?: string }
@@ -294,6 +376,9 @@ function parseEvent(event: DispatchEvent): void {
 }
 
 export const name = 'dsh-secretary-dispatch-engine'
+/** The plugin entry loads once the role's `dispatchMessaging` is up; events then go to the stream through it. */
+export const inject = ['dispatchMessaging']
+
 export function apply(ctx: Context, config: Config): void {
   ctx.plugin(DispatchEngine, config)
 }

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { defineNode } from '../lib/contract.js'
-import { DispatchEngine, name, apply, fingerprint } from '../lib/index.js'
+import { DispatchEngine, fingerprint } from '../lib/index.js'
 
 const fingerprintOf = async (name, args) => fingerprint(name, args)
 
@@ -315,8 +315,8 @@ test('center and node engines in one host keep registry, history and service apa
   t.after(() => { ctx.fiber.dispose(); rmSync(dir, { recursive: true, force: true }) })
   // What the Loader does for `isolate: { dispatchEngine: true, graphNodes: true }` on each entry.
   const realms = { center: ctx.isolate('dispatchEngine').isolate('graphNodes'), node: ctx.isolate('dispatchEngine').isolate('graphNodes') }
-  realms.center.plugin({ name, apply }, { role: 'center', historyPath: join(dir, 'center-history.sqlite') })
-  realms.node.plugin({ name, apply }, { role: 'node', historyPath: join(dir, 'node-history.sqlite') })
+  realms.center.plugin(DispatchEngine, { role: 'center', historyPath: join(dir, 'center-history.sqlite') })
+  realms.node.plugin(DispatchEngine, { role: 'node', historyPath: join(dir, 'node-history.sqlite') })
   await new Promise(resolve => setImmediate(resolve))
   const { center, node } = realms
 
@@ -369,11 +369,11 @@ test('a failing activity or node marks the instance failed in the history, and a
   assert.equal(agentRuns, 1)
 })
 
-test('plugin entry provides ctx.dispatchEngine and ctx.graphNodes', t => {
+test('constructed without dispatchMessaging the engine keeps its history in its own file and provides ctx.dispatchEngine and ctx.graphNodes', t => {
   const dir = mkdtempSync(join(tmpdir(), 'dispatch-engine-'))
   const ctx = new Context()
   t.after(() => { ctx.fiber.dispose(); rmSync(dir, { recursive: true, force: true }) })
-  ctx.plugin({ name, apply }, { role: 'node', historyPath: join(dir, 'history.sqlite') })
+  ctx.plugin(DispatchEngine, { role: 'node', historyPath: join(dir, 'history.sqlite') })
   return new Promise(resolve => setImmediate(resolve)).then(() => {
     assert.ok(ctx.dispatchEngine)
     assert.equal(ctx.graphNodes, ctx.dispatchEngine.nodes)
