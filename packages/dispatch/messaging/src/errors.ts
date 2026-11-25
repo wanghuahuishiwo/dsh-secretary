@@ -9,6 +9,8 @@ export type MessagingErrorCode =
   | 'messaging/role-not-configured'
   | 'messaging/tls-required'
   | 'messaging/seed-unavailable'
+  | 'messaging/outbox-busy'
+  | 'messaging/outbox-duplicate-id'
 
 /** The single error type thrown by the messaging plugin before it reaches NATS. */
 export class MessagingError extends Error {

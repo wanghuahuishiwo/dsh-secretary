@@ -14,9 +14,11 @@ import { CREDENTIAL_REFS, defaultDshHome, readSettings } from 'dsh-secretary-dis
 import type { GatewayRole } from 'dsh-secretary-dispatch-gateway'
 import { assertDeclared, durableName, planStream, STREAM_NAME, writePermissions } from './catalog.ts'
 import type { EventCatalog } from './catalog.ts'
-import { createEvent, CENTER_SOURCE, nodeSource, parseEvent, subjectFor } from './envelope.ts'
+import { CENTER_SOURCE, nodeSource, parseEvent, subjectFor } from './envelope.ts'
 import type { CloudEvent, EventInput } from './envelope.ts'
 import { MessagingError } from './errors.ts'
+import { openOutbox, outboxPath } from './outbox.ts'
+import type { Outbox } from './outbox.ts'
 import { initNodeId, readNodeId } from './identity.ts'
 import {
   DispatchMessaging, SERVICE_KEY,
@@ -25,6 +27,8 @@ import type { EventHandler, PublishedEvent, RejectedEvent, SubscriptionHandle } 
 
 export { SERVICE_KEY }
 export type { EventMeta, EventHandler, EventSubscription, PublishedEvent, RejectedEvent, SubscriptionHandle } from './contract.ts'
+export type { InboxRecord, Outbox, OutboxEntry, OutboxStatus, OutboxTransaction } from './outbox.ts'
+export { openOutbox, outboxPath } from './outbox.ts'
 
 export interface Config {
   /** Which role this instance serves; decides the NKey user, the event `source` and the subject permissions. */
@@ -41,6 +45,8 @@ export interface Config {
 
 const TYPES = { publish: 'publish', subscribe: 'subscribe' } as const
 const RECONNECT_RETRY_MS = 500
+/** The relay polls the Outbox at this interval; a commit also wakes it, the poll covers restarts and lost wakes. */
+const RELAY_POLL_MS = 1_000
 
 export const Config = {
   '~standard': {
@@ -93,17 +99,30 @@ export class NatsDispatchMessaging extends DispatchMessaging {
   private readonly catalog: EventCatalog
   private readonly session: Promise<Session>
   private readonly subscriptions = new Set<SubscriptionHandle>()
+  override readonly outbox: Outbox
+  /** Resolvers of `publish` calls, keyed by event id, released when the relay sees the PubAck. */
+  private readonly awaiting = new Map<string, (published: PublishedEvent) => void>()
+  private relayRunning = true
+  private relayWake: (() => void) | undefined
+  private relayDone: Promise<void> = Promise.resolve()
 
   constructor(ctx: Context, config: Config) {
     super(ctx)
     this.role = config.role
+    this.outbox = openOutbox(outboxPath(config.dshHome ?? defaultDshHome(), config.role))
     this.catalog = { publish: config.publish ?? [], subscribe: config.subscribe ?? [] }
     this.session = this.open(config)
     this.ready = this.session.then(() => undefined)
+    // After the connection is up, the relay publishes what a previous process left pending, then follows commits.
+    this.relayDone = this.session.then(session => this.relay(session), () => undefined)
     ctx.effect(() => async () => {
+      this.relayRunning = false
+      this.relayWake?.()
       for (const handle of [...this.subscriptions]) await handle.stop()
+      await this.relayDone
       const session = await this.session.catch(() => undefined)
       await session?.nc.close()
+      this.outbox.close()
     })
   }
 
@@ -155,10 +174,43 @@ export class NatsDispatchMessaging extends DispatchMessaging {
     else if (plan.add.length > 0) await jsm.streams.update(STREAM_NAME, { subjects: [...(current ?? []), ...plan.add] })
   }
 
+  /** The plugin's event loop of the Outbox: drain what is pending, repeat when woken or polled; it is not a process. */
+  private async relay(session: Session): Promise<void> {
+    while (this.relayRunning) {
+      try {
+        await this.drain(session)
+      } catch (error) {
+        this.reject(error, 'outbox', 'relay')
+      }
+      await new Promise<void>(resolve => {
+        const timer: ReturnType<typeof setTimeout> = setTimeout(() => resolve(), RELAY_POLL_MS)
+        this.relayWake = () => { clearTimeout(timer); resolve() }
+      })
+    }
+  }
+
+  /** Publish every pending event in order; each is retried by the next drain until it is acknowledged. */
+  private async drain(session: Session): Promise<void> {
+    for (const entry of this.outbox.pending()) {
+      const published = await this.publishNow(session, entry.event)
+      this.outbox.markPublished(entry.id, published)
+      this.awaiting.get(entry.id)?.(published)
+      this.awaiting.delete(entry.id)
+    }
+  }
+
+  override kickRelay(): void { this.relayWake?.() }
+
   override async publish(input: EventInput): Promise<PublishedEvent> {
     assertDeclared(this.catalog, TYPES.publish, input.type)
-    const event = createEvent(input, this.source)
-    const { js } = await this.session
+    const queued = this.outbox.transaction(tx => tx.publish(input, this.source))
+    this.kickRelay()
+    return new Promise<PublishedEvent>(resolve => { this.awaiting.set(queued.id, resolve) })
+  }
+
+  /** One publish attempt on the wire with `Nats-Msg-Id = event.id`; JetStream answers `duplicate` for a repeat. */
+  private async publishNow(session: Session, event: CloudEvent): Promise<PublishedEvent> {
+    const { js } = session
     const subject = subjectFor(event.type)
     await this.ensureCapture([subject])
     const ack = await js.publish(subject, new TextEncoder().encode(JSON.stringify(event)), { msgID: event.id })
@@ -195,7 +247,10 @@ export class NatsDispatchMessaging extends DispatchMessaging {
     return handle
   }
 
-  /** Simplest ACK semantics until #100 (durable acceptance): ACK after the handler resolves, NAK when it throws. */
+  /**
+   * Durable acceptance (#100): the Inbox row, what the handler writes through `tx` and the ACK are in that order.
+   * A handler that throws rolls back its acceptance and the message is redelivered; an already accepted id is ACKed silently.
+   */
   private async deliver(message: JsMsg, handler: EventHandler): Promise<void> {
     const meta = { subject: message.subject, stream: STREAM_NAME, seq: message.seq }
     let event: CloudEvent
@@ -207,7 +262,7 @@ export class NatsDispatchMessaging extends DispatchMessaging {
       return
     }
     try {
-      await handler(event, meta)
+      await this.outbox.transaction(tx => (tx.accept(event, meta) ? handler(event, meta, tx) : undefined))
       message.ack()
     } catch (error) {
       message.nak()

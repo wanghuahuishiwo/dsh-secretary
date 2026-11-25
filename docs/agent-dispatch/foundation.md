@@ -124,6 +124,7 @@ async run(ctx, { ticket }) {
 - **同宿主组合正确性属于底座验收**：中心与节点各自的 graph 执行引擎必须隔离，Loader id、工具名和注册表不能因角色组合意外冲突，可共享的 DSH 服务必须明确，角色私有状态不能意外共用。
 - **Gateway 一期是独立非 DSH 的 `nats-server` 进程并启用 JetStream**，不提供 DSH 内嵌模式。NATS 内建鉴权提供连接认证与授权；Gateway 只拥有连接、鉴权、通用服务发现、订阅、投递、JetStream 序号与短期发布去重等自身领域，不承载中心、节点或具体业务语义；消费端长期幂等不属于 Gateway。
 - **一切跨角色通信经 Gateway**：中心与节点即使同宿主，也必须通过官方 `nats.js` 走真实 NATS 协议，不能直接方法调用；DSH isolate realm 不是这一规则的强制边界。本机使用 `nats://`，远程默认 `tls://`，只有浏览器直连或 HTTP/HTTPS 代理约束成为真实条件时才启用 `ws/wss`。连接、重连与幂等细节由 [底座·Gateway 协议（事件信封/注册心跳鉴权/重连/序号幂等）](https://github.com/wanghuahuishiwo/dsh-secretary/issues/83) 决定。
+- **发布走 Transactional Outbox，消费先持久受理再 ACK**（[#100](https://github.com/wanghuahuishiwo/dsh-secretary/issues/100)）：业务结果与待发事件在角色自管的 `node:sqlite` 文件（`$DSH_HOME/dispatch/<role>/outbox.sqlite`）同一事务落盘，插件内的中继以同一 `event.id` 重试发布到收到 PubAck；消费端把受理记录（Inbox）与业务「接下」的事实同一事务提交后才发 consumer ACK，ACK 只表示持久受理不表示执行完成。不引 Debezium／Kafka，不加常驻中继进程。Outbox 可能重复发布，不替代业务长期幂等；单机单份文件与 R=1 一样**不是高可用**，只解决重启恢复。
 - **一期默认一个 File/Limits stream**：File 存储用于跨 NATS 重启恢复。stream 数量不是永久不变量，只有 account、保留、存储／副本、配额或恢复边界不同时才拆分，不按事件类型或语义拆分；一期 R=1 是无容错单点，File/durable 解决重启恢复，不解决机器或磁盘永久丢失。
 - **中心与节点通过 NATS Services 发现彼此**：双方只配置同一个 NATS 地址，以 NATS Service 上线并通过 `$SRV.PING/INFO` 发现在线实例，不配置彼此 IP。NATS Services 不是持久注册中心；需要保留的离线历史目录由中心持久化保存，一期不新增独立注册中心进程。
 - **长期 `nodeId` 与 NATS Services 临时实例 ID 分离**：首次显式初始化时用安全随机源生成 UUIDv4，以原子、默认不覆盖的方式写入专用持久身份文件；普通启动只读取和校验，缺失或损坏时不静默换号。新建、克隆、恢复分别显式处理，中心检查并拒绝重复 `nodeId` 的登记和派工。节点 `source` 由持久值构造为 `urn:dsh:node:<nodeId>`，进程重启和 OS 重启保持不变；NATS Services 实例 ID 只标识本次在线运行实例。

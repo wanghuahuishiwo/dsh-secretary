@@ -21,3 +21,5 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   const service = new NatsDispatchMessaging(ctx, config)
   await service.ready
 }
+export { openOutbox, outboxPath } from './outbox.ts'
+export type { InboxRecord, Outbox, OutboxEntry, OutboxStatus, OutboxTransaction } from './outbox.ts'

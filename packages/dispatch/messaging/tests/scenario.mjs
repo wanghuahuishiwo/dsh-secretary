@@ -33,7 +33,7 @@ async function freePort() {
   return port
 }
 
-async function eventually(assertion, timeoutMs = 15_000) {
+export async function eventually(assertion, timeoutMs = 15_000) {
   const deadline = Date.now() + timeoutMs
   for (;;) {
     try {
@@ -45,7 +45,7 @@ async function eventually(assertion, timeoutMs = 15_000) {
 }
 
 /** A temporary DSH_HOME with a running Gateway and a `credentials` stub holding both seeds. */
-async function startLink(t, binary) {
+export async function startLink(t, binary) {
   const dshHome = await mkdtemp(join(tmpdir(), 'dsh-secretary-messaging-home-'))
   const [clientPort, monitorPort] = await Promise.all([freePort(), freePort()])
   await saveSettings(dshHome, { mode: 'local', clientPort, monitorPort, binary, remote: { url: '', credentials: {} }, keys: null })
@@ -203,16 +203,15 @@ export function register(test, { strict }) {
     const pid = (await startGateway(link.dshHome)).pid
     assert.ok(isProcessAlive(pid))
     await stopGateway(link.dshHome)
-    const second = await link.center.messaging.publish({ type: 'task.assigned', data: { n: 2 } }).catch(error => ({ error }))
+    // Through the Outbox (#100) the publish issued while the Gateway is down resolves once the relay got through.
+    const second = link.center.messaging.publish({ type: 'task.assigned', data: { n: 2 } })
+    await new Promise(resolve => setTimeout(resolve, 300))
+    assert.equal(link.center.messaging.outbox.pending().length, 1, 'the event waits in the Outbox while the Gateway is down')
     await startGateway(link.dshHome)
-    // A request issued while the official client is still reconnecting is dropped by the SDK (it times out, it is not
-    // replayed), so wait for the plugin's own connection to answer again before publishing the second event.
-    const { nc } = await link.center.messaging.session
-    await eventually(async () => { await nc.request('$JS.API.STREAM.INFO.dsh-events', new Uint8Array(), { timeout: 500 }); return true })
-    const third = second.error === undefined ? null : await link.center.messaging.publish({ type: 'task.assigned', data: { n: 2 } })
+    const sent = await second
     await eventually(() => link.received.filter(item => item.role === 'node').length === 2)
     const seqs = link.received.filter(item => item.role === 'node').map(item => item.meta.seq).sort()
-    assert.deepEqual(seqs, [first.seq, (third ?? second).seq])
+    assert.deepEqual(seqs, [first.seq, sent.seq])
   })
 
   test('a type declared later gets its stream capture and durable consumer online; the Gateway does not restart', { skip, timeout: 90_000 }, async t => {
